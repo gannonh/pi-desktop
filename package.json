@@ -12,7 +12,7 @@
 	},
 	"scripts": {
 		"preinstall": "node ./scripts/check-node-version.mjs",
-		"dev": "electron-forge start",
+		"dev": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
 		"build": "electron-forge package",
 		"package": "electron-forge package",
 		"make": "electron-forge make",
@@ -36,6 +36,7 @@
 		"@electron-forge/cli": "^7.11.1",
 		"@electron-forge/maker-zip": "^7.11.1",
 		"@electron-forge/plugin-vite": "^7.11.1",
+		"@electron-forge/shared-types": "7.11.1",
 		"@playwright/test": "^1.59.1",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^24.12.3",
