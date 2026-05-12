@@ -4,7 +4,7 @@ export const createDemoWorkspaceState = (): WorkspaceState => ({
 	activeWorkspace: {
 		id: "workspace-pi-desktop",
 		name: "pi-desktop",
-		path: "/Volumes/EVO/dev/pi-desktop",
+		path: "/path/to/pi-desktop",
 	},
 	sessions: [
 		{

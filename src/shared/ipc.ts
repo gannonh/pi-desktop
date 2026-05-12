@@ -8,17 +8,17 @@ export const IpcChannels = {
 	workspaceSelectFolder: "workspace:selectFolder",
 } as const;
 
-export const AppVersionSchema = z.object({
+export const AppVersionSchema = z.strictObject({
 	name: z.string().min(1),
 	version: z.string().min(1),
 });
 
 export const SelectFolderResponseSchema = z.discriminatedUnion("status", [
-	z.object({
+	z.strictObject({
 		status: z.literal("selected"),
 		path: z.string().min(1),
 	}),
-	z.object({
+	z.strictObject({
 		status: z.literal("cancelled"),
 	}),
 ]);

@@ -48,7 +48,7 @@ describe("IPC contracts", () => {
 			ok: true,
 			data: {
 				status: "selected",
-				path: "/Volumes/EVO/dev/pi-desktop",
+				path: "/path/to/pi-desktop",
 			},
 		});
 
@@ -60,7 +60,30 @@ describe("IPC contracts", () => {
 		if (result.data.status !== "selected") {
 			throw new Error("Expected selected folder result to include a selected path");
 		}
-		expect(result.data.path).toBe("/Volumes/EVO/dev/pi-desktop");
+		expect(result.data.path).toBe("/path/to/pi-desktop");
+	});
+
+	it("rejects unexpected fields in IPC payloads so contract drift is visible", () => {
+		expect(() =>
+			AppVersionResultSchema.parse({
+				ok: true,
+				data: {
+					name: "pi-desktop",
+					version: "0.0.0",
+					extra: "unexpected",
+				},
+			}),
+		).toThrow();
+
+		expect(() =>
+			SelectFolderResultSchema.parse({
+				ok: true,
+				data: {
+					status: "cancelled",
+					extra: "unexpected",
+				},
+			}),
+		).toThrow();
 	});
 
 	it("validates error results", () => {

@@ -7,7 +7,7 @@ describe("createShellSections", () => {
 		const sections = createShellSections(createDemoWorkspaceState());
 
 		expect(sections.workspaceLabel).toBe("pi-desktop");
-		expect(sections.workspacePath).toBe("/Volumes/EVO/dev/pi-desktop");
+		expect(sections.workspacePath).toBe("/path/to/pi-desktop");
 		expect(sections.sessionLabels).toEqual(["Milestone 0 foundation", "Roadmap planning"]);
 		expect(sections.panelLabels).toEqual(["Files", "Diffs", "Terminal"]);
 	});

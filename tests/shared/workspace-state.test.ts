@@ -11,4 +11,18 @@ describe("createDemoWorkspaceState", () => {
 		expect(state.sessions).toHaveLength(2);
 		expect(state.panels.map((panel) => panel.kind)).toEqual(["files", "diffs", "terminal"]);
 	});
+
+	it("rejects unexpected fields in workspace payloads so IPC drift fails loudly", () => {
+		const state = createDemoWorkspaceState();
+
+		expect(() =>
+			WorkspaceStateSchema.parse({
+				...state,
+				activeWorkspace: {
+					...state.activeWorkspace,
+					extra: "unexpected",
+				},
+			}),
+		).toThrow();
+	});
 });

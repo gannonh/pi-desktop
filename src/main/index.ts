@@ -19,7 +19,7 @@ const createWindow = () => {
 			preload: path.join(currentDirectory, "preload.js"),
 			contextIsolation: true,
 			nodeIntegration: false,
-			sandbox: false,
+			sandbox: true,
 		},
 	});
 

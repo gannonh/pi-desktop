@@ -65,6 +65,7 @@ export function App() {
 		const selection = result.data;
 
 		if (selection.status === "cancelled") {
+			setStatusMessage(undefined);
 			return;
 		}
 
