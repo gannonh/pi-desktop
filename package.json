@@ -13,9 +13,9 @@
 	"scripts": {
 		"preinstall": "node ./scripts/check-node-version.mjs",
 		"dev": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
-		"build": "electron-forge package",
-		"package": "electron-forge package",
-		"make": "electron-forge make",
+		"build": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
+		"package": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
+		"make": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge make",
 		"format": "biome format --write .",
 		"format:check": "biome format .",
 		"lint": "biome lint .",
