@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { createDemoWorkspaceState } from "../shared/demo-workspace";
+import type { ProjectStateView } from "../shared/project-state";
 import type { WorkspaceState } from "../shared/workspace-state";
 import { AppShell } from "./components/app-shell";
 import { createWorkspaceSummaryFromPath } from "./shell/workspace-selection";
+
+const applyProjectStateView = (current: WorkspaceState, projectState: ProjectStateView): WorkspaceState => ({
+	activeWorkspace: projectState.selectedProject
+		? createWorkspaceSummaryFromPath(projectState.selectedProject.path)
+		: current.activeWorkspace,
+	sessions: current.sessions,
+	panels: current.panels,
+});
 
 export function App() {
 	const [state, setState] = useState<WorkspaceState>(() => createDemoWorkspaceState());
@@ -13,9 +22,9 @@ export function App() {
 		let mounted = true;
 
 		const loadInitialState = async () => {
-			const [versionResult, workspaceResult] = await Promise.allSettled([
+			const [versionResult, projectStateResult] = await Promise.allSettled([
 				window.piDesktop.app.getVersion(),
-				window.piDesktop.workspace.getInitialState(),
+				window.piDesktop.project.getState(),
 			]);
 
 			if (!mounted) {
@@ -34,17 +43,18 @@ export function App() {
 				);
 			}
 
-			if (workspaceResult.status === "fulfilled") {
-				if (workspaceResult.value.ok) {
-					setState(workspaceResult.value.data);
+			if (projectStateResult.status === "fulfilled") {
+				if (projectStateResult.value.ok) {
+					const projectState = projectStateResult.value.data;
+					setState((current) => applyProjectStateView(current, projectState));
 				} else {
-					setStatusMessage(workspaceResult.value.error.message);
+					setStatusMessage(projectStateResult.value.error.message);
 				}
 			} else {
 				setStatusMessage(
-					workspaceResult.reason instanceof Error
-						? workspaceResult.reason.message
-						: "Unable to load workspace state.",
+					projectStateResult.reason instanceof Error
+						? projectStateResult.reason.message
+						: "Unable to load project state.",
 				);
 			}
 		};
@@ -57,10 +67,10 @@ export function App() {
 	}, []);
 
 	const selectWorkspace = async () => {
-		let result: Awaited<ReturnType<typeof window.piDesktop.workspace.selectFolder>>;
+		let result: Awaited<ReturnType<typeof window.piDesktop.project.addExistingFolder>>;
 
 		try {
-			result = await window.piDesktop.workspace.selectFolder();
+			result = await window.piDesktop.project.addExistingFolder();
 		} catch (error) {
 			setStatusMessage(error instanceof Error ? error.message : "Unable to select workspace.");
 			return;
@@ -71,18 +81,7 @@ export function App() {
 			return;
 		}
 
-		const selection = result.data;
-
-		if (selection.status === "cancelled") {
-			setStatusMessage(undefined);
-			return;
-		}
-
-		setState((current) => ({
-			activeWorkspace: createWorkspaceSummaryFromPath(selection.path),
-			sessions: current.sessions,
-			panels: current.panels,
-		}));
+		setState((current) => applyProjectStateView(current, result.data));
 		setStatusMessage(undefined);
 	};
 
