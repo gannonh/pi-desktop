@@ -5,6 +5,7 @@ import {
 	SelectFolderResultSchema,
 	WorkspaceStateResultSchema,
 } from "../../src/shared/ipc";
+import { createIpcError, err } from "../../src/shared/result";
 
 describe("IPC contracts", () => {
 	it("uses stable channel names", () => {
@@ -40,6 +41,73 @@ describe("IPC contracts", () => {
 			throw new Error("Expected cancelled folder selection result to be ok");
 		}
 		expect(result.data.status).toBe("cancelled");
+	});
+
+	it("validates selected folder results", () => {
+		const result = SelectFolderResultSchema.parse({
+			ok: true,
+			data: {
+				status: "selected",
+				path: "/Volumes/EVO/dev/pi-desktop",
+			},
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) {
+			throw new Error("Expected selected folder result to be ok");
+		}
+		expect(result.data.status).toBe("selected");
+		if (result.data.status !== "selected") {
+			throw new Error("Expected selected folder result to include a selected path");
+		}
+		expect(result.data.path).toBe("/Volumes/EVO/dev/pi-desktop");
+	});
+
+	it("validates error results", () => {
+		const result = SelectFolderResultSchema.parse({
+			ok: false,
+			error: {
+				code: "workspace.no_selection",
+				message: "Folder picker returned no selected path.",
+			},
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) {
+			throw new Error("Expected folder selection result to be an error");
+		}
+		expect(result.error.code).toBe("workspace.no_selection");
+	});
+
+	it("validates helper-created error results", () => {
+		const result = SelectFolderResultSchema.parse(
+			err("workspace.no_selection", "Folder picker returned no selected path."),
+		);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) {
+			throw new Error("Expected helper-created folder selection result to be an error");
+		}
+		expect(result.error.message).toBe("Folder picker returned no selected path.");
+	});
+
+	it("rejects empty helper-created error fields", () => {
+		expect(() => createIpcError("", "")).toThrow();
+	});
+
+	it("rejects result shapes that mix data and error fields", () => {
+		expect(() =>
+			SelectFolderResultSchema.parse({
+				ok: true,
+				data: {
+					status: "cancelled",
+				},
+				error: {
+					code: "workspace.no_selection",
+					message: "Folder picker returned no selected path.",
+				},
+			}),
+		).toThrow();
 	});
 
 	it("rejects malformed workspace state results", () => {

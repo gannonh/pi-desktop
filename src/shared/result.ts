@@ -3,14 +3,15 @@ import { z } from "zod";
 export const IpcErrorSchema = z.object({
 	code: z.string().min(1),
 	message: z.string().min(1),
-});
+}).strict();
 
 export type IpcError = z.infer<typeof IpcErrorSchema>;
 
-export const createIpcError = (code: string, message: string): IpcError => ({
-	code,
-	message,
-});
+export const createIpcError = (code: string, message: string): IpcError =>
+	IpcErrorSchema.parse({
+		code,
+		message,
+	});
 
 export type IpcResult<TData> =
 	| {
@@ -37,9 +38,9 @@ export const createResultSchema = <TSchema extends z.ZodTypeAny>(dataSchema: TSc
 		z.object({
 			ok: z.literal(true),
 			data: dataSchema,
-		}),
+		}).strict(),
 		z.object({
 			ok: z.literal(false),
 			error: IpcErrorSchema,
-		}),
+		}).strict(),
 	]);
