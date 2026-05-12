@@ -18,6 +18,7 @@ out/
 coverage/
 test-results/
 playwright-report/
+uat-evidence/
 
 # logs
 *.log
