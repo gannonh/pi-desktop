@@ -13,31 +13,39 @@ export function App() {
 		let mounted = true;
 
 		const loadInitialState = async () => {
-			try {
-				const [versionResult, workspaceResult] = await Promise.all([
-					window.piDesktop.app.getVersion(),
-					window.piDesktop.workspace.getInitialState(),
-				]);
+			const [versionResult, workspaceResult] = await Promise.allSettled([
+				window.piDesktop.app.getVersion(),
+				window.piDesktop.workspace.getInitialState(),
+			]);
 
-				if (!mounted) {
-					return;
-				}
+			if (!mounted) {
+				return;
+			}
 
-				if (versionResult.ok) {
-					setVersionLabel(versionResult.data.version);
+			if (versionResult.status === "fulfilled") {
+				if (versionResult.value.ok) {
+					setVersionLabel(versionResult.value.data.version);
 				} else {
-					setStatusMessage(versionResult.error.message);
+					setStatusMessage(versionResult.value.error.message);
 				}
+			} else {
+				setStatusMessage(
+					versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
+				);
+			}
 
-				if (workspaceResult.ok) {
-					setState(workspaceResult.data);
+			if (workspaceResult.status === "fulfilled") {
+				if (workspaceResult.value.ok) {
+					setState(workspaceResult.value.data);
 				} else {
-					setStatusMessage(workspaceResult.error.message);
+					setStatusMessage(workspaceResult.value.error.message);
 				}
-			} catch (error) {
-				if (mounted) {
-					setStatusMessage(error instanceof Error ? error.message : "Unable to load app state.");
-				}
+			} else {
+				setStatusMessage(
+					workspaceResult.reason instanceof Error
+						? workspaceResult.reason.message
+						: "Unable to load workspace state.",
+				);
 			}
 		};
 
