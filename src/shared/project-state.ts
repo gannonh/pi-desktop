@@ -90,12 +90,7 @@ export const createProjectStateView = (store: ProjectStore): ProjectStateView =>
 		chats: sortChats(store.chatsByProject[project.id] ?? []),
 	}));
 	const selectedProject = projects.find((project) => project.id === store.selectedProjectId) ?? null;
-	const selectedChat =
-		selectedProject?.chats.find((chat) => chat.id === store.selectedChatId) ??
-		Object.values(store.chatsByProject)
-			.flat()
-			.find((chat) => chat.id === store.selectedChatId) ??
-		null;
+	const selectedChat = selectedProject?.chats.find((chat) => chat.id === store.selectedChatId) ?? null;
 
 	return ProjectStateViewSchema.parse({
 		projects,
