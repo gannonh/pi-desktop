@@ -1,9 +1,11 @@
 import { z } from "zod";
 
-export const IpcErrorSchema = z.object({
-	code: z.string().min(1),
-	message: z.string().min(1),
-}).strict();
+export const IpcErrorSchema = z
+	.object({
+		code: z.string().min(1),
+		message: z.string().min(1),
+	})
+	.strict();
 
 export type IpcError = z.infer<typeof IpcErrorSchema>;
 
@@ -35,12 +37,16 @@ export const err = (code: string, message: string): IpcResult<never> => ({
 
 export const createResultSchema = <TSchema extends z.ZodTypeAny>(dataSchema: TSchema) =>
 	z.discriminatedUnion("ok", [
-		z.object({
-			ok: z.literal(true),
-			data: dataSchema,
-		}).strict(),
-		z.object({
-			ok: z.literal(false),
-			error: IpcErrorSchema,
-		}).strict(),
+		z
+			.object({
+				ok: z.literal(true),
+				data: dataSchema,
+			})
+			.strict(),
+		z
+			.object({
+				ok: z.literal(false),
+				error: IpcErrorSchema,
+			})
+			.strict(),
 	]);
