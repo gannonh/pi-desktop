@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp } from "node:fs/promises";
+import { access, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -313,6 +313,50 @@ describe("project service", () => {
 		expect(memoryStore.read().chatsByProject[oldProject.id]).toBeUndefined();
 	});
 
+	it("rejects locating a folder already tracked by another project", async () => {
+		const oldProject = createProject("/missing/pi-desktop", {
+			displayName: "Pi Desktop",
+			availability: { status: "missing", checkedAt: firstNow },
+		});
+		const trackedPath = await mkdtemp(join(tmpdir(), "pi-tracked-"));
+		const trackedProject = createProject(trackedPath, {
+			displayName: "Already tracked",
+		});
+		const initialStore = {
+			...createEmptyProjectStore(),
+			projects: [oldProject, trackedProject],
+			selectedProjectId: oldProject.id,
+			chatsByProject: {
+				[oldProject.id]: [
+					{
+						id: "chat:old",
+						projectId: oldProject.id,
+						title: "Old project chat",
+						status: "idle" as const,
+						updatedAt: firstNow,
+					},
+				],
+				[trackedProject.id]: [
+					{
+						id: "chat:tracked",
+						projectId: trackedProject.id,
+						title: "Tracked project chat",
+						status: "idle" as const,
+						updatedAt: firstNow,
+					},
+				],
+			},
+		};
+		const { memoryStore, service } = await createService({
+			initialStore,
+			openFolderDialog: async () => trackedPath,
+		});
+
+		await expect(service.locateFolder({ projectId: oldProject.id })).rejects.toThrow(/already tracked/);
+		expect(memoryStore.file.save).not.toHaveBeenCalled();
+		expect(memoryStore.read()).toEqual(initialStore);
+	});
+
 	it("leaves state unchanged when locating a folder is cancelled", async () => {
 		const project = createProject("/missing/pi-desktop", {
 			availability: { status: "missing", checkedAt: firstNow },
@@ -380,14 +424,35 @@ describe("project service", () => {
 		const view = await service.createChat({ projectId: project.id });
 
 		expect(view.selectedProjectId).toBe(project.id);
-		expect(view.selectedChatId).toBe(`chat:${secondNow}`);
+		expect(view.selectedChatId).toBe(`chat:${secondNow}:1`);
 		expect(view.selectedChat).toEqual({
-			id: `chat:${secondNow}`,
+			id: `chat:${secondNow}:1`,
 			projectId: project.id,
 			title: "New chat",
 			status: "idle",
 			updatedAt: secondNow,
 		});
+	});
+
+	it("creates distinct chat ids when multiple chats share the same timestamp", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		const firstView = await service.createChat({ projectId: project.id });
+		const secondView = await service.createChat({ projectId: project.id });
+
+		expect(firstView.selectedChatId).toBe(`chat:${secondNow}:1`);
+		expect(secondView.selectedChatId).toBe(`chat:${secondNow}:2`);
+		expect(secondView.selectedProject?.chats.map((chat) => chat.id).sort()).toEqual([
+			`chat:${secondNow}:1`,
+			`chat:${secondNow}:2`,
+		]);
 	});
 
 	it("selects a chat that belongs to the provided project", async () => {

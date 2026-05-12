@@ -89,6 +89,19 @@ const checkPathAvailable = async (projectPath: string) => {
 	}
 };
 
+const createChatId = (now: string, existingChats: readonly ChatMetadata[]): string => {
+	const existingIds = new Set(existingChats.map((chat) => chat.id));
+	let suffix = existingChats.length + 1;
+	let chatId = `chat:${now}:${suffix}`;
+
+	while (existingIds.has(chatId)) {
+		suffix += 1;
+		chatId = `chat:${now}:${suffix}`;
+	}
+
+	return chatId;
+};
+
 export const createProjectService = (deps: ProjectServiceDeps): ProjectService => ({
 	async getState() {
 		return createProjectStateView(await deps.store.load());
@@ -196,6 +209,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 		const existingProject = store.projects[projectIndex];
 		const recoveredId = createProjectId(selectedPath);
+		if (recoveredId !== input.projectId && store.projects.some((project) => project.id === recoveredId)) {
+			throw new Error("Selected folder is already tracked by another project.");
+		}
+
 		const chats = (store.chatsByProject[input.projectId] ?? []).map<ChatMetadata>((chat) => ({
 			...chat,
 			projectId: recoveredId,
@@ -251,15 +268,16 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 		const store = await deps.store.load();
 		findProjectIndex(store, input.projectId);
 		const now = deps.now();
+		const existingChats = store.chatsByProject[input.projectId] ?? [];
 		const chat: ChatMetadata = {
-			id: `chat:${now}`,
+			id: createChatId(now, existingChats),
 			projectId: input.projectId,
 			title: "New chat",
 			status: "idle",
 			updatedAt: now,
 		};
 
-		store.chatsByProject[input.projectId] = [...(store.chatsByProject[input.projectId] ?? []), chat];
+		store.chatsByProject[input.projectId] = [...existingChats, chat];
 		store.selectedProjectId = input.projectId;
 		store.selectedChatId = chat.id;
 
