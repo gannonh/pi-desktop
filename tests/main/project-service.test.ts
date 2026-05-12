@@ -31,7 +31,7 @@ const createService = async (
 		documentsDir?: string;
 		now?: () => string;
 		openFolderDialog?: () => Promise<string | null>;
-		openInFinder?: (path: string) => Promise<void>;
+		openInFinder?: (path: string) => Promise<unknown>;
 		initializeGitRepository?: (path: string) => Promise<void>;
 	} = {},
 ) => {
@@ -472,5 +472,19 @@ describe("project service", () => {
 		await service.openProjectInFinder({ projectId: project.id });
 
 		expect(openInFinder).toHaveBeenCalledWith(projectPath);
+	});
+
+	it("rejects when opening the project path in Finder returns an error string", async () => {
+		const projectPath = "/tmp/pi-desktop";
+		const project = createProject(projectPath);
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			openInFinder: async () => "The file does not exist.",
+		});
+
+		await expect(service.openProjectInFinder({ projectId: project.id })).rejects.toThrow(/The file does not exist/);
 	});
 });

@@ -178,7 +178,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 	async openProjectInFinder(input) {
 		const store = await deps.store.load();
 		const project = store.projects[findProjectIndex(store, input.projectId)];
-		await deps.openInFinder(project.path);
+		const result = await deps.openInFinder(project.path);
+		if (typeof result === "string" && result.length > 0) {
+			throw new Error(result);
+		}
 
 		return createProjectStateView(store);
 	},

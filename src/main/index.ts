@@ -60,6 +60,13 @@ const openFolderDialog = async (): Promise<string | null> => {
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const openInFinder = async (projectPath: string): Promise<void> => {
+	const result = await shell.openPath(projectPath);
+	if (result) {
+		throw new Error(result);
+	}
+};
+
 const handleProjectOperation = async (operation: () => Promise<unknown>) => {
 	try {
 		return ok(await operation());
@@ -118,7 +125,7 @@ app.whenReady().then(() => {
 		documentsDir: app.getPath("documents"),
 		now: () => new Date().toISOString(),
 		openFolderDialog,
-		openInFinder: shell.openPath,
+		openInFinder,
 		initializeGitRepository,
 	});
 
