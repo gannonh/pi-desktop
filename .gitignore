@@ -1,4 +1,27 @@
 .DS_Store
 .superpowers/
 
+# local secrets
 .env
+.env.*
+!.env.example
+
+# dependencies
+node_modules/
+
+# build outputs
+.vite/
+dist/
+out/
+
+# test outputs
+coverage/
+test-results/
+playwright-report/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
