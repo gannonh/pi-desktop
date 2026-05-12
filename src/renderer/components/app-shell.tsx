@@ -47,7 +47,7 @@ export function AppShell({ state, versionLabel, statusMessage, onSelectWorkspace
 						</CardContent>
 					</Card>
 					{statusMessage ? (
-						<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+						<div className="break-words rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
 							{statusMessage}
 						</div>
 					) : null}
