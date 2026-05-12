@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -19,5 +19,12 @@ describe("project paths", () => {
 		await mkdir(join(documentsDir, "New project 2"));
 
 		await expect(getNextScratchProjectPath(documentsDir)).resolves.toBe(join(documentsDir, "New project 3"));
+	});
+
+	it("returns documentsDir/New project 2 when New project exists as a file", async () => {
+		const documentsDir = await createDocumentsDir();
+		await writeFile(join(documentsDir, "New project"), "", "utf8");
+
+		await expect(getNextScratchProjectPath(documentsDir)).resolves.toBe(join(documentsDir, "New project 2"));
 	});
 });
