@@ -10,16 +10,17 @@ import { createShellSections } from "../shell/shell-state";
 interface AppShellProps {
 	state: WorkspaceState;
 	versionLabel: string;
+	statusMessage?: string;
 	onSelectWorkspace: () => void;
 }
 
-export function AppShell({ state, versionLabel, onSelectWorkspace }: AppShellProps) {
+export function AppShell({ state, versionLabel, statusMessage, onSelectWorkspace }: AppShellProps) {
 	const sections = createShellSections(state);
 
 	return (
 		<div
 			data-testid="app-shell"
-			className="grid h-screen min-h-[640px] grid-cols-[260px_minmax(420px,1fr)_320px] bg-background text-foreground"
+			className="grid h-screen min-h-[640px] grid-cols-[240px_minmax(360px,1fr)_280px] bg-background text-foreground"
 		>
 			<aside className="flex min-w-0 flex-col border-r border-border bg-muted/20">
 				<div className="flex h-14 items-center gap-2 px-4">
@@ -45,6 +46,11 @@ export function AppShell({ state, versionLabel, onSelectWorkspace }: AppShellPro
 							<p className="truncate text-xs text-muted-foreground">{sections.workspacePath}</p>
 						</CardContent>
 					</Card>
+					{statusMessage ? (
+						<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+							{statusMessage}
+						</div>
+					) : null}
 				</div>
 				<ScrollArea className="min-h-0 flex-1 px-3 pb-3">
 					<div className="space-y-2">
