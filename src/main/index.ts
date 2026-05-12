@@ -1,5 +1,8 @@
 import { app, BrowserWindow } from "electron";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 const createWindow = () => {
 	const mainWindow = new BrowserWindow({
@@ -10,7 +13,7 @@ const createWindow = () => {
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
 		webPreferences: {
-			preload: path.join(__dirname, "preload.js"),
+			preload: path.join(currentDirectory, "preload.js"),
 			contextIsolation: true,
 			nodeIntegration: false,
 			sandbox: false,
@@ -22,7 +25,7 @@ const createWindow = () => {
 		return;
 	}
 
-	void mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+	void mainWindow.loadFile(path.join(currentDirectory, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
 };
 
 app.whenReady().then(() => {
