@@ -35,6 +35,10 @@ describe("IPC contracts", () => {
 			},
 		});
 
+		expect(result.ok).toBe(true);
+		if (!result.ok) {
+			throw new Error("Expected cancelled folder selection result to be ok");
+		}
 		expect(result.data.status).toBe("cancelled");
 	});
 
