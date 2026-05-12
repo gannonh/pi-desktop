@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createDemoWorkspaceState } from "../shared/demo-workspace";
 import type { WorkspaceState } from "../shared/workspace-state";
 import { AppShell } from "./components/app-shell";
+import { createWorkspaceSummaryFromPath } from "./shell/workspace-selection";
 
 export function App() {
 	const [state, setState] = useState<WorkspaceState>(() => createDemoWorkspaceState());
@@ -70,11 +71,7 @@ export function App() {
 		}
 
 		setState((current) => ({
-			activeWorkspace: {
-				id: current.activeWorkspace.id,
-				name: selection.path.split("/").filter(Boolean).at(-1) ?? selection.path,
-				path: selection.path,
-			},
+			activeWorkspace: createWorkspaceSummaryFromPath(selection.path),
 			sessions: current.sessions,
 			panels: current.panels,
 		}));
