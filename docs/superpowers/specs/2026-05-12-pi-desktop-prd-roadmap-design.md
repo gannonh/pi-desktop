@@ -2,6 +2,8 @@
 
 ## Summary
 
+`pi-desktop` is to the Pi coding agent CLI what the Codex desktop app is to the Codex CLI: a graphical command center that makes local coding-agent work easier to start, inspect, resume, and manage.
+
 `pi-desktop` is a macOS desktop app for the Pi coding agent. The first product goal is a local, open-source desktop command center for coding sessions: project selection, persistent conversations, streaming agent output, tool visibility, file previews, diffs, terminal output, settings, and session history.
 
 The app starts as a desktop shell around the existing Pi runtime through the TypeScript SDK from `/Volumes/EVO/repos/pi-mono`. Later milestones add Git worktrees, extensibility surfaces, automations, browser/computer-use workflows, remote workspaces, and cross-platform support.
