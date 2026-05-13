@@ -598,8 +598,10 @@ button {
 .project-sidebar__project-row-wrap {
 	position: relative;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr) auto auto;
 	align-items: center;
+	border-radius: var(--radius-control);
+	color: var(--sidebar-project-color);
 }
 
 .project-sidebar__project-row-wrap:hover .project-sidebar__project-menu-button,
@@ -608,22 +610,20 @@ button {
 	opacity: 1;
 }
 
+.project-sidebar__project-row-wrap:hover {
+	background: var(--color-secondary);
+}
+
 .project-sidebar__project-row {
 	min-width: 0;
 	gap: var(--sidebar-row-gap);
 	border-radius: var(--radius-control);
 	padding: var(--sidebar-row-padding);
-	color: var(--sidebar-project-color);
 	font-size: var(--type-body);
 }
 
-.project-sidebar__project-row--selected,
 .project-sidebar__chat-row--selected {
 	background: var(--color-secondary);
-}
-
-.project-sidebar__project-row--selected {
-	color: var(--sidebar-project-color);
 }
 
 .project-sidebar__chat-row--selected {

@@ -3,6 +3,7 @@ import {
 	ArrowRight,
 	Bot,
 	Folder,
+	FolderOpen,
 	MoreHorizontal,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -46,6 +47,7 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 
 export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectState }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
+	const [closedProjectIds, setClosedProjectIds] = useState<Set<string>>(() => new Set());
 	const rows = createProjectSidebarRows(state);
 	const chromeTitle = state.selectedChat?.title;
 
@@ -59,12 +61,17 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		}
 	};
 
-	const selectProject = (projectId: string) =>
-		runProjectAction(() =>
-			window.piDesktop.project.select({
-				projectId,
-			}),
-		);
+	const toggleProjectOpen = (projectId: string) => {
+		setClosedProjectIds((current) => {
+			const next = new Set(current);
+			if (next.has(projectId)) {
+				next.delete(projectId);
+			} else {
+				next.add(projectId);
+			}
+			return next;
+		});
+	};
 
 	return (
 		<aside className="project-sidebar" aria-label="Project navigation">
@@ -173,7 +180,8 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 							row={row}
 							menu={menu}
 							setMenu={setMenu}
-							onSelectProject={selectProject}
+							closed={closedProjectIds.has(row.projectId)}
+							onToggleOpen={toggleProjectOpen}
 							onProjectState={onProjectState}
 							runProjectAction={runProjectAction}
 						/>
@@ -188,7 +196,8 @@ interface ProjectSidebarProjectProps {
 	row: SidebarProjectRow;
 	menu: MenuState;
 	setMenu: (menu: MenuState | ((current: MenuState) => MenuState)) => void;
-	onSelectProject: (projectId: string) => void;
+	closed: boolean;
+	onToggleOpen: (projectId: string) => void;
 	onProjectState: (result: ProjectStateViewResult) => void;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
 }
@@ -197,7 +206,8 @@ function ProjectSidebarProject({
 	row,
 	menu,
 	setMenu,
-	onSelectProject,
+	closed,
+	onToggleOpen,
 	onProjectState,
 	runProjectAction,
 }: ProjectSidebarProjectProps) {
@@ -232,23 +242,41 @@ function ProjectSidebarProject({
 		);
 	};
 
+	const createProjectChat = () => {
+		void runProjectAction(() =>
+			window.piDesktop.chat.create({
+				projectId: row.projectId,
+			}),
+		);
+	};
+
 	return (
 		<div className="project-sidebar__project">
 			<div className="project-sidebar__project-row-wrap">
 				<button
-					className={[
-						"project-sidebar__project-row",
-						row.selected ? "project-sidebar__project-row--selected" : "",
-						unavailable ? "project-sidebar__project-row--warning" : "",
-					]
+					className={["project-sidebar__project-row", unavailable ? "project-sidebar__project-row--warning" : ""]
 						.filter(Boolean)
 						.join(" ")}
 					type="button"
 					title={row.path}
-					onClick={() => onSelectProject(row.projectId)}
+					aria-expanded={!closed}
+					onClick={() => onToggleOpen(row.projectId)}
 				>
-					<Folder className="project-sidebar__icon" />
+					{closed ? (
+						<Folder className="project-sidebar__icon" />
+					) : (
+						<FolderOpen className="project-sidebar__icon" />
+					)}
 					<span className="project-sidebar__project-name">{row.label}</span>
+				</button>
+				<button
+					className="project-sidebar__project-menu-button"
+					type="button"
+					aria-label={`New chat in ${row.label}`}
+					disabled={unavailable}
+					onClick={createProjectChat}
+				>
+					<SquarePen className="project-sidebar__icon" />
 				</button>
 				<div className="project-sidebar__menu-anchor">
 					<button
@@ -291,57 +319,59 @@ function ProjectSidebarProject({
 				</div>
 			</div>
 
-			<div className="project-sidebar__chats">
-				{row.children.map((child) =>
-					child.kind === "empty" ? (
-						<div className="project-sidebar__empty-chat" key={`${row.projectId}:empty`}>
-							{child.label}
-						</div>
-					) : child.kind === "show-more" ? (
-						<button
-							className="project-sidebar__show-more"
-							key={`${row.projectId}:show-more`}
-							type="button"
-							disabled
-						>
-							{child.label}
-						</button>
-					) : (
-						<button
-							className={[
-								"project-sidebar__chat-row",
-								child.selected ? "project-sidebar__chat-row--selected" : "",
-								child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
-							]
-								.filter(Boolean)
-								.join(" ")}
-							key={child.chatId}
-							type="button"
-							onClick={async () => {
-								try {
-									onProjectState(
-										await window.piDesktop.chat.select({
-											projectId: row.projectId,
-											chatId: child.chatId,
-										}),
-									);
-								} catch (error) {
-									onProjectState(toProjectStateError(error));
-								}
-							}}
-						>
-							<span className="project-sidebar__chat-label">{child.label}</span>
-							{child.needsAttention ? (
-								<span className="project-sidebar__attention-dot" />
-							) : child.status === "failed" ? (
-								<X className="project-sidebar__chat-failed-icon" />
-							) : (
-								<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
-							)}
-						</button>
-					),
-				)}
-			</div>
+			{closed ? null : (
+				<div className="project-sidebar__chats">
+					{row.children.map((child) =>
+						child.kind === "empty" ? (
+							<div className="project-sidebar__empty-chat" key={`${row.projectId}:empty`}>
+								{child.label}
+							</div>
+						) : child.kind === "show-more" ? (
+							<button
+								className="project-sidebar__show-more"
+								key={`${row.projectId}:show-more`}
+								type="button"
+								disabled
+							>
+								{child.label}
+							</button>
+						) : (
+							<button
+								className={[
+									"project-sidebar__chat-row",
+									child.selected ? "project-sidebar__chat-row--selected" : "",
+									child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+								]
+									.filter(Boolean)
+									.join(" ")}
+								key={child.chatId}
+								type="button"
+								onClick={async () => {
+									try {
+										onProjectState(
+											await window.piDesktop.chat.select({
+												projectId: row.projectId,
+												chatId: child.chatId,
+											}),
+										);
+									} catch (error) {
+										onProjectState(toProjectStateError(error));
+									}
+								}}
+							>
+								<span className="project-sidebar__chat-label">{child.label}</span>
+								{child.needsAttention ? (
+									<span className="project-sidebar__attention-dot" />
+								) : child.status === "failed" ? (
+									<X className="project-sidebar__chat-failed-icon" />
+								) : (
+									<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+								)}
+							</button>
+						),
+					)}
+				</div>
+			)}
 		</div>
 	);
 }
