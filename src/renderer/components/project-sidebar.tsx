@@ -426,7 +426,14 @@ function ProjectSidebarProject({
 					type="button"
 					title={row.path}
 					aria-expanded={!closed}
-					onClick={() => onToggleOpen(row.projectId)}
+					onClick={() => {
+						onToggleOpen(row.projectId);
+						void runProjectAction(() =>
+							window.piDesktop.project.select({
+								projectId: row.projectId,
+							}),
+						);
+					}}
 				>
 					{closed ? (
 						<Folder className="project-sidebar__icon" />

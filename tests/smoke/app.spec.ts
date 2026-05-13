@@ -1,7 +1,8 @@
 import { expect, test, _electron as electron, type Page } from "@playwright/test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
 
 const expectHeadingTargetToReachFirstAction = async (
 	window: Page,
@@ -44,5 +45,66 @@ test("renders the Milestone 1 project shell", async () => {
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
+	}
+});
+
+test("selects a missing project from the sidebar so recovery actions are reachable", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const availableProjectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const missingProjectPath = path.join(userDataDir, "missing-project");
+	const availableProjectId = createProjectId(availableProjectPath);
+	const missingProjectId = createProjectId(missingProjectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: availableProjectId,
+				displayName: "Available project",
+				path: availableProjectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+			{
+				id: missingProjectId,
+				displayName: "Missing project",
+				path: missingProjectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: "2026-05-12T11:00:00.000Z",
+				pinned: false,
+				availability: { status: "missing", checkedAt: now },
+			},
+		],
+		selectedProjectId: availableProjectId,
+		selectedChatId: null,
+		chatsByProject: {
+			[availableProjectId]: [],
+			[missingProjectId]: [],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await window.getByRole("button", { name: "Missing project", exact: true }).click();
+
+		await expect(window.getByRole("heading", { name: "Missing project is unavailable" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "Locate folder" })).toBeVisible();
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(availableProjectPath, { recursive: true, force: true });
 	}
 });

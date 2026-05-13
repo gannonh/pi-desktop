@@ -106,6 +106,26 @@ describe("project service", () => {
 		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
+	it("does not save state when availability status is unchanged during load", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-stable-"));
+		const project = createProject(projectPath, {
+			availability: { status: "available", checkedAt: firstNow },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.getState();
+
+		expect(view.selectedProject?.availability).toEqual({ status: "available", checkedAt: firstNow });
+		expect(memoryStore.file.save).not.toHaveBeenCalled();
+	});
+
 	it("creates and selects a scratch project with initialized git and empty chats", async () => {
 		const { documentsDir, initializeGitRepository, memoryStore, service } = await createService();
 
@@ -390,6 +410,31 @@ describe("project service", () => {
 			},
 		]);
 		expect(memoryStore.read().chatsByProject[oldProject.id]).toBeUndefined();
+	});
+
+	it("uses one timestamp for recovered project metadata", async () => {
+		const oldProject = createProject("/missing/pi-desktop", {
+			availability: { status: "missing", checkedAt: firstNow },
+		});
+		const newPath = await mkdtemp(join(tmpdir(), "pi-recovered-time-"));
+		const recoveredNow = "2026-05-12T10:00:00.001Z";
+		const nowValues = [recoveredNow, "2026-05-12T10:00:00.002Z", "2026-05-12T10:00:00.003Z"];
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [oldProject],
+				selectedProjectId: oldProject.id,
+			},
+			now: () => nowValues.shift() ?? "2026-05-12T10:00:00.004Z",
+			openFolderDialog: async () => newPath,
+		});
+
+		await service.locateFolder({ projectId: oldProject.id });
+
+		const recoveredProject = memoryStore.read().projects[0];
+		expect(recoveredProject?.updatedAt).toBe(recoveredNow);
+		expect(recoveredProject?.lastOpenedAt).toBe(recoveredNow);
+		expect(recoveredProject?.availability).toEqual({ status: "available", checkedAt: recoveredNow });
 	});
 
 	it("rejects locating a folder already tracked by another project", async () => {

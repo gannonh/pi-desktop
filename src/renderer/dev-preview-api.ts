@@ -54,16 +54,19 @@ const standaloneChat = (
 	updatedAt,
 });
 
-const piDesktop = project("/Volumes/EVO/dev/pi-desktop", {
+const previewRoot = "/tmp/pi-desktop-preview";
+const previewDocumentsDir = `${previewRoot}/Documents`;
+
+const piDesktop = project(`${previewRoot}/pi-desktop`, {
 	displayName: "pi-desktop",
 	pinned: true,
 	lastOpenedAt: "2026-05-12T17:30:00.000Z",
 });
-const agentis = project("/Volumes/EVO/dev/agentis", {
+const agentis = project(`${previewRoot}/agentis`, {
 	displayName: "agentis",
 	lastOpenedAt: "2026-05-12T16:45:00.000Z",
 });
-const missing = project("/Users/gannonhall/Documents/New project", {
+const missing = project(`${previewDocumentsDir}/New project`, {
 	displayName: "New project",
 	availability: { status: "missing", checkedAt: now },
 	lastOpenedAt: "2026-05-12T15:30:00.000Z",
@@ -142,13 +145,13 @@ export const installDevPreviewApi = () => {
 			getState: ok,
 			createFromScratch: async () => {
 				const occupiedNames = store.projects
-					.filter((candidate) => candidate.path.startsWith("/Users/gannonhall/Documents/"))
+					.filter((candidate) => candidate.path.startsWith(`${previewDocumentsDir}/`))
 					.map((candidate) => candidate.displayName);
-				addProject(`/Users/gannonhall/Documents/${getNextNewProjectName(occupiedNames)}`);
+				addProject(`${previewDocumentsDir}/${getNextNewProjectName(occupiedNames)}`);
 				return ok();
 			},
 			addExistingFolder: async () => {
-				addProject("/Volumes/EVO/dev/pi-mono");
+				addProject(`${previewRoot}/pi-mono`);
 				return ok();
 			},
 			select: async ({ projectId }) => {
@@ -175,7 +178,7 @@ export const installDevPreviewApi = () => {
 			openInFinder: ok,
 			locateFolder: async ({ projectId }) => {
 				const { project: currentProject, projectIndex } = findProject(projectId);
-				const recoveredPath = `/Volumes/EVO/dev/recovered/${currentProject.displayName}`;
+				const recoveredPath = `${previewRoot}/recovered/${currentProject.displayName}`;
 				const recoveredId = createProjectId(recoveredPath);
 				const recoveredProject = {
 					...currentProject,

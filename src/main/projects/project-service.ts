@@ -95,9 +95,7 @@ const refreshProjectAvailability = async (project: ProjectRecord, now: string) =
 		availability.status === "available"
 			? { status: "available" as const, checkedAt: now }
 			: { status: "missing" as const, checkedAt: now };
-	const changed =
-		project.availability.status !== nextAvailability.status ||
-		project.availability.checkedAt !== nextAvailability.checkedAt;
+	const changed = project.availability.status !== nextAvailability.status;
 
 	return {
 		project: changed ? { ...project, availability: nextAvailability } : project,
@@ -279,13 +277,14 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			...chat,
 			projectId: recoveredId,
 		}));
+		const recoveredNow = deps.now();
 		const recoveredProject: ProjectRecord = {
 			...existingProject,
 			id: recoveredId,
 			path: selectedPath,
-			updatedAt: deps.now(),
-			lastOpenedAt: deps.now(),
-			availability: { status: "available", checkedAt: deps.now() },
+			updatedAt: recoveredNow,
+			lastOpenedAt: recoveredNow,
+			availability: { status: "available", checkedAt: recoveredNow },
 		};
 
 		store.projects = store.projects

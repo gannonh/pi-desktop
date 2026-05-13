@@ -30,12 +30,17 @@ export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMai
 		}
 	};
 
-	const locateFolder = () =>
-		runProjectAction(() =>
+	const locateFolder = () => {
+		if (copy.kind !== "missing-project") {
+			return Promise.resolve();
+		}
+
+		return runProjectAction(() =>
 			window.piDesktop.project.locateFolder({
-				projectId: copy.kind === "missing-project" ? copy.projectId : "",
+				projectId: copy.projectId,
 			}),
 		);
+	};
 
 	const removeProject = () => {
 		if (copy.kind !== "missing-project") {

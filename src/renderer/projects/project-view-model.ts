@@ -174,11 +174,23 @@ const createChatSidebarRow = (
 	needsAttention: chat.status === "running",
 });
 
-export const createStandaloneChatSidebarRows = (view: ProjectStateView, now = new Date()): SidebarChatRow[] =>
-	view.standaloneChats.length > 0
-		? view.standaloneChats
-				.slice(0, visibleChatLimit)
-				.map((chat) =>
-					createChatSidebarRow(chat, view.selectedProjectId === null ? view.selectedChatId : null, now),
-				)
-		: [{ kind: "empty", label: "No chats" }];
+export const createStandaloneChatSidebarRows = (view: ProjectStateView, now = new Date()): SidebarChatRow[] => {
+	if (view.standaloneChats.length === 0) {
+		return [{ kind: "empty", label: "No chats" }];
+	}
+
+	const selectedChatId = view.selectedProjectId === null ? view.selectedChatId : null;
+	const rows = view.standaloneChats
+		.slice(0, visibleChatLimit)
+		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+
+	if (view.standaloneChats.length > visibleChatLimit) {
+		rows.push({
+			kind: "show-more",
+			label: "Show more",
+			hiddenCount: view.standaloneChats.length - visibleChatLimit,
+		});
+	}
+
+	return rows;
+};

@@ -270,4 +270,27 @@ describe("project view model", () => {
 			},
 		]);
 	});
+
+	it("adds a show-more row when standalone chats exceed the visible limit", () => {
+		const standaloneChats = Array.from({ length: 6 }, (_, index) => ({
+			id: `chat:standalone:${index + 1}`,
+			title: `Standalone ${index + 1}`,
+			status: "idle" as const,
+			updatedAt: "2026-05-12T11:09:00.000Z",
+		}));
+		const view: ProjectStateView = {
+			projects: [],
+			standaloneChats,
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		};
+
+		expect(createStandaloneChatSidebarRows(view, fixedNow).at(-1)).toEqual({
+			kind: "show-more",
+			label: "Show more",
+			hiddenCount: 1,
+		});
+	});
 });
