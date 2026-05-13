@@ -22,6 +22,7 @@ const createWindow = () => {
 		height: 820,
 		minWidth: 960,
 		minHeight: 640,
+		frame: false,
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
 		webPreferences: {

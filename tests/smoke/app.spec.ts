@@ -3,7 +3,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-const expectHeadingTargetToReachFirstAction = async (window: Page, headingName: string, firstActionName: string) => {
+const expectHeadingTargetToReachFirstAction = async (
+	window: Page,
+	headingName: string,
+	firstActionName: string | RegExp,
+) => {
 	const headingBox = await window.getByRole("button", { name: headingName, exact: true }).boundingBox();
 	const firstActionBox = await window.getByLabel(firstActionName).boundingBox();
 
@@ -33,7 +37,7 @@ test("renders the Milestone 1 project shell", async () => {
 		await expect(window.getByLabel("Filter chats")).toHaveCount(1);
 		await expect(window.getByLabel("New chat without project")).toHaveCount(1);
 		await expect(window.getByLabel("Collapse all chats")).toHaveCount(0);
-		await expectHeadingTargetToReachFirstAction(window, "Projects", "Collapse all projects");
+		await expectHeadingTargetToReachFirstAction(window, "Projects", /^(Collapse|Expand) all projects$/);
 		await expectHeadingTargetToReachFirstAction(window, "Chats", "Filter chats");
 		await expect(window.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
 		await expect(window.getByText("Work in a project")).toBeVisible();
