@@ -61,6 +61,12 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 	const rows = createProjectSidebarRows(state);
 	const standaloneChatRows = createStandaloneChatSidebarRows(state);
 	const chromeTitle = state.selectedChat?.title;
+	const menuOpen = menu !== null && !collapsed;
+
+	const toggleCollapsed = () => {
+		setMenu(null);
+		onToggleCollapsed();
+	};
 
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		setMenu(null);
@@ -98,7 +104,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						type="button"
 						aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
 						aria-pressed={collapsed}
-						onClick={onToggleCollapsed}
+						onClick={toggleCollapsed}
 					>
 						{collapsed ? (
 							<PanelLeftOpen className="project-sidebar__icon" />
@@ -132,7 +138,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 			</div>
 
 			<div
-				className={["project-sidebar__panel", menu ? "project-sidebar__panel--menu-open" : ""]
+				className={["project-sidebar__panel", menuOpen ? "project-sidebar__panel--menu-open" : ""]
 					.filter(Boolean)
 					.join(" ")}
 			>
