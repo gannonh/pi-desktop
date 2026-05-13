@@ -1,22 +1,49 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createDemoWorkspaceState } from "../shared/demo-workspace";
 import type { ProjectStateView } from "../shared/project-state";
+import type { ProjectStateViewResult } from "../shared/ipc";
 import type { WorkspaceState } from "../shared/workspace-state";
 import { AppShell } from "./components/app-shell";
 import { createWorkspaceSummaryFromPath } from "./shell/workspace-selection";
 
-const applyProjectStateView = (current: WorkspaceState, projectState: ProjectStateView): WorkspaceState => ({
-	activeWorkspace: projectState.selectedProject
-		? createWorkspaceSummaryFromPath(projectState.selectedProject.path)
-		: current.activeWorkspace,
-	sessions: current.sessions,
-	panels: current.panels,
+const createEmptyProjectStateView = (): ProjectStateView => ({
+	projects: [],
+	selectedProjectId: null,
+	selectedChatId: null,
+	selectedProject: null,
+	selectedChat: null,
 });
 
+const createWorkspaceStateFromProjectState = (projectState: ProjectStateView): WorkspaceState => {
+	const shellState = createDemoWorkspaceState();
+
+	return {
+		...shellState,
+		activeWorkspace: projectState.selectedProject
+			? createWorkspaceSummaryFromPath(projectState.selectedProject.path)
+			: {
+					id: "workspace:no-project",
+					name: "No project",
+					path: "Work in a project",
+				},
+	};
+};
+
 export function App() {
-	const [state, setState] = useState<WorkspaceState>(() => createDemoWorkspaceState());
+	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [versionLabel, setVersionLabel] = useState("0.0.0");
 	const [statusMessage, setStatusMessage] = useState<string>();
+	const state = useMemo(() => createWorkspaceStateFromProjectState(projectState), [projectState]);
+
+	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
+		if (!result.ok) {
+			setStatusMessage(result.error.message);
+			return;
+		}
+
+		setProjectState(result.data);
+		setStatusMessage(undefined);
+	}, []);
 
 	useEffect(() => {
 		let mounted = true;
@@ -44,12 +71,7 @@ export function App() {
 			}
 
 			if (projectStateResult.status === "fulfilled") {
-				if (projectStateResult.value.ok) {
-					const projectState = projectStateResult.value.data;
-					setState((current) => applyProjectStateView(current, projectState));
-				} else {
-					setStatusMessage(projectStateResult.value.error.message);
-				}
+				applyProjectStateViewResult(projectStateResult.value);
 			} else {
 				setStatusMessage(
 					projectStateResult.reason instanceof Error
@@ -64,7 +86,7 @@ export function App() {
 		return () => {
 			mounted = false;
 		};
-	}, []);
+	}, [applyProjectStateViewResult]);
 
 	const selectWorkspace = async () => {
 		let result: Awaited<ReturnType<typeof window.piDesktop.project.addExistingFolder>>;
@@ -76,13 +98,7 @@ export function App() {
 			return;
 		}
 
-		if (!result.ok) {
-			setStatusMessage(result.error.message);
-			return;
-		}
-
-		setState((current) => applyProjectStateView(current, result.data));
-		setStatusMessage(undefined);
+		applyProjectStateViewResult(result);
 	};
 
 	return (
