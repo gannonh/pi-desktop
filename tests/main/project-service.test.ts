@@ -1,4 +1,4 @@
-import { access, mkdtemp } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -87,6 +87,25 @@ describe("project service", () => {
 		expect(view.selectedProject?.path).toBe(project.path);
 	});
 
+	it("marks a deleted project folder missing when loading state", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-deleted-"));
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		const view = await service.getState();
+
+		expect(view.selectedProject?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+	});
+
 	it("creates and selects a scratch project with initialized git and empty chats", async () => {
 		const { documentsDir, initializeGitRepository, memoryStore, service } = await createService();
 
@@ -100,6 +119,47 @@ describe("project service", () => {
 		expect(view.selectedProject?.displayName).toBe("New project");
 		expect(view.selectedProject?.chats).toEqual([]);
 		expect(memoryStore.read().chatsByProject[projectId]).toEqual([]);
+	});
+
+	it("skips a tracked missing scratch project path and preserves its chats", async () => {
+		const documentsDir = await mkdtemp(join(tmpdir(), "pi-documents-"));
+		const missingProjectPath = join(documentsDir, "New project");
+		const missingProject = createProject(missingProjectPath, {
+			availability: { status: "missing", checkedAt: firstNow },
+		});
+		const missingChat = {
+			id: "chat:missing",
+			projectId: missingProject.id,
+			title: "Existing work",
+			status: "idle" as const,
+			updatedAt: firstNow,
+		};
+		const { memoryStore, service } = await createService({
+			documentsDir,
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [missingProject],
+				chatsByProject: {
+					[missingProject.id]: [missingChat],
+				},
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.createFromScratch();
+		const newProjectPath = join(documentsDir, "New project 2");
+		const newProjectId = createProjectId(newProjectPath);
+
+		await expect(access(newProjectPath)).resolves.toBeUndefined();
+		expect(view.selectedProjectId).toBe(newProjectId);
+		expect(memoryStore.read().chatsByProject[missingProject.id]).toEqual([missingChat]);
+		expect(memoryStore.read().chatsByProject[newProjectId]).toEqual([]);
+		expect(
+			memoryStore
+				.read()
+				.projects.map((project) => project.path)
+				.sort(),
+		).toEqual([missingProjectPath, newProjectPath].sort());
 	});
 
 	it("adds an existing folder using the folder name and selects it", async () => {
@@ -139,7 +199,7 @@ describe("project service", () => {
 				displayName: basename(selectedPath),
 				updatedAt: secondNow,
 				lastOpenedAt: secondNow,
-				availability: { status: "available" },
+				availability: { status: "available", checkedAt: secondNow },
 			},
 		]);
 	});
@@ -199,6 +259,25 @@ describe("project service", () => {
 		expect(memoryStore.read().selectedProjectId).toBe(project.id);
 		expect(memoryStore.read().selectedChatId).toBeNull();
 		expect(memoryStore.read().projects[0]?.lastOpenedAt).toBe(secondNow);
+	});
+
+	it("marks a deleted project folder missing when selecting it", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-select-deleted-"));
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedChatId: "chat:one",
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		const view = await service.selectProject({ projectId: project.id });
+
+		expect(view.selectedProject?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
 	it("rejects selecting an unknown project", async () => {

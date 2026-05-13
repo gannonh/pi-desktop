@@ -285,13 +285,21 @@ interface ProjectMenuProps {
 }
 
 function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: ProjectMenuProps) {
+	const projectFolderUnavailable = row.project.availability.status !== "available";
+
 	return (
 		<div className="project-sidebar__menu project-sidebar__project-menu">
 			<button className="project-sidebar__menu-item" type="button" onClick={onPin}>
 				<Pin className="project-sidebar__menu-icon" />
 				{row.project.pinned ? "Unpin project" : "Pin project"}
 			</button>
-			<button className="project-sidebar__menu-item" type="button" onClick={onOpenInFinder}>
+			<button
+				className="project-sidebar__menu-item"
+				type="button"
+				disabled={projectFolderUnavailable}
+				title={projectFolderUnavailable ? "Project folder unavailable" : undefined}
+				onClick={onOpenInFinder}
+			>
 				Open in Finder
 			</button>
 			<button className="project-sidebar__menu-item" type="button" disabled title="Coming soon">

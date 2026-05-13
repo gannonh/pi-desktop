@@ -1,5 +1,5 @@
 import { access, mkdir } from "node:fs/promises";
-import { basename } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -59,7 +59,7 @@ const createAvailableProject = (projectPath: string, now: string): ProjectRecord
 	updatedAt: now,
 	lastOpenedAt: now,
 	pinned: false,
-	availability: { status: "available" },
+	availability: { status: "available", checkedAt: now },
 });
 
 const selectProjectInStore = (store: ProjectStore, projectId: string, now: string) => {
@@ -89,6 +89,56 @@ const checkPathAvailable = async (projectPath: string) => {
 	}
 };
 
+const refreshProjectAvailability = async (project: ProjectRecord, now: string) => {
+	const availability = await checkPathAvailable(project.path);
+	const nextAvailability =
+		availability.status === "available"
+			? { status: "available" as const, checkedAt: now }
+			: { status: "missing" as const, checkedAt: now };
+	const changed =
+		project.availability.status !== nextAvailability.status ||
+		project.availability.checkedAt !== nextAvailability.checkedAt;
+
+	return {
+		project: changed ? { ...project, availability: nextAvailability } : project,
+		changed,
+	};
+};
+
+const refreshAllProjectAvailability = async (store: ProjectStore, now: string): Promise<boolean> => {
+	const refreshedProjects = await Promise.all(
+		store.projects.map((project) => refreshProjectAvailability(project, now)),
+	);
+	const changed = refreshedProjects.some((result) => result.changed);
+
+	if (changed) {
+		store.projects = refreshedProjects.map((result) => result.project);
+	}
+
+	return changed;
+};
+
+const refreshProjectAvailabilityAtIndex = async (
+	store: ProjectStore,
+	projectIndex: number,
+	now: string,
+): Promise<boolean> => {
+	const result = await refreshProjectAvailability(store.projects[projectIndex], now);
+	if (result.changed) {
+		store.projects[projectIndex] = result.project;
+	}
+
+	return result.changed;
+};
+
+const getTrackedProjectNamesUnderDocumentsDir = (store: ProjectStore, documentsDir: string): string[] => {
+	const resolvedDocumentsDir = resolve(documentsDir);
+
+	return store.projects
+		.filter((project) => dirname(resolve(project.path)) === resolvedDocumentsDir)
+		.map((project) => basename(project.path));
+};
+
 const createChatId = (now: string, existingChats: readonly ChatMetadata[]): string => {
 	const existingIds = new Set(existingChats.map((chat) => chat.id));
 	let suffix = existingChats.length + 1;
@@ -104,12 +154,21 @@ const createChatId = (now: string, existingChats: readonly ChatMetadata[]): stri
 
 export const createProjectService = (deps: ProjectServiceDeps): ProjectService => ({
 	async getState() {
-		return createProjectStateView(await deps.store.load());
+		const store = await deps.store.load();
+		const changed = await refreshAllProjectAvailability(store, deps.now());
+		if (changed) {
+			await deps.store.save(store);
+		}
+
+		return createProjectStateView(store);
 	},
 
 	async createFromScratch() {
 		const store = await deps.store.load();
-		const projectPath = await getNextScratchProjectPath(deps.documentsDir);
+		const projectPath = await getNextScratchProjectPath(
+			deps.documentsDir,
+			getTrackedProjectNamesUnderDocumentsDir(store, deps.documentsDir),
+		);
 		const now = deps.now();
 		const project = createAvailableProject(projectPath, now);
 
@@ -145,7 +204,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				path: selectedPath,
 				updatedAt: now,
 				lastOpenedAt: now,
-				availability: { status: "available" },
+				availability: { status: "available", checkedAt: now },
 			};
 			store.chatsByProject[projectId] ??= [];
 		}
@@ -158,7 +217,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 	async selectProject(input) {
 		const store = await deps.store.load();
-		selectProjectInStore(store, input.projectId, deps.now());
+		const now = deps.now();
+		const projectIndex = findProjectIndex(store, input.projectId);
+		selectProjectInStore(store, input.projectId, now);
+		await refreshProjectAvailabilityAtIndex(store, projectIndex, now);
 
 		return saveAndView(deps.store, store);
 	},
@@ -223,7 +285,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			path: selectedPath,
 			updatedAt: deps.now(),
 			lastOpenedAt: deps.now(),
-			availability: { status: "available" },
+			availability: { status: "available", checkedAt: deps.now() },
 		};
 
 		store.projects = store.projects
@@ -252,14 +314,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 	async checkAvailability(input) {
 		const store = await deps.store.load();
 		const projectIndex = findProjectIndex(store, input.projectId);
-		const availability = await checkPathAvailable(store.projects[projectIndex].path);
-		store.projects[projectIndex] = {
-			...store.projects[projectIndex],
-			availability:
-				availability.status === "available"
-					? { status: "available", checkedAt: deps.now() }
-					: { status: "missing", checkedAt: deps.now() },
-		};
+		await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 
 		return saveAndView(deps.store, store);
 	},
