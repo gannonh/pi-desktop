@@ -106,14 +106,14 @@ export const createProjectStateView = (store: ProjectStore): ProjectStateView =>
 	const selectedProject = projects.find((project) => project.id === store.selectedProjectId) ?? null;
 	const selectedChat = selectedProject?.chats.find((chat) => chat.id === store.selectedChatId) ?? null;
 
-	return ProjectStateViewSchema.parse({
+	return {
 		projects,
 		standaloneChats: [],
 		selectedProjectId: store.selectedProjectId,
 		selectedChatId: store.selectedChatId,
 		selectedProject,
 		selectedChat,
-	});
+	};
 };
 
 export const getNextNewProjectName = (existingNames: readonly string[]): string => {

@@ -150,205 +150,245 @@ const createChatId = (now: string, existingChats: readonly ChatMetadata[]): stri
 	return chatId;
 };
 
-export const createProjectService = (deps: ProjectServiceDeps): ProjectService => ({
-	async getState() {
-		const store = await deps.store.load();
-		const changed = await refreshAllProjectAvailability(store, deps.now());
-		if (changed) {
-			await deps.store.save(store);
-		}
+export const createProjectService = (deps: ProjectServiceDeps): ProjectService => {
+	let transactionQueue: Promise<void> = Promise.resolve();
 
-		return createProjectStateView(store);
-	},
-
-	async createFromScratch() {
-		const store = await deps.store.load();
-		const projectPath = await getNextScratchProjectPath(
-			deps.documentsDir,
-			getTrackedProjectNamesUnderDocumentsDir(store, deps.documentsDir),
+	const runSerialized = async <T>(work: () => Promise<T>): Promise<T> => {
+		const run = transactionQueue.then(work, work);
+		transactionQueue = run.then(
+			() => undefined,
+			() => undefined,
 		);
-		const now = deps.now();
-		const project = createAvailableProject(projectPath, now);
+		return run;
+	};
 
-		await mkdir(projectPath, { recursive: false });
-		await deps.initializeGitRepository(projectPath);
+	return {
+		async getState() {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const changed = await refreshAllProjectAvailability(store, deps.now());
+				if (changed) {
+					await deps.store.save(store);
+				}
 
-		store.projects = [...store.projects.filter((existingProject) => existingProject.id !== project.id), project];
-		store.chatsByProject[project.id] = [];
-		store.selectedProjectId = project.id;
-		store.selectedChatId = null;
+				return createProjectStateView(store);
+			});
+		},
 
-		return saveAndView(deps.store, store);
-	},
+		async createFromScratch() {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectPath = await getNextScratchProjectPath(
+					deps.documentsDir,
+					getTrackedProjectNamesUnderDocumentsDir(store, deps.documentsDir),
+				);
+				const now = deps.now();
+				const project = createAvailableProject(projectPath, now);
 
-	async addExistingFolder() {
-		const store = await deps.store.load();
-		const selectedPath = await deps.openFolderDialog();
-		if (selectedPath === null) {
+				await mkdir(projectPath, { recursive: false });
+				await deps.initializeGitRepository(projectPath);
+
+				store.projects = [
+					...store.projects.filter((existingProject) => existingProject.id !== project.id),
+					project,
+				];
+				store.chatsByProject[project.id] = [];
+				store.selectedProjectId = project.id;
+				store.selectedChatId = null;
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async addExistingFolder() {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const selectedPath = await deps.openFolderDialog();
+				if (selectedPath === null) {
+					return createProjectStateView(store);
+				}
+
+				const now = deps.now();
+				const projectId = createProjectId(selectedPath);
+				const projectIndex = store.projects.findIndex((project) => project.id === projectId);
+
+				if (projectIndex === -1) {
+					store.projects.push(createAvailableProject(selectedPath, now));
+					store.chatsByProject[projectId] = [];
+				} else {
+					store.projects[projectIndex] = {
+						...store.projects[projectIndex],
+						displayName: basename(selectedPath),
+						path: selectedPath,
+						updatedAt: now,
+						lastOpenedAt: now,
+						availability: { status: "available", checkedAt: now },
+					};
+					store.chatsByProject[projectId] ??= [];
+				}
+
+				store.selectedProjectId = projectId;
+				store.selectedChatId = null;
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async selectProject(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const now = deps.now();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				selectProjectInStore(store, input.projectId, now);
+				await refreshProjectAvailabilityAtIndex(store, projectIndex, now);
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async renameProject(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				store.projects[projectIndex] = {
+					...store.projects[projectIndex],
+					displayName: input.displayName,
+					updatedAt: deps.now(),
+				};
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async removeProject(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				findProjectIndex(store, input.projectId);
+				store.projects = store.projects.filter((project) => project.id !== input.projectId);
+				delete store.chatsByProject[input.projectId];
+				if (store.selectedProjectId === input.projectId) {
+					store.selectedProjectId = null;
+					store.selectedChatId = null;
+				}
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async openProjectInFinder(input) {
+			const store = await deps.store.load();
+			const project = store.projects[findProjectIndex(store, input.projectId)];
+			const result = await deps.openInFinder(project.path);
+			if (typeof result === "string" && result.length > 0) {
+				throw new Error(result);
+			}
+
 			return createProjectStateView(store);
-		}
+		},
 
-		const now = deps.now();
-		const projectId = createProjectId(selectedPath);
-		const projectIndex = store.projects.findIndex((project) => project.id === projectId);
+		async locateFolder(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				const selectedPath = await deps.openFolderDialog();
+				if (selectedPath === null) {
+					return createProjectStateView(store);
+				}
 
-		if (projectIndex === -1) {
-			store.projects.push(createAvailableProject(selectedPath, now));
-			store.chatsByProject[projectId] = [];
-		} else {
-			store.projects[projectIndex] = {
-				...store.projects[projectIndex],
-				displayName: basename(selectedPath),
-				path: selectedPath,
-				updatedAt: now,
-				lastOpenedAt: now,
-				availability: { status: "available", checkedAt: now },
-			};
-			store.chatsByProject[projectId] ??= [];
-		}
+				const existingProject = store.projects[projectIndex];
+				const recoveredId = createProjectId(selectedPath);
+				if (recoveredId !== input.projectId && store.projects.some((project) => project.id === recoveredId)) {
+					throw new Error("Selected folder is already tracked by another project.");
+				}
 
-		store.selectedProjectId = projectId;
-		store.selectedChatId = null;
+				const chats = (store.chatsByProject[input.projectId] ?? []).map<ChatMetadata>((chat) => ({
+					...chat,
+					projectId: recoveredId,
+				}));
+				const recoveredNow = deps.now();
+				const recoveredProject: ProjectRecord = {
+					...existingProject,
+					id: recoveredId,
+					path: selectedPath,
+					updatedAt: recoveredNow,
+					lastOpenedAt: recoveredNow,
+					availability: { status: "available", checkedAt: recoveredNow },
+				};
 
-		return saveAndView(deps.store, store);
-	},
+				store.projects = store.projects
+					.filter((project) => project.id !== input.projectId && project.id !== recoveredId)
+					.concat(recoveredProject);
+				delete store.chatsByProject[input.projectId];
+				store.chatsByProject[recoveredId] = chats;
+				store.selectedProjectId = recoveredId;
+				store.selectedChatId = null;
 
-	async selectProject(input) {
-		const store = await deps.store.load();
-		const now = deps.now();
-		const projectIndex = findProjectIndex(store, input.projectId);
-		selectProjectInStore(store, input.projectId, now);
-		await refreshProjectAvailabilityAtIndex(store, projectIndex, now);
+				return saveAndView(deps.store, store);
+			});
+		},
 
-		return saveAndView(deps.store, store);
-	},
+		async setPinned(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				store.projects[projectIndex] = {
+					...store.projects[projectIndex],
+					pinned: input.pinned,
+					updatedAt: deps.now(),
+				};
 
-	async renameProject(input) {
-		const store = await deps.store.load();
-		const projectIndex = findProjectIndex(store, input.projectId);
-		store.projects[projectIndex] = {
-			...store.projects[projectIndex],
-			displayName: input.displayName,
-			updatedAt: deps.now(),
-		};
+				return saveAndView(deps.store, store);
+			});
+		},
 
-		return saveAndView(deps.store, store);
-	},
+		async checkAvailability(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 
-	async removeProject(input) {
-		const store = await deps.store.load();
-		findProjectIndex(store, input.projectId);
-		store.projects = store.projects.filter((project) => project.id !== input.projectId);
-		delete store.chatsByProject[input.projectId];
-		if (store.selectedProjectId === input.projectId) {
-			store.selectedProjectId = null;
-			store.selectedChatId = null;
-		}
+				return saveAndView(deps.store, store);
+			});
+		},
 
-		return saveAndView(deps.store, store);
-	},
+		async createChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				findProjectIndex(store, input.projectId);
+				const now = deps.now();
+				const existingChats = store.chatsByProject[input.projectId] ?? [];
+				const chat: ChatMetadata = {
+					id: createChatId(now, existingChats),
+					projectId: input.projectId,
+					title: "New chat",
+					status: "idle",
+					updatedAt: now,
+				};
 
-	async openProjectInFinder(input) {
-		const store = await deps.store.load();
-		const project = store.projects[findProjectIndex(store, input.projectId)];
-		const result = await deps.openInFinder(project.path);
-		if (typeof result === "string" && result.length > 0) {
-			throw new Error(result);
-		}
+				store.chatsByProject[input.projectId] = [...existingChats, chat];
+				store.selectedProjectId = input.projectId;
+				store.selectedChatId = chat.id;
 
-		return createProjectStateView(store);
-	},
+				return saveAndView(deps.store, store);
+			});
+		},
 
-	async locateFolder(input) {
-		const store = await deps.store.load();
-		const projectIndex = findProjectIndex(store, input.projectId);
-		const selectedPath = await deps.openFolderDialog();
-		if (selectedPath === null) {
-			return createProjectStateView(store);
-		}
+		async selectChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				findProjectIndex(store, input.projectId);
+				const chat = (store.chatsByProject[input.projectId] ?? []).find(
+					(candidate) => candidate.id === input.chatId,
+				);
+				if (!chat || chat.projectId !== input.projectId) {
+					throw new Error("Chat does not belong to the selected project.");
+				}
 
-		const existingProject = store.projects[projectIndex];
-		const recoveredId = createProjectId(selectedPath);
-		if (recoveredId !== input.projectId && store.projects.some((project) => project.id === recoveredId)) {
-			throw new Error("Selected folder is already tracked by another project.");
-		}
+				store.selectedProjectId = input.projectId;
+				store.selectedChatId = input.chatId;
 
-		const chats = (store.chatsByProject[input.projectId] ?? []).map<ChatMetadata>((chat) => ({
-			...chat,
-			projectId: recoveredId,
-		}));
-		const recoveredNow = deps.now();
-		const recoveredProject: ProjectRecord = {
-			...existingProject,
-			id: recoveredId,
-			path: selectedPath,
-			updatedAt: recoveredNow,
-			lastOpenedAt: recoveredNow,
-			availability: { status: "available", checkedAt: recoveredNow },
-		};
-
-		store.projects = store.projects
-			.filter((project) => project.id !== input.projectId && project.id !== recoveredId)
-			.concat(recoveredProject);
-		delete store.chatsByProject[input.projectId];
-		store.chatsByProject[recoveredId] = chats;
-		store.selectedProjectId = recoveredId;
-		store.selectedChatId = null;
-
-		return saveAndView(deps.store, store);
-	},
-
-	async setPinned(input) {
-		const store = await deps.store.load();
-		const projectIndex = findProjectIndex(store, input.projectId);
-		store.projects[projectIndex] = {
-			...store.projects[projectIndex],
-			pinned: input.pinned,
-			updatedAt: deps.now(),
-		};
-
-		return saveAndView(deps.store, store);
-	},
-
-	async checkAvailability(input) {
-		const store = await deps.store.load();
-		const projectIndex = findProjectIndex(store, input.projectId);
-		await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
-
-		return saveAndView(deps.store, store);
-	},
-
-	async createChat(input) {
-		const store = await deps.store.load();
-		findProjectIndex(store, input.projectId);
-		const now = deps.now();
-		const existingChats = store.chatsByProject[input.projectId] ?? [];
-		const chat: ChatMetadata = {
-			id: createChatId(now, existingChats),
-			projectId: input.projectId,
-			title: "New chat",
-			status: "idle",
-			updatedAt: now,
-		};
-
-		store.chatsByProject[input.projectId] = [...existingChats, chat];
-		store.selectedProjectId = input.projectId;
-		store.selectedChatId = chat.id;
-
-		return saveAndView(deps.store, store);
-	},
-
-	async selectChat(input) {
-		const store = await deps.store.load();
-		findProjectIndex(store, input.projectId);
-		const chat = (store.chatsByProject[input.projectId] ?? []).find((candidate) => candidate.id === input.chatId);
-		if (!chat || chat.projectId !== input.projectId) {
-			throw new Error("Chat does not belong to the selected project.");
-		}
-
-		store.selectedProjectId = input.projectId;
-		store.selectedChatId = input.chatId;
-
-		return saveAndView(deps.store, store);
-	},
-});
+				return saveAndView(deps.store, store);
+			});
+		},
+	};
+};

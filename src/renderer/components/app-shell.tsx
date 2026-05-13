@@ -14,6 +14,7 @@ interface AppShellProps {
 export function AppShell({ state, statusMessage, onProjectState }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const showHeaderMeta = Boolean(state.selectedChat) && !sidebarCollapsed;
+	const selectedProjectPath = state.selectedProject?.path ?? "No active project path";
 
 	return (
 		<div
@@ -33,7 +34,11 @@ export function AppShell({ state, statusMessage, onProjectState }: AppShellProps
 						.filter(Boolean)
 						.join(" ")}
 				>
-					{showHeaderMeta ? <Badge variant="outline">macOS local</Badge> : null}
+					{showHeaderMeta ? (
+						<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
+							{selectedProjectPath}
+						</Badge>
+					) : null}
 				</header>
 
 				<ProjectMain state={state} statusMessage={statusMessage} onProjectState={onProjectState} />

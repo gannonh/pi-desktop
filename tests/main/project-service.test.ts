@@ -579,6 +579,26 @@ describe("project service", () => {
 		]);
 	});
 
+	it("preserves concurrent chat creations for the same project", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		await Promise.all([service.createChat({ projectId: project.id }), service.createChat({ projectId: project.id })]);
+
+		expect(
+			memoryStore
+				.read()
+				.chatsByProject[project.id]?.map((chat) => chat.id)
+				.sort(),
+		).toEqual([`chat:${secondNow}:1`, `chat:${secondNow}:2`]);
+	});
+
 	it("selects a chat that belongs to the provided project", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const chat = {

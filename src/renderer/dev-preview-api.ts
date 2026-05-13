@@ -1,4 +1,5 @@
 import type { PiDesktopApi } from "../shared/preload-api";
+import type { ProjectStateViewResult } from "../shared/ipc";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -111,13 +112,40 @@ const view = () => ({
 	standaloneChats: sortStandaloneChats(standaloneChats),
 });
 const ok = () => Promise.resolve({ ok: true as const, data: view() });
+type PreviewProjectLookup =
+	| {
+			ok: true;
+			project: ProjectRecord;
+			projectIndex: number;
+	  }
+	| Extract<ProjectStateViewResult, { ok: false }>;
+const projectNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
+	ok: false,
+	error: {
+		code: "preview.project_not_found",
+		message: "Project not found in preview data.",
+	},
+});
 
-const findProject = (projectId: string) => {
+const findProject = (projectId: string): PreviewProjectLookup => {
 	const projectIndex = store.projects.findIndex((candidate) => candidate.id === projectId);
 	if (projectIndex === -1) {
-		throw new Error("Project not found in preview data.");
+		return projectNotFound();
 	}
-	return { project: store.projects[projectIndex], projectIndex };
+	return { ok: true as const, project: store.projects[projectIndex], projectIndex };
+};
+
+const nextExistingFolderPath = () => {
+	const base = `${previewRoot}/pi-mono`;
+	if (!store.projects.some((candidate) => candidate.path === base)) {
+		return base;
+	}
+
+	let suffix = 2;
+	while (store.projects.some((candidate) => candidate.path === `${base}-${suffix}`)) {
+		suffix += 1;
+	}
+	return `${base}-${suffix}`;
 };
 
 const addProject = (projectPath: string) => {
@@ -151,18 +179,26 @@ export const installDevPreviewApi = () => {
 				return ok();
 			},
 			addExistingFolder: async () => {
-				addProject(`${previewRoot}/pi-mono`);
+				addProject(nextExistingFolderPath());
 				return ok();
 			},
 			select: async ({ projectId }) => {
-				const { project, projectIndex } = findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const { project, projectIndex } = result;
 				store.projects[projectIndex] = { ...project, lastOpenedAt: new Date().toISOString() };
 				store.selectedProjectId = projectId;
 				store.selectedChatId = null;
 				return ok();
 			},
 			rename: async ({ projectId, displayName }) => {
-				const { project, projectIndex } = findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const { project, projectIndex } = result;
 				store.projects[projectIndex] = { ...project, displayName, updatedAt: new Date().toISOString() };
 				return ok();
 			},
@@ -177,7 +213,11 @@ export const installDevPreviewApi = () => {
 			},
 			openInFinder: ok,
 			locateFolder: async ({ projectId }) => {
-				const { project: currentProject, projectIndex } = findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const { project: currentProject, projectIndex } = result;
 				const recoveredPath = `${previewRoot}/recovered/${currentProject.displayName}`;
 				const recoveredId = createProjectId(recoveredPath);
 				const recoveredProject = {
@@ -197,7 +237,11 @@ export const installDevPreviewApi = () => {
 				return ok();
 			},
 			setPinned: async ({ projectId, pinned }) => {
-				const { project, projectIndex } = findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const { project, projectIndex } = result;
 				store.projects[projectIndex] = { ...project, pinned, updatedAt: new Date().toISOString() };
 				return ok();
 			},
@@ -205,7 +249,10 @@ export const installDevPreviewApi = () => {
 		},
 		chat: {
 			create: async ({ projectId }) => {
-				findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
 				const chats = store.chatsByProject[projectId] ?? [];
 				const nextChat = chat(projectId, `chat:preview:${chats.length + 1}`, "New chat", new Date().toISOString());
 				store.chatsByProject[projectId] = [...chats, nextChat];
@@ -214,7 +261,10 @@ export const installDevPreviewApi = () => {
 				return ok();
 			},
 			select: async ({ projectId, chatId }) => {
-				findProject(projectId);
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
 				store.selectedProjectId = projectId;
 				store.selectedChatId = chatId;
 				return ok();

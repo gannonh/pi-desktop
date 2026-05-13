@@ -163,6 +163,12 @@ button {
 	border-bottom-color: transparent;
 }
 
+.app-shell__path-badge {
+	max-width: min(30rem, 60vw);
+	justify-content: flex-start;
+	text-overflow: ellipsis;
+}
+
 .project-main {
 	display: flex;
 	min-height: 0;

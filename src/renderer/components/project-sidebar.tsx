@@ -125,6 +125,18 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 	};
 
 	const hasOpenProject = rows.some((row) => !closedProjectIds.has(row.projectId));
+	const selectStandaloneChat = (chatId: string) => {
+		onProjectState({
+			ok: true,
+			data: {
+				...state,
+				selectedProjectId: null,
+				selectedChatId: chatId,
+				selectedProject: null,
+				selectedChat: null,
+			},
+		});
+	};
 
 	return (
 		<aside className="project-sidebar" aria-label="Project navigation">
@@ -355,6 +367,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 										.join(" ")}
 									key={child.chatId}
 									type="button"
+									onClick={() => selectStandaloneChat(child.chatId)}
 								>
 									<span className="project-sidebar__chat-label">{child.label}</span>
 									{child.needsAttention ? (

@@ -15,11 +15,11 @@ description: Launch the pi-desktop renderer as a Vite web preview and open it in
 pnpm dev:web
 ```
 
-4. Keep the server session running. Do not stop an existing preview server unless the user asks.
-5. Use the Local URL printed by Vite, usually `http://127.0.0.1:5173/`.
-6. Open that URL in the Codex integrated browser with the Browser plugin or `browser-use:browser` skill.
-7. Verify the page renders by checking for visible app text such as `PROJECTS`, `Project home`, or `What should we work on?`.
-8. Report the preview URL and whether the server is still running.
+1. Keep the server session running. Do not stop an existing preview server unless the user asks.
+2. Use the Local URL printed by Vite, usually `http://127.0.0.1:5173/`.
+3. Open that URL in the Codex integrated browser with the Browser plugin or `browser-use:browser` skill.
+4. Verify the page renders by checking for visible app text such as `PROJECTS`, `Project home`, or `What should we work on?`.
+5. Report the preview URL and whether the server is still running.
 
 ## Failure Handling
 
