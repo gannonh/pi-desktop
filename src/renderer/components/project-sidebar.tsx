@@ -1,7 +1,6 @@
 import {
 	ArrowLeft,
 	ArrowRight,
-	Bot,
 	ChevronDown,
 	ChevronRight,
 	Folder,
@@ -134,7 +133,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 			<div className="project-sidebar__panel">
 				<div className="project-sidebar__top-actions">
 					<button className="project-sidebar__action" type="button" disabled>
-						<Bot className="project-sidebar__icon" />
+						<SquarePen className="project-sidebar__icon" />
 						<span>New chat</span>
 					</button>
 					<button className="project-sidebar__action" type="button" disabled>
