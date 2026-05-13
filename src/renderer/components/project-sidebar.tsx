@@ -1,4 +1,5 @@
 import {
+	Archive,
 	ArrowDown,
 	ArrowLeft,
 	ArrowRight,
@@ -7,6 +8,7 @@ import {
 	ChevronRight,
 	CirclePlus,
 	Clock,
+	ExternalLink,
 	Folder,
 	FolderOpen,
 	FolderPlus,
@@ -16,6 +18,7 @@ import {
 	MoreHorizontal,
 	PanelLeftClose,
 	PanelLeftOpen,
+	Pencil,
 	Pin,
 	Search,
 	SquarePen,
@@ -640,16 +643,33 @@ function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: Project
 				title={projectFolderUnavailable ? "Project folder unavailable" : undefined}
 				onClick={onOpenInFinder}
 			>
+				<MenuItemIcon>
+					<Folder />
+				</MenuItemIcon>
 				Open in Finder
 			</MenuItem>
 			<MenuItem disabled title="Coming soon">
+				<MenuItemIcon>
+					<ExternalLink />
+				</MenuItemIcon>
 				Create permanent worktree
 			</MenuItem>
-			<MenuItem onClick={onRename}>Rename project</MenuItem>
+			<MenuItem onClick={onRename}>
+				<MenuItemIcon>
+					<Pencil />
+				</MenuItemIcon>
+				Rename project
+			</MenuItem>
 			<MenuItem disabled title="Coming soon">
+				<MenuItemIcon>
+					<Archive />
+				</MenuItemIcon>
 				Archive chats
 			</MenuItem>
-			<MenuItem tone="danger" onClick={onRemove}>
+			<MenuItem onClick={onRemove}>
+				<MenuItemIcon>
+					<X />
+				</MenuItemIcon>
 				Remove
 			</MenuItem>
 		</MenuSurface>

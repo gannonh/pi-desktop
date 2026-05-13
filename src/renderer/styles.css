@@ -854,6 +854,7 @@ button {
 
 .project-sidebar__project-menu {
 	top: 100%;
+	min-width: 15rem;
 }
 
 .menu__item {
@@ -868,6 +869,7 @@ button {
 	color: inherit;
 	font-size: var(--type-body);
 	text-align: left;
+	white-space: nowrap;
 }
 
 .menu__item:hover:not(:disabled) {
