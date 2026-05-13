@@ -107,6 +107,18 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		});
 	};
 
+	const toggleAllProjectsOpen = () => {
+		setMenu(null);
+		setProjectsCollapsed(false);
+		setClosedProjectIds((current) => {
+			const projectIds = rows.map((row) => row.projectId);
+			const hasOpenProject = projectIds.some((projectId) => !current.has(projectId));
+			return hasOpenProject ? new Set(projectIds) : new Set();
+		});
+	};
+
+	const hasOpenProject = rows.some((row) => !closedProjectIds.has(row.projectId));
+
 	return (
 		<aside className="project-sidebar" aria-label="Project navigation">
 			<div className="project-sidebar__chrome">
@@ -196,8 +208,8 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						<button
 							className="project-sidebar__heading-button"
 							type="button"
-							disabled
-							aria-label="Collapse all projects"
+							aria-label={hasOpenProject ? "Collapse all projects" : "Expand all projects"}
+							onClick={toggleAllProjectsOpen}
 						>
 							<Minimize2 className="project-sidebar__icon" />
 						</button>
@@ -471,7 +483,12 @@ function ProjectSidebarProject({
 				</MenuAnchor>
 			</div>
 
-			{closed ? null : (
+			<div
+				className={["project-sidebar__chats-shell", closed ? "project-sidebar__chats-shell--closed" : ""]
+					.filter(Boolean)
+					.join(" ")}
+				aria-hidden={closed}
+			>
 				<div className="project-sidebar__chats">
 					{row.children.map((child) =>
 						child.kind === "empty" ? (
@@ -484,6 +501,7 @@ function ProjectSidebarProject({
 								key={`${row.projectId}:show-more`}
 								type="button"
 								disabled
+								tabIndex={closed ? -1 : undefined}
 							>
 								{child.label}
 							</button>
@@ -498,6 +516,7 @@ function ProjectSidebarProject({
 									.join(" ")}
 								key={child.chatId}
 								type="button"
+								tabIndex={closed ? -1 : undefined}
 								onClick={async () => {
 									try {
 										onProjectState(
@@ -523,7 +542,7 @@ function ProjectSidebarProject({
 						),
 					)}
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }

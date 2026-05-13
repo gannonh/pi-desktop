@@ -720,10 +720,33 @@ button {
 	color: var(--sidebar-warning-color);
 }
 
+.project-sidebar__chats-shell {
+	display: grid;
+	grid-template-rows: 1fr;
+	overflow: hidden;
+	transition:
+		grid-template-rows 180ms ease,
+		opacity 140ms ease;
+}
+
+.project-sidebar__chats-shell--closed {
+	grid-template-rows: 0fr;
+	opacity: 0;
+}
+
 .project-sidebar__chats {
+	min-height: 0;
 	display: grid;
 	gap: 0.125rem;
 	padding: var(--sidebar-chat-list-padding);
+	transition:
+		transform 180ms ease,
+		opacity 140ms ease;
+}
+
+.project-sidebar__chats-shell--closed .project-sidebar__chats {
+	opacity: 0;
+	transform: translateY(-0.25rem);
 }
 
 .project-sidebar__chats--standalone {
