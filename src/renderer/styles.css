@@ -81,6 +81,7 @@
 	--sidebar-row-gap: 0.5rem;
 	--sidebar-icon-size: 1rem;
 	--sidebar-heading-icon-size: 12px;
+	--sidebar-project-menu-icon-size: 12px;
 	--sidebar-icon-button-size: 1.75rem;
 	--sidebar-project-menu-button-size: 1.5rem;
 }
@@ -603,6 +604,11 @@ button {
 	width: var(--sidebar-project-menu-button-size);
 	height: var(--sidebar-project-menu-button-size);
 	opacity: 0;
+}
+
+.project-sidebar__project-menu-button .project-sidebar__icon {
+	width: var(--sidebar-project-menu-icon-size);
+	height: var(--sidebar-project-menu-icon-size);
 }
 
 .project-sidebar__icon-button:hover,
