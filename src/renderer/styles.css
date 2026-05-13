@@ -23,7 +23,7 @@
 }
 
 :root {
-	--app-sidebar-width: 16.25rem;
+	--app-sidebar-width: 298px;
 	--app-main-min-width: 22.5rem;
 	--app-min-height: 40rem;
 	--app-header-height: 3.5rem;
@@ -54,16 +54,18 @@
 
 	--sidebar-chrome-height: 2.75rem;
 	--sidebar-chrome-padding: 0 0.875rem 0 1rem;
-	--sidebar-window-dot-size: 0.75rem;
+	--sidebar-window-dot-size: 12px;
 	--sidebar-window-dot-gap: 0.5rem;
 	--sidebar-chrome-button-size: 1.5rem;
 	--sidebar-chrome-action-gap: 0.375rem;
-	--sidebar-section-heading-padding: 0.25rem 0.75rem 0.5rem 1rem;
-	--sidebar-top-actions-padding: 0.75rem 0.75rem 0.75rem 0.5rem;
+	--sidebar-section-heading-padding: 0 0.75rem 0.375rem 1rem;
+	--sidebar-top-actions-padding: 0.625rem 0.75rem 1rem 0.5rem;
+	--sidebar-top-action-padding: 0.25rem 0.5rem;
+	--sidebar-top-action-gap: 0.25rem;
 	--sidebar-projects-padding: 0 0.5rem 0.75rem;
 	--sidebar-row-padding: 0.5rem;
-	--sidebar-chat-row-padding: 0.375rem 0.5rem;
-	--sidebar-chat-list-padding: 0.125rem 0 0.25rem 1.5rem;
+	--sidebar-chat-row-padding: 0.375rem 0.5rem 0.375rem 2rem;
+	--sidebar-chat-list-padding: 0.125rem 0 0.25rem;
 	--sidebar-row-gap: 0.5rem;
 	--sidebar-icon-size: 1rem;
 	--sidebar-icon-button-size: 1.75rem;
@@ -458,7 +460,7 @@ button {
 
 .project-sidebar__top-actions {
 	display: grid;
-	gap: 0.25rem;
+	gap: var(--sidebar-top-action-gap);
 	padding: var(--sidebar-top-actions-padding);
 }
 
@@ -477,7 +479,7 @@ button {
 .project-sidebar__action {
 	gap: var(--sidebar-row-gap);
 	border-radius: var(--radius-control);
-	padding: var(--sidebar-row-padding);
+	padding: var(--sidebar-top-action-padding);
 	color: var(--color-muted-foreground);
 	font-size: var(--type-body);
 }
@@ -625,13 +627,13 @@ button {
 	border-radius: var(--radius-control);
 	padding: var(--sidebar-chat-row-padding);
 	color: var(--color-muted-foreground);
-	font-size: var(--type-label);
+	font-size: var(--type-body);
 }
 
 .project-sidebar__empty-chat {
 	padding: var(--sidebar-chat-row-padding);
 	color: var(--color-muted-foreground);
-	font-size: var(--type-label);
+	font-size: var(--type-body);
 }
 
 .project-sidebar__chat-status {
