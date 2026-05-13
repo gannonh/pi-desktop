@@ -517,6 +517,47 @@ button {
 	text-transform: uppercase;
 }
 
+.project-sidebar__section-title,
+.project-sidebar__heading-actions {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+.project-sidebar__section-title {
+	gap: 0.125rem;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	text-transform: inherit;
+}
+
+.project-sidebar__heading-actions {
+	gap: 0.125rem;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 120ms ease;
+}
+
+.project-sidebar__section-chevron,
+.project-sidebar__section-title .project-sidebar__icon {
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.project-sidebar__section-heading:hover .project-sidebar__heading-actions,
+.project-sidebar__section-heading:focus-within .project-sidebar__heading-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.project-sidebar__section-heading:hover .project-sidebar__section-title .project-sidebar__icon,
+.project-sidebar__section-heading:focus-within .project-sidebar__section-title .project-sidebar__icon {
+	opacity: 1;
+}
+
 .project-sidebar__icon,
 .project-sidebar__menu-icon {
 	width: var(--sidebar-icon-size);
@@ -525,6 +566,7 @@ button {
 }
 
 .project-sidebar__icon-button,
+.project-sidebar__heading-button,
 .project-sidebar__project-menu-button {
 	display: inline-flex;
 	align-items: center;
@@ -533,6 +575,16 @@ button {
 	border-radius: var(--radius-control);
 	background: transparent;
 	color: var(--sidebar-chrome-icon-color);
+}
+
+.project-sidebar__heading-button {
+	width: var(--sidebar-icon-button-size);
+	height: var(--sidebar-icon-button-size);
+}
+
+.project-sidebar__heading-button:disabled {
+	cursor: default;
+	opacity: 1;
 }
 
 .project-sidebar__icon-button {
@@ -547,6 +599,8 @@ button {
 }
 
 .project-sidebar__icon-button:hover,
+.project-sidebar__heading-button:hover,
+.project-sidebar__heading-button:focus-visible,
 .project-sidebar__project-menu-button:hover,
 .project-sidebar__project-row:hover,
 .project-sidebar__chat-row:hover,

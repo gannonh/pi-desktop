@@ -2,13 +2,17 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Bot,
+	ChevronDown,
+	ChevronRight,
 	Folder,
+	FolderPlus,
 	FolderOpen,
+	ListFilter,
+	Minimize2,
 	MoreHorizontal,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Pin,
-	Plus,
 	Search,
 	SquarePen,
 	Workflow,
@@ -48,6 +52,7 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectState }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
 	const [closedProjectIds, setClosedProjectIds] = useState<Set<string>>(() => new Set());
+	const [projectsCollapsed, setProjectsCollapsed] = useState(false);
 	const rows = createProjectSidebarRows(state);
 	const chromeTitle = state.selectedChat?.title;
 
@@ -141,52 +146,84 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 				</div>
 
 				<div className="project-sidebar__section-heading">
-					<span>Projects</span>
-					<div className="project-sidebar__menu-anchor">
+					<button
+						className="project-sidebar__section-title"
+						type="button"
+						aria-expanded={!projectsCollapsed}
+						onClick={() => setProjectsCollapsed((current) => !current)}
+					>
+						<span>Projects</span>
+						{projectsCollapsed ? (
+							<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
+						) : (
+							<ChevronDown className="project-sidebar__icon" />
+						)}
+					</button>
+					<div className="project-sidebar__heading-actions">
 						<button
-							className="project-sidebar__icon-button"
+							className="project-sidebar__heading-button"
 							type="button"
-							aria-label="Add project"
-							aria-expanded={menu?.kind === "add"}
-							onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
+							disabled
+							aria-label="Collapse all projects"
 						>
-							<Plus className="project-sidebar__icon" />
+							<Minimize2 className="project-sidebar__icon" />
 						</button>
-						{menu?.kind === "add" ? (
-							<div className="project-sidebar__menu">
-								<button
-									className="project-sidebar__menu-item"
-									type="button"
-									onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
-								>
-									Start from scratch
-								</button>
-								<button
-									className="project-sidebar__menu-item"
-									type="button"
-									onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
-								>
-									Use an existing folder
-								</button>
-							</div>
-						) : null}
+						<button
+							className="project-sidebar__heading-button"
+							type="button"
+							disabled
+							aria-label="Filter projects"
+						>
+							<ListFilter className="project-sidebar__icon" />
+						</button>
+						<div className="project-sidebar__menu-anchor">
+							<button
+								className="project-sidebar__heading-button"
+								type="button"
+								aria-label="Add project"
+								aria-expanded={menu?.kind === "add"}
+								onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
+							>
+								<FolderPlus className="project-sidebar__icon" />
+							</button>
+							{menu?.kind === "add" ? (
+								<div className="project-sidebar__menu">
+									<button
+										className="project-sidebar__menu-item"
+										type="button"
+										onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
+									>
+										Start from scratch
+									</button>
+									<button
+										className="project-sidebar__menu-item"
+										type="button"
+										onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
+									>
+										Use an existing folder
+									</button>
+								</div>
+							) : null}
+						</div>
 					</div>
 				</div>
 
-				<div className="project-sidebar__projects">
-					{rows.map((row) => (
-						<ProjectSidebarProject
-							key={row.projectId}
-							row={row}
-							menu={menu}
-							setMenu={setMenu}
-							closed={closedProjectIds.has(row.projectId)}
-							onToggleOpen={toggleProjectOpen}
-							onProjectState={onProjectState}
-							runProjectAction={runProjectAction}
-						/>
-					))}
-				</div>
+				{projectsCollapsed ? null : (
+					<div className="project-sidebar__projects">
+						{rows.map((row) => (
+							<ProjectSidebarProject
+								key={row.projectId}
+								row={row}
+								menu={menu}
+								setMenu={setMenu}
+								closed={closedProjectIds.has(row.projectId)}
+								onToggleOpen={toggleProjectOpen}
+								onProjectState={onProjectState}
+								runProjectAction={runProjectAction}
+							/>
+						))}
+					</div>
+				)}
 			</div>
 		</aside>
 	);
