@@ -1,12 +1,17 @@
 import {
+	ArrowDown,
 	ArrowLeft,
 	ArrowRight,
+	Check,
 	ChevronDown,
 	ChevronRight,
+	CirclePlus,
+	Clock,
 	Folder,
 	FolderOpen,
 	FolderPlus,
 	ListFilter,
+	MessageCircle,
 	Minimize2,
 	MoreHorizontal,
 	PanelLeftClose,
@@ -14,6 +19,7 @@ import {
 	Pin,
 	Search,
 	SquarePen,
+	Star,
 	Workflow,
 	Wrench,
 	X,
@@ -26,7 +32,15 @@ import {
 	createStandaloneChatSidebarRows,
 	type SidebarProjectRow,
 } from "../projects/project-view-model";
-import { MenuAnchor, MenuItem, MenuItemIcon, MenuSurface } from "./menu";
+import {
+	MenuAnchor,
+	MenuItem,
+	MenuItemIcon,
+	MenuSectionHeading,
+	MenuSelectionIndicator,
+	MenuSeparator,
+	MenuSurface,
+} from "./menu";
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;
@@ -42,6 +56,9 @@ type MenuState =
 	| {
 			kind: "project";
 			projectId: string;
+	  }
+	| {
+			kind: "projects-filter";
 	  }
 	| null;
 
@@ -184,14 +201,22 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						>
 							<Minimize2 className="project-sidebar__icon" />
 						</button>
-						<button
-							className="project-sidebar__heading-button"
-							type="button"
-							disabled
-							aria-label="Filter projects"
-						>
-							<ListFilter className="project-sidebar__icon" />
-						</button>
+						<MenuAnchor>
+							<button
+								className="project-sidebar__heading-button"
+								type="button"
+								aria-label="Filter projects"
+								aria-expanded={menu?.kind === "projects-filter"}
+								onClick={() =>
+									setMenu((current) =>
+										current?.kind === "projects-filter" ? null : { kind: "projects-filter" },
+									)
+								}
+							>
+								<ListFilter className="project-sidebar__icon" />
+							</button>
+							{menu?.kind === "projects-filter" ? <ProjectsFilterMenu /> : null}
+						</MenuAnchor>
 						<MenuAnchor>
 							<button
 								className="project-sidebar__heading-button"
@@ -509,6 +534,75 @@ interface ProjectMenuProps {
 	onOpenInFinder: () => void;
 	onRename: () => void;
 	onRemove: () => void;
+}
+
+function ProjectsFilterMenu() {
+	return (
+		<MenuSurface className="project-sidebar__filter-menu">
+			<MenuSectionHeading>Organize</MenuSectionHeading>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<Folder />
+				</MenuItemIcon>
+				By project
+				<MenuSelectionIndicator>
+					<Check />
+				</MenuSelectionIndicator>
+			</MenuItem>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<Folder />
+				</MenuItemIcon>
+				Recent projects
+			</MenuItem>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<Clock />
+				</MenuItemIcon>
+				Chronological list
+			</MenuItem>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<ArrowDown />
+				</MenuItemIcon>
+				Move down
+			</MenuItem>
+			<MenuSeparator />
+			<MenuSectionHeading>Sort by</MenuSectionHeading>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<CirclePlus />
+				</MenuItemIcon>
+				Created
+			</MenuItem>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<Clock />
+				</MenuItemIcon>
+				Updated
+				<MenuSelectionIndicator>
+					<Check />
+				</MenuSelectionIndicator>
+			</MenuItem>
+			<MenuSeparator />
+			<MenuSectionHeading>Show</MenuSectionHeading>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<MessageCircle />
+				</MenuItemIcon>
+				All chats
+				<MenuSelectionIndicator>
+					<Check />
+				</MenuSelectionIndicator>
+			</MenuItem>
+			<MenuItem inactive aria-disabled="true">
+				<MenuItemIcon>
+					<Star />
+				</MenuItemIcon>
+				Relevant
+			</MenuItem>
+		</MenuSurface>
+	);
 }
 
 function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: ProjectMenuProps) {
