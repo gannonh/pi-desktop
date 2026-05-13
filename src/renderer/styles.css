@@ -49,6 +49,7 @@
 	--type-caption: 0.75rem;
 	--type-label: 0.8125rem;
 	--type-body: 0.875rem;
+	--type-sidebar-heading: 0.875rem;
 	--type-composer: 0.9375rem;
 	--type-empty-title: clamp(1.75rem, 3vw, 2.25rem);
 	--type-detail-title: clamp(1.5rem, 4vw, 2.5rem);
@@ -79,6 +80,7 @@
 	--sidebar-chat-list-padding: 0.125rem 0 0.25rem;
 	--sidebar-row-gap: 0.5rem;
 	--sidebar-icon-size: 1rem;
+	--sidebar-heading-icon-size: 12px;
 	--sidebar-icon-button-size: 1.75rem;
 	--sidebar-project-menu-button-size: 1.5rem;
 }
@@ -512,7 +514,7 @@ button {
 	justify-content: space-between;
 	padding: var(--sidebar-section-heading-padding);
 	color: var(--sidebar-section-heading-color);
-	font-size: var(--type-caption);
+	font-size: var(--type-sidebar-heading);
 	font-weight: 600;
 	text-transform: uppercase;
 }
@@ -556,6 +558,11 @@ button {
 .project-sidebar__section-heading:hover .project-sidebar__section-title .project-sidebar__icon,
 .project-sidebar__section-heading:focus-within .project-sidebar__section-title .project-sidebar__icon {
 	opacity: 1;
+}
+
+.project-sidebar__section-heading .project-sidebar__icon {
+	width: var(--sidebar-heading-icon-size);
+	height: var(--sidebar-heading-icon-size);
 }
 
 .project-sidebar__icon,
