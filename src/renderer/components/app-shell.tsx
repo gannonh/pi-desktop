@@ -2,7 +2,7 @@ import { Badge } from "@/renderer/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/renderer/components/ui/card";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
-import { PanelRight, Play, Terminal } from "lucide-react";
+import { Play } from "lucide-react";
 import { createProjectMainCopy } from "../projects/project-view-model";
 import { ProjectSidebar } from "./project-sidebar";
 
@@ -47,24 +47,6 @@ export function AppShell({ state, versionLabel, statusMessage, onProjectState }:
 					</Card>
 				</section>
 			</main>
-
-			<aside className="app-shell__details">
-				<div className="app-shell__details-header">
-					<PanelRight className="size-4" />
-					<div className="text-sm font-medium">Details</div>
-				</div>
-				<div className="app-shell__details-body">
-					<Card>
-						<CardHeader className="p-3">
-							<CardTitle className="flex items-center gap-2 text-sm">
-								<Terminal className="size-4" />
-								Runtime
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="px-3 pb-3 pt-0 text-xs text-muted-foreground">Not connected</CardContent>
-					</Card>
-				</div>
-			</aside>
 		</div>
 	);
 }

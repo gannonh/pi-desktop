@@ -44,7 +44,7 @@ button {
 
 .app-shell {
 	display: grid;
-	grid-template-columns: 260px minmax(360px, 1fr) 280px;
+	grid-template-columns: 260px minmax(360px, 1fr);
 	min-height: 640px;
 	height: 100vh;
 	background: var(--color-background);
@@ -57,8 +57,7 @@ button {
 	flex-direction: column;
 }
 
-.app-shell__main-header,
-.app-shell__details-header {
+.app-shell__main-header {
 	display: flex;
 	height: 3.5rem;
 	align-items: center;
@@ -110,24 +109,6 @@ button {
 	padding: 0.5rem 0.75rem;
 	color: var(--color-destructive);
 	font-size: 0.75rem;
-}
-
-.app-shell__details {
-	display: flex;
-	min-width: 0;
-	flex-direction: column;
-	border-left: 1px solid var(--color-border);
-	background: color-mix(in oklch, var(--color-muted) 18%, transparent);
-}
-
-.app-shell__details-header {
-	gap: 0.5rem;
-}
-
-.app-shell__details-body {
-	min-height: 0;
-	flex: 1;
-	padding: 1rem;
 }
 
 .project-sidebar {
