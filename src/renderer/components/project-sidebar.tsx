@@ -4,8 +4,8 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Folder,
-	FolderPlus,
 	FolderOpen,
+	FolderPlus,
 	ListFilter,
 	Minimize2,
 	MoreHorizontal,
@@ -26,6 +26,7 @@ import {
 	createStandaloneChatSidebarRows,
 	type SidebarProjectRow,
 } from "../projects/project-view-model";
+import { MenuAnchor, MenuItem, MenuItemIcon, MenuSurface } from "./menu";
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;
@@ -130,7 +131,11 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 				) : null}
 			</div>
 
-			<div className="project-sidebar__panel">
+			<div
+				className={["project-sidebar__panel", menu ? "project-sidebar__panel--menu-open" : ""]
+					.filter(Boolean)
+					.join(" ")}
+			>
 				<div className="project-sidebar__top-actions">
 					<button className="project-sidebar__action" type="button" disabled>
 						<SquarePen className="project-sidebar__icon" />
@@ -181,7 +186,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						>
 							<ListFilter className="project-sidebar__icon" />
 						</button>
-						<div className="project-sidebar__menu-anchor">
+						<MenuAnchor>
 							<button
 								className="project-sidebar__heading-button"
 								type="button"
@@ -192,24 +197,26 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								<FolderPlus className="project-sidebar__icon" />
 							</button>
 							{menu?.kind === "add" ? (
-								<div className="project-sidebar__menu">
-									<button
-										className="project-sidebar__menu-item"
-										type="button"
+								<MenuSurface className="project-sidebar__add-menu">
+									<MenuItem
 										onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
 									>
+										<MenuItemIcon>
+											<FolderPlus />
+										</MenuItemIcon>
 										Start from scratch
-									</button>
-									<button
-										className="project-sidebar__menu-item"
-										type="button"
+									</MenuItem>
+									<MenuItem
 										onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
 									>
+										<MenuItemIcon>
+											<FolderOpen />
+										</MenuItemIcon>
 										Use an existing folder
-									</button>
-								</div>
+									</MenuItem>
+								</MenuSurface>
 							) : null}
-						</div>
+						</MenuAnchor>
 					</div>
 				</div>
 
@@ -392,7 +399,7 @@ function ProjectSidebarProject({
 				>
 					<SquarePen className="project-sidebar__icon" />
 				</button>
-				<div className="project-sidebar__menu-anchor">
+				<MenuAnchor>
 					<button
 						className="project-sidebar__project-menu-button"
 						type="button"
@@ -430,7 +437,7 @@ function ProjectSidebarProject({
 							onRemove={removeProject}
 						/>
 					) : null}
-				</div>
+				</MenuAnchor>
 			</div>
 
 			{closed ? null : (
@@ -502,36 +509,30 @@ function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: Project
 	const projectFolderUnavailable = row.project.availability.status !== "available";
 
 	return (
-		<div className="project-sidebar__menu project-sidebar__project-menu">
-			<button className="project-sidebar__menu-item" type="button" onClick={onPin}>
-				<Pin className="project-sidebar__menu-icon" />
+		<MenuSurface className="project-sidebar__project-menu">
+			<MenuItem onClick={onPin}>
+				<MenuItemIcon>
+					<Pin />
+				</MenuItemIcon>
 				{row.project.pinned ? "Unpin project" : "Pin project"}
-			</button>
-			<button
-				className="project-sidebar__menu-item"
-				type="button"
+			</MenuItem>
+			<MenuItem
 				disabled={projectFolderUnavailable}
 				title={projectFolderUnavailable ? "Project folder unavailable" : undefined}
 				onClick={onOpenInFinder}
 			>
 				Open in Finder
-			</button>
-			<button className="project-sidebar__menu-item" type="button" disabled title="Coming soon">
+			</MenuItem>
+			<MenuItem disabled title="Coming soon">
 				Create permanent worktree
-			</button>
-			<button className="project-sidebar__menu-item" type="button" onClick={onRename}>
-				Rename project
-			</button>
-			<button className="project-sidebar__menu-item" type="button" disabled title="Coming soon">
+			</MenuItem>
+			<MenuItem onClick={onRename}>Rename project</MenuItem>
+			<MenuItem disabled title="Coming soon">
 				Archive chats
-			</button>
-			<button
-				className="project-sidebar__menu-item project-sidebar__menu-item--danger"
-				type="button"
-				onClick={onRemove}
-			>
+			</MenuItem>
+			<MenuItem tone="danger" onClick={onRemove}>
 				Remove
-			</button>
-		</div>
+			</MenuItem>
+		</MenuSurface>
 	);
 }
