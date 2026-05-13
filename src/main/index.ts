@@ -60,6 +60,11 @@ const openFolderDialog = async (): Promise<string | null> => {
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const getProjectStorePath = () => {
+	const userDataPath = process.env.PI_DESKTOP_USER_DATA_DIR ?? app.getPath("userData");
+	return path.join(userDataPath, "project-store.json");
+};
+
 const openInFinder = async (projectPath: string): Promise<void> => {
 	const result = await shell.openPath(projectPath);
 	if (result) {
@@ -121,7 +126,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 
 app.whenReady().then(() => {
 	const projectService = createProjectService({
-		store: createProjectStore(path.join(app.getPath("userData"), "project-store.json")),
+		store: createProjectStore(getProjectStorePath()),
 		documentsDir: app.getPath("documents"),
 		now: () => new Date().toISOString(),
 		openFolderDialog,
