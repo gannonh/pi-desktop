@@ -1,6 +1,6 @@
 ---
 name: run-preview-server
-description: Launch the pi-desktop renderer as a Vite web preview and open it in the Codex integrated browser for visual review, screenshots, and annotation feedback. Use when the user asks to run the app as a web app, start the preview server, open the local preview, inspect localhost preview UI, or prepare the app for browser-based feedback.
+description: Launch the pi-desktop renderer as a Vite web preview and open it in the Codex integrated browser for visual review, screenshots, annotation feedback, or preview mock-data inspection. Use when the user asks to run the app as a web app, start the preview server, open the local preview, inspect localhost preview UI, update web preview mock content, or prepare the app for browser-based feedback.
 ---
 
 # Run Preview Server
@@ -33,3 +33,23 @@ pnpm dev:web
 - After code changes, reload the integrated browser preview.
 - Keep the preview server alive for annotation review.
 - When the user asks to stop the preview, send Ctrl-C to the server session and confirm it exited.
+
+## Preview Mock Data
+
+- The browser preview runs the renderer through Vite with no Electron preload.
+- On `http:` or `https:`, `src/renderer/main.tsx` calls `installDevPreviewApi()` from `src/renderer/dev-preview-api.ts`.
+- `installDevPreviewApi()` installs an in-memory `window.piDesktop` only when one does not already exist.
+- Electron runs with the real preload API from `src/preload/index.ts`, so the mock API is not installed there.
+- Preview projects and project chats live in the `store` object in `src/renderer/dev-preview-api.ts`.
+- Preview projectless chats live in the `standaloneChats` array in the same file.
+- The preview API uses the same public `PiDesktopApi` shape as Electron and returns `ProjectStateViewResult` values.
+- Preview actions mutate memory only. Reloading the page resets data to the constants in `dev-preview-api.ts`.
+
+When adding preview scenarios:
+
+1. Add project rows with `project(...)` and list them in `store.projects`.
+2. Add project chat rows with `chat(...)` under `store.chatsByProject[project.id]`.
+3. Add projectless chat rows with `standaloneChat(...)` in `standaloneChats`.
+4. Include representative states: pinned project, missing project, long title, running chat, more than five chats, and projectless chat.
+5. Keep preview data schema-compatible with `src/shared/project-state.ts`.
+6. Do not add preview-only data to Electron main, preload, or the JSON project store.
