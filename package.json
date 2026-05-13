@@ -13,6 +13,7 @@
 	"scripts": {
 		"preinstall": "node ./scripts/check-node-version.mjs",
 		"dev": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
+		"dev:web": "vite --config vite.renderer.config.ts --host 127.0.0.1 --port 5173",
 		"build": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
 		"package": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
 		"make": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge make",

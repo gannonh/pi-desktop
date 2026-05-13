@@ -1,21 +1,43 @@
-import { useEffect, useState } from "react";
-import { createDemoWorkspaceState } from "../shared/demo-workspace";
-import type { WorkspaceState } from "../shared/workspace-state";
+import { useCallback, useEffect, useState } from "react";
+import type { ProjectStateView } from "../shared/project-state";
+import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
-import { createWorkspaceSummaryFromPath } from "./shell/workspace-selection";
+
+type StatusMessage = {
+	source: "project" | "startup";
+	message: string;
+};
+
+const createEmptyProjectStateView = (): ProjectStateView => ({
+	projects: [],
+	standaloneChats: [],
+	selectedProjectId: null,
+	selectedChatId: null,
+	selectedProject: null,
+	selectedChat: null,
+});
 
 export function App() {
-	const [state, setState] = useState<WorkspaceState>(() => createDemoWorkspaceState());
-	const [versionLabel, setVersionLabel] = useState("0.0.0");
-	const [statusMessage, setStatusMessage] = useState<string>();
+	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
+	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
+
+	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
+		if (!result.ok) {
+			setStatusMessage({ source: "project", message: result.error.message });
+			return;
+		}
+
+		setProjectState(result.data);
+		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+	}, []);
 
 	useEffect(() => {
 		let mounted = true;
 
 		const loadInitialState = async () => {
-			const [versionResult, workspaceResult] = await Promise.allSettled([
+			const [versionResult, projectStateResult] = await Promise.allSettled([
 				window.piDesktop.app.getVersion(),
-				window.piDesktop.workspace.getInitialState(),
+				window.piDesktop.project.getState(),
 			]);
 
 			if (!mounted) {
@@ -23,29 +45,27 @@ export function App() {
 			}
 
 			if (versionResult.status === "fulfilled") {
-				if (versionResult.value.ok) {
-					setVersionLabel(versionResult.value.data.version);
-				} else {
-					setStatusMessage(versionResult.value.error.message);
+				if (!versionResult.value.ok) {
+					setStatusMessage({ source: "startup", message: versionResult.value.error.message });
 				}
 			} else {
-				setStatusMessage(
-					versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
-				);
+				setStatusMessage({
+					source: "startup",
+					message:
+						versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
+				});
 			}
 
-			if (workspaceResult.status === "fulfilled") {
-				if (workspaceResult.value.ok) {
-					setState(workspaceResult.value.data);
-				} else {
-					setStatusMessage(workspaceResult.value.error.message);
-				}
+			if (projectStateResult.status === "fulfilled") {
+				applyProjectStateViewResult(projectStateResult.value);
 			} else {
-				setStatusMessage(
-					workspaceResult.reason instanceof Error
-						? workspaceResult.reason.message
-						: "Unable to load workspace state.",
-				);
+				setStatusMessage({
+					source: "project",
+					message:
+						projectStateResult.reason instanceof Error
+							? projectStateResult.reason.message
+							: "Unable to load project state.",
+				});
 			}
 		};
 
@@ -54,44 +74,13 @@ export function App() {
 		return () => {
 			mounted = false;
 		};
-	}, []);
-
-	const selectWorkspace = async () => {
-		let result: Awaited<ReturnType<typeof window.piDesktop.workspace.selectFolder>>;
-
-		try {
-			result = await window.piDesktop.workspace.selectFolder();
-		} catch (error) {
-			setStatusMessage(error instanceof Error ? error.message : "Unable to select workspace.");
-			return;
-		}
-
-		if (!result.ok) {
-			setStatusMessage(result.error.message);
-			return;
-		}
-
-		const selection = result.data;
-
-		if (selection.status === "cancelled") {
-			setStatusMessage(undefined);
-			return;
-		}
-
-		setState((current) => ({
-			activeWorkspace: createWorkspaceSummaryFromPath(selection.path),
-			sessions: current.sessions,
-			panels: current.panels,
-		}));
-		setStatusMessage(undefined);
-	};
+	}, [applyProjectStateViewResult]);
 
 	return (
 		<AppShell
-			state={state}
-			versionLabel={versionLabel}
-			statusMessage={statusMessage}
-			onSelectWorkspace={selectWorkspace}
+			state={projectState}
+			statusMessage={statusMessage?.message}
+			onProjectState={applyProjectStateViewResult}
 		/>
 	);
 }

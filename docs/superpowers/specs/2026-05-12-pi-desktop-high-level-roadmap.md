@@ -48,13 +48,14 @@ The Codex app inventory informs feature mapping and desktop packaging expectatio
 
 1. User opens `pi-desktop`.
 2. User selects a local project folder.
-3. App shows a project home with recent sessions and a new-session action.
-4. User starts a Pi-backed coding session.
-5. App streams user messages, assistant messages, thinking/tool events, and errors.
-6. User can inspect tool calls, terminal output, file previews, and diffs.
-7. User can abort an active run and send follow-up or steering instructions.
-8. App persists session metadata and lets the user resume recent work.
-9. User can configure model, provider/auth handoff, thinking level, theme, and project instructions.
+3. App shows the sidebar shell with projects, project chats, projectless chats, and inactive future controls.
+4. App shows the chat shell with the start-state composer and session controls.
+5. User starts a Pi-backed coding session.
+6. App streams user messages, assistant messages, thinking/tool events, and errors.
+7. User can inspect tool calls, terminal output, file previews, and diffs.
+8. User can abort an active run and send follow-up or steering instructions.
+9. App persists project and session metadata and lets the user resume recent work.
+10. User can configure model, provider/auth handoff, thinking level, theme, and project instructions.
 
 ## Architecture
 
@@ -74,7 +75,8 @@ Electron main process owns:
 
 Renderer owns:
 
-- Project home.
+- Sidebar navigation.
+- Chat shell and composer.
 - Session UI.
 - Message stream.
 - Tool timeline.
@@ -101,8 +103,9 @@ Responsibilities:
 
 The local store tracks desktop metadata:
 
-- Recent projects.
+- Project metadata.
 - Workspace display names.
+- Projectless chat metadata.
 - Session index.
 - Session UI metadata.
 - App preferences.
@@ -163,47 +166,95 @@ Acceptance:
 - A smoke test verifies main window boot.
 - CI or local check command validates formatting, linting, typechecking, and tests.
 
-### Milestone 1: Project Home
+### Milestone 1: Sidebar Shell
 
-Goal: let users select and revisit local workspaces.
+Goal: establish the left sidebar as the primary navigation shell for projects and chats.
 
 Deliverables:
 
-- Open-folder flow.
-- Recent projects list.
-- Workspace metadata store.
-- Project home route.
-- New session entry point.
-- Empty and error states for missing/unavailable folders.
+- Custom app chrome and sidebar layout.
+- Top-level actions for New chat, Search, Plugins, and Automations.
+- Projects section with project rows, nested chat rows, row menus, hover states, and collapsed states.
+- Chats section for projectless chat rows.
+- Sidebar design tokens for spacing, typography, colors, icon sizes, and animation timing.
+- Missing, empty, selected, attention, rollover, and disabled visual states.
+- Minimal local metadata plumbing needed to make the shell reviewable.
 
 Acceptance:
 
-- User can open a local folder and see it as the active workspace.
-- Recent projects persist across app restarts.
-- Missing folders show a visible recovery path.
+- Sidebar UX matches the approved mocks for expanded and collapsed states.
+- Projects and Chats sections can be visually reviewed with realistic rows and state variants.
+- Sidebar controls expose their intended affordances even when backing functionality is deferred.
+- The app remains runnable, typed, and smoke-testable after sidebar polish.
 
-### Milestone 2: Pi Session MVP
+### Milestone 2: Chat Shell
+
+Goal: establish the main chat surface and composer before runtime integration.
+
+Deliverables:
+
+- Global start state.
+- Project-scoped start state.
+- Main composer layout, controls, and interaction states.
+- Project selector shell inside the composer.
+- Model, access, mode, attachment, voice, and send control placement.
+- Disabled/runtime-unavailable states.
+- Empty chat route and static chat metadata route.
+- Responsive sizing and alignment for the main chat surface.
+
+Acceptance:
+
+- User can review the chat start state without Pi runtime integration.
+- Composer controls and disabled states match approved UX mocks.
+- Project context is visible in the composer when a project is selected.
+- The main chat shell is ready for prompt submission wiring.
+
+### Milestone 3: Pi Session MVP
 
 Goal: run a real Pi-backed coding session through the SDK.
 
 Deliverables:
 
 - Pi SDK dependency and runtime adapter.
-- Session creation for selected workspace.
+- Session creation for the selected project workspace.
 - Prompt submission.
 - Streaming assistant messages.
 - Agent status indicators.
 - Abort support.
 - Retry support where Pi exposes it.
 - Runtime error display.
+- Minimum project selection and availability checks required to start a session.
 
 Acceptance:
 
-- User can ask Pi a question in a selected workspace and see a streamed response.
+- User can ask Pi a question in a selected project workspace and see a streamed response.
 - User can abort an active run.
 - Runtime startup/auth/model errors display clearly.
 
-### Milestone 3: Coding Panels
+### Milestone 4: Project and Session Management
+
+Goal: make sidebar project and chat management functional against real session metadata.
+
+Deliverables:
+
+- Complete project actions: create, add existing folder, select, rename, remove, pin, locate missing folder, and open in Finder.
+- Project availability checks with visible recovery paths.
+- Project chat list backed by real session metadata.
+- Projectless chat list backed by real session metadata where Pi supports it.
+- Session list for the active project.
+- Resume existing session.
+- Session names and metadata persistence.
+- Last-updated labels, status indicators, attention indicators, filters, and show-more behavior backed by real data.
+- Branch/fork/clone support where Pi SDK exposes stable APIs.
+
+Acceptance:
+
+- User can quit the app, reopen it, and see projects and chats preserved.
+- User can distinguish sessions by project, name, recency, and status.
+- Missing project folders preserve their chat metadata and can be recovered or removed.
+- Sidebar management actions fail visibly when filesystem or runtime state blocks them.
+
+### Milestone 5: Coding Panels
 
 Goal: make agent work inspectable.
 
@@ -223,25 +274,7 @@ Acceptance:
 - File read/write/edit events can be inspected.
 - Diffs are readable before and after file edits.
 
-### Milestone 4: Session Management
-
-Goal: make desktop sessions resumable and navigable.
-
-Deliverables:
-
-- Session list for the active workspace.
-- Resume existing session.
-- Session names.
-- Session metadata persistence.
-- Session stats view.
-- Branch/fork/clone support where Pi SDK exposes stable APIs.
-
-Acceptance:
-
-- User can quit the app, reopen it, and resume a previous session.
-- User can distinguish sessions by project, name, recency, and status.
-
-### Milestone 5: Settings and Auth
+### Milestone 6: Settings and Auth
 
 Goal: expose core Pi configuration in desktop UI.
 
@@ -261,7 +294,7 @@ Acceptance:
 - Auth failures explain the required next action.
 - Settings persist across restarts.
 
-### Milestone 6: Worktrees and Git UX
+### Milestone 7: Worktrees and Git UX
 
 Goal: support branch-based coding workflows.
 
@@ -281,7 +314,7 @@ Acceptance:
 - User can inspect changed files and diffs.
 - User can prepare a commit with explicit file selection.
 
-### Milestone 7: Extensibility
+### Milestone 8: Extensibility
 
 Goal: expose Pi customization through desktop surfaces.
 
@@ -299,7 +332,7 @@ Acceptance:
 - User can see discovered skills/prompts/extensions for a workspace.
 - User can enable, disable, or inspect available customization sources.
 
-### Milestone 8: Automation and Advanced Surfaces
+### Milestone 9: Automation and Advanced Surfaces
 
 Goal: explore Codex-like advanced desktop workflows after the local core is stable.
 
@@ -343,8 +376,12 @@ Acceptance:
 - Should the app reuse `pi-web-ui` components directly, fork/adapt them, or treat them as reference APIs only?
 - What is the first provider/auth path for demos?
 - Should local session metadata use SQLite, IndexedDB, or file-backed JSON for the first milestones?
-- Which Pi SDK APIs need public contracts before Milestone 2 starts?
+- Which Pi SDK APIs need public contracts before Milestone 3 starts?
 
-## First Implementation Planning Target
+## Current Planning Targets
 
-The first executable plan should cover Milestone 0 only. It should create a minimal macOS Electron app, establish repo commands, and leave clear interfaces for the runtime adapter and renderer state without implementing the agent session yet.
+Milestone 1 should finish sidebar UX polish and avoid expanding into full project-management functionality.
+
+Milestone 2 should focus on the chat shell and composer UX.
+
+Functional sidebar project and chat management belongs in Milestone 4, after the Pi Session MVP creates real session metadata to manage.

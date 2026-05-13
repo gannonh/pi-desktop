@@ -1,18 +1,60 @@
 import { describe, expect, it } from "vitest";
 import {
 	AppVersionResultSchema,
+	ChatCreateInputSchema,
+	ChatSelectionInputSchema,
 	IpcChannels,
-	SelectFolderResultSchema,
-	WorkspaceStateResultSchema,
+	ProjectIdInputSchema,
+	ProjectPinnedInputSchema,
+	ProjectRenameInputSchema,
+	ProjectStateViewResultSchema,
 } from "../../src/shared/ipc";
 import { createIpcError, err } from "../../src/shared/result";
 
+const projectStateView = {
+	projects: [
+		{
+			id: "project:/tmp/pi-desktop",
+			displayName: "pi-desktop",
+			path: "/tmp/pi-desktop",
+			createdAt: "2026-05-12T09:00:00.000Z",
+			updatedAt: "2026-05-12T10:00:00.000Z",
+			lastOpenedAt: "2026-05-12T10:00:00.000Z",
+			pinned: false,
+			availability: { status: "available" as const },
+			chats: [
+				{
+					id: "chat:2026-05-12T10:00:00.000Z",
+					projectId: "project:/tmp/pi-desktop",
+					title: "New chat",
+					status: "idle" as const,
+					updatedAt: "2026-05-12T10:00:00.000Z",
+				},
+			],
+		},
+	],
+	selectedProjectId: "project:/tmp/pi-desktop",
+	selectedChatId: "chat:2026-05-12T10:00:00.000Z",
+	selectedProject: null,
+	selectedChat: null,
+};
+
 describe("IPC contracts", () => {
-	it("uses stable channel names", () => {
+	it("uses stable project and chat channel names", () => {
 		expect(IpcChannels).toEqual({
 			appGetVersion: "app:getVersion",
-			workspaceGetInitialState: "workspace:getInitialState",
-			workspaceSelectFolder: "workspace:selectFolder",
+			projectGetState: "project:getState",
+			projectCreateFromScratch: "project:createFromScratch",
+			projectAddExistingFolder: "project:addExistingFolder",
+			projectSelect: "project:select",
+			projectRename: "project:rename",
+			projectRemove: "project:remove",
+			projectOpenInFinder: "project:openInFinder",
+			projectLocateFolder: "project:locateFolder",
+			projectSetPinned: "project:setPinned",
+			projectCheckAvailability: "project:checkAvailability",
+			chatCreate: "chat:create",
+			chatSelect: "chat:select",
 		});
 	});
 
@@ -28,90 +70,79 @@ describe("IPC contracts", () => {
 		expect(result.ok).toBe(true);
 	});
 
-	it("validates cancelled folder selection results", () => {
-		const result = SelectFolderResultSchema.parse({
+	it("validates successful project state view results", () => {
+		const result = ProjectStateViewResultSchema.parse({
 			ok: true,
-			data: {
-				status: "cancelled",
-			},
+			data: projectStateView,
 		});
 
 		expect(result.ok).toBe(true);
-		if (!result.ok) {
-			throw new Error("Expected cancelled folder selection result to be ok");
-		}
-		expect(result.data.status).toBe("cancelled");
 	});
 
-	it("validates selected folder results", () => {
-		const result = SelectFolderResultSchema.parse({
-			ok: true,
-			data: {
-				status: "selected",
-				path: "/path/to/pi-desktop",
-			},
+	it("validates project and chat input schemas", () => {
+		expect(ProjectIdInputSchema.parse({ projectId: "project:/tmp/pi-desktop" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
 		});
-
-		expect(result.ok).toBe(true);
-		if (!result.ok) {
-			throw new Error("Expected selected folder result to be ok");
-		}
-		expect(result.data.status).toBe("selected");
-		if (result.data.status !== "selected") {
-			throw new Error("Expected selected folder result to include a selected path");
-		}
-		expect(result.data.path).toBe("/path/to/pi-desktop");
-	});
-
-	it("rejects unexpected fields in IPC payloads so contract drift is visible", () => {
-		expect(() =>
-			AppVersionResultSchema.parse({
-				ok: true,
-				data: {
-					name: "pi-desktop",
-					version: "0.0.0",
-					extra: "unexpected",
-				},
-			}),
-		).toThrow();
-
-		expect(() =>
-			SelectFolderResultSchema.parse({
-				ok: true,
-				data: {
-					status: "cancelled",
-					extra: "unexpected",
-				},
-			}),
-		).toThrow();
+		expect(ProjectRenameInputSchema.parse({ projectId: "project:/tmp/pi-desktop", displayName: "Pi" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			displayName: "Pi",
+		});
+		expect(ProjectPinnedInputSchema.parse({ projectId: "project:/tmp/pi-desktop", pinned: true })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			pinned: true,
+		});
+		expect(ChatCreateInputSchema.parse({ projectId: "project:/tmp/pi-desktop" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+		});
+		expect(ChatSelectionInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+		});
 	});
 
 	it("validates error results", () => {
-		const result = SelectFolderResultSchema.parse({
+		const result = ProjectStateViewResultSchema.parse({
 			ok: false,
 			error: {
-				code: "workspace.no_selection",
-				message: "Folder picker returned no selected path.",
+				code: "project.operation_failed",
+				message: "Project not found.",
 			},
 		});
 
 		expect(result.ok).toBe(false);
 		if (result.ok) {
-			throw new Error("Expected folder selection result to be an error");
+			throw new Error("Expected project state view result to be an error");
 		}
-		expect(result.error.code).toBe("workspace.no_selection");
+		expect(result.error.code).toBe("project.operation_failed");
 	});
 
 	it("validates helper-created error results", () => {
-		const result = SelectFolderResultSchema.parse(
-			err("workspace.no_selection", "Folder picker returned no selected path."),
-		);
+		const result = ProjectStateViewResultSchema.parse(err("project.operation_failed", "Project not found."));
 
 		expect(result.ok).toBe(false);
 		if (result.ok) {
-			throw new Error("Expected helper-created folder selection result to be an error");
+			throw new Error("Expected helper-created project state view result to be an error");
 		}
-		expect(result.error.message).toBe("Folder picker returned no selected path.");
+		expect(result.error.message).toBe("Project not found.");
+	});
+
+	it("strictly rejects unexpected fields in IPC payloads", () => {
+		expect(() =>
+			ProjectIdInputSchema.parse({
+				projectId: "project:/tmp/pi-desktop",
+				extra: "unexpected",
+			}),
+		).toThrow();
+
+		expect(() =>
+			ProjectStateViewResultSchema.parse({
+				ok: true,
+				data: {
+					...projectStateView,
+					extra: "unexpected",
+				},
+			}),
+		).toThrow();
 	});
 
 	it("rejects empty helper-created error fields", () => {
@@ -120,25 +151,12 @@ describe("IPC contracts", () => {
 
 	it("rejects result shapes that mix data and error fields", () => {
 		expect(() =>
-			SelectFolderResultSchema.parse({
+			ProjectStateViewResultSchema.parse({
 				ok: true,
-				data: {
-					status: "cancelled",
-				},
+				data: projectStateView,
 				error: {
-					code: "workspace.no_selection",
-					message: "Folder picker returned no selected path.",
-				},
-			}),
-		).toThrow();
-	});
-
-	it("rejects malformed workspace state results", () => {
-		expect(() =>
-			WorkspaceStateResultSchema.parse({
-				ok: true,
-				data: {
-					activeWorkspace: null,
+					code: "project.operation_failed",
+					message: "Project not found.",
 				},
 			}),
 		).toThrow();

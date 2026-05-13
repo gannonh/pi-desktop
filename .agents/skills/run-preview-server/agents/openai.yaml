@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Preview Server"
+  short_description: "Launch the Pi web preview"
+  default_prompt: "Use $run-preview-server to launch the Pi desktop web preview in the integrated browser."
