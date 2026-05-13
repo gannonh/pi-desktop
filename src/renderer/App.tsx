@@ -10,6 +10,7 @@ type StatusMessage = {
 
 const createEmptyProjectStateView = (): ProjectStateView => ({
 	projects: [],
+	standaloneChats: [],
 	selectedProjectId: null,
 	selectedChatId: null,
 	selectedProject: null,

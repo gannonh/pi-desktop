@@ -25,6 +25,8 @@ export const ChatMetadataSchema = z.strictObject({
 	updatedAt: z.string().datetime(),
 });
 
+export const StandaloneChatMetadataSchema = ChatMetadataSchema.omit({ projectId: true });
+
 export const ProjectStoreSchema = z.strictObject({
 	projects: z.array(ProjectRecordSchema),
 	selectedProjectId: z.string().min(1).nullable(),
@@ -38,6 +40,7 @@ export const ProjectWithChatsSchema = ProjectRecordSchema.extend({
 
 export const ProjectStateViewSchema = z.strictObject({
 	projects: z.array(ProjectWithChatsSchema),
+	standaloneChats: z.array(StandaloneChatMetadataSchema).default([]),
 	selectedProjectId: z.string().min(1).nullable(),
 	selectedChatId: z.string().min(1).nullable(),
 	selectedProject: ProjectWithChatsSchema.nullable(),
@@ -47,6 +50,7 @@ export const ProjectStateViewSchema = z.strictObject({
 export type ProjectAvailability = z.infer<typeof ProjectAvailabilitySchema>;
 export type ProjectRecord = z.infer<typeof ProjectRecordSchema>;
 export type ChatMetadata = z.infer<typeof ChatMetadataSchema>;
+export type StandaloneChatMetadata = z.infer<typeof StandaloneChatMetadataSchema>;
 export type ProjectStore = z.infer<typeof ProjectStoreSchema>;
 export type ProjectWithChats = z.infer<typeof ProjectWithChatsSchema>;
 export type ProjectStateView = z.infer<typeof ProjectStateViewSchema>;
@@ -84,6 +88,16 @@ export const sortChats = (chats: readonly ChatMetadata[]): ChatMetadata[] =>
 		return left.title.localeCompare(right.title);
 	});
 
+export const sortStandaloneChats = (chats: readonly StandaloneChatMetadata[]): StandaloneChatMetadata[] =>
+	[...chats].sort((left, right) => {
+		const recentComparison = right.updatedAt.localeCompare(left.updatedAt);
+		if (recentComparison !== 0) {
+			return recentComparison;
+		}
+
+		return left.title.localeCompare(right.title);
+	});
+
 export const createProjectStateView = (store: ProjectStore): ProjectStateView => {
 	const projects = sortProjects(store.projects).map((project) => ({
 		...project,
@@ -94,6 +108,7 @@ export const createProjectStateView = (store: ProjectStore): ProjectStateView =>
 
 	return ProjectStateViewSchema.parse({
 		projects,
+		standaloneChats: [],
 		selectedProjectId: store.selectedProjectId,
 		selectedChatId: store.selectedChatId,
 		selectedProject,

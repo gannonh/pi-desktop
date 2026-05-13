@@ -528,6 +528,7 @@ button {
 }
 
 .project-sidebar__section-title {
+	flex: 1;
 	gap: 0.125rem;
 	border: 0;
 	background: transparent;
@@ -623,7 +624,6 @@ button {
 }
 
 .project-sidebar__projects {
-	flex: 1;
 	padding: var(--sidebar-projects-padding);
 }
 
@@ -711,6 +711,10 @@ button {
 	padding: var(--sidebar-chat-list-padding);
 }
 
+.project-sidebar__chats--standalone {
+	padding: var(--sidebar-projects-padding);
+}
+
 .project-sidebar__chat-row {
 	min-width: 0;
 	display: grid;
@@ -720,6 +724,11 @@ button {
 	padding: var(--sidebar-chat-row-padding);
 	color: var(--sidebar-chat-color);
 	font-size: var(--type-body);
+}
+
+.project-sidebar__chat-row--standalone,
+.project-sidebar__chats--standalone .project-sidebar__empty-chat {
+	padding-left: 0.5rem;
 }
 
 .project-sidebar__chat-time {

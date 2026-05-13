@@ -3,9 +3,11 @@ import {
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
+	sortStandaloneChats,
 	type ChatMetadata,
 	type ProjectRecord,
 	type ProjectStore,
+	type StandaloneChatMetadata,
 } from "../shared/project-state";
 
 const now = new Date().toISOString();
@@ -35,6 +37,18 @@ const chat = (
 ): ChatMetadata => ({
 	id,
 	projectId,
+	title,
+	status,
+	updatedAt,
+});
+
+const standaloneChat = (
+	id: string,
+	title: string,
+	updatedAt: string,
+	status: StandaloneChatMetadata["status"] = "idle",
+): StandaloneChatMetadata => ({
+	id,
 	title,
 	status,
 	updatedAt,
@@ -85,7 +99,14 @@ const store: ProjectStore = {
 	},
 };
 
-const view = () => createProjectStateView(store);
+const standaloneChats = [
+	standaloneChat("chat:standalone-nextjs", "Would NextJS be good for this app?", minutesAgo(51)),
+];
+
+const view = () => ({
+	...createProjectStateView(store),
+	standaloneChats: sortStandaloneChats(standaloneChats),
+});
 const ok = () => Promise.resolve({ ok: true as const, data: view() });
 
 const findProject = (projectId: string) => {

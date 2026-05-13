@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
-import { createProjectMainCopy, createProjectSidebarRows } from "../../src/renderer/projects/project-view-model";
+import {
+	createProjectMainCopy,
+	createProjectSidebarRows,
+	createStandaloneChatSidebarRows,
+} from "../../src/renderer/projects/project-view-model";
 
 const emptyView: ProjectStateView = {
 	projects: [],
+	standaloneChats: [],
 	selectedProjectId: null,
 	selectedChatId: null,
 	selectedProject: null,
@@ -47,6 +52,7 @@ describe("project view model", () => {
 		const project = createProject();
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: null,
 			selectedProject: project,
@@ -65,6 +71,7 @@ describe("project view model", () => {
 		const project = createProject();
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: null,
 			selectedProject: project,
@@ -91,6 +98,7 @@ describe("project view model", () => {
 		});
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: null,
 			selectedProject: project,
@@ -116,6 +124,7 @@ describe("project view model", () => {
 		});
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: null,
 			selectedProject: project,
@@ -136,6 +145,7 @@ describe("project view model", () => {
 		const project = createProject({ chats: [chat] });
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: chat.id,
 			selectedProject: project,
@@ -174,6 +184,7 @@ describe("project view model", () => {
 		const project = createProject({ chats });
 		const view: ProjectStateView = {
 			projects: [project],
+			standaloneChats: [],
 			selectedProjectId: project.id,
 			selectedChatId: "chat:2",
 			selectedProject: project,
@@ -227,6 +238,36 @@ describe("project view model", () => {
 				needsAttention: false,
 			},
 			{ kind: "show-more", label: "Show more", hiddenCount: 1 },
+		]);
+	});
+
+	it("creates standalone chat rows directly under chats", () => {
+		const view: ProjectStateView = {
+			projects: [],
+			standaloneChats: [
+				{
+					id: "chat:standalone",
+					title: "Would NextJS be good for this app?",
+					status: "idle",
+					updatedAt: "2026-05-12T11:09:00.000Z",
+				},
+			],
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		};
+
+		expect(createStandaloneChatSidebarRows(view, fixedNow)).toEqual([
+			{
+				kind: "chat",
+				chatId: "chat:standalone",
+				label: "Would NextJS be good for this app?",
+				selected: false,
+				status: "idle",
+				updatedLabel: "51min",
+				needsAttention: false,
+			},
 		]);
 	});
 });

@@ -22,7 +22,11 @@ import {
 import { useState } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
-import { createProjectSidebarRows, type SidebarProjectRow } from "../projects/project-view-model";
+import {
+	createProjectSidebarRows,
+	createStandaloneChatSidebarRows,
+	type SidebarProjectRow,
+} from "../projects/project-view-model";
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;
@@ -53,7 +57,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 	const [menu, setMenu] = useState<MenuState>(null);
 	const [closedProjectIds, setClosedProjectIds] = useState<Set<string>>(() => new Set());
 	const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+	const [chatsCollapsed, setChatsCollapsed] = useState(false);
 	const rows = createProjectSidebarRows(state);
+	const standaloneChatRows = createStandaloneChatSidebarRows(state);
 	const chromeTitle = state.selectedChat?.title;
 
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
@@ -222,6 +228,78 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								runProjectAction={runProjectAction}
 							/>
 						))}
+					</div>
+				)}
+
+				<div className="project-sidebar__section-heading">
+					<button
+						className="project-sidebar__section-title"
+						type="button"
+						aria-expanded={!chatsCollapsed}
+						onClick={() => setChatsCollapsed((current) => !current)}
+					>
+						<span>Chats</span>
+						{chatsCollapsed ? (
+							<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
+						) : (
+							<ChevronDown className="project-sidebar__icon" />
+						)}
+					</button>
+					<div className="project-sidebar__heading-actions">
+						<button className="project-sidebar__heading-button" type="button" disabled aria-label="Filter chats">
+							<ListFilter className="project-sidebar__icon" />
+						</button>
+						<button
+							className="project-sidebar__heading-button"
+							type="button"
+							disabled
+							aria-label="New chat without project"
+						>
+							<SquarePen className="project-sidebar__icon" />
+						</button>
+					</div>
+				</div>
+
+				{chatsCollapsed ? null : (
+					<div className="project-sidebar__chats project-sidebar__chats--standalone">
+						{standaloneChatRows.map((child) =>
+							child.kind === "empty" ? (
+								<div className="project-sidebar__empty-chat" key="standalone:empty">
+									{child.label}
+								</div>
+							) : child.kind === "show-more" ? (
+								<button
+									className="project-sidebar__show-more"
+									key="standalone:show-more"
+									type="button"
+									disabled
+								>
+									{child.label}
+								</button>
+							) : (
+								<button
+									className={[
+										"project-sidebar__chat-row",
+										"project-sidebar__chat-row--standalone",
+										child.selected ? "project-sidebar__chat-row--selected" : "",
+										child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+									]
+										.filter(Boolean)
+										.join(" ")}
+									key={child.chatId}
+									type="button"
+								>
+									<span className="project-sidebar__chat-label">{child.label}</span>
+									{child.needsAttention ? (
+										<span className="project-sidebar__attention-dot" />
+									) : child.status === "failed" ? (
+										<X className="project-sidebar__chat-failed-icon" />
+									) : (
+										<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+									)}
+								</button>
+							),
+						)}
 					</div>
 				)}
 			</div>

@@ -1,4 +1,10 @@
-import type { ChatMetadata, ProjectAvailability, ProjectStateView, ProjectWithChats } from "../../shared/project-state";
+import type {
+	ChatMetadata,
+	ProjectAvailability,
+	ProjectStateView,
+	ProjectWithChats,
+	StandaloneChatMetadata,
+} from "../../shared/project-state";
 
 export type ProjectMainCopy =
 	| {
@@ -153,3 +159,26 @@ export const createProjectSidebarRows = (view: ProjectStateView, now = new Date(
 					]
 				: [{ kind: "empty", label: "No chats" }],
 	}));
+
+const createChatSidebarRow = (
+	chat: ChatMetadata | StandaloneChatMetadata,
+	selectedChatId: string | null,
+	now: Date,
+): SidebarChatRow => ({
+	kind: "chat",
+	chatId: chat.id,
+	label: chat.title,
+	selected: chat.id === selectedChatId,
+	status: chat.status,
+	updatedLabel: formatUpdatedLabel(chat.updatedAt, now),
+	needsAttention: chat.status === "running",
+});
+
+export const createStandaloneChatSidebarRows = (view: ProjectStateView, now = new Date()): SidebarChatRow[] =>
+	view.standaloneChats.length > 0
+		? view.standaloneChats
+				.slice(0, visibleChatLimit)
+				.map((chat) =>
+					createChatSidebarRow(chat, view.selectedProjectId === null ? view.selectedChatId : null, now),
+				)
+		: [{ kind: "empty", label: "No chats" }];
