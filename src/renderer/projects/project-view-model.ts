@@ -34,10 +34,17 @@ export type SidebarChatRow =
 			label: string;
 			selected: boolean;
 			status: ChatMetadata["status"];
+			updatedLabel: string;
+			needsAttention: boolean;
 	  }
 	| {
 			kind: "empty";
 			label: "No chats";
+	  }
+	| {
+			kind: "show-more";
+			label: "Show more";
+			hiddenCount: number;
 	  };
 
 export interface SidebarProjectRow {
@@ -50,6 +57,24 @@ export interface SidebarProjectRow {
 	availability: ProjectAvailability;
 	children: SidebarChatRow[];
 }
+
+const visibleChatLimit = 5;
+
+const formatUpdatedLabel = (updatedAt: string, now: Date): string => {
+	const updatedTime = new Date(updatedAt).getTime();
+	const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - updatedTime) / 60_000));
+
+	if (elapsedMinutes < 60) {
+		return `${elapsedMinutes}min`;
+	}
+
+	const elapsedHours = Math.floor(elapsedMinutes / 60);
+	if (elapsedHours < 24) {
+		return `${elapsedHours}h`;
+	}
+
+	return `${Math.floor(elapsedHours / 24)}d`;
+};
 
 export const createProjectMainCopy = (view: ProjectStateView): ProjectMainCopy => {
 	const selectedProject = view.selectedProject;
@@ -95,7 +120,7 @@ export const createProjectMainCopy = (view: ProjectStateView): ProjectMainCopy =
 	};
 };
 
-export const createProjectSidebarRows = (view: ProjectStateView): SidebarProjectRow[] =>
+export const createProjectSidebarRows = (view: ProjectStateView, now = new Date()): SidebarProjectRow[] =>
 	view.projects.map((project) => ({
 		kind: "project",
 		projectId: project.id,
@@ -106,12 +131,25 @@ export const createProjectSidebarRows = (view: ProjectStateView): SidebarProject
 		availability: project.availability,
 		children:
 			project.chats.length > 0
-				? project.chats.map((chat) => ({
-						kind: "chat",
-						chatId: chat.id,
-						label: chat.title,
-						selected: chat.id === view.selectedChatId,
-						status: chat.status,
-					}))
+				? [
+						...project.chats.slice(0, visibleChatLimit).map((chat) => ({
+							kind: "chat" as const,
+							chatId: chat.id,
+							label: chat.title,
+							selected: chat.id === view.selectedChatId,
+							status: chat.status,
+							updatedLabel: formatUpdatedLabel(chat.updatedAt, now),
+							needsAttention: chat.status === "running",
+						})),
+						...(project.chats.length > visibleChatLimit
+							? [
+									{
+										kind: "show-more" as const,
+										label: "Show more" as const,
+										hiddenCount: project.chats.length - visibleChatLimit,
+									},
+								]
+							: []),
+					]
 				: [{ kind: "empty", label: "No chats" }],
 	}));

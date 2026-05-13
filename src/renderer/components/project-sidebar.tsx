@@ -297,6 +297,15 @@ function ProjectSidebarProject({
 						<div className="project-sidebar__empty-chat" key={`${row.projectId}:empty`}>
 							{child.label}
 						</div>
+					) : child.kind === "show-more" ? (
+						<button
+							className="project-sidebar__show-more"
+							key={`${row.projectId}:show-more`}
+							type="button"
+							disabled
+						>
+							{child.label}
+						</button>
 					) : (
 						<button
 							className={[
@@ -322,8 +331,13 @@ function ProjectSidebarProject({
 							}}
 						>
 							<span className="project-sidebar__chat-label">{child.label}</span>
-							{child.status === "running" ? <span className="project-sidebar__chat-status">Running</span> : null}
-							{child.status === "failed" ? <X className="project-sidebar__chat-failed-icon" /> : null}
+							{child.needsAttention ? (
+								<span className="project-sidebar__attention-dot" />
+							) : child.status === "failed" ? (
+								<X className="project-sidebar__chat-failed-icon" />
+							) : (
+								<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+							)}
 						</button>
 					),
 				)}

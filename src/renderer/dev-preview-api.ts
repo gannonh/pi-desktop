@@ -8,7 +8,11 @@ import {
 	type ProjectStore,
 } from "../shared/project-state";
 
-const now = "2026-05-12T17:00:00.000Z";
+const now = new Date().toISOString();
+
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60_000).toISOString();
+const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60_000).toISOString();
 
 const project = (path: string, overrides: Partial<ProjectRecord> = {}): ProjectRecord => ({
 	id: createProjectId(path),
@@ -22,11 +26,17 @@ const project = (path: string, overrides: Partial<ProjectRecord> = {}): ProjectR
 	...overrides,
 });
 
-const chat = (projectId: string, id: string, title: string, updatedAt: string): ChatMetadata => ({
+const chat = (
+	projectId: string,
+	id: string,
+	title: string,
+	updatedAt: string,
+	status: ChatMetadata["status"] = "idle",
+): ChatMetadata => ({
 	id,
 	projectId,
 	title,
-	status: "idle",
+	status,
 	updatedAt,
 });
 
@@ -51,15 +61,27 @@ const store: ProjectStore = {
 	selectedChatId: null,
 	chatsByProject: {
 		[piDesktop.id]: [
-			chat(piDesktop.id, "chat:project-home", "Plan project home milestone", "2026-05-12T17:30:00.000Z"),
-			chat(piDesktop.id, "chat:foundation", "Execute milestone 0 foundation", "2026-05-12T14:00:00.000Z"),
-			chat(piDesktop.id, "chat:license", "Add MIT license", "2026-05-12T13:20:00.000Z"),
+			chat(
+				piDesktop.id,
+				"chat:milestone-01",
+				"Execute milestone 01: project home sidebar refinements",
+				hoursAgo(15),
+			),
+			chat(piDesktop.id, "chat:project-home", "Plan project home milestone", hoursAgo(18)),
+			chat(piDesktop.id, "chat:subagent", "Subagent-driven-development planning notes", minutesAgo(18 * 60 + 5)),
+			chat(piDesktop.id, "chat:license", "Add MIT license", minutesAgo(18 * 60 + 15)),
+			chat(piDesktop.id, "chat:foundation", "Execute milestone 0 foundation", hoursAgo(22)),
+			chat(piDesktop.id, "chat:foundation-review", "Review foundation acceptance evidence", daysAgo(3)),
 		],
 		[agentis.id]: [
-			chat(agentis.id, "chat:phase-s008", "Execute phase S008", "2026-05-12T16:45:00.000Z"),
-			chat(agentis.id, "chat:pr-comments", "Address PR comments", "2026-05-12T15:00:00.000Z"),
+			chat(agentis.id, "chat:phase-s009", "Execute phase S009", minutesAgo(22), "running"),
+			chat(agentis.id, "chat:kata-phase", "Plan kata phase", hoursAgo(2)),
+			chat(agentis.id, "chat:pr-comments", "Address PR comments", hoursAgo(17)),
+			chat(agentis.id, "chat:phase-s008", "Execute phase S008", hoursAgo(18)),
+			chat(agentis.id, "chat:pr-comments-followup", "Address PR comments", hoursAgo(20)),
+			chat(agentis.id, "chat:phase-s007", "Execute phase S007", daysAgo(2)),
 		],
-		[missing.id]: [chat(missing.id, "chat:missing-plan", "Draft first task", "2026-05-12T15:30:00.000Z")],
+		[missing.id]: [chat(missing.id, "chat:missing-plan", "Draft first task", hoursAgo(16))],
 	},
 };
 

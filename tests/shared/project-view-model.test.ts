@@ -10,6 +10,8 @@ const emptyView: ProjectStateView = {
 	selectedChat: null,
 };
 
+const fixedNow = new Date("2026-05-12T12:00:00.000Z");
+
 const createProject = (overrides: Partial<ProjectWithChats> = {}): ProjectWithChats => ({
 	id: "project:/Users/gannonhall/dev/pi",
 	displayName: "pi",
@@ -147,14 +149,84 @@ describe("project view model", () => {
 			chatId: chat.id,
 			projectSelectorLabel: "pi",
 		});
-		expect(createProjectSidebarRows(view)[0]?.children).toEqual([
+		expect(createProjectSidebarRows(view, fixedNow)[0]?.children).toEqual([
 			{
 				kind: "chat",
 				chatId: chat.id,
 				label: "Project home",
 				selected: true,
 				status: "idle",
+				updatedLabel: "2h",
+				needsAttention: false,
 			},
+		]);
+	});
+
+	it("limits visible chats and adds sidebar metadata", () => {
+		const chats = [
+			createChat({ id: "chat:1", title: "First long project chat title", updatedAt: "2026-05-12T11:45:00.000Z" }),
+			createChat({ id: "chat:2", title: "Second", updatedAt: "2026-05-12T10:00:00.000Z", status: "running" }),
+			createChat({ id: "chat:3", title: "Third", updatedAt: "2026-05-11T12:00:00.000Z" }),
+			createChat({ id: "chat:4", title: "Fourth", updatedAt: "2026-05-09T12:00:00.000Z" }),
+			createChat({ id: "chat:5", title: "Fifth", updatedAt: "2026-05-12T11:30:00.000Z" }),
+			createChat({ id: "chat:6", title: "Hidden", updatedAt: "2026-05-12T11:00:00.000Z" }),
+		];
+		const project = createProject({ chats });
+		const view: ProjectStateView = {
+			projects: [project],
+			selectedProjectId: project.id,
+			selectedChatId: "chat:2",
+			selectedProject: project,
+			selectedChat: chats[1] ?? null,
+		};
+
+		expect(createProjectSidebarRows(view, fixedNow)[0]?.children).toEqual([
+			{
+				kind: "chat",
+				chatId: "chat:1",
+				label: "First long project chat title",
+				selected: false,
+				status: "idle",
+				updatedLabel: "15min",
+				needsAttention: false,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:2",
+				label: "Second",
+				selected: true,
+				status: "running",
+				updatedLabel: "2h",
+				needsAttention: true,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:3",
+				label: "Third",
+				selected: false,
+				status: "idle",
+				updatedLabel: "1d",
+				needsAttention: false,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:4",
+				label: "Fourth",
+				selected: false,
+				status: "idle",
+				updatedLabel: "3d",
+				needsAttention: false,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:5",
+				label: "Fifth",
+				selected: false,
+				status: "idle",
+				updatedLabel: "30min",
+				needsAttention: false,
+			},
+			{ kind: "show-more", label: "Show more", hiddenCount: 1 },
 		]);
 	});
 });
