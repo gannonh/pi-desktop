@@ -773,6 +773,38 @@ button {
 	color: var(--sidebar-chat-time-color);
 }
 
+.project-sidebar__chat-trailing {
+	position: relative;
+	display: inline-flex;
+	min-width: 2rem;
+	align-items: center;
+	justify-content: flex-end;
+	color: var(--sidebar-chat-time-color);
+}
+
+.project-sidebar__chat-archive-icon {
+	position: absolute;
+	right: 0;
+	width: 0.875rem;
+	height: 0.875rem;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.project-sidebar__chat-time {
+	transition: opacity 120ms ease;
+}
+
+.project-sidebar__chat-row:hover .project-sidebar__chat-time,
+.project-sidebar__chat-row:focus-visible .project-sidebar__chat-time {
+	opacity: 0;
+}
+
+.project-sidebar__chat-row:hover .project-sidebar__chat-archive-icon,
+.project-sidebar__chat-row:focus-visible .project-sidebar__chat-archive-icon {
+	opacity: 1;
+}
+
 .project-sidebar__attention-dot {
 	width: 8px;
 	height: 8px;

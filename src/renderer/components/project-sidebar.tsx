@@ -3,6 +3,7 @@ import {
 	ArrowDown,
 	ArrowLeft,
 	ArrowRight,
+	ArrowUp,
 	Check,
 	ChevronDown,
 	ChevronRight,
@@ -62,6 +63,9 @@ type MenuState =
 	  }
 	| {
 			kind: "projects-filter";
+	  }
+	| {
+			kind: "chats-filter";
 	  }
 	| null;
 
@@ -298,9 +302,20 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						)}
 					</button>
 					<div className="project-sidebar__heading-actions">
-						<button className="project-sidebar__heading-button" type="button" disabled aria-label="Filter chats">
-							<ListFilter className="project-sidebar__icon" />
-						</button>
+						<MenuAnchor>
+							<button
+								className="project-sidebar__heading-button"
+								type="button"
+								aria-label="Filter chats"
+								aria-expanded={menu?.kind === "chats-filter"}
+								onClick={() =>
+									setMenu((current) => (current?.kind === "chats-filter" ? null : { kind: "chats-filter" }))
+								}
+							>
+								<ListFilter className="project-sidebar__icon" />
+							</button>
+							{menu?.kind === "chats-filter" ? <ChatsFilterMenu /> : null}
+						</MenuAnchor>
 						<button
 							className="project-sidebar__heading-button"
 							type="button"
@@ -379,22 +394,6 @@ function ProjectSidebarProject({
 	runProjectAction,
 }: ProjectSidebarProjectProps) {
 	const unavailable = row.availability.status !== "available";
-
-	const renameProject = () => {
-		const displayName = window.prompt("Rename project", row.label)?.trim();
-
-		if (!displayName || displayName === row.label) {
-			setMenu(null);
-			return;
-		}
-
-		void runProjectAction(() =>
-			window.piDesktop.project.rename({
-				projectId: row.projectId,
-				displayName,
-			}),
-		);
-	};
 
 	const removeProject = () => {
 		if (!window.confirm(`Remove ${row.label} from pi-desktop?`)) {
@@ -479,7 +478,6 @@ function ProjectSidebarProject({
 									}),
 								)
 							}
-							onRename={renameProject}
 							onRemove={removeProject}
 						/>
 					) : null}
@@ -539,7 +537,10 @@ function ProjectSidebarProject({
 								) : child.status === "failed" ? (
 									<X className="project-sidebar__chat-failed-icon" />
 								) : (
-									<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+									<span className="project-sidebar__chat-trailing">
+										<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+										<Archive className="project-sidebar__chat-archive-icon" aria-hidden="true" />
+									</span>
 								)}
 							</button>
 						),
@@ -554,11 +555,24 @@ interface ProjectMenuProps {
 	row: SidebarProjectRow;
 	onPin: () => void;
 	onOpenInFinder: () => void;
-	onRename: () => void;
 	onRemove: () => void;
 }
 
 function ProjectsFilterMenu() {
+	return <SidebarFilterMenu moveDirection="down" />;
+}
+
+function ChatsFilterMenu() {
+	return <SidebarFilterMenu moveDirection="up" />;
+}
+
+interface SidebarFilterMenuProps {
+	moveDirection: "up" | "down";
+}
+
+function SidebarFilterMenu({ moveDirection }: SidebarFilterMenuProps) {
+	const MoveIcon = moveDirection === "up" ? ArrowUp : ArrowDown;
+
 	return (
 		<MenuSurface className="project-sidebar__filter-menu">
 			<MenuSectionHeading>Organize</MenuSectionHeading>
@@ -585,9 +599,9 @@ function ProjectsFilterMenu() {
 			</MenuItem>
 			<MenuItem inactive aria-disabled="true">
 				<MenuItemIcon>
-					<ArrowDown />
+					<MoveIcon />
 				</MenuItemIcon>
-				Move down
+				Move {moveDirection}
 			</MenuItem>
 			<MenuSeparator />
 			<MenuSectionHeading>Sort by</MenuSectionHeading>
@@ -627,7 +641,7 @@ function ProjectsFilterMenu() {
 	);
 }
 
-function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: ProjectMenuProps) {
+function ProjectMenu({ row, onPin, onOpenInFinder, onRemove }: ProjectMenuProps) {
 	const projectFolderUnavailable = row.project.availability.status !== "available";
 
 	return (
@@ -654,7 +668,7 @@ function ProjectMenu({ row, onPin, onOpenInFinder, onRename, onRemove }: Project
 				</MenuItemIcon>
 				Create permanent worktree
 			</MenuItem>
-			<MenuItem onClick={onRename}>
+			<MenuItem disabled title="Coming soon">
 				<MenuItemIcon>
 					<Pencil />
 				</MenuItemIcon>
