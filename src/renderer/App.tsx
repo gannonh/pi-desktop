@@ -18,7 +18,6 @@ const createEmptyProjectStateView = (): ProjectStateView => ({
 
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
-	const [versionLabel, setVersionLabel] = useState("0.0.0");
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
@@ -45,9 +44,7 @@ export function App() {
 			}
 
 			if (versionResult.status === "fulfilled") {
-				if (versionResult.value.ok) {
-					setVersionLabel(versionResult.value.data.version);
-				} else {
+				if (!versionResult.value.ok) {
 					setStatusMessage({ source: "startup", message: versionResult.value.error.message });
 				}
 			} else {
@@ -81,7 +78,6 @@ export function App() {
 	return (
 		<AppShell
 			state={projectState}
-			versionLabel={versionLabel}
 			statusMessage={statusMessage?.message}
 			onProjectState={applyProjectStateViewResult}
 		/>

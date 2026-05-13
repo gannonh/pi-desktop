@@ -1,4 +1,19 @@
-import { Bot, Folder, MoreHorizontal, Pin, Plus, Search, Workflow, Wrench, X } from "lucide-react";
+import {
+	ArrowLeft,
+	ArrowRight,
+	Bot,
+	Folder,
+	MoreHorizontal,
+	PanelLeftClose,
+	PanelLeftOpen,
+	Pin,
+	Plus,
+	Search,
+	SquarePen,
+	Workflow,
+	Wrench,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
@@ -6,7 +21,8 @@ import { createProjectSidebarRows, type SidebarProjectRow } from "../projects/pr
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;
-	versionLabel: string;
+	collapsed: boolean;
+	onToggleCollapsed: () => void;
 	onProjectState: (result: ProjectStateViewResult) => void;
 }
 
@@ -28,9 +44,10 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 	},
 });
 
-export function ProjectSidebar({ state, versionLabel, onProjectState }: ProjectSidebarProps) {
+export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectState }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
 	const rows = createProjectSidebarRows(state);
+	const chromeTitle = state.selectedChat?.title;
 
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		setMenu(null);
@@ -51,78 +68,117 @@ export function ProjectSidebar({ state, versionLabel, onProjectState }: ProjectS
 
 	return (
 		<aside className="project-sidebar" aria-label="Project navigation">
-			<div className="project-sidebar__header">
-				<div className="project-sidebar__brand-mark">pi</div>
-				<div className="project-sidebar__brand-copy">
-					<div className="project-sidebar__brand-name">pi-desktop</div>
-					<div className="project-sidebar__version">{versionLabel}</div>
+			<div className="project-sidebar__chrome">
+				<div className="project-sidebar__window-controls" aria-hidden="true">
+					<span className="project-sidebar__window-dot project-sidebar__window-dot--close" />
+					<span className="project-sidebar__window-dot project-sidebar__window-dot--minimize" />
+					<span className="project-sidebar__window-dot project-sidebar__window-dot--maximize" />
 				</div>
-			</div>
-
-			<div className="project-sidebar__top-actions">
-				<button className="project-sidebar__action" type="button" disabled>
-					<Bot className="project-sidebar__icon" />
-					<span>New chat</span>
-				</button>
-				<button className="project-sidebar__action" type="button" disabled>
-					<Search className="project-sidebar__icon" />
-					<span>Search</span>
-				</button>
-				<button className="project-sidebar__action" type="button" disabled>
-					<Wrench className="project-sidebar__icon" />
-					<span>Plugins</span>
-				</button>
-				<button className="project-sidebar__action" type="button" disabled>
-					<Workflow className="project-sidebar__icon" />
-					<span>Automations</span>
-				</button>
-			</div>
-
-			<div className="project-sidebar__section-heading">
-				<span>Projects</span>
-				<div className="project-sidebar__menu-anchor">
+				<div className="project-sidebar__chrome-actions">
 					<button
-						className="project-sidebar__icon-button"
+						className="project-sidebar__chrome-button"
 						type="button"
-						aria-label="Add project"
-						aria-expanded={menu?.kind === "add"}
-						onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
+						aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+						aria-pressed={collapsed}
+						onClick={onToggleCollapsed}
 					>
-						<Plus className="project-sidebar__icon" />
+						{collapsed ? (
+							<PanelLeftOpen className="project-sidebar__icon" />
+						) : (
+							<PanelLeftClose className="project-sidebar__icon" />
+						)}
 					</button>
-					{menu?.kind === "add" ? (
-						<div className="project-sidebar__menu">
-							<button
-								className="project-sidebar__menu-item"
-								type="button"
-								onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
-							>
-								Start from scratch
-							</button>
-							<button
-								className="project-sidebar__menu-item"
-								type="button"
-								onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
-							>
-								Use an existing folder
-							</button>
-						</div>
-					) : null}
+					<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Back">
+						<ArrowLeft className="project-sidebar__icon" />
+					</button>
+					<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Forward">
+						<ArrowRight className="project-sidebar__icon" />
+					</button>
+					<button
+						className="project-sidebar__chrome-button project-sidebar__chrome-button--collapsed-only"
+						type="button"
+						disabled
+						aria-label="New chat"
+					>
+						<SquarePen className="project-sidebar__icon" />
+					</button>
 				</div>
+				{chromeTitle ? (
+					<div className="project-sidebar__chrome-title-group">
+						<div className="project-sidebar__chrome-title">{chromeTitle}</div>
+						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
+							<MoreHorizontal className="project-sidebar__icon" />
+						</button>
+					</div>
+				) : null}
 			</div>
 
-			<div className="project-sidebar__projects">
-				{rows.map((row) => (
-					<ProjectSidebarProject
-						key={row.projectId}
-						row={row}
-						menu={menu}
-						setMenu={setMenu}
-						onSelectProject={selectProject}
-						onProjectState={onProjectState}
-						runProjectAction={runProjectAction}
-					/>
-				))}
+			<div className="project-sidebar__panel">
+				<div className="project-sidebar__top-actions">
+					<button className="project-sidebar__action" type="button" disabled>
+						<Bot className="project-sidebar__icon" />
+						<span>New chat</span>
+					</button>
+					<button className="project-sidebar__action" type="button" disabled>
+						<Search className="project-sidebar__icon" />
+						<span>Search</span>
+					</button>
+					<button className="project-sidebar__action" type="button" disabled>
+						<Wrench className="project-sidebar__icon" />
+						<span>Plugins</span>
+					</button>
+					<button className="project-sidebar__action" type="button" disabled>
+						<Workflow className="project-sidebar__icon" />
+						<span>Automations</span>
+					</button>
+				</div>
+
+				<div className="project-sidebar__section-heading">
+					<span>Projects</span>
+					<div className="project-sidebar__menu-anchor">
+						<button
+							className="project-sidebar__icon-button"
+							type="button"
+							aria-label="Add project"
+							aria-expanded={menu?.kind === "add"}
+							onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
+						>
+							<Plus className="project-sidebar__icon" />
+						</button>
+						{menu?.kind === "add" ? (
+							<div className="project-sidebar__menu">
+								<button
+									className="project-sidebar__menu-item"
+									type="button"
+									onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
+								>
+									Start from scratch
+								</button>
+								<button
+									className="project-sidebar__menu-item"
+									type="button"
+									onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
+								>
+									Use an existing folder
+								</button>
+							</div>
+						) : null}
+					</div>
+				</div>
+
+				<div className="project-sidebar__projects">
+					{rows.map((row) => (
+						<ProjectSidebarProject
+							key={row.projectId}
+							row={row}
+							menu={menu}
+							setMenu={setMenu}
+							onSelectProject={selectProject}
+							onProjectState={onProjectState}
+							runProjectAction={runProjectAction}
+						/>
+					))}
+				</div>
 			</div>
 		</aside>
 	);

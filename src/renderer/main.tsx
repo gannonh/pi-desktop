@@ -1,7 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { installDevPreviewApi } from "./dev-preview-api";
 import "./styles.css";
+
+if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+	installDevPreviewApi();
+}
 
 const root = document.getElementById("root");
 
