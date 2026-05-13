@@ -1,4 +1,4 @@
-import type { ChatMetadata, ProjectAvailability, ProjectStateView } from "../../shared/project-state";
+import type { ChatMetadata, ProjectAvailability, ProjectStateView, ProjectWithChats } from "../../shared/project-state";
 
 export type ProjectMainCopy =
 	| {
@@ -43,6 +43,7 @@ export type SidebarChatRow =
 export interface SidebarProjectRow {
 	kind: "project";
 	projectId: string;
+	project: ProjectWithChats;
 	label: string;
 	path: string;
 	selected: boolean;
@@ -67,7 +68,10 @@ export const createProjectMainCopy = (view: ProjectStateView): ProjectMainCopy =
 		return {
 			kind: "missing-project",
 			title: `${selectedProject.displayName} is unavailable`,
-			body: "Locate the project folder or remove it from the sidebar.",
+			body:
+				selectedProject.availability.status === "unavailable"
+					? selectedProject.availability.reason
+					: "Locate the project folder or remove it from the sidebar.",
 			projectId: selectedProject.id,
 			projectSelectorLabel,
 		};
@@ -95,6 +99,7 @@ export const createProjectSidebarRows = (view: ProjectStateView): SidebarProject
 	view.projects.map((project) => ({
 		kind: "project",
 		projectId: project.id,
+		project,
 		label: project.displayName,
 		path: project.path,
 		selected: project.id === view.selectedProjectId,

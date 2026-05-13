@@ -73,6 +73,7 @@ describe("project view model", () => {
 			{
 				kind: "project",
 				projectId: project.id,
+				project,
 				label: "pi",
 				path: "/Users/gannonhall/dev/pi",
 				selected: true,
@@ -98,6 +99,31 @@ describe("project view model", () => {
 			kind: "missing-project",
 			title: "pi is unavailable",
 			body: "Locate the project folder or remove it from the sidebar.",
+			projectId: project.id,
+			projectSelectorLabel: "pi",
+		});
+	});
+
+	it("creates unavailable project copy that surfaces the availability reason", () => {
+		const project = createProject({
+			availability: {
+				status: "unavailable",
+				checkedAt: "2026-05-12T10:00:00.000Z",
+				reason: "Permission denied",
+			},
+		});
+		const view: ProjectStateView = {
+			projects: [project],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(createProjectMainCopy(view)).toEqual({
+			kind: "missing-project",
+			title: "pi is unavailable",
+			body: "Permission denied",
 			projectId: project.id,
 			projectSelectorLabel: "pi",
 		});

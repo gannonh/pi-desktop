@@ -6,6 +6,11 @@ import type { WorkspaceState } from "../shared/workspace-state";
 import { AppShell } from "./components/app-shell";
 import { createWorkspaceSummaryFromPath } from "./shell/workspace-selection";
 
+type StatusMessage = {
+	source: "project" | "startup";
+	message: string;
+};
+
 const createEmptyProjectStateView = (): ProjectStateView => ({
 	projects: [],
 	selectedProjectId: null,
@@ -32,17 +37,17 @@ const createWorkspaceStateFromProjectState = (projectState: ProjectStateView): W
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [versionLabel, setVersionLabel] = useState("0.0.0");
-	const [statusMessage, setStatusMessage] = useState<string>();
+	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
 	const state = useMemo(() => createWorkspaceStateFromProjectState(projectState), [projectState]);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
-			setStatusMessage(result.error.message);
+			setStatusMessage({ source: "project", message: result.error.message });
 			return;
 		}
 
 		setProjectState(result.data);
-		setStatusMessage(undefined);
+		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
 	}, []);
 
 	useEffect(() => {
@@ -62,11 +67,14 @@ export function App() {
 				if (versionResult.value.ok) {
 					setVersionLabel(versionResult.value.data.version);
 				} else {
-					setStatusMessage(versionResult.value.error.message);
+					setStatusMessage({ source: "startup", message: versionResult.value.error.message });
 				}
 			} else {
 				setStatusMessage(
-					versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
+					{
+						source: "startup",
+						message: versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
+					},
 				);
 			}
 
@@ -74,9 +82,13 @@ export function App() {
 				applyProjectStateViewResult(projectStateResult.value);
 			} else {
 				setStatusMessage(
-					projectStateResult.reason instanceof Error
-						? projectStateResult.reason.message
-						: "Unable to load project state.",
+					{
+						source: "project",
+						message:
+							projectStateResult.reason instanceof Error
+								? projectStateResult.reason.message
+								: "Unable to load project state.",
+					},
 				);
 			}
 		};
@@ -94,7 +106,10 @@ export function App() {
 		try {
 			result = await window.piDesktop.project.addExistingFolder();
 		} catch (error) {
-			setStatusMessage(error instanceof Error ? error.message : "Unable to select workspace.");
+			setStatusMessage({
+				source: "project",
+				message: error instanceof Error ? error.message : "Unable to select workspace.",
+			});
 			return;
 		}
 
@@ -105,7 +120,7 @@ export function App() {
 		<AppShell
 			state={state}
 			versionLabel={versionLabel}
-			statusMessage={statusMessage}
+			statusMessage={statusMessage?.message}
 			onSelectWorkspace={selectWorkspace}
 		/>
 	);
