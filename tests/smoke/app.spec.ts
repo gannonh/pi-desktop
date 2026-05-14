@@ -131,7 +131,7 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByText("Work locally")).toBeVisible();
 		await expect(window.getByText("5.5 High")).toBeVisible();
 		await expect(window.getByText("Full access")).toHaveCount(0);
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toHaveCount(0);
+		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectComposerControlPlacement(window);
 	} finally {
 		await app.close();
@@ -178,7 +178,8 @@ test("renders the selected project chat start state", async () => {
 
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
-		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toBeVisible();
+		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toHaveCount(0);
+		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectSelectedComposerVisualTokens(window);
 	} finally {
 		await app.close();

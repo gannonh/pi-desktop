@@ -1,5 +1,5 @@
 import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, Paperclip, Sparkles } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
 
@@ -13,11 +13,13 @@ type ComposerMenu = "project" | "mode" | "model" | null;
 const inputHint = "Ask Pi anything. @ to use skills or mention files";
 
 export function Composer({ context, layout = "center" }: ComposerProps) {
+	const statusId = useId();
 	const [text, setText] = useState("");
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const state = createComposerState({
 		text,
 		runtimeAvailable: context.runtimeAvailable,
+		disabledReason: context.disabledReason,
 	});
 
 	const toggleMenu = (menu: Exclude<ComposerMenu, null>) => {
@@ -28,6 +30,7 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 		<form
 			className={["composer", `composer--${layout}`].join(" ")}
 			aria-label="Pi composer"
+			aria-describedby={state.statusLabel ? statusId : undefined}
 			onSubmit={(event) => event.preventDefault()}
 		>
 			<div className="composer__input-panel">
@@ -79,6 +82,11 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 					<span className="composer__branch-label">
 						<GitBranch className="composer__control-icon" />
 						{context.branchLabel}
+					</span>
+				) : null}
+				{state.statusLabel ? (
+					<span id={statusId} className="composer__disabled-reason">
+						{state.statusLabel}
 					</span>
 				) : null}
 			</div>

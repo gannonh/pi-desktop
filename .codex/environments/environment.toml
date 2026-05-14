@@ -6,6 +6,6 @@ name = "pi-desktop"
 script = ""
 
 [[actions]]
-name = "Run"
+name = "Preview Server"
 icon = "run"
 command = "./scripts/launch-preview-server.sh"
