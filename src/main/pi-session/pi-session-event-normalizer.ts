@@ -43,13 +43,6 @@ const hasContent = (message: AgentMessage): message is AgentMessage & { content:
 const stringValue = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined;
 
-const timestampFor = (message: AgentMessage, fallbackIndex: number): number | string => {
-	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
-		return message.timestamp;
-	}
-	return fallbackIndex;
-};
-
 const fallbackIdFor = (message: AgentMessage, fallbackIndex: number): number | string => {
 	if (!isRecord(message)) {
 		return fallbackIndex;
@@ -72,7 +65,7 @@ const fallbackIdFor = (message: AgentMessage, fallbackIndex: number): number | s
 	}
 
 	if (parts.length > 0) {
-		return parts.join(":");
+		return `${parts.join(":")}:${fallbackIndex}`;
 	}
 
 	return fallbackIndex;
@@ -106,6 +99,20 @@ const messageIdFor = (message: AgentMessage, fallbackIndex = 0): string => {
 	return `${role}:${messageStableIdFor(message, fallbackIndex)}`;
 };
 
+const createMessageEndEvent = (
+	sessionId: string,
+	message: AgentMessage,
+	receivedAt: string,
+	fallbackIndex: number,
+): PiSessionEvent => ({
+	type: "message_end",
+	sessionId,
+	messageId: messageIdFor(message, fallbackIndex),
+	role: roleFor(message.role),
+	content: contentFor(message),
+	receivedAt,
+});
+
 const contentFor = (message: AgentMessage): string => {
 	if (!hasContent(message)) {
 		return "";
@@ -125,9 +132,10 @@ const roleFor = (role: unknown): PiSessionMessageRole => {
 
 const stripSensitiveFragments = (line: string): string =>
 	line
+		.replace(/\b[A-Z][A-Z0-9_]*API_KEY\s*=\s*\S+/g, "")
 		.replace(/\bauthorization\s*:\s*(?:bearer|basic)?\s*\S+/gi, "")
-		.replace(/\bapi[_-]?key\s*[:=]\s*\S+/gi, "")
-		.replace(/\btoken\s*[:=]\s*\S+/gi, "")
+		.replace(/\b(?:api[_-]?key|token|key|authorization)\s*[:=]\s*(?:bearer|basic)?\s*\S+/gi, "")
+		.replace(/\s+/g, " ")
 		.trim();
 
 const sanitizeMessage = (message: string, fallback: string): string => {
@@ -160,7 +168,10 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "agent_end") {
-		return [{ type: "status", sessionId, status: "idle", label: "Idle", receivedAt }];
+		return [
+			{ type: "status", sessionId, status: "idle", label: "Idle", receivedAt },
+			...event.messages.map((message, index) => createMessageEndEvent(sessionId, message, receivedAt, index)),
+		];
 	}
 
 	if (event.type === "message_start") {
@@ -168,7 +179,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 			{
 				type: "message_start",
 				sessionId,
-				messageId: messageIdFor(event.message),
+				messageId: messageIdFor(event.message, 0),
 				role: roleFor(event.message.role),
 				content: contentFor(event.message),
 				receivedAt,
@@ -181,7 +192,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 			{
 				type: "assistant_delta",
 				sessionId,
-				messageId: messageIdFor(event.message),
+				messageId: messageIdFor(event.message, 0),
 				delta: event.assistantMessageEvent.delta,
 				receivedAt,
 			},
@@ -189,16 +200,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "message_end") {
-		return [
-			{
-				type: "message_end",
-				sessionId,
-				messageId: messageIdFor(event.message),
-				role: roleFor(event.message.role),
-				content: contentFor(event.message),
-				receivedAt,
-			},
-		];
+		return [createMessageEndEvent(sessionId, event.message, receivedAt, 0)];
 	}
 
 	if (event.type === "auto_retry_start") {

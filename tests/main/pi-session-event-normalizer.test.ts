@@ -190,7 +190,7 @@ describe("pi session event normalizer", () => {
 			{
 				type: "message_start",
 				sessionId: "pi-session:one",
-				messageId: "custom:customType=notice:content=Heads up",
+				messageId: "custom:customType=notice:content=Heads up:0",
 				role: "user",
 				content: "Heads up",
 				receivedAt,
@@ -218,8 +218,31 @@ describe("pi session event normalizer", () => {
 			},
 		} as unknown as AgentSessionEvent)[0];
 
-		expect(first).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Heads up" });
-		expect(second).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Different" });
+		expect(first).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Heads up:0" });
+		expect(second).toMatchObject({
+			type: "message_start",
+			messageId: "custom:customType=notice:content=Different:0",
+		});
+	});
+
+	it("uses event-local fallback indexes for identical timestamp-less messages in one batch", () => {
+		const message = {
+			role: "custom",
+			customType: "notice",
+			display: true,
+			content: "Same",
+		};
+
+		const events = normalizeAndParse({
+			type: "agent_end",
+			messages: [message, message],
+		} as unknown as AgentSessionEvent);
+
+		expect(events).toMatchObject([
+			{ type: "status", status: "idle" },
+			{ type: "message_end", messageId: "custom:customType=notice:content=Same:0" },
+			{ type: "message_end", messageId: "custom:customType=notice:content=Same:1" },
+		]);
 	});
 
 	it("normalizes agent status events", () => {
@@ -339,5 +362,28 @@ describe("pi session event normalizer", () => {
 				errorMessage: "Authorization: Bearer secret",
 			})[1],
 		).toMatchObject({ type: "retry", message: "Retry requested." });
+	});
+
+	it("sanitizes env-style API key and assignment secrets", () => {
+		expect(
+			PiSessionEventSchema.parse(
+				createRuntimeErrorEvent({
+					sessionId: "pi-session:one",
+					code: "pi.auth_failed",
+					error: "auth failed OPENAI_API_KEY=sk-runtime ANTHROPIC_API_KEY=sk-ant",
+					now,
+				}),
+			),
+		).toMatchObject({ type: "runtime_error", message: "auth failed" });
+
+		expect(
+			normalizeAndParse({
+				type: "auto_retry_start",
+				attempt: 1,
+				maxAttempts: 1,
+				delayMs: 0,
+				errorMessage: "retry OPENAI_API_KEY=sk-retry token=abc key=def authorization=Bearer secret",
+			})[1],
+		).toMatchObject({ type: "retry", message: "retry" });
 	});
 });
