@@ -94,6 +94,7 @@ export type PiSessionAbortInput = z.infer<typeof PiSessionAbortInputSchema>;
 export type PiSessionDisposeInput = z.infer<typeof PiSessionDisposeInputSchema>;
 export type PiSessionStartPayload = z.infer<typeof PiSessionStartPayloadSchema>;
 export type PiSessionActionPayload = z.infer<typeof PiSessionActionPayloadSchema>;
+export type PiSessionMessageRole = z.infer<typeof PiSessionMessageRoleSchema>;
 export type PiSessionEvent = z.infer<typeof PiSessionEventSchema>;
 export type PiSessionStartResult = IpcResult<PiSessionStartPayload>;
 export type PiSessionActionResult = IpcResult<PiSessionActionPayload>;
