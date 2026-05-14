@@ -17,9 +17,9 @@ const expectHeadingTargetToReachFirstAction = async (
 	expect(Math.abs((headingBox?.x ?? 0) + (headingBox?.width ?? 0) - (firstActionBox?.x ?? 0))).toBeLessThanOrEqual(1);
 };
 
-const expectComposerNearBottom = async (window: Page) => {
-	const composerBox = await window.getByLabel("Pi composer").boundingBox();
-	const viewportHeight = await window.evaluate(() => window.innerHeight);
+const expectComposerNearBottom = async (page: Page) => {
+	const composerBox = await page.getByLabel("Pi composer").boundingBox();
+	const viewportHeight = await page.evaluate(() => window.innerHeight);
 
 	expect(composerBox).not.toBeNull();
 	expect((composerBox?.y ?? 0) + (composerBox?.height ?? 0)).toBeGreaterThan(viewportHeight - 160);
