@@ -1258,6 +1258,14 @@ button {
 }
 
 @media (max-width: 720px) {
+	.app-shell {
+		grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
+	}
+
+	.app-shell--sidebar-collapsed {
+		grid-template-columns: 0 minmax(0, 1fr);
+	}
+
 	.project-main {
 		padding: 0.75rem;
 	}
