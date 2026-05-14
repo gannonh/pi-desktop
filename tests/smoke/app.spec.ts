@@ -17,7 +17,15 @@ const expectHeadingTargetToReachFirstAction = async (
 	expect(Math.abs((headingBox?.x ?? 0) + (headingBox?.width ?? 0) - (firstActionBox?.x ?? 0))).toBeLessThanOrEqual(1);
 };
 
-test("renders the Milestone 1 project shell", async () => {
+const expectComposerNearBottom = async (window: Page) => {
+	const composerBox = await window.getByLabel("Pi composer").boundingBox();
+	const viewportHeight = await window.evaluate(() => window.innerHeight);
+
+	expect(composerBox).not.toBeNull();
+	expect((composerBox?.y ?? 0) + (composerBox?.height ?? 0)).toBeGreaterThan(viewportHeight - 160);
+};
+
+test("renders the Milestone 2 global chat start state", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const app = await electron.launch({
 		args: ["."],
@@ -41,10 +49,179 @@ test("renders the Milestone 1 project shell", async () => {
 		await expectHeadingTargetToReachFirstAction(window, "Projects", /^(Collapse|Expand) all projects$/);
 		await expectHeadingTargetToReachFirstAction(window, "Chats", "Filter chats");
 		await expect(window.getByRole("heading", { name: "What should we work on?" })).toBeVisible();
+		await expect(window.getByLabel("Pi composer")).toBeVisible();
+		await expect(window.getByLabel("Message Pi")).toHaveAttribute(
+			"placeholder",
+			"Ask Pi anything. @ to use skills or mention files",
+		);
 		await expect(window.getByText("Work in a project")).toBeVisible();
+		await expect(window.getByText("Full access")).toBeVisible();
+		await expect(window.getByText("5.5 High")).toBeVisible();
+		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
+	}
+});
+
+test("renders the selected project chat start state", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: projectId,
+		selectedChatId: null,
+		chatsByProject: {
+			[projectId]: [],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
+		await expect(window.getByText("main", { exact: true })).toBeVisible();
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
+	}
+});
+
+test("renders a static continued chat route with the composer anchored to the bottom", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: projectId,
+		selectedChatId: "chat:milestone-01",
+		chatsByProject: {
+			[projectId]: [
+				{
+					id: "chat:milestone-01",
+					projectId,
+					title: "Execute milestone 01: project home sidebar refinements",
+					status: "idle",
+					updatedAt: now,
+				},
+			],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await expect(
+			window.getByRole("heading", { name: "Execute milestone 01: project home sidebar refinements" }),
+		).toBeVisible();
+		await expect(window.getByText("Worked for 7m 10s")).toBeVisible();
+		await expect(window.getByText("Resolved the new open review threads.")).toBeVisible();
+		await expect(window.getByText("land the pr")).toBeVisible();
+		await expectComposerNearBottom(window);
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
+	}
+});
+
+test("renders an empty chat route with static metadata and bottom composer", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: projectId,
+		selectedChatId: "chat:no-fixture",
+		chatsByProject: {
+			[projectId]: [
+				{
+					id: "chat:no-fixture",
+					projectId,
+					title: "Static metadata only",
+					status: "idle",
+					updatedAt: now,
+				},
+			],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await expect(window.getByRole("heading", { name: "Static metadata only" })).toBeVisible();
+		await expect(window.getByLabel("Empty chat")).toBeVisible();
+		await expectComposerNearBottom(window);
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
 	}
 });
 
