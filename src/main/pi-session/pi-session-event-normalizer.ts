@@ -1,5 +1,7 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import type { PiSessionEvent } from "../../shared/pi-session";
+import type { PiSessionEvent, PiSessionMessageRole } from "../../shared/pi-session";
+
+type AgentMessage = Extract<AgentSessionEvent, { type: "message_start" }>["message"];
 
 type NormalizeInput = {
 	sessionId: string;
@@ -33,23 +35,90 @@ const textFromContent = (content: unknown): string => {
 		.join("");
 };
 
-const messageIdFor = (message: { role?: string; timestamp?: unknown }, fallbackIndex = 0): string => {
-	const timestamp = typeof message.timestamp === "number" || typeof message.timestamp === "string" ? message.timestamp : fallbackIndex;
-	return `${message.role ?? "message"}:${timestamp}`;
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
+
+const hasContent = (message: AgentMessage): message is AgentMessage & { content: unknown } => isRecord(message) && "content" in message;
+
+const stringValue = (value: unknown): string | undefined => (typeof value === "string" && value.length > 0 ? value : undefined);
+
+const timestampFor = (message: AgentMessage, fallbackIndex: number): number | string => {
+	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
+		return message.timestamp;
+	}
+	return fallbackIndex;
 };
 
-const roleFor = (role: unknown): PiSessionEvent extends infer Event ? Extract<Event, { type: "message_start" }>["role"] : never => {
+const roleLabelForId = (message: AgentMessage): string => {
+	if (isRecord(message)) {
+		return stringValue(message.role) ?? "message";
+	}
+	return "message";
+};
+
+const messageIdFor = (message: AgentMessage, fallbackIndex = 0): string => {
+	const role = roleLabelForId(message);
+
+	if (role === "assistant" && isRecord(message)) {
+		const responseId = stringValue(message.responseId);
+		if (responseId) {
+			return `assistant:${responseId}`;
+		}
+	}
+
+	if (role === "toolResult" && isRecord(message)) {
+		const timestamp = timestampFor(message, fallbackIndex);
+		const toolCallId = stringValue(message.toolCallId);
+		if (toolCallId) {
+			return `toolResult:${toolCallId}:${timestamp}`;
+		}
+	}
+
+	return `${role}:${timestampFor(message, fallbackIndex)}`;
+};
+
+const contentFor = (message: AgentMessage): string => {
+	if (!hasContent(message)) {
+		return "";
+	}
+	return textFromContent(message.content);
+};
+
+const roleFor = (role: unknown): PiSessionMessageRole => {
 	if (role === "assistant" || role === "tool" || role === "system") {
 		return role;
 	}
+	if (role === "toolResult") {
+		return "tool";
+	}
 	return "user";
 };
+
+const stripSensitiveFragments = (line: string): string =>
+	line
+		.replace(/\bauthorization\s*:\s*(?:bearer|basic)?\s*\S+/gi, "")
+		.replace(/\bapi[_-]?key\s*[:=]\s*\S+/gi, "")
+		.replace(/\btoken\s*[:=]\s*\S+/gi, "")
+		.trim();
+
+const sanitizeMessage = (message: string, fallback: string): string => {
+	const sanitized = message
+		.split(/\r?\n/)
+		.filter((line) => !/^\s*at\s+/.test(line))
+		.map(stripSensitiveFragments)
+		.filter((line) => line.length > 0)
+		.join("\n")
+		.trim();
+
+	return sanitized.length > 0 ? sanitized : fallback;
+};
+
+const errorMessageFor = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export const createRuntimeErrorEvent = ({ sessionId, code, error, now }: RuntimeErrorInput): PiSessionEvent => ({
 	type: "runtime_error",
 	sessionId,
 	code,
-	message: error instanceof Error ? error.message : String(error),
+	message: sanitizeMessage(errorMessageFor(error), "Pi runtime error."),
 	receivedAt: now(),
 });
 
@@ -71,7 +140,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 				sessionId,
 				messageId: messageIdFor(event.message),
 				role: roleFor(event.message.role),
-				content: textFromContent(event.message.content),
+				content: contentFor(event.message),
 				receivedAt,
 			},
 		];
@@ -96,7 +165,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 				sessionId,
 				messageId: messageIdFor(event.message),
 				role: roleFor(event.message.role),
-				content: textFromContent(event.message.content),
+				content: contentFor(event.message),
 				receivedAt,
 			},
 		];
@@ -111,7 +180,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 				attempt: event.attempt,
 				maxAttempts: event.maxAttempts,
 				delayMs: event.delayMs,
-				message: event.errorMessage,
+				message: sanitizeMessage(event.errorMessage, "Retry requested."),
 				receivedAt,
 			},
 		];
