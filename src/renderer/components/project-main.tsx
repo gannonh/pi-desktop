@@ -1,15 +1,13 @@
+import { createChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
-import { createProjectMainCopy } from "../projects/project-view-model";
-import { Composer } from "./composer";
+import { ChatShell } from "./chat-shell";
 
 interface ProjectMainProps {
 	state: ProjectStateView;
 	statusMessage?: string;
 	onProjectState: (result: ProjectStateViewResult) => void;
 }
-
-const runtimeUnavailableReason = "Pi runtime unavailable until Milestone 2.";
 
 const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 	ok: false,
@@ -20,7 +18,7 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 });
 
 export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMainProps) {
-	const copy = createProjectMainCopy(state);
+	const route = createChatShellRoute(state);
 
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		try {
@@ -31,29 +29,29 @@ export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMai
 	};
 
 	const locateFolder = () => {
-		if (copy.kind !== "missing-project") {
+		if (route.kind !== "unavailable-project") {
 			return Promise.resolve();
 		}
 
 		return runProjectAction(() =>
 			window.piDesktop.project.locateFolder({
-				projectId: copy.projectId,
+				projectId: route.projectId,
 			}),
 		);
 	};
 
 	const removeProject = () => {
-		if (copy.kind !== "missing-project") {
+		if (route.kind !== "unavailable-project") {
 			return;
 		}
 
-		if (!window.confirm(`Remove ${copy.projectSelectorLabel} from pi-desktop?`)) {
+		if (!window.confirm(`Remove ${route.projectSelectorLabel} from pi-desktop?`)) {
 			return;
 		}
 
 		void runProjectAction(() =>
 			window.piDesktop.project.remove({
-				projectId: copy.projectId,
+				projectId: route.projectId,
 			}),
 		);
 	};
@@ -62,13 +60,13 @@ export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMai
 		<main className="project-main">
 			{statusMessage ? <div className="project-main__status-message">{statusMessage}</div> : null}
 
-			{copy.kind === "missing-project" ? (
+			{route.kind === "unavailable-project" ? (
 				<section className="project-main__recovery" aria-labelledby="project-main-title">
 					<div className="project-main__recovery-copy">
 						<h1 id="project-main-title" className="project-main__title">
-							{copy.title}
+							{route.title}
 						</h1>
-						<p className="project-main__body">{copy.body}</p>
+						<p className="project-main__body">{route.body}</p>
 					</div>
 					<div className="project-main__recovery-actions">
 						<button className="project-main__button" type="button" onClick={() => void locateFolder()}>
@@ -83,25 +81,9 @@ export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMai
 						</button>
 					</div>
 				</section>
-			) : null}
-
-			{copy.kind === "chat" ? (
-				<section className="project-main__chat" aria-labelledby="project-main-title">
-					<h1 id="project-main-title" className="project-main__title">
-						{copy.title}
-					</h1>
-					<p className="project-main__body">Chat metadata is ready. Pi message history begins in Milestone 2.</p>
-				</section>
-			) : null}
-
-			{copy.kind === "global-empty" || copy.kind === "project-empty" ? (
-				<section className="project-main__empty" aria-labelledby="project-main-title">
-					<h1 id="project-main-title" className="project-main__title">
-						{copy.title}
-					</h1>
-					<Composer projectSelectorLabel={copy.projectSelectorLabel} disabledReason={runtimeUnavailableReason} />
-				</section>
-			) : null}
+			) : (
+				<ChatShell route={route} />
+			)}
 		</main>
 	);
 }
