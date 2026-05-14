@@ -8,7 +8,7 @@ interface ChatTranscriptProps {
 
 export function ChatTranscript({ title, transcript }: ChatTranscriptProps) {
 	return (
-		<div className="chat-transcript" aria-label={`${title} transcript`}>
+		<section className="chat-transcript" aria-label={`${title} transcript`}>
 			<div className="chat-transcript__entry">
 				<button className="chat-transcript__worked" type="button" disabled>
 					{transcript.workedLabel}
@@ -49,6 +49,6 @@ export function ChatTranscript({ title, transcript }: ChatTranscriptProps) {
 					))}
 				</div>
 			</div>
-		</div>
+		</section>
 	);
 }

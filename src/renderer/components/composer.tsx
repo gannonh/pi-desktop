@@ -125,10 +125,8 @@ function ComposerControl({ label, menu, openMenu, icon, onToggle }: ComposerCont
 				<ChevronDown className="composer__control-icon" />
 			</button>
 			{open ? (
-				<span className="composer__local-menu" role="menu">
-					<span className="composer__local-menu-item" role="menuitem">
-						{label}
-					</span>
+				<span className="composer__local-menu">
+					<span className="composer__local-menu-item">{label}</span>
 				</span>
 			) : null}
 		</span>

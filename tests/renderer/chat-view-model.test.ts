@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createChatShellRoute } from "../../src/renderer/chat/chat-view-model";
-import { getStaticTranscript } from "../../src/renderer/chat/static-transcripts";
+import type { getStaticTranscript } from "../../src/renderer/chat/static-transcripts";
 import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
 
 const emptyView: ProjectStateView = {

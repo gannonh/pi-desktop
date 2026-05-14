@@ -23,9 +23,9 @@ export function ChatShell({ route }: ChatShellProps) {
 				{route.kind === "continued-chat" ? (
 					<ChatTranscript title={route.title} transcript={route.transcript} />
 				) : (
-					<div className="chat-shell__empty-chat" aria-label="Empty chat">
+					<section className="chat-shell__empty-chat" aria-label="Empty chat">
 						No messages yet.
-					</div>
+					</section>
 				)}
 			</div>
 			<div className="chat-shell__bottom-composer">

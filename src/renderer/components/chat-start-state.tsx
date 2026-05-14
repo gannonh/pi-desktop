@@ -13,7 +13,7 @@ export function ChatStartState({ route }: { route: StartRoute }) {
 				{route.title}
 			</h1>
 			<Composer context={route.composer} layout="center" />
-			<div className="chat-shell__suggestions" aria-label="Suggested prompts">
+			<section className="chat-shell__suggestions" aria-label="Suggested prompts">
 				{route.suggestions.map((suggestion, index) => {
 					const Icon = suggestionIcons[index] ?? Workflow;
 					return (
@@ -23,7 +23,7 @@ export function ChatStartState({ route }: { route: StartRoute }) {
 						</button>
 					);
 				})}
-			</div>
+			</section>
 		</section>
 	);
 }
