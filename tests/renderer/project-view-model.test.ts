@@ -1,19 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
 import {
-	createProjectMainCopy,
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
 } from "../../src/renderer/projects/project-view-model";
-
-const emptyView: ProjectStateView = {
-	projects: [],
-	standaloneChats: [],
-	selectedProjectId: null,
-	selectedChatId: null,
-	selectedProject: null,
-	selectedChat: null,
-};
 
 const fixedNow = new Date("2026-05-12T12:00:00.000Z");
 
@@ -40,33 +30,6 @@ const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 });
 
 describe("project view model", () => {
-	it("creates global empty main copy so first launch asks for a project", () => {
-		expect(createProjectMainCopy(emptyView)).toEqual({
-			kind: "global-empty",
-			title: "What should we work on?",
-			projectSelectorLabel: "Work in a project",
-		});
-	});
-
-	it("creates project empty main copy so an empty selected project can start work", () => {
-		const project = createProject();
-		const view: ProjectStateView = {
-			projects: [project],
-			standaloneChats: [],
-			selectedProjectId: project.id,
-			selectedChatId: null,
-			selectedProject: project,
-			selectedChat: null,
-		};
-
-		expect(createProjectMainCopy(view)).toEqual({
-			kind: "project-empty",
-			title: "What should we build in pi?",
-			projectId: project.id,
-			projectSelectorLabel: "pi",
-		});
-	});
-
 	it("creates an empty sidebar child for projects with no chats", () => {
 		const project = createProject();
 		const view: ProjectStateView = {
@@ -92,55 +55,7 @@ describe("project view model", () => {
 		]);
 	});
 
-	it("creates missing project copy so recovery actions have project context", () => {
-		const project = createProject({
-			availability: { status: "missing", checkedAt: "2026-05-12T10:00:00.000Z" },
-		});
-		const view: ProjectStateView = {
-			projects: [project],
-			standaloneChats: [],
-			selectedProjectId: project.id,
-			selectedChatId: null,
-			selectedProject: project,
-			selectedChat: null,
-		};
-
-		expect(createProjectMainCopy(view)).toEqual({
-			kind: "missing-project",
-			title: "pi is unavailable",
-			body: "Locate the project folder or remove it from the sidebar.",
-			projectId: project.id,
-			projectSelectorLabel: "pi",
-		});
-	});
-
-	it("creates unavailable project copy that surfaces the availability reason", () => {
-		const project = createProject({
-			availability: {
-				status: "unavailable",
-				checkedAt: "2026-05-12T10:00:00.000Z",
-				reason: "Permission denied",
-			},
-		});
-		const view: ProjectStateView = {
-			projects: [project],
-			standaloneChats: [],
-			selectedProjectId: project.id,
-			selectedChatId: null,
-			selectedProject: project,
-			selectedChat: null,
-		};
-
-		expect(createProjectMainCopy(view)).toEqual({
-			kind: "missing-project",
-			title: "pi is unavailable",
-			body: "Permission denied",
-			projectId: project.id,
-			projectSelectorLabel: "pi",
-		});
-	});
-
-	it("creates selected chat copy and marks the active chat row", () => {
+	it("marks the active project chat row when a chat is selected", () => {
 		const chat = createChat();
 		const project = createProject({ chats: [chat] });
 		const view: ProjectStateView = {
@@ -152,13 +67,6 @@ describe("project view model", () => {
 			selectedChat: chat,
 		};
 
-		expect(createProjectMainCopy(view)).toEqual({
-			kind: "chat",
-			title: "Project home",
-			projectId: project.id,
-			chatId: chat.id,
-			projectSelectorLabel: "pi",
-		});
 		expect(createProjectSidebarRows(view, fixedNow)[0]?.children).toEqual([
 			{
 				kind: "chat",
