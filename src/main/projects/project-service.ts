@@ -362,11 +362,6 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				const projectIndex = findProjectIndex(store, input.projectId);
-				const existingProject = store.projects[projectIndex];
-				if (existingProject.availability.status === "unavailable") {
-					throw new Error(existingProject.availability.reason);
-				}
-
 				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 				const project = store.projects[projectIndex];
 
@@ -382,7 +377,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 				return {
 					projectId: project.id,
-					displayName: project.displayName,
+					displayName: basename(project.path),
 					path: project.path,
 				};
 			});

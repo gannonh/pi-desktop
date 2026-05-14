@@ -537,7 +537,7 @@ describe("project service", () => {
 
 	it("resolves an available project workspace before starting a session", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-workspace-"));
-		const project = createProject(projectPath);
+		const project = createProject(projectPath, { displayName: "Renamed project" });
 		const { service } = await createService({
 			initialStore: {
 				...createEmptyProjectStore(),
@@ -567,24 +567,32 @@ describe("project service", () => {
 		});
 		await rm(projectPath, { recursive: true });
 
-		await expect(service.getSessionWorkspace({ projectId: project.id })).rejects.toThrow(
-			"Project folder is missing. Locate the folder before starting a Pi session.",
-		);
+		await expect(
+			service
+				.getSessionWorkspace({ projectId: project.id })
+				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
+		).resolves.toBe("Project folder is missing. Locate the folder before starting a Pi session.");
 	});
 
-	it("rejects an unavailable project workspace before starting a session", async () => {
+	it("refreshes a stored unavailable project workspace before starting a session", async () => {
 		const project = createProject("/tmp/pi-denied", {
 			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
 		});
-		const { service } = await createService({
+		const { memoryStore, service } = await createService({
 			initialStore: {
 				...createEmptyProjectStore(),
 				projects: [project],
 				selectedProjectId: project.id,
 			},
+			now: () => secondNow,
 		});
 
-		await expect(service.getSessionWorkspace({ projectId: project.id })).rejects.toThrow("Permission denied");
+		await expect(
+			service
+				.getSessionWorkspace({ projectId: project.id })
+				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
+		).resolves.toBe("Project folder is missing. Locate the folder before starting a Pi session.");
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
 	it("creates chat metadata and selects the new chat", async () => {
