@@ -27,6 +27,12 @@ export type ProjectServiceDeps = {
 	initializeGitRepository: (projectPath: string) => Promise<void>;
 };
 
+export type SessionWorkspace = {
+	projectId: string;
+	displayName: string;
+	path: string;
+};
+
 export type ProjectService = {
 	getState: () => Promise<ProjectStateView>;
 	createFromScratch: () => Promise<ProjectStateView>;
@@ -38,6 +44,7 @@ export type ProjectService = {
 	locateFolder: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	setPinned: (input: ProjectPinnedInput) => Promise<ProjectStateView>;
 	checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateView>;
+	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
 	selectChat: (input: ChatSelectionInput) => Promise<ProjectStateView>;
 };
@@ -348,6 +355,36 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 
 				return saveAndView(deps.store, store);
+			});
+		},
+
+		async getSessionWorkspace(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				const existingProject = store.projects[projectIndex];
+				if (existingProject.availability.status === "unavailable") {
+					throw new Error(existingProject.availability.reason);
+				}
+
+				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
+				const project = store.projects[projectIndex];
+
+				if (project.availability.status === "missing") {
+					await deps.store.save(store);
+					throw new Error("Project folder is missing. Locate the folder before starting a Pi session.");
+				}
+
+				if (project.availability.status === "unavailable") {
+					await deps.store.save(store);
+					throw new Error(project.availability.reason);
+				}
+
+				return {
+					projectId: project.id,
+					displayName: project.displayName,
+					path: project.path,
+				};
 			});
 		},
 

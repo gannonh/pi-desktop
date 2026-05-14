@@ -535,6 +535,58 @@ describe("project service", () => {
 		expect(view.projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
+	it("resolves an available project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-workspace-"));
+		const project = createProject(projectPath);
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).resolves.toEqual({
+			projectId: project.id,
+			displayName: basename(projectPath),
+			path: projectPath,
+		});
+	});
+
+	it("rejects a missing project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-missing-"));
+		const project = createProject(projectPath);
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).rejects.toThrow(
+			"Project folder is missing. Locate the folder before starting a Pi session.",
+		);
+	});
+
+	it("rejects an unavailable project workspace before starting a session", async () => {
+		const project = createProject("/tmp/pi-denied", {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+		});
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).rejects.toThrow("Permission denied");
+	});
+
 	it("creates chat metadata and selects the new chat", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const { service } = await createService({
