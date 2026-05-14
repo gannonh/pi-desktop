@@ -70,6 +70,18 @@ const createProject = (path: string, overrides: Partial<ProjectStore["projects"]
 	...overrides,
 });
 
+const expectRejectsWithMessage = async (promise: Promise<unknown>, message: string) => {
+	let rejection: unknown;
+	try {
+		await promise;
+	} catch (error) {
+		rejection = error;
+	}
+
+	expect(rejection).toBeInstanceOf(Error);
+	expect((rejection as Error).message).toBe(message);
+};
+
 describe("project service", () => {
 	it("returns the current project state", async () => {
 		const project = createProject("/tmp/pi-desktop");
@@ -535,6 +547,24 @@ describe("project service", () => {
 		expect(view.projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
+	it("updates unavailable availability to available when the folder can be accessed", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-unavailable-recovered-"));
+		const project = createProject(projectPath, {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.checkAvailability({ projectId: project.id });
+
+		expect(view.projects[0]?.availability).toEqual({ status: "available", checkedAt: secondNow });
+	});
+
 	it("resolves an available project workspace before starting a session", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-workspace-"));
 		const project = createProject(projectPath, { displayName: "Renamed project" });
@@ -557,7 +587,7 @@ describe("project service", () => {
 	it("rejects a missing project workspace before starting a session", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-missing-"));
 		const project = createProject(projectPath);
-		const { service } = await createService({
+		const { memoryStore, service } = await createService({
 			initialStore: {
 				...createEmptyProjectStore(),
 				projects: [project],
@@ -567,15 +597,15 @@ describe("project service", () => {
 		});
 		await rm(projectPath, { recursive: true });
 
-		await expect(
-			service
-				.getSessionWorkspace({ projectId: project.id })
-				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
-		).resolves.toBe("Project folder is missing. Locate the folder before starting a Pi session.");
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project folder is missing. Locate the folder before starting a Pi session.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
-	it("refreshes a stored unavailable project workspace before starting a session", async () => {
-		const project = createProject("/tmp/pi-denied", {
+	it("rejects a stored unavailable project workspace after a non-missing access failure", async () => {
+		const project = createProject("/tmp/pi-denied\0", {
 			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
 		});
 		const { memoryStore, service } = await createService({
@@ -587,16 +617,34 @@ describe("project service", () => {
 			now: () => secondNow,
 		});
 
-		await expect(
-			service
-				.getSessionWorkspace({ projectId: project.id })
-				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
-		).resolves.toBe("Permission denied");
+		await expectRejectsWithMessage(service.getSessionWorkspace({ projectId: project.id }), "Permission denied");
 		expect(memoryStore.read().projects[0]?.availability).toEqual({
 			status: "unavailable",
 			checkedAt: firstNow,
 			reason: "Permission denied",
 		});
+	});
+
+	it("marks a deleted unavailable project workspace missing before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-unavailable-missing-"));
+		const project = createProject(projectPath, {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project folder is missing. Locate the folder before starting a Pi session.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
 	it("creates chat metadata and selects the new chat", async () => {

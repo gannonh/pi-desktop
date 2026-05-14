@@ -84,13 +84,17 @@ const saveAndView = async (storeFile: ProjectStoreFile, store: ProjectStore): Pr
 	return createProjectStateView(store);
 };
 
+const getErrorCode = (error: unknown): unknown =>
+	typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+
 const checkPathAvailable = async (projectPath: string) => {
 	try {
 		await access(projectPath);
 		return { status: "available" as const };
 	} catch (error) {
+		const code = getErrorCode(error);
 		return {
-			status: "missing" as const,
+			status: code === "ENOENT" || code === "ENOTDIR" ? ("missing" as const) : ("unavailable" as const),
 			reason: error instanceof Error ? error.message : String(error),
 		};
 	}
@@ -101,7 +105,7 @@ const refreshProjectAvailability = async (project: ProjectRecord, now: string) =
 	const nextAvailability =
 		availability.status === "available"
 			? { status: "available" as const, checkedAt: now }
-			: project.availability.status === "unavailable"
+			: availability.status === "unavailable" && project.availability.status === "unavailable"
 				? project.availability
 				: { status: "missing" as const, checkedAt: now };
 	const changed = project.availability.status !== nextAvailability.status;
