@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ProjectStateViewSchema, type ProjectStateView } from "./project-state";
+import { type ProjectStateView, ProjectStateViewSchema } from "./project-state";
 import { createResultSchema, type IpcResult } from "./result";
 
 export const IpcChannels = {
