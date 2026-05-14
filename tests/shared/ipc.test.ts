@@ -55,6 +55,11 @@ describe("IPC contracts", () => {
 			projectCheckAvailability: "project:checkAvailability",
 			chatCreate: "chat:create",
 			chatSelect: "chat:select",
+			piSessionStart: "pi-session:start",
+			piSessionSubmit: "pi-session:submit",
+			piSessionAbort: "pi-session:abort",
+			piSessionDispose: "pi-session:dispose",
+			piSessionEvent: "pi-session:event",
 		});
 	});
 

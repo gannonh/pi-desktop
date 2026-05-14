@@ -16,6 +16,11 @@ export const IpcChannels = {
 	projectCheckAvailability: "project:checkAvailability",
 	chatCreate: "chat:create",
 	chatSelect: "chat:select",
+	piSessionStart: "pi-session:start",
+	piSessionSubmit: "pi-session:submit",
+	piSessionAbort: "pi-session:abort",
+	piSessionDispose: "pi-session:dispose",
+	piSessionEvent: "pi-session:event",
 } as const;
 
 export const AppVersionSchema = z.strictObject({
