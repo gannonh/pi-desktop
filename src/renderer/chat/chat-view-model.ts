@@ -21,14 +21,14 @@ export type ChatShellRoute =
 			kind: "global-start";
 			title: "What should we work on?";
 			composer: ComposerContext;
-			suggestions: ChatSuggestion[];
+			suggestions: readonly ChatSuggestion[];
 	  }
 	| {
 			kind: "project-start";
 			title: string;
 			projectId: string;
 			composer: ComposerContext;
-			suggestions: ChatSuggestion[];
+			suggestions: readonly ChatSuggestion[];
 	  }
 	| {
 			kind: "empty-chat";
@@ -55,11 +55,11 @@ export type ChatShellRoute =
 
 const runtimeUnavailableReason = "Pi runtime unavailable until Milestone 3.";
 
-const suggestions: ChatSuggestion[] = [
+const suggestions = [
 	"Review my recent commits for correctness risks and maintainability concerns",
 	"Unblock my most recent open PR",
 	"Connect your favorite apps to Pi",
-];
+] as const satisfies readonly ChatSuggestion[];
 
 const createComposerContext = (projectSelectorLabel: string, projectSelected: boolean): ComposerContext => ({
 	projectSelectorLabel,

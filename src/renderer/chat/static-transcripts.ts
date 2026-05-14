@@ -1,19 +1,19 @@
 export interface StaticTranscriptCard {
-	title: string;
-	subtitle: string;
-	actionLabel: string;
+	readonly title: string;
+	readonly subtitle: string;
+	readonly actionLabel: string;
 }
 
 export interface StaticTranscript {
-	workedLabel: string;
-	assistantSummary: string[];
-	cards: StaticTranscriptCard[];
-	userFollowUp: string;
-	followUpWorkedLabel: string;
-	followUpSummary: string[];
+	readonly workedLabel: string;
+	readonly assistantSummary: readonly string[];
+	readonly cards: readonly StaticTranscriptCard[];
+	readonly userFollowUp: string;
+	readonly followUpWorkedLabel: string;
+	readonly followUpSummary: readonly string[];
 }
 
-const transcripts: Record<string, StaticTranscript> = {
+const transcripts: Readonly<Record<string, StaticTranscript>> = {
 	"chat:milestone-01": {
 		workedLabel: "Worked for 7m 10s",
 		assistantSummary: [

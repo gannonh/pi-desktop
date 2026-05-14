@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createChatShellRoute } from "../../src/renderer/chat/chat-view-model";
+import { getStaticTranscript } from "../../src/renderer/chat/static-transcripts";
 import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
 
 const emptyView: ProjectStateView = {
@@ -32,6 +33,29 @@ const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	updatedAt: "2026-05-12T10:00:00.000Z",
 	...overrides,
 });
+
+const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
+	if (route.kind === "global-start" || route.kind === "project-start") {
+		// @ts-expect-error Suggestions are shared fixture data and must stay readonly.
+		route.suggestions.push("Connect your favorite apps to Pi");
+	}
+};
+
+const assertStaticTranscriptFixturesAreReadonly = (transcript: NonNullable<ReturnType<typeof getStaticTranscript>>) => {
+	// @ts-expect-error Transcript summaries are fixture data and must stay readonly.
+	transcript.assistantSummary.push("Changed summary");
+	// @ts-expect-error Transcript card lists are fixture data and must stay readonly.
+	transcript.cards.push({ title: "Changed", subtitle: "Changed", actionLabel: "Open" });
+
+	const card = transcript.cards[0];
+	if (card) {
+		// @ts-expect-error Transcript card fields are fixture data and must stay readonly.
+		card.title = "Changed";
+	}
+};
+
+void assertRouteFixturesAreReadonly;
+void assertStaticTranscriptFixturesAreReadonly;
 
 describe("createChatShellRoute", () => {
 	it("creates a global start route when no project is selected", () => {
@@ -103,6 +127,28 @@ describe("createChatShellRoute", () => {
 			kind: "unavailable-project",
 			title: "pi-desktop is unavailable",
 			body: "Permission denied",
+			projectId: project.id,
+			projectSelectorLabel: "pi-desktop",
+		});
+	});
+
+	it("creates an unavailable project route with generic recovery copy when the project is missing", () => {
+		const project = createProject({
+			availability: { status: "missing", checkedAt: "2026-05-12T10:00:00.000Z" },
+		});
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(createChatShellRoute(view)).toEqual({
+			kind: "unavailable-project",
+			title: "pi-desktop is unavailable",
+			body: "Locate the project folder or remove it from the sidebar.",
 			projectId: project.id,
 			projectSelectorLabel: "pi-desktop",
 		});
