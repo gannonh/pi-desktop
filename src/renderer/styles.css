@@ -587,6 +587,10 @@ button {
 	min-width: 0.5rem;
 }
 
+.composer__control-spacer + .composer__control-wrap {
+	margin-left: auto;
+}
+
 .composer__disabled-reason {
 	flex-basis: 100%;
 	overflow-wrap: anywhere;
