@@ -565,6 +565,25 @@ describe("project service", () => {
 		expect(view.projects[0]?.availability).toEqual({ status: "available", checkedAt: secondNow });
 	});
 
+	it("updates available availability to unavailable after a non-missing access failure", async () => {
+		const project = createProject("/tmp/pi-invalid\0");
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.checkAvailability({ projectId: project.id });
+
+		expect(view.projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: secondNow,
+			reason: expect.stringContaining("null bytes"),
+		});
+	});
+
 	it("resolves an available project workspace before starting a session", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-workspace-"));
 		const project = createProject(projectPath, { displayName: "Renamed project" });
