@@ -1,13 +1,4 @@
-import {
-	ArrowUp,
-	ChevronDown,
-	GitBranch,
-	Laptop,
-	Mic,
-	Paperclip,
-	ShieldCheck,
-	Sparkles,
-} from "lucide-react";
+import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, Paperclip, ShieldCheck, Sparkles } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
@@ -57,7 +48,12 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 				<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
 					<Mic className="composer__icon" />
 				</button>
-				<button className="composer__send-button" type="submit" disabled={state.sendDisabled} aria-label="Send message">
+				<button
+					className="composer__send-button"
+					type="submit"
+					disabled={state.sendDisabled}
+					aria-label="Send message"
+				>
 					<ArrowUp className="composer__icon" />
 				</button>
 			</div>
@@ -114,12 +110,7 @@ function ComposerControl({ label, menu, openMenu, icon, onToggle }: ComposerCont
 
 	return (
 		<span className="composer__control-wrap">
-			<button
-				className="composer__control"
-				type="button"
-				aria-expanded={open}
-				onClick={() => onToggle(menu)}
-			>
+			<button className="composer__control" type="button" aria-expanded={open} onClick={() => onToggle(menu)}>
 				{icon}
 				<span className="composer__control-label">{label}</span>
 				<ChevronDown className="composer__control-icon" />
