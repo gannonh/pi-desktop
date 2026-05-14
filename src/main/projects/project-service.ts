@@ -1,4 +1,4 @@
-import { access, mkdir } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import {
 	createProjectId,
@@ -89,8 +89,12 @@ const getErrorCode = (error: unknown): unknown =>
 
 const checkPathAvailable = async (projectPath: string) => {
 	try {
-		await access(projectPath);
-		return { status: "available" as const };
+		const stats = await stat(projectPath);
+		if (stats.isDirectory()) {
+			return { status: "available" as const };
+		}
+
+		return { status: "unavailable" as const, reason: "Project path is not a directory." };
 	} catch (error) {
 		const code = getErrorCode(error);
 		return {
@@ -370,16 +374,23 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				const projectIndex = findProjectIndex(store, input.projectId);
-				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
+				const availabilityChanged = await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 				const project = store.projects[projectIndex];
+				if (availabilityChanged) {
+					await deps.store.save(store);
+				}
 
 				if (project.availability.status === "missing") {
-					await deps.store.save(store);
+					if (!availabilityChanged) {
+						await deps.store.save(store);
+					}
 					throw new Error("Project folder is missing. Locate the folder before starting a Pi session.");
 				}
 
 				if (project.availability.status === "unavailable") {
-					await deps.store.save(store);
+					if (!availabilityChanged) {
+						await deps.store.save(store);
+					}
 					throw new Error(project.availability.reason);
 				}
 

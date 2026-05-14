@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -603,6 +603,54 @@ describe("project service", () => {
 		});
 	});
 
+	it("persists a recovered available project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-recovered-"));
+		const project = createProject(projectPath, {
+			availability: { status: "missing", checkedAt: firstNow },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).resolves.toEqual({
+			projectId: project.id,
+			displayName: basename(projectPath),
+			path: projectPath,
+		});
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "available", checkedAt: secondNow });
+	});
+
+	it("rejects a regular file project workspace before starting a session", async () => {
+		const projectDir = await mkdtemp(join(tmpdir(), "pi-session-file-"));
+		const projectPath = join(projectDir, "workspace-file");
+		await writeFile(projectPath, "not a directory");
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project path is not a directory.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: secondNow,
+			reason: "Project path is not a directory.",
+		});
+		expect(memoryStore.file.save).toHaveBeenCalledTimes(1);
+	});
+
 	it("rejects a missing project workspace before starting a session", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-missing-"));
 		const project = createProject(projectPath);
@@ -642,6 +690,7 @@ describe("project service", () => {
 			checkedAt: firstNow,
 			reason: "Permission denied",
 		});
+		expect(memoryStore.file.save).toHaveBeenCalledTimes(1);
 	});
 
 	it("marks a deleted unavailable project workspace missing before starting a session", async () => {
