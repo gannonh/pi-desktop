@@ -500,6 +500,12 @@ button {
 	color: color-mix(in oklch, var(--color-muted-foreground) 78%, transparent);
 }
 
+.composer__textarea:focus-visible {
+	border-radius: var(--radius-control);
+	outline: 2px solid var(--color-ring);
+	outline-offset: 0.25rem;
+}
+
 .composer__icon-button,
 .composer__send-button {
 	display: inline-flex;
@@ -600,6 +606,11 @@ button {
 	padding: 0.25rem;
 	color: var(--menu-popover-color);
 	box-shadow: 0 1rem 2rem rgb(0 0 0 / 28%);
+}
+
+.composer__control-spacer ~ .composer__control-wrap .composer__local-menu {
+	right: 0;
+	left: auto;
 }
 
 .composer__local-menu-item {
