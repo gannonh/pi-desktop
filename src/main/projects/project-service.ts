@@ -101,7 +101,9 @@ const refreshProjectAvailability = async (project: ProjectRecord, now: string) =
 	const nextAvailability =
 		availability.status === "available"
 			? { status: "available" as const, checkedAt: now }
-			: { status: "missing" as const, checkedAt: now };
+			: project.availability.status === "unavailable"
+				? project.availability
+				: { status: "missing" as const, checkedAt: now };
 	const changed = project.availability.status !== nextAvailability.status;
 
 	return {

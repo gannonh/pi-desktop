@@ -591,8 +591,12 @@ describe("project service", () => {
 			service
 				.getSessionWorkspace({ projectId: project.id })
 				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
-		).resolves.toBe("Project folder is missing. Locate the folder before starting a Pi session.");
-		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+		).resolves.toBe("Permission denied");
+		expect(memoryStore.read().projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: firstNow,
+			reason: "Permission denied",
+		});
 	});
 
 	it("creates chat metadata and selects the new chat", async () => {
