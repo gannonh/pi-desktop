@@ -37,15 +37,52 @@ const textFromContent = (content: unknown): string => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
 
-const hasContent = (message: AgentMessage): message is AgentMessage & { content: unknown } => isRecord(message) && "content" in message;
+const hasContent = (message: AgentMessage): message is AgentMessage & { content: unknown } =>
+	isRecord(message) && "content" in message;
 
-const stringValue = (value: unknown): string | undefined => (typeof value === "string" && value.length > 0 ? value : undefined);
+const stringValue = (value: unknown): string | undefined =>
+	typeof value === "string" && value.length > 0 ? value : undefined;
 
 const timestampFor = (message: AgentMessage, fallbackIndex: number): number | string => {
 	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
 		return message.timestamp;
 	}
 	return fallbackIndex;
+};
+
+const fallbackIdFor = (message: AgentMessage, fallbackIndex: number): number | string => {
+	if (!isRecord(message)) {
+		return fallbackIndex;
+	}
+
+	const parts: string[] = [];
+	const customType = stringValue(message.customType);
+	if (customType) {
+		parts.push(`customType=${customType}`);
+	}
+
+	const toolCallId = stringValue(message.toolCallId);
+	if (toolCallId) {
+		parts.push(`toolCallId=${toolCallId}`);
+	}
+
+	const content = hasContent(message) ? textFromContent(message.content) : "";
+	if (content.length > 0) {
+		parts.push(`content=${content}`);
+	}
+
+	if (parts.length > 0) {
+		return parts.join(":");
+	}
+
+	return fallbackIndex;
+};
+
+const messageStableIdFor = (message: AgentMessage, fallbackIndex: number): number | string => {
+	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
+		return message.timestamp;
+	}
+	return fallbackIdFor(message, fallbackIndex);
 };
 
 const roleLabelForId = (message: AgentMessage): string => {
@@ -58,22 +95,15 @@ const roleLabelForId = (message: AgentMessage): string => {
 const messageIdFor = (message: AgentMessage, fallbackIndex = 0): string => {
 	const role = roleLabelForId(message);
 
-	if (role === "assistant" && isRecord(message)) {
-		const responseId = stringValue(message.responseId);
-		if (responseId) {
-			return `assistant:${responseId}`;
-		}
-	}
-
 	if (role === "toolResult" && isRecord(message)) {
-		const timestamp = timestampFor(message, fallbackIndex);
+		const timestamp = messageStableIdFor(message, fallbackIndex);
 		const toolCallId = stringValue(message.toolCallId);
 		if (toolCallId) {
 			return `toolResult:${toolCallId}:${timestamp}`;
 		}
 	}
 
-	return `${role}:${timestampFor(message, fallbackIndex)}`;
+	return `${role}:${messageStableIdFor(message, fallbackIndex)}`;
 };
 
 const contentFor = (message: AgentMessage): string => {

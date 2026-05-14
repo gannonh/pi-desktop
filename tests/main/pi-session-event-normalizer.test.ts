@@ -84,10 +84,41 @@ describe("pi session event normalizer", () => {
 			{
 				type: "assistant_delta",
 				sessionId: "pi-session:one",
-				messageId: "assistant:resp_123",
+				messageId: "assistant:2",
 				delta: "lo",
 				receivedAt,
 			},
+		]);
+	});
+
+	it("keeps assistant message ids stable when response ids appear after start", () => {
+		const started = assistantMessage({ responseId: undefined, timestamp: 2 });
+		const updated = assistantMessage({ responseId: "resp_123", timestamp: 2 });
+		const ended = assistantMessage({
+			responseId: "resp_123",
+			timestamp: 2,
+			content: [{ type: "text", text: "Hello" }],
+		});
+
+		const events = [
+			normalizeAndParse({ type: "message_start", message: started })[0],
+			normalizeAndParse({
+				type: "message_update",
+				message: updated,
+				assistantMessageEvent: {
+					type: "text_delta",
+					contentIndex: 0,
+					delta: "lo",
+					partial: updated,
+				},
+			})[0],
+			normalizeAndParse({ type: "message_end", message: ended })[0],
+		];
+
+		expect(events.map((event) => ("messageId" in event ? event.messageId : undefined))).toEqual([
+			"assistant:2",
+			"assistant:2",
+			"assistant:2",
 		]);
 	});
 
@@ -159,12 +190,36 @@ describe("pi session event normalizer", () => {
 			{
 				type: "message_start",
 				sessionId: "pi-session:one",
-				messageId: "custom:0",
+				messageId: "custom:customType=notice:content=Heads up",
 				role: "user",
 				content: "Heads up",
 				receivedAt,
 			},
 		]);
+	});
+
+	it("uses collision-resistant fallback ids for malformed messages without timestamps", () => {
+		const first = normalizeAndParse({
+			type: "message_start",
+			message: {
+				role: "custom",
+				customType: "notice",
+				display: true,
+				content: "Heads up",
+			},
+		} as unknown as AgentSessionEvent)[0];
+		const second = normalizeAndParse({
+			type: "message_start",
+			message: {
+				role: "custom",
+				customType: "notice",
+				display: true,
+				content: "Different",
+			},
+		} as unknown as AgentSessionEvent)[0];
+
+		expect(first).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Heads up" });
+		expect(second).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Different" });
 	});
 
 	it("normalizes agent status events", () => {
