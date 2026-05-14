@@ -12,6 +12,7 @@ export default defineConfig({
 				"src/shared/**/*.ts",
 				"src/renderer/shell/**/*.ts",
 				"src/renderer/projects/**/*.ts",
+				"src/renderer/chat/**/*.ts",
 				"src/main/projects/**/*.ts",
 			],
 			exclude: ["**/*.test.ts", "**/*.config.ts", "tests/**", "src/**/*.d.ts"],
