@@ -65,10 +65,8 @@ describe("createChatShellRoute", () => {
 			composer: {
 				projectSelectorLabel: "Work in a project",
 				modeLabel: "Work locally",
-				accessLabel: "Full access",
 				modelLabel: "5.5 High",
 				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
 			},
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
@@ -96,11 +94,9 @@ describe("createChatShellRoute", () => {
 			composer: {
 				projectSelectorLabel: "pi-desktop",
 				modeLabel: "Work locally",
-				branchLabel: "main",
-				accessLabel: "Full access",
+				branchLabel: "feat/M02-chat-shell",
 				modelLabel: "5.5 High",
 				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
 			},
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
@@ -207,11 +203,9 @@ describe("createChatShellRoute", () => {
 			composer: {
 				projectSelectorLabel: "pi-desktop",
 				modeLabel: "Work locally",
-				branchLabel: "main",
-				accessLabel: "Full access",
+				branchLabel: "feat/M02-chat-shell",
 				modelLabel: "5.5 High",
 				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
 			},
 		});
 	});

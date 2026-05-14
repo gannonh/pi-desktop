@@ -1,5 +1,5 @@
-import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, Paperclip, ShieldCheck, Sparkles } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, Paperclip, Sparkles } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
 
@@ -8,18 +8,16 @@ interface ComposerProps {
 	layout?: "center" | "bottom";
 }
 
-type ComposerMenu = "project" | "mode" | "access" | "model" | null;
+type ComposerMenu = "project" | "mode" | "model" | null;
 
 const inputHint = "Ask Pi anything. @ to use skills or mention files";
 
 export function Composer({ context, layout = "center" }: ComposerProps) {
-	const statusId = useId();
 	const [text, setText] = useState("");
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const state = createComposerState({
 		text,
 		runtimeAvailable: context.runtimeAvailable,
-		disabledReason: context.disabledReason,
 	});
 
 	const toggleMenu = (menu: Exclude<ComposerMenu, null>) => {
@@ -30,32 +28,37 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 		<form
 			className={["composer", `composer--${layout}`].join(" ")}
 			aria-label="Pi composer"
-			aria-describedby={state.statusLabel ? statusId : undefined}
 			onSubmit={(event) => event.preventDefault()}
 		>
-			<div className="composer__input-row">
-				<button className="composer__icon-button" type="button" aria-label="Add context" disabled>
-					<Paperclip className="composer__icon" />
-				</button>
-				<textarea
-					className="composer__textarea"
-					aria-label="Message Pi"
-					value={text}
-					onChange={(event) => setText(event.target.value)}
-					placeholder={inputHint}
-					rows={1}
-				/>
-				<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
-					<Mic className="composer__icon" />
-				</button>
-				<button
-					className="composer__send-button"
-					type="submit"
-					disabled={state.sendDisabled}
-					aria-label="Send message"
-				>
-					<ArrowUp className="composer__icon" />
-				</button>
+			<div className="composer__input-panel">
+				<div className="composer__message-row">
+					<textarea
+						className="composer__textarea"
+						aria-label="Message Pi"
+						value={text}
+						onChange={(event) => setText(event.target.value)}
+						placeholder={inputHint}
+						rows={1}
+					/>
+				</div>
+				<div className="composer__action-row">
+					<button className="composer__icon-button" type="button" aria-label="Add context" disabled>
+						<Paperclip className="composer__icon" />
+					</button>
+					<span className="composer__action-spacer" />
+					<ComposerControl label={context.modelLabel} menu="model" openMenu={openMenu} onToggle={toggleMenu} />
+					<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
+						<Mic className="composer__icon" />
+					</button>
+					<button
+						className="composer__send-button"
+						type="submit"
+						disabled={state.sendDisabled}
+						aria-label="Send message"
+					>
+						<ArrowUp className="composer__icon" />
+					</button>
+				</div>
 			</div>
 			<div className="composer__control-row">
 				<ComposerControl
@@ -76,20 +79,6 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 					<span className="composer__branch-label">
 						<GitBranch className="composer__control-icon" />
 						{context.branchLabel}
-					</span>
-				) : null}
-				<span className="composer__control-spacer" />
-				<ComposerControl
-					label={context.accessLabel}
-					menu="access"
-					openMenu={openMenu}
-					icon={<ShieldCheck className="composer__control-icon" />}
-					onToggle={toggleMenu}
-				/>
-				<ComposerControl label={context.modelLabel} menu="model" openMenu={openMenu} onToggle={toggleMenu} />
-				{state.statusLabel ? (
-					<span id={statusId} className="composer__disabled-reason">
-						{state.statusLabel}
 					</span>
 				) : null}
 			</div>

@@ -5,10 +5,8 @@ export interface ComposerContext {
 	projectSelectorLabel: string;
 	modeLabel: "Work locally";
 	branchLabel?: string;
-	accessLabel: "Full access";
 	modelLabel: "5.5 High";
 	runtimeAvailable: boolean;
-	disabledReason: string;
 }
 
 export type ChatSuggestion =
@@ -53,22 +51,20 @@ export type ChatShellRoute =
 			projectSelectorLabel: string;
 	  };
 
-const runtimeUnavailableReason = "Pi runtime unavailable until Milestone 3.";
-
 const suggestions = [
 	"Review my recent commits for correctness risks and maintainability concerns",
 	"Unblock my most recent open PR",
 	"Connect your favorite apps to Pi",
 ] as const satisfies readonly ChatSuggestion[];
 
+const currentBranchLabel = "feat/M02-chat-shell";
+
 const createComposerContext = (projectSelectorLabel: string, projectSelected: boolean): ComposerContext => ({
 	projectSelectorLabel,
 	modeLabel: "Work locally",
-	...(projectSelected ? { branchLabel: "main" } : {}),
-	accessLabel: "Full access",
+	...(projectSelected ? { branchLabel: currentBranchLabel } : {}),
 	modelLabel: "5.5 High",
 	runtimeAvailable: false,
-	disabledReason: runtimeUnavailableReason,
 });
 
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {

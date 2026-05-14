@@ -25,6 +25,79 @@ const expectComposerNearBottom = async (page: Page) => {
 	expect((composerBox?.y ?? 0) + (composerBox?.height ?? 0)).toBeGreaterThan(viewportHeight - 160);
 };
 
+const expectComposerControlPlacement = async (page: Page) => {
+	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
+	const messageBox = await page.getByLabel("Message Pi").boundingBox();
+	const addContextBox = await page.getByLabel("Add context").boundingBox();
+	const modelBox = await page.getByRole("button", { name: "5.5 High" }).boundingBox();
+	const voiceBox = await page.getByLabel("Voice input").boundingBox();
+	const sendBox = await page.getByLabel("Send message").boundingBox();
+	const projectBox = await page.getByRole("button", { name: "Work in a project" }).boundingBox();
+	const modeBox = await page.getByRole("button", { name: "Work locally" }).boundingBox();
+
+	expect(inputPanelBox).not.toBeNull();
+	expect(messageBox).not.toBeNull();
+	expect(addContextBox).not.toBeNull();
+	expect(modelBox).not.toBeNull();
+	expect(voiceBox).not.toBeNull();
+	expect(sendBox).not.toBeNull();
+	expect(projectBox).not.toBeNull();
+	expect(modeBox).not.toBeNull();
+
+	const actionRowY = addContextBox?.y ?? 0;
+	expect(actionRowY).toBeGreaterThan((messageBox?.y ?? 0) + (messageBox?.height ?? 0) - 2);
+	expect(Math.abs(actionRowY - (modelBox?.y ?? 0))).toBeLessThanOrEqual(3);
+	expect(Math.abs(actionRowY - (voiceBox?.y ?? 0))).toBeLessThanOrEqual(3);
+	expect(Math.abs(actionRowY - (sendBox?.y ?? 0))).toBeLessThanOrEqual(3);
+	expect(
+		(inputPanelBox?.y ?? 0) + (inputPanelBox?.height ?? 0) - ((sendBox?.y ?? 0) + (sendBox?.height ?? 0)),
+	).toBeLessThanOrEqual(8);
+	expect(projectBox?.y ?? 0).toBeGreaterThan(actionRowY + (addContextBox?.height ?? 0));
+	expect(Math.abs((projectBox?.y ?? 0) - (modeBox?.y ?? 0))).toBeLessThanOrEqual(2);
+};
+
+const expectSelectedComposerVisualTokens = async (page: Page) => {
+	await expect(page.locator(".app-shell__main")).toHaveCSS("background-color", "rgb(24, 24, 24)");
+	await expect(page.locator(".chat-shell--start")).toHaveCSS("background-color", "rgb(24, 24, 24)");
+	await expect(page.locator(".composer__input-panel")).toHaveCSS("background-color", "rgb(45, 45, 45)");
+	await expect(page.locator(".composer__input-panel")).toHaveCSS("border-bottom-left-radius", "24px");
+	await expect(page.locator(".composer__input-panel")).toHaveCSS("border-bottom-right-radius", "24px");
+	await expect(page.locator(".composer__input-panel")).toHaveCSS(
+		"box-shadow",
+		"rgba(0, 0, 0, 0.3) 0px 14px 22px -14px",
+	);
+	await expect(page.locator(".composer__control-row")).toHaveCSS("background-color", "rgb(33, 33, 33)");
+	await expect(page.locator(".composer__control-row")).toHaveCSS("box-shadow", "none");
+	await expect(page.locator(".composer__control-row")).toHaveCSS("padding", "28px 12px 6px");
+	await expect(page.getByLabel("Pi composer").getByRole("button", { name: "pi-desktop" })).toHaveCSS(
+		"font-size",
+		"14px",
+	);
+	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("width", "14px");
+	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("height", "14px");
+	await expect(page.locator(".chat-shell__suggestion").first()).toHaveCSS("border-top-color", "rgb(40, 40, 40)");
+
+	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
+	const controlRowBox = await page.locator(".composer__control-row").boundingBox();
+	const projectControlBox = await page
+		.getByLabel("Pi composer")
+		.getByRole("button", { name: "pi-desktop" })
+		.boundingBox();
+	expect(inputPanelBox).not.toBeNull();
+	expect(controlRowBox).not.toBeNull();
+	expect(projectControlBox).not.toBeNull();
+	expect(inputPanelBox?.height).toBe(96);
+	expect((inputPanelBox?.y ?? 0) + (inputPanelBox?.height ?? 0) - (controlRowBox?.y ?? 0)).toBeGreaterThanOrEqual(20);
+	expect(
+		(projectControlBox?.y ?? 0) - ((inputPanelBox?.y ?? 0) + (inputPanelBox?.height ?? 0)),
+	).toBeGreaterThanOrEqual(6);
+	expect(
+		(controlRowBox?.y ?? 0) +
+			(controlRowBox?.height ?? 0) -
+			((projectControlBox?.y ?? 0) + (projectControlBox?.height ?? 0)),
+	).toBeLessThanOrEqual(8);
+};
+
 test("renders the Milestone 2 global chat start state", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const app = await electron.launch({
@@ -55,9 +128,11 @@ test("renders the Milestone 2 global chat start state", async () => {
 			"Ask Pi anything. @ to use skills or mention files",
 		);
 		await expect(window.getByText("Work in a project")).toBeVisible();
-		await expect(window.getByText("Full access")).toBeVisible();
+		await expect(window.getByText("Work locally")).toBeVisible();
 		await expect(window.getByText("5.5 High")).toBeVisible();
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
+		await expect(window.getByText("Full access")).toHaveCount(0);
+		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toHaveCount(0);
+		await expectComposerControlPlacement(window);
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
@@ -103,7 +178,8 @@ test("renders the selected project chat start state", async () => {
 
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
-		await expect(window.getByText("main", { exact: true })).toBeVisible();
+		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toBeVisible();
+		await expectSelectedComposerVisualTokens(window);
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
