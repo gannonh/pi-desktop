@@ -146,7 +146,7 @@ Later guardrails:
 
 ## Roadmap
 
-### Milestone 0: Foundation
+✅ ### Milestone 0: Foundation
 
 Goal: establish a runnable macOS Electron app with project conventions.
 
@@ -166,7 +166,7 @@ Acceptance:
 - A smoke test verifies main window boot.
 - CI or local check command validates formatting, linting, typechecking, and tests.
 
-### Milestone 1: Sidebar Shell
+✅ ### Milestone 1: Sidebar Shell
 
 Goal: establish the left sidebar as the primary navigation shell for projects and chats.
 
@@ -187,7 +187,7 @@ Acceptance:
 - Sidebar controls expose their intended affordances even when backing functionality is deferred.
 - The app remains runnable, typed, and smoke-testable after sidebar polish.
 
-### Milestone 2: Chat Shell
+✅ ### Milestone 2: Chat Shell
 
 Goal: establish the main chat surface and composer before runtime integration.
 
