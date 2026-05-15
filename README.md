@@ -47,7 +47,7 @@ Starts the browser preview and a local app data bridge. The preview uses the sam
 pnpm check
 ```
 
-`pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and the Electron smoke test.
+`pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and Electron/web smoke tests.
 
 ## Package Locally
 
