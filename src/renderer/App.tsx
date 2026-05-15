@@ -32,6 +32,8 @@ export function App() {
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
 	const activeSessionProjectIdRef = useRef<string | null>(activeSessionProjectId);
 	const latestSessionRequestRef = useRef<SessionRequest | null>(null);
+	const pendingStartRequestRef = useRef<SessionRequest | null>(null);
+	const acceptedSessionIdRef = useRef<string | null>(null);
 	const nextSessionRequestIdRef = useRef(0);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
@@ -59,6 +61,8 @@ export function App() {
 
 		const sessionId = sessionState.sessionId;
 		activeSessionProjectIdRef.current = null;
+		acceptedSessionIdRef.current = null;
+		pendingStartRequestRef.current = null;
 		setActiveSessionProjectId(null);
 		setSessionState(createInitialSessionState());
 
@@ -69,19 +73,17 @@ export function App() {
 
 	useEffect(() => {
 		return window.piDesktop.piSession.onEvent((event) => {
-			const currentProjectId = selectedProjectIdRef.current;
-			if (event.sessionId && (!currentProjectId || !event.sessionId.startsWith(`${currentProjectId}:`))) {
+			if (!event.sessionId) {
 				return;
 			}
-			if (!event.sessionId) {
-				const latestRequest = latestSessionRequestRef.current;
-				if (
-					!currentProjectId ||
-					latestRequest?.projectId !== currentProjectId ||
-					activeSessionProjectIdRef.current !== currentProjectId
-				) {
-					return;
-				}
+
+			const currentProjectId = selectedProjectIdRef.current;
+			if (
+				event.sessionId !== acceptedSessionIdRef.current ||
+				!currentProjectId ||
+				!event.sessionId.startsWith(`${currentProjectId}:`)
+			) {
+				return;
 			}
 
 			setSessionState((current) => reduceSessionEvent(current, event));
@@ -102,7 +104,7 @@ export function App() {
 				return false;
 			}
 
-			const reusableSessionId = activeSessionProjectId === selectedProject.id ? sessionState.sessionId : null;
+			const reusableSessionId = activeSessionProjectId === selectedProject.id ? acceptedSessionIdRef.current : null;
 			const requestProjectId = selectedProject.id;
 			const request: SessionRequest = {
 				id: nextSessionRequestIdRef.current + 1,
@@ -110,6 +112,10 @@ export function App() {
 			};
 			nextSessionRequestIdRef.current = request.id;
 			latestSessionRequestRef.current = request;
+			if (!reusableSessionId) {
+				pendingStartRequestRef.current = request;
+				acceptedSessionIdRef.current = null;
+			}
 
 			activeSessionProjectIdRef.current = requestProjectId;
 			setActiveSessionProjectId(requestProjectId);
@@ -128,7 +134,8 @@ export function App() {
 			const requestIsCurrent =
 				latestSessionRequestRef.current?.id === request.id &&
 				selectedProjectIdRef.current === requestProjectId &&
-				activeSessionProjectIdRef.current === requestProjectId;
+				activeSessionProjectIdRef.current === requestProjectId &&
+				(reusableSessionId || pendingStartRequestRef.current?.id === request.id);
 
 			if (!requestIsCurrent) {
 				if (result.ok && !reusableSessionId) {
@@ -138,6 +145,9 @@ export function App() {
 			}
 
 			if (!result.ok) {
+				if (!reusableSessionId) {
+					pendingStartRequestRef.current = null;
+				}
 				setSessionState((current) => ({
 					...current,
 					status: "failed",
@@ -149,6 +159,8 @@ export function App() {
 			}
 
 			if (!reusableSessionId) {
+				pendingStartRequestRef.current = null;
+				acceptedSessionIdRef.current = result.data.sessionId;
 				activeSessionProjectIdRef.current = requestProjectId;
 				setActiveSessionProjectId(requestProjectId);
 				setSessionState((current) => ({
@@ -159,7 +171,7 @@ export function App() {
 
 			return true;
 		},
-		[activeSessionProjectId, projectState.selectedProject, sessionState.sessionId],
+		[activeSessionProjectId, projectState.selectedProject],
 	);
 
 	const abortSession = useCallback(async () => {
