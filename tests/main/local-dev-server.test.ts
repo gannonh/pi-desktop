@@ -1,3 +1,4 @@
+import { createServer as createNetServer } from "node:net";
 import WebSocket from "ws";
 import type { AppBackend } from "../../src/main/app-backend";
 import { createLocalDevServer } from "../../src/main/dev-server/local-dev-server";
@@ -38,6 +39,28 @@ const sessionEvent: PiSessionEvent = {
 	status: "running",
 	label: "Running",
 	receivedAt: "2026-05-15T00:00:00.000Z",
+};
+
+const getUnusedPort = async () => {
+	const server = createNetServer();
+	await new Promise<void>((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", resolve);
+	});
+	const address = server.address();
+	await new Promise<void>((resolve, reject) => {
+		server.close((error) => {
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve();
+		});
+	});
+	if (address === null || typeof address === "string") {
+		throw new Error("Test server did not bind to a TCP port.");
+	}
+	return address.port;
 };
 
 describe("local dev server", () => {
@@ -91,6 +114,33 @@ describe("local dev server", () => {
 		backend.handle = vi.fn(async () => {
 			throw new Error("backend failed");
 		});
+		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
+
+		try {
+			const response = await fetch(`${server.url}/api/rpc`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ operation: "app.getVersion" }),
+			});
+
+			expect(response.status).toBe(500);
+			expect(await response.json()).toEqual({
+				ok: false,
+				error: {
+					code: "dev_server.request_failed",
+					message: "Request failed.",
+				},
+			});
+		} finally {
+			await server.close();
+		}
+	});
+
+	it("returns a structured request failure when the backend result cannot be serialized", async () => {
+		const { backend } = createBackend();
+		backend.handle = vi.fn(
+			async () => ({ ok: true, data: { value: 1n } }) as unknown as Awaited<ReturnType<AppBackend["handle"]>>,
+		);
 		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
 
 		try {
@@ -220,6 +270,25 @@ describe("local dev server", () => {
 			).rejects.toThrow();
 		} finally {
 			await firstServer.close();
+		}
+	});
+
+	it("closes the HTTP server when Pi session event setup fails after listen succeeds", async () => {
+		const port = await getUnusedPort();
+		const { backend } = createBackend();
+		backend.onPiSessionEvent = vi.fn(() => {
+			throw new Error("Pi session event setup failed.");
+		});
+
+		await expect(createLocalDevServer({ backend, host: "127.0.0.1", port })).rejects.toThrow(
+			"Pi session event setup failed.",
+		);
+
+		const nextServer = await createLocalDevServer({ backend: createBackend().backend, host: "127.0.0.1", port });
+		try {
+			expect(Number(new URL(nextServer.url).port)).toBe(port);
+		} finally {
+			await nextServer.close();
 		}
 	});
 });

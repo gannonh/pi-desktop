@@ -29,11 +29,12 @@ const corsHeaders = {
 class BodyTooLargeError extends Error {}
 
 const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<unknown>) => {
+	const serializedBody = JSON.stringify(body);
 	response.writeHead(statusCode, {
 		...corsHeaders,
 		"content-type": "application/json",
 	});
-	response.end(JSON.stringify(body));
+	response.end(serializedBody);
 };
 
 const isAllowedOrigin = (origin: string | undefined) =>
@@ -173,34 +174,38 @@ export const createLocalDevServer = async (options: LocalDevServerOptions): Prom
 
 	await listen(httpServer, options.port, options.host);
 
-	const address = httpServer.address();
-	if (address === null || typeof address === "string" || !Number.isInteger((address as AddressInfo).port)) {
+	try {
+		const address = httpServer.address();
+		if (address === null || typeof address === "string" || !Number.isInteger((address as AddressInfo).port)) {
+			throw new Error("Dev server did not bind to a TCP address.");
+		}
+
+		const unsubscribe = options.backend.onPiSessionEvent((event) => {
+			const message = JSON.stringify(PiSessionEventEnvelopeSchema.parse({ type: "pi-session:event", event }));
+			for (const client of webSocketServer.clients) {
+				if (client.readyState === WebSocket.OPEN) {
+					client.send(message);
+				}
+			}
+		});
+
+		const url = `http://${options.host}:${address.port}`;
+
+		return {
+			url,
+			wsUrl: `ws://${options.host}:${address.port}/api/events`,
+			async close() {
+				unsubscribe();
+				for (const client of webSocketServer.clients) {
+					client.close();
+				}
+				await closeWebSocketServer(webSocketServer);
+				await closeHttpServer(httpServer);
+			},
+		};
+	} catch (error) {
 		await closeWebSocketServer(webSocketServer);
 		await closeHttpServer(httpServer);
-		throw new Error("Dev server did not bind to a TCP address.");
+		throw error;
 	}
-
-	const unsubscribe = options.backend.onPiSessionEvent((event) => {
-		const message = JSON.stringify(PiSessionEventEnvelopeSchema.parse({ type: "pi-session:event", event }));
-		for (const client of webSocketServer.clients) {
-			if (client.readyState === WebSocket.OPEN) {
-				client.send(message);
-			}
-		}
-	});
-
-	const url = `http://${options.host}:${address.port}`;
-
-	return {
-		url,
-		wsUrl: `ws://${options.host}:${address.port}/api/events`,
-		async close() {
-			unsubscribe();
-			for (const client of webSocketServer.clients) {
-				client.close();
-			}
-			await closeWebSocketServer(webSocketServer);
-			await closeHttpServer(httpServer);
-		},
-	};
 };
