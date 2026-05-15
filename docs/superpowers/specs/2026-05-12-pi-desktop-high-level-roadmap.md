@@ -146,7 +146,7 @@ Later guardrails:
 
 ## Roadmap
 
-✅ ### Milestone 0: Foundation
+✅ ### M00: Foundation
 
 Goal: establish a runnable macOS Electron app with project conventions.
 
@@ -166,7 +166,7 @@ Acceptance:
 - A smoke test verifies main window boot.
 - CI or local check command validates formatting, linting, typechecking, and tests.
 
-✅ ### Milestone 1: Sidebar Shell
+✅ ### M01: Sidebar Shell
 
 Goal: establish the left sidebar as the primary navigation shell for projects and chats.
 
@@ -187,7 +187,7 @@ Acceptance:
 - Sidebar controls expose their intended affordances even when backing functionality is deferred.
 - The app remains runnable, typed, and smoke-testable after sidebar polish.
 
-✅ ### Milestone 2: Chat Shell
+✅ ### M02: Chat Shell
 
 Goal: establish the main chat surface and composer before runtime integration.
 
@@ -209,7 +209,7 @@ Acceptance:
 - Project context is visible in the composer when a project is selected.
 - The main chat shell is ready for prompt submission wiring.
 
-### Milestone 3: Pi Session MVP
+### M03: Pi Session MVP
 
 Goal: run a real Pi-backed coding session through the SDK.
 
@@ -231,7 +231,29 @@ Acceptance:
 - User can abort an active run.
 - Runtime startup/auth/model errors display clearly.
 
-### Milestone 4: Project and Session Management
+### M03.1: Dev Web Real Data Bridge
+
+Goal: make the browser preview use real local project, chat, and Pi session data through a reusable transport boundary.
+
+Deliverables:
+
+- Transport-neutral app backend boundary for app, project, chat, and Pi session operations.
+- Electron IPC binding that uses the shared backend boundary.
+- Local dev HTTP/WebSocket server for browser preview.
+- Browser `PiDesktopApi` HTTP/WebSocket client.
+- `pnpm dev:desktop` for Electron dev mode and `pnpm dev:web` for web preview with the local data bridge.
+- Visible bridge-unavailable errors when the web preview cannot reach the local data bridge.
+- Runtime preview no longer depends on browser-only mock data.
+
+Acceptance:
+
+- `pnpm dev:web` starts the browser preview and local app data bridge.
+- Browser preview shows project/chat state from the same service boundary as Electron dev mode.
+- Browser preview can submit a prompt and receive streamed Pi session events when the local Pi runtime is available.
+- Native desktop-only operations fail visibly in web preview.
+- The transport contract can be reused by a future hosted web transport.
+
+### M04: Project and Session Management
 
 Goal: make sidebar project and chat management functional against real session metadata.
 
@@ -254,7 +276,7 @@ Acceptance:
 - Missing project folders preserve their chat metadata and can be recovered or removed.
 - Sidebar management actions fail visibly when filesystem or runtime state blocks them.
 
-### Milestone 5: Coding Panels
+### M05: Coding Panels
 
 Goal: make agent work inspectable.
 
@@ -274,7 +296,7 @@ Acceptance:
 - File read/write/edit events can be inspected.
 - Diffs are readable before and after file edits.
 
-### Milestone 6: Settings and Auth
+### M06: Settings and Auth
 
 Goal: expose core Pi configuration in desktop UI.
 
@@ -294,7 +316,7 @@ Acceptance:
 - Auth failures explain the required next action.
 - Settings persist across restarts.
 
-### Milestone 7: Worktrees and Git UX
+### M07: Worktrees and Git UX
 
 Goal: support branch-based coding workflows.
 
@@ -314,7 +336,7 @@ Acceptance:
 - User can inspect changed files and diffs.
 - User can prepare a commit with explicit file selection.
 
-### Milestone 8: Extensibility
+### M08: Extensibility
 
 Goal: expose Pi customization through desktop surfaces.
 
@@ -332,7 +354,7 @@ Acceptance:
 - User can see discovered skills/prompts/extensions for a workspace.
 - User can enable, disable, or inspect available customization sources.
 
-### Milestone 9: Automation and Advanced Surfaces
+### M09: Automation and Advanced Surfaces
 
 Goal: explore Codex-like advanced desktop workflows after the local core is stable.
 
