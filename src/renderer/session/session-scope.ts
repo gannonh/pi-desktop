@@ -14,6 +14,7 @@ export const isSessionScopeSelected = (scope: SessionScope, selection: SessionSc
 export const shouldAcceptSessionEvent = ({
 	eventSessionId,
 	acceptedSessionId,
+	pendingStart,
 	active,
 	selection,
 }: {
@@ -35,5 +36,5 @@ export const shouldAcceptSessionEvent = ({
 		return true;
 	}
 
-	return false;
+	return acceptedSessionId === null && Boolean(pendingStart && isSessionScopeSelected(pendingStart, selection));
 };

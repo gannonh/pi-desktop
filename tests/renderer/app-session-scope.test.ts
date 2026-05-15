@@ -40,7 +40,7 @@ describe("isSessionScopeSelected", () => {
 });
 
 describe("shouldAcceptSessionEvent", () => {
-	it("rejects pending start events until the started session id is known", () => {
+	it("accepts current pending start events before the start RPC response resolves", () => {
 		expect(
 			shouldAcceptSessionEvent({
 				eventSessionId: "project:/tmp/pi-desktop:session:one",
@@ -49,7 +49,7 @@ describe("shouldAcceptSessionEvent", () => {
 				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 			}),
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it("accepts events from the session returned by the current start request", () => {
@@ -62,6 +62,18 @@ describe("shouldAcceptSessionEvent", () => {
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 			}),
 		).toBe(true);
+	});
+
+	it("rejects same-project events from another session after a session is accepted", () => {
+		expect(
+			shouldAcceptSessionEvent({
+				eventSessionId: "project:/tmp/pi-desktop:session:two",
+				acceptedSessionId: "project:/tmp/pi-desktop:session:one",
+				pendingStart: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+			}),
+		).toBe(false);
 	});
 
 	it("rejects pending start events after the user selects another chat", () => {

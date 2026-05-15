@@ -3,7 +3,12 @@ import type { ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
 import { isSessionScopeSelected, shouldAcceptSessionEvent } from "./session/session-scope";
-import { createInitialSessionState, reduceSessionEvent, type LiveSessionState } from "./session/session-state";
+import {
+	applySessionStartResult,
+	createInitialSessionState,
+	reduceSessionEvent,
+	type LiveSessionState,
+} from "./session/session-state";
 
 type StatusMessage = {
 	source: "project" | "startup";
@@ -224,12 +229,13 @@ export function App() {
 				activeSessionChatIdRef.current = requestChatId;
 				setActiveSessionProjectId(requestProjectId);
 				setActiveSessionChatId(requestChatId);
-				setSessionState((current) => ({
-					...current,
-					sessionId: result.data.sessionId,
-					status: result.data.status,
-					statusLabel: toSessionStatusLabel(result.data.status),
-				}));
+				setSessionState((current) =>
+					applySessionStartResult(current, {
+						sessionId: result.data.sessionId,
+						status: result.data.status,
+						statusLabel: toSessionStatusLabel(result.data.status),
+					}),
+				);
 			}
 
 			return true;
