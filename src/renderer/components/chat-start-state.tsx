@@ -11,7 +11,7 @@ const suggestionIcons = [GitPullRequest, GitBranch, Workflow] as const;
 interface ChatStartStateProps {
 	route: StartRoute;
 	session: LiveSessionState;
-	onSubmitPrompt: (prompt: string) => void;
+	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
 }
 

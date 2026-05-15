@@ -9,7 +9,7 @@ interface ProjectMainProps {
 	statusMessage?: string;
 	session: LiveSessionState;
 	onProjectState: (result: ProjectStateViewResult) => void;
-	onSubmitPrompt: (prompt: string) => void;
+	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
 }
 

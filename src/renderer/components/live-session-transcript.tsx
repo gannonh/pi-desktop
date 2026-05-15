@@ -5,11 +5,21 @@ interface LiveSessionTranscriptProps {
 	session: LiveSessionState;
 }
 
+const roleLabels: Record<LiveSessionState["messages"][number]["role"], string> = {
+	assistant: "Pi",
+	system: "System",
+	tool: "Tool",
+	user: "You",
+};
+
 export function LiveSessionTranscript({ session }: LiveSessionTranscriptProps) {
 	return (
 		<section className="live-session" aria-label="Pi session transcript">
 			<div className="live-session__status" aria-live="polite">
-				{session.status === "running" || session.status === "retrying" || session.status === "aborting" ? (
+				{session.status === "starting" ||
+				session.status === "running" ||
+				session.status === "retrying" ||
+				session.status === "aborting" ? (
 					<LoaderCircle className="live-session__status-icon live-session__status-icon--spin" />
 				) : null}
 				<span>{session.statusLabel}</span>
@@ -24,7 +34,7 @@ export function LiveSessionTranscript({ session }: LiveSessionTranscriptProps) {
 			<div className="live-session__messages">
 				{session.messages.map((message) => (
 					<article className={`live-session__message live-session__message--${message.role}`} key={message.id}>
-						<div className="live-session__message-role">{message.role === "assistant" ? "Pi" : "You"}</div>
+						<div className="live-session__message-role">{roleLabels[message.role]}</div>
 						<div className="live-session__message-content">
 							{message.content}
 							{message.streaming ? (

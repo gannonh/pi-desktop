@@ -7,7 +7,7 @@ interface ComposerProps {
 	context: ComposerContext;
 	layout?: "center" | "bottom";
 	running?: boolean;
-	onSubmit?: (prompt: string) => void;
+	onSubmit?: (prompt: string) => Promise<boolean> | boolean;
 	onAbort?: () => void;
 }
 
@@ -34,12 +34,14 @@ export function Composer({ context, layout = "center", running = false, onSubmit
 			className={["composer", `composer--${layout}`].join(" ")}
 			aria-label="Pi composer"
 			aria-describedby={state.statusLabel ? statusId : undefined}
-			onSubmit={(event) => {
+			onSubmit={async (event) => {
 				event.preventDefault();
 				const prompt = text.trim();
-				if (!state.sendDisabled && prompt) {
-					onSubmit?.(prompt);
-					setText("");
+				if (!running && !state.sendDisabled && prompt) {
+					const submitted = await onSubmit?.(prompt);
+					if (submitted) {
+						setText("");
+					}
 				}
 			}}
 		>

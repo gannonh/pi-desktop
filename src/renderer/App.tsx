@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
@@ -18,27 +18,13 @@ const createEmptyProjectStateView = (): ProjectStateView => ({
 	selectedChat: null,
 });
 
-const getSessionStatusLabel = (status: LiveSessionState["status"]): string => {
-	switch (status) {
-		case "starting":
-			return "Starting";
-		case "running":
-			return "Running";
-		case "retrying":
-			return "Retrying";
-		case "aborting":
-			return "Aborting";
-		case "failed":
-			return "Failed";
-		case "idle":
-			return "Idle";
-	}
-};
-
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
+	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
+	const selectedProjectId = projectState.selectedProject?.id ?? null;
+	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -51,7 +37,30 @@ export function App() {
 	}, []);
 
 	useEffect(() => {
+		selectedProjectIdRef.current = selectedProjectId;
+	}, [selectedProjectId]);
+
+	useEffect(() => {
+		if (!activeSessionProjectId || activeSessionProjectId === selectedProjectId) {
+			return;
+		}
+
+		const sessionId = sessionState.sessionId;
+		setActiveSessionProjectId(null);
+		setSessionState(createInitialSessionState());
+
+		if (sessionId) {
+			void window.piDesktop.piSession.dispose({ sessionId });
+		}
+	}, [activeSessionProjectId, selectedProjectId, sessionState.sessionId]);
+
+	useEffect(() => {
 		return window.piDesktop.piSession.onEvent((event) => {
+			const currentProjectId = selectedProjectIdRef.current;
+			if (event.sessionId && (!currentProjectId || !event.sessionId.startsWith(`${currentProjectId}:`))) {
+				return;
+			}
+
 			setSessionState((current) => reduceSessionEvent(current, event));
 		});
 	}, []);
@@ -65,19 +74,24 @@ export function App() {
 					status: "failed",
 					statusLabel: "Failed",
 					errorMessage: "Select an available project to start a Pi session.",
+					retryMessage: "",
 				}));
-				return;
+				return false;
 			}
 
+			const reusableSessionId = activeSessionProjectId === selectedProject.id ? sessionState.sessionId : null;
+
+			setActiveSessionProjectId(selectedProject.id);
 			setSessionState((current) => ({
 				...current,
-				status: sessionState.sessionId ? "running" : "starting",
-				statusLabel: sessionState.sessionId ? "Running" : "Starting",
+				status: reusableSessionId ? "running" : "starting",
+				statusLabel: reusableSessionId ? "Running" : "Starting",
 				errorMessage: "",
+				retryMessage: "",
 			}));
 
-			const result = sessionState.sessionId
-				? await window.piDesktop.piSession.submit({ sessionId: sessionState.sessionId, prompt })
+			const result = reusableSessionId
+				? await window.piDesktop.piSession.submit({ sessionId: reusableSessionId, prompt })
 				: await window.piDesktop.piSession.start({ projectId: selectedProject.id, prompt });
 
 			if (!result.ok) {
@@ -86,22 +100,31 @@ export function App() {
 					status: "failed",
 					statusLabel: "Failed",
 					errorMessage: result.error.message,
+					retryMessage: "",
 				}));
-				return;
+				return false;
 			}
 
-			setSessionState((current) => ({
-				...current,
-				sessionId: result.data.sessionId,
-				status: result.data.status,
-				statusLabel: getSessionStatusLabel(result.data.status),
-			}));
+			if (!reusableSessionId) {
+				if (selectedProjectIdRef.current !== selectedProject.id) {
+					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
+					return false;
+				}
+
+				setActiveSessionProjectId(selectedProject.id);
+				setSessionState((current) => ({
+					...current,
+					sessionId: result.data.sessionId,
+				}));
+			}
+
+			return true;
 		},
-		[projectState.selectedProject, sessionState.sessionId],
+		[activeSessionProjectId, projectState.selectedProject, sessionState.sessionId],
 	);
 
 	const abortSession = useCallback(async () => {
-		if (!sessionState.sessionId) {
+		if (!sessionState.sessionId || activeSessionProjectId !== selectedProjectId) {
 			return;
 		}
 
@@ -112,16 +135,10 @@ export function App() {
 				status: "failed",
 				statusLabel: "Failed",
 				errorMessage: result.error.message,
+				retryMessage: "",
 			}));
-			return;
 		}
-
-		setSessionState((current) => ({
-			...current,
-			status: result.data.status,
-			statusLabel: getSessionStatusLabel(result.data.status),
-		}));
-	}, [sessionState.sessionId]);
+	}, [activeSessionProjectId, selectedProjectId, sessionState.sessionId]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -172,7 +189,7 @@ export function App() {
 		<AppShell
 			state={projectState}
 			statusMessage={statusMessage?.message}
-			session={sessionState}
+			session={activeSessionProjectId === selectedProjectId ? sessionState : createInitialSessionState()}
 			onProjectState={applyProjectStateViewResult}
 			onSubmitPrompt={submitPrompt}
 			onAbortSession={abortSession}

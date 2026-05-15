@@ -8,7 +8,7 @@ import { LiveSessionTranscript } from "./live-session-transcript";
 interface ChatShellProps {
 	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>;
 	session: LiveSessionState;
-	onSubmitPrompt: (prompt: string) => void;
+	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
 }
 
