@@ -9,7 +9,14 @@ import {
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
 } from "../shared/ipc";
+import {
+	PiSessionAbortInputSchema,
+	PiSessionDisposeInputSchema,
+	PiSessionStartInputSchema,
+	PiSessionSubmitInputSchema,
+} from "../shared/pi-session";
 import { err, ok } from "../shared/result";
+import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
@@ -35,10 +42,11 @@ const createWindow = () => {
 
 	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
 		void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-		return;
+		return mainWindow;
 	}
 
 	void mainWindow.loadFile(path.join(currentDirectory, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+	return mainWindow;
 };
 
 const openFolderDialog = async (): Promise<string | null> => {
@@ -81,7 +89,16 @@ const handleProjectOperation = async (operation: () => Promise<unknown>) => {
 	}
 };
 
-const registerIpcHandlers = (projectService: ProjectService) => {
+const registerIpcHandlers = (projectService: ProjectService, mainWindow: BrowserWindow) => {
+	const piSessionRuntime = createPiSessionRuntime({
+		now: () => new Date().toISOString(),
+		emit: (event) => {
+			if (!mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(IpcChannels.piSessionEvent, event);
+			}
+		},
+	});
+
 	ipcMain.handle(IpcChannels.appGetVersion, () =>
 		ok({
 			name: app.getName(),
@@ -123,6 +140,26 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.chatSelect, (_event, input) =>
 		handleProjectOperation(() => projectService.selectChat(ChatSelectionInputSchema.parse(input))),
 	);
+	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) =>
+		handleProjectOperation(async () => {
+			const parsed = PiSessionStartInputSchema.parse(input);
+			const workspace = await projectService.getSessionWorkspace({ projectId: parsed.projectId });
+			return piSessionRuntime.start({
+				projectId: workspace.projectId,
+				workspacePath: workspace.path,
+				prompt: parsed.prompt,
+			});
+		}),
+	);
+	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) =>
+		handleProjectOperation(() => piSessionRuntime.submit(PiSessionSubmitInputSchema.parse(input))),
+	);
+	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) =>
+		handleProjectOperation(() => piSessionRuntime.abort(PiSessionAbortInputSchema.parse(input))),
+	);
+	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) =>
+		handleProjectOperation(() => piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(input))),
+	);
 };
 
 app.whenReady().then(() => {
@@ -135,8 +172,8 @@ app.whenReady().then(() => {
 		initializeGitRepository,
 	});
 
-	registerIpcHandlers(projectService);
-	createWindow();
+	const mainWindow = createWindow();
+	registerIpcHandlers(projectService, mainWindow);
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

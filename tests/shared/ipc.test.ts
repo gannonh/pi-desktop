@@ -4,6 +4,13 @@ import {
 	ChatCreateInputSchema,
 	ChatSelectionInputSchema,
 	IpcChannels,
+	PiSessionAbortInputSchema,
+	PiSessionActionResultSchema,
+	PiSessionDisposeInputSchema,
+	PiSessionEventSchema,
+	PiSessionStartInputSchema,
+	PiSessionStartResultSchema,
+	PiSessionSubmitInputSchema,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -102,6 +109,72 @@ describe("IPC contracts", () => {
 		expect(ChatSelectionInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 			chatId: "chat:one",
+		});
+	});
+
+	it("exports Pi session schemas from the IPC contract boundary", () => {
+		expect(PiSessionStartInputSchema.parse({ projectId: "project:/tmp/pi-desktop", prompt: "Start" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			prompt: "Start",
+		});
+		expect(PiSessionSubmitInputSchema.parse({ sessionId: "pi-session:one", prompt: "Continue" })).toEqual({
+			sessionId: "pi-session:one",
+			prompt: "Continue",
+		});
+		expect(PiSessionAbortInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
+			sessionId: "pi-session:one",
+		});
+		expect(PiSessionDisposeInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
+			sessionId: "pi-session:one",
+		});
+		expect(
+			PiSessionStartResultSchema.parse({
+				ok: true,
+				data: {
+					sessionId: "pi-session:one",
+					projectId: "project:/tmp/pi-desktop",
+					workspacePath: "/tmp/pi-desktop",
+					status: "running",
+				},
+			}),
+		).toEqual({
+			ok: true,
+			data: {
+				sessionId: "pi-session:one",
+				projectId: "project:/tmp/pi-desktop",
+				workspacePath: "/tmp/pi-desktop",
+				status: "running",
+			},
+		});
+		expect(
+			PiSessionActionResultSchema.parse({
+				ok: true,
+				data: {
+					sessionId: "pi-session:one",
+					status: "idle",
+				},
+			}),
+		).toEqual({
+			ok: true,
+			data: {
+				sessionId: "pi-session:one",
+				status: "idle",
+			},
+		});
+		expect(
+			PiSessionEventSchema.parse({
+				type: "status",
+				sessionId: "pi-session:one",
+				status: "running",
+				label: "Running",
+				receivedAt: "2026-05-12T10:00:00.000Z",
+			}),
+		).toEqual({
+			type: "status",
+			sessionId: "pi-session:one",
+			status: "running",
+			label: "Running",
+			receivedAt: "2026-05-12T10:00:00.000Z",
 		});
 	});
 

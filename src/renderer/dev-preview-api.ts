@@ -160,6 +160,8 @@ const addProject = (projectPath: string) => {
 	store.selectedChatId = null;
 };
 
+const piSessionListeners = new Set<Parameters<PiDesktopApi["piSession"]["onEvent"]>[0]>();
+
 export const installDevPreviewApi = () => {
 	if ("piDesktop" in window) {
 		return;
@@ -268,6 +270,48 @@ export const installDevPreviewApi = () => {
 				store.selectedProjectId = projectId;
 				store.selectedChatId = chatId;
 				return ok();
+			},
+		},
+		piSession: {
+			start: async ({ projectId }) => {
+				const result = findProject(projectId);
+				const workspacePath = result.ok ? result.project.path : previewRoot;
+				return {
+					ok: true,
+					data: {
+						sessionId: `pi-session:preview:${projectId}`,
+						projectId,
+						workspacePath,
+						status: "running",
+					},
+				};
+			},
+			submit: async ({ sessionId }) => ({
+				ok: true,
+				data: {
+					sessionId,
+					status: "running",
+				},
+			}),
+			abort: async ({ sessionId }) => ({
+				ok: true,
+				data: {
+					sessionId,
+					status: "idle",
+				},
+			}),
+			dispose: async ({ sessionId }) => ({
+				ok: true,
+				data: {
+					sessionId,
+					status: "idle",
+				},
+			}),
+			onEvent: (listener) => {
+				piSessionListeners.add(listener);
+				return () => {
+					piSessionListeners.delete(listener);
+				};
 			},
 		},
 	};

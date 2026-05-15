@@ -2,6 +2,13 @@ import type {
 	AppVersionResult,
 	ChatCreateInput,
 	ChatSelectionInput,
+	PiSessionAbortInput,
+	PiSessionActionResult,
+	PiSessionDisposeInput,
+	PiSessionEvent,
+	PiSessionStartInput,
+	PiSessionStartResult,
+	PiSessionSubmitInput,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
@@ -27,5 +34,12 @@ export interface PiDesktopApi {
 	chat: {
 		create: (input: ChatCreateInput) => Promise<ProjectStateViewResult>;
 		select: (input: ChatSelectionInput) => Promise<ProjectStateViewResult>;
+	};
+	piSession: {
+		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;
+		submit: (input: PiSessionSubmitInput) => Promise<PiSessionActionResult>;
+		abort: (input: PiSessionAbortInput) => Promise<PiSessionActionResult>;
+		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
+		onEvent: (listener: (event: PiSessionEvent) => void) => () => void;
 	};
 }
