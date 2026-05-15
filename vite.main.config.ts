@@ -9,6 +9,9 @@ export default defineConfig({
 			fileName: () => "[name].js",
 			formats: ["es"],
 		},
+		rollupOptions: {
+			external: ["@earendil-works/pi-coding-agent"],
+		},
 		target: "node24",
 	},
 });

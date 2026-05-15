@@ -58,6 +58,10 @@ const standaloneChat = (
 
 const previewRoot = "/tmp/pi-desktop-preview";
 const previewDocumentsDir = `${previewRoot}/Documents`;
+const previewSessionReceivedAtBase = Date.parse("2026-05-12T18:00:00.000Z");
+
+const previewSessionReceivedAt = (streamIndex: number, eventIndex: number) =>
+	new Date(previewSessionReceivedAtBase + streamIndex * 1_000 + eventIndex).toISOString();
 
 const piDesktop = project(`${previewRoot}/pi-desktop`, {
 	displayName: "pi-desktop",
@@ -167,23 +171,36 @@ export const installDevPreviewApi = () => {
 	}
 
 	const sessionListeners = new Set<(event: PiSessionEvent) => void>();
+	const pendingPreviewStreams = new Map<string, ReturnType<typeof setTimeout>>();
+	let previewStreamIndex = 0;
 	const emitSessionEvent = (event: PiSessionEvent) => {
 		for (const listener of sessionListeners) {
 			listener(event);
 		}
 	};
+	const clearPendingPreviewStream = (sessionId: string) => {
+		const timeout = pendingPreviewStreams.get(sessionId);
+		if (timeout) {
+			globalThis.clearTimeout(timeout);
+			pendingPreviewStreams.delete(sessionId);
+		}
+	};
 	const emitPreviewStream = (sessionId: string, prompt: string) => {
-		const receivedAt = () => new Date().toISOString();
+		const streamIndex = previewStreamIndex;
+		previewStreamIndex += 1;
+		let eventIndex = 0;
+		const receivedAt = () => previewSessionReceivedAt(streamIndex, eventIndex++);
+		const userMessageId = `${sessionId}:preview:${streamIndex}:user`;
+		const assistantMessageId = `${sessionId}:preview:${streamIndex}:assistant`;
 		emitSessionEvent({ type: "status", sessionId, status: "running", label: "Running", receivedAt: receivedAt() });
 		emitSessionEvent({
 			type: "message_start",
 			sessionId,
-			messageId: `user:${Date.now()}`,
+			messageId: userMessageId,
 			role: "user",
 			content: prompt,
 			receivedAt: receivedAt(),
 		});
-		const assistantMessageId = `assistant:${Date.now() + 1}`;
 		emitSessionEvent({
 			type: "message_start",
 			sessionId,
@@ -210,6 +227,14 @@ export const installDevPreviewApi = () => {
 			receivedAt: receivedAt(),
 		});
 		emitSessionEvent({ type: "status", sessionId, status: "idle", label: "Idle", receivedAt: receivedAt() });
+	};
+	const schedulePreviewStream = (sessionId: string, prompt: string) => {
+		clearPendingPreviewStream(sessionId);
+		const timeout = globalThis.setTimeout(() => {
+			pendingPreviewStreams.delete(sessionId);
+			emitPreviewStream(sessionId, prompt);
+		}, 0);
+		pendingPreviewStreams.set(sessionId, timeout);
 	};
 
 	const api: PiDesktopApi = {
@@ -324,7 +349,7 @@ export const installDevPreviewApi = () => {
 					return result;
 				}
 				const sessionId = `${projectId}:preview-session`;
-				queueMicrotask(() => emitPreviewStream(sessionId, prompt));
+				schedulePreviewStream(sessionId, prompt);
 				return {
 					ok: true,
 					data: {
@@ -336,33 +361,39 @@ export const installDevPreviewApi = () => {
 				};
 			},
 			submit: async ({ sessionId, prompt }) => {
-				queueMicrotask(() => emitPreviewStream(sessionId, prompt));
+				schedulePreviewStream(sessionId, prompt);
 				return { ok: true, data: { sessionId, status: "running" } };
 			},
 			abort: async ({ sessionId }) => {
+				clearPendingPreviewStream(sessionId);
+				const streamIndex = previewStreamIndex;
+				previewStreamIndex += 1;
 				emitSessionEvent({
 					type: "status",
 					sessionId,
 					status: "aborting",
 					label: "Aborting",
-					receivedAt: new Date().toISOString(),
+					receivedAt: previewSessionReceivedAt(streamIndex, 0),
 				});
 				emitSessionEvent({
 					type: "status",
 					sessionId,
 					status: "idle",
 					label: "Idle",
-					receivedAt: new Date().toISOString(),
+					receivedAt: previewSessionReceivedAt(streamIndex, 1),
 				});
 				return { ok: true, data: { sessionId, status: "idle" } };
 			},
-			dispose: async ({ sessionId }) => ({
-				ok: true,
-				data: {
-					sessionId,
-					status: "idle",
-				},
-			}),
+			dispose: async ({ sessionId }) => {
+				clearPendingPreviewStream(sessionId);
+				return {
+					ok: true,
+					data: {
+						sessionId,
+						status: "idle",
+					},
+				};
+			},
 			onEvent: (listener) => {
 				sessionListeners.add(listener);
 				return () => {

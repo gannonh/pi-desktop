@@ -18,6 +18,7 @@ import {
 } from "../shared/pi-session";
 import { err, ok } from "../shared/result";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
+import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
@@ -83,6 +84,8 @@ const getProjectStorePath = () => {
 	return path.join(userDataPath, "project-store.json");
 };
 
+const shouldUseSmokePiSession = () => !app.isPackaged && process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1";
+
 const openInFinder = async (projectPath: string): Promise<void> => {
 	const result = await shell.openPath(projectPath);
 	if (result) {
@@ -114,6 +117,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 				mainWindow.webContents.send(IpcChannels.piSessionEvent, event);
 			}
 		},
+		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
 	});
 
 	ipcMain.handle(IpcChannels.appGetVersion, () =>

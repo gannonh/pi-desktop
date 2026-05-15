@@ -131,7 +131,6 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByText("Work locally")).toBeVisible();
 		await expect(window.getByText("5.5 High")).toBeVisible();
 		await expect(window.getByText("Full access")).toHaveCount(0);
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectComposerControlPlacement(window);
 	} finally {
 		await app.close();
@@ -179,7 +178,6 @@ test("renders the selected project chat start state", async () => {
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
 		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toHaveCount(0);
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectSelectedComposerVisualTokens(window);
 	} finally {
 		await app.close();
@@ -219,13 +217,14 @@ test("streams a Pi session response in the selected project", async () => {
 		env: {
 			...process.env,
 			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
 		},
 	});
 
 	try {
 		const window = await app.firstWindow();
 
-		await window.getByRole("button", { name: /pi-desktop/i }).click();
+		await window.getByRole("button", { name: "pi-desktop", exact: true }).click();
 		await window.getByLabel("Message Pi").fill("What files are here?");
 		await window.getByRole("button", { name: "Send message" }).click();
 
