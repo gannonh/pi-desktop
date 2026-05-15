@@ -23,6 +23,23 @@ const createEmptyProjectStateView = (): ProjectStateView => ({
 	selectedChat: null,
 });
 
+const toSessionStatusLabel = (status: LiveSessionState["status"]): string => {
+	switch (status) {
+		case "aborting":
+			return "Aborting";
+		case "failed":
+			return "Failed";
+		case "idle":
+			return "Idle";
+		case "retrying":
+			return "Retrying";
+		case "running":
+			return "Running";
+		case "starting":
+			return "Starting";
+	}
+};
+
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
@@ -166,6 +183,8 @@ export function App() {
 				setSessionState((current) => ({
 					...current,
 					sessionId: result.data.sessionId,
+					status: result.data.status,
+					statusLabel: toSessionStatusLabel(result.data.status),
 				}));
 			}
 
