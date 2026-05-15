@@ -29,6 +29,18 @@ pnpm install
 pnpm dev
 ```
 
+```bash
+pnpm dev:desktop
+```
+
+Starts the Electron desktop app in development mode.
+
+```bash
+pnpm dev:web
+```
+
+Starts the browser preview and a local app data bridge. The preview uses the same persisted project/chat store and Pi session runtime boundary as the desktop app. Native folder picker operations return a visible unsupported-operation error in web preview.
+
 ## Check
 
 ```bash
