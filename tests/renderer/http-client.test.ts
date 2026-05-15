@@ -39,6 +39,10 @@ class MockWebSocket {
 		this.dispatch("error", event);
 	}
 
+	emitClose(event: MockWebSocketEvent = {}) {
+		this.dispatch("close", event);
+	}
+
 	private dispatch(type: string, event: MockWebSocketEvent) {
 		for (const listener of this.listeners.get(type) ?? []) {
 			listener(event);
@@ -63,6 +67,7 @@ const sessionEventEnvelope = JSON.stringify({ type: "pi-session:event", event: s
 
 describe("HTTP PiDesktop API client", () => {
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
@@ -82,10 +87,43 @@ describe("HTTP PiDesktop API client", () => {
 			ok: true,
 			data: { name: "pi-desktop", version: "dev" },
 		});
-		expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:49321/api/rpc", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ operation: "app.getVersion" }),
+		expect(fetch).toHaveBeenCalledWith(
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ operation: "app.getVersion" }),
+				signal: expect.any(AbortSignal),
+			}),
+		);
+	});
+
+	it("times out hung RPC operations with a visible structured error", async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async (_url: RequestInfo | URL, init?: RequestInit) =>
+					new Promise((_resolve, reject) => {
+						if (!init?.signal) {
+							reject(new Error("missing abort signal"));
+							return;
+						}
+						init.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+					}),
+			),
+		);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+
+		const result = api.project.getState();
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		await expect(result).resolves.toEqual({
+			ok: false,
+			error: {
+				code: "dev_bridge.unavailable",
+				message: "Dev data bridge unavailable: request timed out",
+			},
 		});
 	});
 
@@ -161,6 +199,24 @@ describe("HTTP PiDesktop API client", () => {
 		expect(socket.close).not.toHaveBeenCalled();
 		unsubscribeSecond();
 		expect(socket.close).toHaveBeenCalledTimes(1);
+	});
+
+	it("reconnects event sockets after an unexpected close while listeners remain subscribed", async () => {
+		vi.useFakeTimers();
+		installMockWebSocket();
+		const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+		const listener = vi.fn();
+
+		const unsubscribe = api.piSession.onEvent(listener);
+		MockWebSocket.instances[0].emitClose();
+		await vi.advanceTimersByTimeAsync(250);
+		MockWebSocket.instances[1].emitMessage(sessionEventEnvelope);
+
+		expect(MockWebSocket.instances).toHaveLength(2);
+		expect(listener).toHaveBeenCalledWith(sessionEvent);
+		expect(consoleWarn).toHaveBeenCalledWith("Dev data bridge event socket closed; reconnecting.");
+		unsubscribe();
 	});
 
 	it("ignores event socket errors after intentional cleanup", () => {

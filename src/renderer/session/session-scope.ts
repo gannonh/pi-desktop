@@ -40,21 +40,21 @@ export const shouldAcceptSessionEvent = ({
 };
 
 export const shouldBufferPendingStartEvent = ({
+	eventSessionId,
 	acceptedSessionId,
 	pendingStart,
-	active,
 	selection,
 }: {
+	eventSessionId: string;
 	acceptedSessionId: string | null;
 	pendingStart: PendingSessionScope;
-	active: SessionScope;
 	selection: SessionScope;
 }): boolean => {
 	if (acceptedSessionId !== null || !pendingStart) {
 		return false;
 	}
 
-	return isSessionScopeSelected(active, selection) && isSessionScopeSelected(pendingStart, selection);
+	return isSessionScopeSelected(pendingStart, selection) && eventSessionId.startsWith(`${pendingStart.projectId}:`);
 };
 
 export const createPendingSessionEventBuffer = (): PendingSessionEventBuffer => new Map();
@@ -77,6 +77,8 @@ export const takeBufferedSessionEvents = (
 	sessionId: string,
 ): SessionEventWithSessionId[] => {
 	const events = buffer.get(sessionId) ?? [];
-	buffer.clear();
+	if (events.length > 0) {
+		buffer.clear();
+	}
 	return events;
 };

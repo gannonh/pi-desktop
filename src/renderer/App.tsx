@@ -142,12 +142,9 @@ export function App() {
 			if (!eventIsAccepted) {
 				if (
 					shouldBufferPendingStartEvent({
+						eventSessionId: sessionEvent.sessionId,
 						acceptedSessionId: acceptedSessionIdRef.current,
 						pendingStart,
-						active: {
-							projectId: activeSessionProjectIdRef.current,
-							chatId: activeSessionChatIdRef.current,
-						},
 						selection: {
 							projectId: selectedProjectIdRef.current,
 							chatId: selectedChatIdRef.current,

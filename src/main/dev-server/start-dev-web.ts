@@ -23,6 +23,8 @@ type DevWebLogger = Pick<Console, "error" | "log">;
 type DevWebProcess = {
 	env: NodeJS.ProcessEnv;
 	once: (signal: NodeJS.Signals, listener: () => void) => unknown;
+	off?: (signal: NodeJS.Signals, listener: () => void) => unknown;
+	removeListener?: (signal: NodeJS.Signals, listener: () => void) => unknown;
 	exit: (code?: number) => never;
 };
 
@@ -96,13 +98,26 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 	const createAppServer = deps.createAppServer ?? createLocalDevServer;
 	const createVite = deps.createViteServer ?? createViteServer;
 	const resources: DevWebServerResources = { backend };
+	const signalHandlers = new Map<NodeJS.Signals, () => void>();
 	let shutdownStarted = false;
+
+	const unregisterSignalHandlers = () => {
+		for (const [signal, listener] of signalHandlers) {
+			if (processLike.off) {
+				processLike.off(signal, listener);
+			} else {
+				processLike.removeListener?.(signal, listener);
+			}
+		}
+		signalHandlers.clear();
+	};
 
 	const shutdown = async () => {
 		if (shutdownStarted) {
 			return;
 		}
 		shutdownStarted = true;
+		unregisterSignalHandlers();
 		await cleanupDevWebResources(resources, logger);
 	};
 
@@ -123,12 +138,16 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 		throw error;
 	}
 
-	processLike.once("SIGINT", () => {
-		void shutdown().finally(() => processLike.exit(0));
-	});
-	processLike.once("SIGTERM", () => {
-		void shutdown().finally(() => processLike.exit(0));
-	});
+	const registerSignalHandler = (signal: NodeJS.Signals) => {
+		const listener = () => {
+			void shutdown().finally(() => processLike.exit(0));
+		};
+		signalHandlers.set(signal, listener);
+		processLike.once(signal, listener);
+	};
+
+	registerSignalHandler("SIGINT");
+	registerSignalHandler("SIGTERM");
 
 	return { ...resources, shutdown };
 };

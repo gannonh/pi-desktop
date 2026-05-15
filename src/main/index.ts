@@ -40,9 +40,6 @@ const createWindow = () => {
 
 	createdWindow.on("closed", () => {
 		if (mainWindow === createdWindow) {
-			void appBackend?.dispose().catch((error) => {
-				console.error("Failed to dispose app backend.", error);
-			});
 			mainWindow = null;
 		}
 	});
@@ -147,6 +144,14 @@ app.whenReady().then(() => {
 		if (BrowserWindow.getAllWindows().length === 0) {
 			createWindow();
 		}
+	});
+});
+
+app.on("before-quit", () => {
+	const backend = appBackend;
+	appBackend = null;
+	void backend?.dispose().catch((error) => {
+		console.error("Failed to dispose app backend.", error);
 	});
 });
 

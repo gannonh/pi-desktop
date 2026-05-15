@@ -34,7 +34,11 @@ const createProjectService = (): ProjectService => ({
 	selectChat: vi.fn(async () => emptyState),
 });
 
-const waitForScheduledPrompt = () => new Promise((resolve) => setTimeout(resolve, 0));
+const waitForScheduledPrompt = async (events: unknown[]) => {
+	await vi.waitFor(() => {
+		expect(events).toContainEqual(expect.objectContaining({ type: "status", status: "running" }));
+	});
+};
 
 const createSession = (): PiSdkSession => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
@@ -112,7 +116,7 @@ describe("app backend", () => {
 			input: { projectId: "project:one", prompt: "Hello" },
 		});
 
-		await waitForScheduledPrompt();
+		await waitForScheduledPrompt(events);
 		unsubscribe();
 		expect(result.ok).toBe(true);
 		expect(projectService.getSessionWorkspace).toHaveBeenCalledWith({ projectId: "project:one" });
@@ -148,7 +152,7 @@ describe("app backend", () => {
 				operation: "piSession.start",
 				input: { projectId: "project:one", prompt: "Hello" },
 			});
-			await waitForScheduledPrompt();
+			await waitForScheduledPrompt(events);
 
 			expect(result.ok).toBe(true);
 			expect(failingListener).toHaveBeenCalled();

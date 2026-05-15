@@ -28,6 +28,11 @@ const createViteServer = (overrides: Partial<StartDevWebServerDeps> = {}) => {
 		once: vi.fn((signal: NodeJS.Signals, listener: () => void) => {
 			listeners.set(signal, listener);
 		}),
+		removeListener: vi.fn((signal: NodeJS.Signals, listener: () => void) => {
+			if (listeners.get(signal) === listener) {
+				listeners.delete(signal);
+			}
+		}),
 		exit: vi.fn((() => undefined) as (code?: number) => never),
 	};
 	const logger = {
@@ -153,6 +158,19 @@ describe("startDevWebServer", () => {
 		expect(fixture.vite.close).toHaveBeenCalledOnce();
 		expect(fixture.appServer.close).toHaveBeenCalledOnce();
 		expect(fixture.backend.dispose).toHaveBeenCalledOnce();
+	});
+
+	it("deregisters signal handlers when manually shut down", async () => {
+		const fixture = createViteServer();
+		const handle = await startDevWebServer(fixture.deps);
+		const sigintHandler = fixture.listeners.get("SIGINT");
+		const sigtermHandler = fixture.listeners.get("SIGTERM");
+
+		await handle.shutdown();
+
+		expect(fixture.processLike.removeListener).toHaveBeenCalledWith("SIGINT", sigintHandler);
+		expect(fixture.processLike.removeListener).toHaveBeenCalledWith("SIGTERM", sigtermHandler);
+		expect(fixture.listeners.size).toBe(0);
 	});
 
 	it("shuts down and exits from process signal handlers", async () => {

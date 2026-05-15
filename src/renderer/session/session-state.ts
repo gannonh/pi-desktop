@@ -38,7 +38,7 @@ export const applySessionStartResult = (
 	result: { sessionId: string; status: PiSessionStatus; statusLabel: string },
 ): LiveSessionState => {
 	if (state.sessionId === result.sessionId && state.status !== "starting") {
-		return { ...state, sessionId: result.sessionId };
+		return state;
 	}
 
 	return {

@@ -43,6 +43,23 @@ describe("session start result", () => {
 		]);
 	});
 
+	it("keeps object identity when a late start RPC response matches a running session", () => {
+		const state = {
+			...createInitialSessionState(),
+			sessionId: "project:/tmp/pi-desktop:session:one",
+			status: "running" as const,
+			statusLabel: "Running",
+		};
+
+		const next = applySessionStartResult(state, {
+			sessionId: "project:/tmp/pi-desktop:session:one",
+			status: "running",
+			statusLabel: "Running",
+		});
+
+		expect(next).toBe(state);
+	});
+
 	it("records the start RPC response when no stream event has identified the session", () => {
 		const state = applySessionStartResult(createInitialSessionState(), {
 			sessionId: "project:/tmp/pi-desktop:session:one",
