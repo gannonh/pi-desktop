@@ -18,5 +18,6 @@ describe("unavailable PiDesktop API", () => {
 				message: "No app transport configured.",
 			},
 		});
+		expect(api.piSession.onEvent(vi.fn())()).toBeUndefined();
 	});
 });

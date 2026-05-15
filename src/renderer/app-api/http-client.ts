@@ -27,8 +27,9 @@ const parseEventMessage = (data: MessageEvent["data"]) => {
 };
 
 export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesktopApi => {
-	const rpcUrl = `${baseUrl}/api/rpc`;
-	const eventsUrl = `${baseUrl.replace(/^http/, "ws")}/api/events`;
+	const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+	const rpcUrl = `${normalizedBaseUrl}/api/rpc`;
+	const eventsUrl = `${normalizedBaseUrl.replace(/^http/, "ws")}/api/events`;
 	const eventListeners = new Set<PiSessionEventListener>();
 	let eventsSocket: WebSocket | null = null;
 
@@ -65,13 +66,20 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 		const socket = new WebSocket(eventsUrl);
 		eventsSocket = socket;
 		socket.addEventListener("message", (message) => {
+			let envelope: ReturnType<typeof parseEventMessage>;
 			try {
-				const envelope = parseEventMessage(message.data);
-				for (const listener of [...eventListeners]) {
-					listener(envelope.event);
-				}
+				envelope = parseEventMessage(message.data);
 			} catch (error) {
 				console.error("Dev data bridge event parse failed.", error);
+				return;
+			}
+
+			for (const listener of [...eventListeners]) {
+				try {
+					listener(envelope.event);
+				} catch (error) {
+					console.error("Dev data bridge event listener failed.", error);
+				}
 			}
 		});
 		socket.addEventListener("close", () => {
