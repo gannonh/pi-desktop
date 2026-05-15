@@ -1,24 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-	ChatCreateInputSchema,
-	ChatSelectionInputSchema,
-	IpcChannels,
-	PiSessionOperationFailedCode,
-	ProjectIdInputSchema,
-	ProjectPinnedInputSchema,
-	ProjectRenameInputSchema,
-} from "../shared/ipc";
-import {
-	PiSessionAbortInputSchema,
-	PiSessionDisposeInputSchema,
-	PiSessionStartInputSchema,
-	PiSessionSubmitInputSchema,
-} from "../shared/pi-session";
-import { err, ok } from "../shared/result";
-import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
-import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
+import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transport";
+import { IpcChannels } from "../shared/ipc";
+import { createAppBackend, type AppBackend } from "./app-backend";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
@@ -26,7 +11,7 @@ import { createProjectStore } from "./projects/project-store";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
-let disposePiSessions: (() => void) | undefined;
+let appBackend: AppBackend | null = null;
 
 const createWindow = () => {
 	const createdWindow = new BrowserWindow({
@@ -54,7 +39,9 @@ const createWindow = () => {
 
 	createdWindow.on("closed", () => {
 		if (mainWindow === createdWindow) {
-			disposePiSessions?.();
+			void appBackend?.dispose().catch((error) => {
+				console.error("Failed to dispose app backend.", error);
+			});
 			mainWindow = null;
 		}
 	});
@@ -80,8 +67,6 @@ const openFolderDialog = async (): Promise<string | null> => {
 	return selectedPath;
 };
 
-const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
 const getProjectStorePath = () => {
 	const userDataPath = process.env.PI_DESKTOP_USER_DATA_DIR ?? app.getPath("userData");
 	return path.join(userDataPath, "project-store.json");
@@ -96,99 +81,48 @@ const openInFinder = async (projectPath: string): Promise<void> => {
 	}
 };
 
-const handleProjectOperation = async (operation: () => Promise<unknown>) => {
-	try {
-		return ok(await operation());
-	} catch (error) {
-		return err("project.operation_failed", toErrorMessage(error));
-	}
-};
-
-const handlePiSessionOperation = async (operation: () => Promise<unknown>) => {
-	try {
-		return ok(await operation());
-	} catch (error) {
-		return err(PiSessionOperationFailedCode, sanitizeRuntimeErrorMessage(error));
-	}
-};
-
 const registerIpcHandlers = (projectService: ProjectService) => {
-	const piSessionRuntime = createPiSessionRuntime({
-		now: () => new Date().toISOString(),
-		emit: (event) => {
-			if (mainWindow && !mainWindow.isDestroyed()) {
-				mainWindow.webContents.send(IpcChannels.piSessionEvent, event);
-			}
-		},
-		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
-	});
-	disposePiSessions = () => {
-		void piSessionRuntime.disposeAll().catch((error) => {
-			console.error("Failed to dispose Pi sessions.", error);
-		});
-	};
-
-	ipcMain.handle(IpcChannels.appGetVersion, () =>
-		ok({
+	const backend = createAppBackend({
+		appInfo: {
 			name: app.getName(),
 			version: app.getVersion(),
-		}),
-	);
+		},
+		projectService,
+		now: () => new Date().toISOString(),
+		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
+	});
+	appBackend = backend;
 
-	ipcMain.handle(IpcChannels.projectGetState, () => handleProjectOperation(() => projectService.getState()));
-	ipcMain.handle(IpcChannels.projectCreateFromScratch, () =>
-		handleProjectOperation(() => projectService.createFromScratch()),
-	);
-	ipcMain.handle(IpcChannels.projectAddExistingFolder, () =>
-		handleProjectOperation(() => projectService.addExistingFolder()),
-	);
-	ipcMain.handle(IpcChannels.projectSelect, (_event, input) =>
-		handleProjectOperation(() => projectService.selectProject(ProjectIdInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.projectRename, (_event, input) =>
-		handleProjectOperation(() => projectService.renameProject(ProjectRenameInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.projectRemove, (_event, input) =>
-		handleProjectOperation(() => projectService.removeProject(ProjectIdInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.projectOpenInFinder, (_event, input) =>
-		handleProjectOperation(() => projectService.openProjectInFinder(ProjectIdInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.projectLocateFolder, (_event, input) =>
-		handleProjectOperation(() => projectService.locateFolder(ProjectIdInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.projectSetPinned, (_event, input) =>
-		handleProjectOperation(() => projectService.setPinned(ProjectPinnedInputSchema.parse(input))),
-	);
+	backend.onPiSessionEvent((event) => {
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send(IpcChannels.piSessionEvent, event);
+		}
+	});
+
+	const invokeBackend = (operation: AppRpcOperation, input?: unknown) => {
+		const request = AppRpcRequestSchema.parse(input === undefined ? { operation } : { operation, input });
+		return backend.handle(request);
+	};
+
+	ipcMain.handle(IpcChannels.appGetVersion, () => invokeBackend("app.getVersion"));
+	ipcMain.handle(IpcChannels.projectGetState, () => invokeBackend("project.getState"));
+	ipcMain.handle(IpcChannels.projectCreateFromScratch, () => invokeBackend("project.createFromScratch"));
+	ipcMain.handle(IpcChannels.projectAddExistingFolder, () => invokeBackend("project.addExistingFolder"));
+	ipcMain.handle(IpcChannels.projectSelect, (_event, input) => invokeBackend("project.select", input));
+	ipcMain.handle(IpcChannels.projectRename, (_event, input) => invokeBackend("project.rename", input));
+	ipcMain.handle(IpcChannels.projectRemove, (_event, input) => invokeBackend("project.remove", input));
+	ipcMain.handle(IpcChannels.projectOpenInFinder, (_event, input) => invokeBackend("project.openInFinder", input));
+	ipcMain.handle(IpcChannels.projectLocateFolder, (_event, input) => invokeBackend("project.locateFolder", input));
+	ipcMain.handle(IpcChannels.projectSetPinned, (_event, input) => invokeBackend("project.setPinned", input));
 	ipcMain.handle(IpcChannels.projectCheckAvailability, (_event, input) =>
-		handleProjectOperation(() => projectService.checkAvailability(ProjectIdInputSchema.parse(input))),
+		invokeBackend("project.checkAvailability", input),
 	);
-	ipcMain.handle(IpcChannels.chatCreate, (_event, input) =>
-		handleProjectOperation(() => projectService.createChat(ChatCreateInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.chatSelect, (_event, input) =>
-		handleProjectOperation(() => projectService.selectChat(ChatSelectionInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) =>
-		handlePiSessionOperation(async () => {
-			const parsed = PiSessionStartInputSchema.parse(input);
-			const workspace = await projectService.getSessionWorkspace({ projectId: parsed.projectId });
-			return piSessionRuntime.start({
-				projectId: workspace.projectId,
-				workspacePath: workspace.path,
-				prompt: parsed.prompt,
-			});
-		}),
-	);
-	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) =>
-		handlePiSessionOperation(() => piSessionRuntime.submit(PiSessionSubmitInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) =>
-		handlePiSessionOperation(() => piSessionRuntime.abort(PiSessionAbortInputSchema.parse(input))),
-	);
-	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) =>
-		handlePiSessionOperation(() => piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(input))),
-	);
+	ipcMain.handle(IpcChannels.chatCreate, (_event, input) => invokeBackend("chat.create", input));
+	ipcMain.handle(IpcChannels.chatSelect, (_event, input) => invokeBackend("chat.select", input));
+	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) => invokeBackend("piSession.start", input));
+	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) => invokeBackend("piSession.submit", input));
+	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));
+	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
 };
 
 app.whenReady().then(() => {
