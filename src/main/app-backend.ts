@@ -20,6 +20,7 @@ import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
 
 type CreateAgentSession = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createAgentSession"]>;
+type PiSessionEventListener = (event: PiSessionEvent) => void;
 
 export type AppBackendDeps = {
 	appInfo: AppVersion;
@@ -40,15 +41,24 @@ export type AppBackend = {
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const assertNever = (value: never): never => {
+	throw new Error(`Unhandled app backend request: ${JSON.stringify(value)}`);
+};
+
 export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
-	const piSessionListeners = new Set<(event: PiSessionEvent) => void>();
+	const piSessionListeners = new Set<PiSessionEventListener>();
+	const emitPiSessionEvent = (event: PiSessionEvent) => {
+		for (const listener of [...piSessionListeners]) {
+			try {
+				listener(event);
+			} catch (error) {
+				console.error("Pi session event listener failed.", error);
+			}
+		}
+	};
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
-		emit: (event) => {
-			for (const listener of piSessionListeners) {
-				listener(event);
-			}
-		},
+		emit: emitPiSessionEvent,
 		createAgentSession: deps.createAgentSession,
 	});
 
@@ -139,6 +149,8 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input)),
 					);
+				default:
+					return assertNever(request);
 			}
 		},
 		onPiSessionEvent(listener) {

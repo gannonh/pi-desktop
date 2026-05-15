@@ -1,5 +1,6 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createAppBackend } from "../../src/main/app-backend";
+import { PiSessionOperationFailedCode } from "../../src/shared/ipc";
 import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
 import type { ProjectService } from "../../src/main/projects/project-service";
 import type { ProjectStateView } from "../../src/shared/project-state";
@@ -72,6 +73,28 @@ describe("app backend", () => {
 		});
 	});
 
+	it("wraps Pi session operation failures in structured results with sanitized messages", async () => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createAgentSession: vi.fn(async () => {
+				throw new Error("provider failed\nAuthorization: Bearer secret-token");
+			}),
+		});
+
+		const result = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { code: PiSessionOperationFailedCode, message: "provider failed" },
+		});
+	});
+
 	it("starts a Pi session through the selected workspace and fans out events", async () => {
 		const projectService = createProjectService();
 		const session = createSession();
@@ -100,5 +123,47 @@ describe("app backend", () => {
 			label: "Running",
 			receivedAt: "2026-05-15T12:00:00.000Z",
 		});
+	});
+
+	it("isolates Pi session event listener failures from later listeners", async () => {
+		const projectService = createProjectService();
+		const session = createSession();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const listenerError = new Error("listener failed");
+		const failingListener = vi.fn(() => {
+			throw listenerError;
+		});
+		const events: unknown[] = [];
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const unsubscribeFailing = backend.onPiSessionEvent(failingListener);
+		const unsubscribeReceiving = backend.onPiSessionEvent((event) => events.push(event));
+
+		try {
+			const result = await backend.handle({
+				operation: "piSession.start",
+				input: { projectId: "project:one", prompt: "Hello" },
+			});
+			await waitForScheduledPrompt();
+
+			expect(result.ok).toBe(true);
+			expect(failingListener).toHaveBeenCalled();
+			expect(events).toContainEqual({
+				type: "status",
+				sessionId: "project:one:sdk-session:one",
+				status: "running",
+				label: "Running",
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+			expect(consoleError).toHaveBeenCalledWith("Pi session event listener failed.", listenerError);
+		} finally {
+			unsubscribeFailing();
+			unsubscribeReceiving();
+			consoleError.mockRestore();
+		}
 	});
 });

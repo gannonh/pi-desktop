@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transport";
 import { IpcChannels } from "../shared/ipc";
+import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
@@ -100,8 +101,12 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	});
 
 	const invokeBackend = (operation: AppRpcOperation, input?: unknown) => {
-		const request = AppRpcRequestSchema.parse(input === undefined ? { operation } : { operation, input });
-		return backend.handle(request);
+		try {
+			const request = AppRpcRequestSchema.parse(input === undefined ? { operation } : { operation, input });
+			return backend.handle(request);
+		} catch {
+			return Promise.resolve(err("ipc.request_invalid", "Invalid IPC request."));
+		}
 	};
 
 	ipcMain.handle(IpcChannels.appGetVersion, () => invokeBackend("app.getVersion"));
