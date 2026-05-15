@@ -1,4 +1,4 @@
-# pi-desktop PRD and Roadmap
+# pi-desktop PRD and High-Level Roadmap (HLR)
 
 ## Summary
 
@@ -209,7 +209,7 @@ Acceptance:
 - Project context is visible in the composer when a project is selected.
 - The main chat shell is ready for prompt submission wiring.
 
-### M03: Pi Session MVP
+✅ ### M03: Pi Session MVP
 
 Goal: run a real Pi-backed coding session through the SDK.
 
@@ -399,6 +399,7 @@ Acceptance:
 - What is the first provider/auth path for demos?
 - Should local session metadata use SQLite, IndexedDB, or file-backed JSON for the first milestones?
 - Which Pi SDK APIs need public contracts before Milestone 3 starts?
+- Should the renderer adopt AI SDK UI for chat state and streaming? Track this in [AI SDK UI Chat Spike](./2026-05-15-ai-sdk-ui-chat-spike.md).
 
 ## Current Planning Targets
 
