@@ -40,11 +40,23 @@ describe("isSessionScopeSelected", () => {
 });
 
 describe("shouldAcceptSessionEvent", () => {
-	it("accepts the first event from the pending start before the start result returns", () => {
+	it("rejects pending start events until the started session id is known", () => {
 		expect(
 			shouldAcceptSessionEvent({
 				eventSessionId: "project:/tmp/pi-desktop:session:one",
 				acceptedSessionId: null,
+				pendingStart: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+			}),
+		).toBe(false);
+	});
+
+	it("accepts events from the session returned by the current start request", () => {
+		expect(
+			shouldAcceptSessionEvent({
+				eventSessionId: "project:/tmp/pi-desktop:session:one",
+				acceptedSessionId: "project:/tmp/pi-desktop:session:one",
 				pendingStart: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },

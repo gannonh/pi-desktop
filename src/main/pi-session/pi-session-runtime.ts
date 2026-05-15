@@ -42,6 +42,7 @@ type RuntimeEntry = {
 	unsubscribe: () => void;
 	idle: Promise<void>;
 	activePromptToken: symbol | null;
+	abortedPromptToken: symbol | null;
 	scheduledPrompt: { timeout: ReturnType<typeof setTimeout>; resolve: () => void } | null;
 	disposed: boolean;
 };
@@ -71,13 +72,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		}
 	};
 
-	const clearScheduledPrompt = (entry: RuntimeEntry) => {
+	const clearScheduledPrompt = (entry: RuntimeEntry): boolean => {
 		if (!entry.scheduledPrompt) {
-			return;
+			return false;
 		}
 		clearTimeout(entry.scheduledPrompt.timeout);
 		entry.scheduledPrompt.resolve();
 		entry.scheduledPrompt = null;
+		return true;
 	};
 
 	const disposeEntry = async (sessionId: string, entry: RuntimeEntry): Promise<PiSessionActionPayload> => {
@@ -85,7 +87,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		clearScheduledPrompt(entry);
 		entry.unsubscribe();
 		try {
-			if (entry.activePromptToken || busyStatuses.has(entry.status)) {
+			if (entry.activePromptToken) {
 				await entry.session.abort();
 			}
 		} finally {
@@ -107,7 +109,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			.then(() => {
 				const currentEntry = sessions.get(sessionId);
 				if (currentEntry === entry && !entry.disposed && entry.activePromptToken === promptToken) {
-					if (entry.status === "failed") {
+					if (entry.status === "failed" || entry.status === "aborting") {
 						return;
 					}
 					const shouldEmitIdle = entry.status !== "idle";
@@ -120,6 +122,9 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			.catch((error) => {
 				const currentEntry = sessions.get(sessionId);
 				if (currentEntry !== entry || entry.disposed || entry.activePromptToken !== promptToken) {
+					return;
+				}
+				if (entry.status === "aborting" || entry.abortedPromptToken === promptToken) {
 					return;
 				}
 				entry.status = "failed";
@@ -186,6 +191,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				unsubscribe,
 				idle: Promise.resolve(),
 				activePromptToken: null,
+				abortedPromptToken: null,
 				scheduledPrompt: null,
 				disposed: false,
 			};
@@ -215,15 +221,23 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			clearScheduledPrompt(entry);
 			entry.status = "aborting";
 			emitStatus(input.sessionId, "aborting", "Aborting");
-			try {
-				await entry.session.abort();
-			} catch (error) {
-				entry.status = "failed";
-				deps.emit(
-					createRuntimeErrorEvent({ sessionId: input.sessionId, code: "pi.abort_failed", error, now: deps.now }),
-				);
-				emitStatus(input.sessionId, "failed", "Failed");
-				throw error;
+			if (entry.activePromptToken) {
+				try {
+					await entry.session.abort();
+				} catch (error) {
+					entry.status = "failed";
+					deps.emit(
+						createRuntimeErrorEvent({
+							sessionId: input.sessionId,
+							code: "pi.abort_failed",
+							error,
+							now: deps.now,
+						}),
+					);
+					emitStatus(input.sessionId, "failed", "Failed");
+					throw error;
+				}
+				entry.abortedPromptToken = entry.activePromptToken;
 			}
 			entry.status = "idle";
 			emitStatus(input.sessionId, "idle", "Idle");

@@ -26,7 +26,10 @@ export default defineConfig({
 					return null;
 				}
 
-				const transformed = code.replaceAll("{}.url", "import.meta.url");
+				const transformed = code
+					.replaceAll("(void 0).url", "import.meta.url")
+					.replace(/\(\s*\{\s*\}\s*\)\.url\b/g, "import.meta.url")
+					.replace(/(^|[^\w$"'`])\{\}\.url\b/g, "$1import.meta.url");
 				return transformed === code ? null : { code: transformed, map: null };
 			},
 		},

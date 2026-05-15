@@ -129,6 +129,7 @@ describe("createPiSessionRuntime", () => {
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
+		await waitForScheduledPrompt();
 		await runtime.abort({ sessionId: result.sessionId });
 
 		expect(session.abort).toHaveBeenCalled();
@@ -141,6 +142,105 @@ describe("createPiSessionRuntime", () => {
 		});
 		promptResult.resolve();
 		await runtime.whenIdle(result.sessionId);
+	});
+
+	it("cancels a scheduled prompt without aborting the SDK session before prompt starts", async () => {
+		const events: PiSessionEvent[] = [];
+		const { session } = createControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+
+		await expect(runtime.abort({ sessionId: result.sessionId })).resolves.toEqual({
+			sessionId: result.sessionId,
+			status: "idle",
+		});
+		await waitForScheduledPrompt();
+
+		expect(session.prompt).not.toHaveBeenCalled();
+		expect(session.abort).not.toHaveBeenCalled();
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual([
+			"aborting",
+			"idle",
+		]);
+	});
+
+	it("keeps a successful abort idle when the in-flight prompt later rejects", async () => {
+		const events: PiSessionEvent[] = [];
+		const { promptResult, session } = createControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+
+		await runtime.abort({ sessionId: result.sessionId });
+		promptResult.reject(new Error("cancelled by abort"));
+		await runtime.whenIdle(result.sessionId);
+
+		expect(events).not.toContainEqual({
+			type: "runtime_error",
+			sessionId: result.sessionId,
+			code: "pi.prompt_failed",
+			message: "cancelled by abort",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual([
+			"running",
+			"aborting",
+			"idle",
+		]);
+	});
+
+	it("lets the abort continuation own the idle transition when the prompt settles while aborting", async () => {
+		const events: PiSessionEvent[] = [];
+		const { promptResult, session } = createControlledSession();
+		const abortResult = createDeferred();
+		vi.mocked(session.abort).mockReturnValueOnce(abortResult.promise);
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+
+		const abort = runtime.abort({ sessionId: result.sessionId });
+		promptResult.resolve();
+		await Promise.resolve();
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual([
+			"running",
+			"aborting",
+		]);
+
+		abortResult.resolve();
+		await abort;
+
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual([
+			"running",
+			"aborting",
+			"idle",
+		]);
 	});
 
 	it("emits startup errors clearly", async () => {
