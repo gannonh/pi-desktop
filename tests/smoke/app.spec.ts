@@ -188,6 +188,57 @@ test("renders the selected project chat start state", async () => {
 	}
 });
 
+test("streams a Pi session response in the selected project", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: null,
+		selectedChatId: null,
+		chatsByProject: {
+			[projectId]: [],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await window.getByRole("button", { name: /pi-desktop/i }).click();
+		await window.getByLabel("Message Pi").fill("What files are here?");
+		await window.getByRole("button", { name: "Send message" }).click();
+
+		await expect(window.getByText("What files are here?")).toBeVisible();
+		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
+		await expect(window.getByText("Idle")).toBeVisible();
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
+	}
+});
+
 test("renders a static continued chat route with the composer anchored to the bottom", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));

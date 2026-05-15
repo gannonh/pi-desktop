@@ -1,5 +1,6 @@
 import type { PiDesktopApi } from "../shared/preload-api";
 import type { ProjectStateViewResult } from "../shared/ipc";
+import type { PiSessionEvent } from "../shared/pi-session";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -160,12 +161,56 @@ const addProject = (projectPath: string) => {
 	store.selectedChatId = null;
 };
 
-const piSessionListeners = new Set<Parameters<PiDesktopApi["piSession"]["onEvent"]>[0]>();
-
 export const installDevPreviewApi = () => {
 	if ("piDesktop" in window) {
 		return;
 	}
+
+	const sessionListeners = new Set<(event: PiSessionEvent) => void>();
+	const emitSessionEvent = (event: PiSessionEvent) => {
+		for (const listener of sessionListeners) {
+			listener(event);
+		}
+	};
+	const emitPreviewStream = (sessionId: string, prompt: string) => {
+		const receivedAt = () => new Date().toISOString();
+		emitSessionEvent({ type: "status", sessionId, status: "running", label: "Running", receivedAt: receivedAt() });
+		emitSessionEvent({
+			type: "message_start",
+			sessionId,
+			messageId: `user:${Date.now()}`,
+			role: "user",
+			content: prompt,
+			receivedAt: receivedAt(),
+		});
+		const assistantMessageId = `assistant:${Date.now() + 1}`;
+		emitSessionEvent({
+			type: "message_start",
+			sessionId,
+			messageId: assistantMessageId,
+			role: "assistant",
+			content: "",
+			receivedAt: receivedAt(),
+		});
+		for (const delta of ["I can see this project. ", "Pi session streaming is connected."]) {
+			emitSessionEvent({
+				type: "assistant_delta",
+				sessionId,
+				messageId: assistantMessageId,
+				delta,
+				receivedAt: receivedAt(),
+			});
+		}
+		emitSessionEvent({
+			type: "message_end",
+			sessionId,
+			messageId: assistantMessageId,
+			role: "assistant",
+			content: "I can see this project. Pi session streaming is connected.",
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({ type: "status", sessionId, status: "idle", label: "Idle", receivedAt: receivedAt() });
+	};
 
 	const api: PiDesktopApi = {
 		app: {
@@ -273,41 +318,44 @@ export const installDevPreviewApi = () => {
 			},
 		},
 		piSession: {
-			start: async ({ projectId }) => {
+			start: async ({ projectId, prompt }) => {
 				const result = findProject(projectId);
 				if (!result.ok) {
-					return {
-						ok: false,
-						error: {
-							code: "preview.project_not_found",
-							message: "Project not found in preview data.",
-						},
-					};
+					return result;
 				}
+				const sessionId = `${projectId}:preview-session`;
+				queueMicrotask(() => emitPreviewStream(sessionId, prompt));
 				return {
 					ok: true,
 					data: {
-						sessionId: `pi-session:preview:${projectId}`,
+						sessionId,
 						projectId,
 						workspacePath: result.project.path,
 						status: "running",
 					},
 				};
 			},
-			submit: async ({ sessionId }) => ({
-				ok: true,
-				data: {
+			submit: async ({ sessionId, prompt }) => {
+				queueMicrotask(() => emitPreviewStream(sessionId, prompt));
+				return { ok: true, data: { sessionId, status: "running" } };
+			},
+			abort: async ({ sessionId }) => {
+				emitSessionEvent({
+					type: "status",
 					sessionId,
-					status: "running",
-				},
-			}),
-			abort: async ({ sessionId }) => ({
-				ok: true,
-				data: {
+					status: "aborting",
+					label: "Aborting",
+					receivedAt: new Date().toISOString(),
+				});
+				emitSessionEvent({
+					type: "status",
 					sessionId,
 					status: "idle",
-				},
-			}),
+					label: "Idle",
+					receivedAt: new Date().toISOString(),
+				});
+				return { ok: true, data: { sessionId, status: "idle" } };
+			},
 			dispose: async ({ sessionId }) => ({
 				ok: true,
 				data: {
@@ -316,9 +364,9 @@ export const installDevPreviewApi = () => {
 				},
 			}),
 			onEvent: (listener) => {
-				piSessionListeners.add(listener);
+				sessionListeners.add(listener);
 				return () => {
-					piSessionListeners.delete(listener);
+					sessionListeners.delete(listener);
 				};
 			},
 		},
