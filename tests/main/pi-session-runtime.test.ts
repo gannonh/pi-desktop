@@ -1,3 +1,4 @@
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { createPiSessionRuntime, type PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
 import type { PiSessionEvent } from "../../src/shared/pi-session";
@@ -16,7 +17,7 @@ const createDeferred = <T = void>() => {
 };
 
 const createFakeSession = () => {
-	let listener: ((event: any) => void) | undefined;
+	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	const session: PiSdkSession = {
 		sessionId: "sdk-session:one",
 		subscribe: vi.fn((nextListener) => {
@@ -30,12 +31,12 @@ const createFakeSession = () => {
 			listener?.({
 				type: "message_start",
 				message: { role: "user", content: [{ type: "text", text: prompt }], timestamp: 1 },
-			});
+			} as AgentSessionEvent);
 			listener?.({
 				type: "message_update",
 				message: { role: "assistant", content: [{ type: "text", text: "Hi" }], timestamp: 2 },
 				assistantMessageEvent: { type: "text_delta", delta: "Hi" },
-			});
+			} as AgentSessionEvent);
 			listener?.({
 				type: "agent_end",
 				messages: [],
@@ -49,7 +50,7 @@ const createFakeSession = () => {
 };
 
 const createControlledSession = () => {
-	let listener: ((event: any) => void) | undefined;
+	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	const promptResult = createDeferred();
 	const session: PiSdkSession = {
 		sessionId: "sdk-session:one",
@@ -65,7 +66,7 @@ const createControlledSession = () => {
 		dispose: vi.fn(() => undefined),
 	};
 
-	return { emitSdkEvent: (event: any) => listener?.(event), promptResult, session };
+	return { emitSdkEvent: (event: AgentSessionEvent) => listener?.(event), promptResult, session };
 };
 
 describe("createPiSessionRuntime", () => {
@@ -202,6 +203,47 @@ describe("createPiSessionRuntime", () => {
 		promptResult.resolve();
 		await idle;
 		await expect(idle).resolves.toBeUndefined();
+	});
+
+	it("keeps prompt ownership active after SDK idle until the prompt promise settles", async () => {
+		const events: PiSessionEvent[] = [];
+		const { emitSdkEvent, promptResult, session } = createControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		const idle = runtime.whenIdle(result.sessionId);
+		let idleSettled = false;
+		void idle.then(() => {
+			idleSettled = true;
+		});
+
+		emitSdkEvent({ type: "agent_end", messages: [] });
+
+		expect(events).toContainEqual({
+			type: "status",
+			sessionId: result.sessionId,
+			status: "idle",
+			label: "Idle",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		await expect(runtime.submit({ sessionId: result.sessionId, prompt: "Second" })).rejects.toThrow(
+			"Pi session is already running.",
+		);
+		await Promise.resolve();
+		expect(idleSettled).toBe(false);
+		expect(session.prompt).toHaveBeenCalledTimes(1);
+
+		promptResult.resolve();
+		await idle;
+		expect(idleSettled).toBe(true);
 	});
 
 	it("marks completed prompts idle so later submit can run and idle abort is a no-op", async () => {

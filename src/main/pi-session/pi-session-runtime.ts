@@ -41,6 +41,7 @@ type RuntimeEntry = {
 	status: PiSessionStatus;
 	unsubscribe: () => void;
 	idle: Promise<void>;
+	activePromptToken: symbol | null;
 	disposed: boolean;
 };
 
@@ -64,31 +65,47 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	};
 
 	const assertNotBusy = (entry: RuntimeEntry) => {
-		if (busyStatuses.has(entry.status)) {
+		if (entry.activePromptToken) {
 			throw new Error("Pi session is already running.");
 		}
 	};
 
 	const runPrompt = (sessionId: string, prompt: string): Promise<void> => {
 		const entry = getEntry(sessionId);
+		const promptToken = Symbol("pi-session-prompt");
+		entry.activePromptToken = promptToken;
 		entry.status = "running";
 		emitStatus(sessionId, "running", "Running");
 
-		return entry.session
+		const idle = entry.session
 			.prompt(prompt)
 			.then(() => {
-				if (!entry.disposed && (entry.status === "running" || entry.status === "retrying")) {
+				const currentEntry = sessions.get(sessionId);
+				if (currentEntry === entry && !entry.disposed && entry.activePromptToken === promptToken) {
+					const shouldEmitIdle = entry.status !== "idle";
 					entry.status = "idle";
+					if (shouldEmitIdle) {
+						emitStatus(sessionId, "idle", "Idle");
+					}
 				}
 			})
 			.catch((error) => {
-				if (entry.disposed) {
+				const currentEntry = sessions.get(sessionId);
+				if (currentEntry !== entry || entry.disposed || entry.activePromptToken !== promptToken) {
 					return;
 				}
 				entry.status = "failed";
 				deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
 				emitStatus(sessionId, "failed", "Failed");
+			})
+			.finally(() => {
+				const currentEntry = sessions.get(sessionId);
+				if (currentEntry === entry && entry.activePromptToken === promptToken) {
+					entry.activePromptToken = null;
+				}
 			});
+		entry.idle = idle;
+		return idle;
 	};
 
 	return {
@@ -121,10 +138,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				status: "running",
 				unsubscribe,
 				idle: Promise.resolve(),
+				activePromptToken: null,
 				disposed: false,
 			};
 			sessions.set(sessionId, entry);
-			entry.idle = runPrompt(sessionId, input.prompt);
+			runPrompt(sessionId, input.prompt);
 
 			return {
 				sessionId,
@@ -137,13 +155,13 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
 			assertNotBusy(entry);
-			entry.idle = runPrompt(input.sessionId, input.prompt);
+			runPrompt(input.sessionId, input.prompt);
 			return { sessionId: input.sessionId, status: "running" };
 		},
 
 		async abort(input: PiSessionAbortInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			if (!busyStatuses.has(entry.status)) {
+			if (!entry.activePromptToken && !busyStatuses.has(entry.status)) {
 				return { sessionId: input.sessionId, status: entry.status };
 			}
 			entry.status = "aborting";
@@ -168,7 +186,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			entry.disposed = true;
 			entry.unsubscribe();
 			try {
-				if (busyStatuses.has(entry.status)) {
+				if (entry.activePromptToken || busyStatuses.has(entry.status)) {
 					await entry.session.abort();
 				}
 			} finally {
