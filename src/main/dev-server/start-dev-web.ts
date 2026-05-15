@@ -1,57 +1,139 @@
-import { createServer as createViteServer } from "vite";
 import { homedir } from "node:os";
 import path from "node:path";
-import { createAppBackend } from "../app-backend";
+import { pathToFileURL } from "node:url";
+import { createServer as createViteServer, type InlineConfig } from "vite";
+import { createAppBackend, type AppBackend } from "../app-backend";
 import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
 import { createProjectService } from "../projects/project-service";
 import { createProjectStore } from "../projects/project-store";
-import { createLocalDevServer } from "./local-dev-server";
+import { createLocalDevServer, type LocalDevServer, type LocalDevServerOptions } from "./local-dev-server";
 
 const host = "127.0.0.1";
 const vitePort = 5173;
-const documentsDir = process.env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
-const userDataDir = process.env.PI_DESKTOP_USER_DATA_DIR ?? path.join(process.cwd(), ".pi-desktop-dev");
+
+type DevWebViteServer = {
+	close: () => Promise<void>;
+	listen: () => Promise<unknown>;
+	printUrls: () => void;
+};
+type CreateViteDevServer = (config: InlineConfig) => Promise<DevWebViteServer>;
+type DevWebLogger = Pick<Console, "error" | "log">;
+
+type DevWebProcess = {
+	env: NodeJS.ProcessEnv;
+	once: (signal: NodeJS.Signals, listener: () => void) => unknown;
+	exit: (code?: number) => never;
+};
+
+type DevWebServerResources = {
+	backend: AppBackend;
+	appServer?: LocalDevServer;
+	vite?: DevWebViteServer;
+};
+
+export type StartDevWebServerDeps = {
+	env?: NodeJS.ProcessEnv;
+	logger?: DevWebLogger;
+	process?: DevWebProcess;
+	createBackend?: () => AppBackend;
+	createAppServer?: (options: LocalDevServerOptions) => Promise<LocalDevServer>;
+	createViteServer?: CreateViteDevServer;
+};
+
+export type DevWebServerHandle = DevWebServerResources & {
+	shutdown: () => Promise<void>;
+};
 
 const unavailableNativeOperation = async () => {
 	throw new Error("Native desktop operation unavailable in web preview.");
 };
 
-const backend = createAppBackend({
-	appInfo: { name: "pi-desktop web", version: "dev" },
-	projectService: createProjectService({
-		store: createProjectStore(path.join(userDataDir, "project-store.json")),
-		documentsDir,
+export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBackend => {
+	const documentsDir = env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
+	const userDataDir = env.PI_DESKTOP_USER_DATA_DIR ?? path.join(process.cwd(), ".pi-desktop-dev");
+
+	return createAppBackend({
+		appInfo: { name: "pi-desktop web", version: "dev" },
+		projectService: createProjectService({
+			store: createProjectStore(path.join(userDataDir, "project-store.json")),
+			documentsDir,
+			now: () => new Date().toISOString(),
+			openFolderDialog: unavailableNativeOperation,
+			openInFinder: unavailableNativeOperation,
+			initializeGitRepository,
+		}),
 		now: () => new Date().toISOString(),
-		openFolderDialog: unavailableNativeOperation,
-		openInFinder: unavailableNativeOperation,
-		initializeGitRepository,
-	}),
-	now: () => new Date().toISOString(),
-	createAgentSession: process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1" ? createSmokePiAgentSession : undefined,
-});
-
-const appServer = await createLocalDevServer({ backend, host, port: 0 });
-process.env.VITE_PI_DESKTOP_APP_SERVER_URL = appServer.url;
-
-const vite = await createViteServer({
-	configFile: "vite.renderer.config.ts",
-	server: { host, port: vitePort, strictPort: true },
-});
-
-await vite.listen();
-vite.printUrls();
-console.log(`Local app data bridge: ${appServer.url}`);
-
-const shutdown = async () => {
-	await vite.close();
-	await appServer.close();
-	await backend.dispose();
+		createAgentSession: env.PI_DESKTOP_SMOKE_PI_SESSION === "1" ? createSmokePiAgentSession : undefined,
+	});
 };
 
-process.once("SIGINT", () => {
-	void shutdown().finally(() => process.exit(0));
-});
-process.once("SIGTERM", () => {
-	void shutdown().finally(() => process.exit(0));
-});
+const cleanupDevWebResources = async (resources: DevWebServerResources, logger: DevWebLogger) => {
+	const cleanupSteps: { label: string; cleanup: () => Promise<void> }[] = [];
+	if (resources.vite !== undefined) {
+		const vite = resources.vite;
+		cleanupSteps.push({ label: "Vite dev server", cleanup: () => vite.close() });
+	}
+	if (resources.appServer !== undefined) {
+		const appServer = resources.appServer;
+		cleanupSteps.push({ label: "local app data bridge", cleanup: () => appServer.close() });
+	}
+	cleanupSteps.push({ label: "app backend", cleanup: () => resources.backend.dispose() });
+
+	const results = await Promise.allSettled(cleanupSteps.map((step) => step.cleanup()));
+	for (const [index, result] of results.entries()) {
+		if (result.status === "rejected") {
+			logger.error(`Failed to close ${cleanupSteps[index]?.label}.`, result.reason);
+		}
+	}
+};
+
+export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promise<DevWebServerHandle> => {
+	const env = deps.env ?? process.env;
+	const logger = deps.logger ?? console;
+	const processLike = deps.process ?? process;
+	const backend = (deps.createBackend ?? (() => createDevWebBackend(env)))();
+	const createAppServer = deps.createAppServer ?? createLocalDevServer;
+	const createVite = deps.createViteServer ?? createViteServer;
+	const resources: DevWebServerResources = { backend };
+	let shutdownStarted = false;
+
+	const shutdown = async () => {
+		if (shutdownStarted) {
+			return;
+		}
+		shutdownStarted = true;
+		await cleanupDevWebResources(resources, logger);
+	};
+
+	try {
+		resources.appServer = await createAppServer({ backend, host, port: 0 });
+		env.VITE_PI_DESKTOP_APP_SERVER_URL = resources.appServer.url;
+
+		resources.vite = await createVite({
+			configFile: "vite.renderer.config.ts",
+			server: { host, port: vitePort, strictPort: true },
+		});
+
+		await resources.vite.listen();
+		resources.vite.printUrls();
+		logger.log(`Local app data bridge: ${resources.appServer.url}`);
+	} catch (error) {
+		await shutdown();
+		throw error;
+	}
+
+	processLike.once("SIGINT", () => {
+		void shutdown().finally(() => processLike.exit(0));
+	});
+	processLike.once("SIGTERM", () => {
+		void shutdown().finally(() => processLike.exit(0));
+	});
+
+	return { ...resources, shutdown };
+};
+
+const entrypoint = process.argv[1];
+if (entrypoint !== undefined && import.meta.url === pathToFileURL(entrypoint).href) {
+	await startDevWebServer();
+}

@@ -33,7 +33,7 @@ pnpm dev
 pnpm dev:desktop
 ```
 
-Starts the Electron desktop app in development mode.
+`pnpm dev` aliases desktop development. Starts the Electron desktop app in development mode.
 
 ```bash
 pnpm dev:web
