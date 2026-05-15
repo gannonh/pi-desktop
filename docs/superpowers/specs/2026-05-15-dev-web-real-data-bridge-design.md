@@ -1,0 +1,113 @@
+# Dev Web Real Data Bridge Design
+
+## Goal
+
+Make the browser preview use the same real project, chat, and Pi session data sources as the Electron dev app through a reusable transport boundary.
+
+This work should improve local DX now and create a foundation for a future web/cloud version of the app.
+
+## Scope
+
+- Add a transport-neutral backend boundary for app operations.
+- Keep the renderer on one `PiDesktopApi` client contract.
+- Keep Electron dev mode on preload IPC.
+- Add a local dev HTTP/WebSocket server for browser preview.
+- Update `pnpm dev:web` so the preview starts with the local dev server.
+- Add `pnpm dev:desktop` as the explicit Electron dev command and keep `pnpm dev` as a desktop alias.
+- Remove runtime dependence on the browser-only mock API for normal preview use.
+
+Out of scope:
+
+- Durable chat/session restore.
+- Cloud auth, hosted deployment, or multi-user state.
+- A source-switching overlay.
+- Seed/reset UI or seed command. That belongs in the next milestone.
+
+## Architecture
+
+The renderer continues to consume `PiDesktopApi`.
+
+Electron uses:
+
+```text
+Renderer -> ElectronIpcClient -> preload -> Electron IPC -> AppBackend
+```
+
+Browser preview uses:
+
+```text
+Renderer -> HttpClient -> LocalDevHttpServer -> AppBackend
+```
+
+`AppBackend` owns request handling for app version, project operations, chat operations, and Pi session operations. It delegates to the existing project service and Pi session runtime.
+
+The local dev server is a transport host. It should use lightweight Node primitives unless a routing library becomes necessary. The server exposes the same operation contract that a future Express, Fastify, Worker, or hosted service can implement.
+
+## Transport Contract
+
+HTTP handles request/response operations:
+
+- `app.getVersion`
+- `project.getState`
+- `project.createFromScratch`
+- `project.addExistingFolder`
+- `project.select`
+- `project.rename`
+- `project.remove`
+- `project.openInFinder`
+- `project.locateFolder`
+- `project.setPinned`
+- `project.checkAvailability`
+- `chat.create`
+- `chat.select`
+- `piSession.start`
+- `piSession.submit`
+- `piSession.abort`
+- `piSession.dispose`
+
+WebSocket carries `PiSessionEvent` messages. The browser `HttpClient` subscribes once and forwards parsed events through `PiDesktopApi.piSession.onEvent`.
+
+The HTTP route contract should stay typed with existing Zod schemas at the IO boundary. Invalid requests return structured error results.
+
+## Runtime Behavior
+
+`pnpm dev:desktop` starts Electron dev mode. `pnpm dev` aliases it.
+
+`pnpm dev:web` starts both:
+
+- Vite renderer on `127.0.0.1:5173`.
+- Local dev app server on a separate localhost port.
+
+The renderer receives the dev app server URL through Vite env. If the URL is absent or unreachable, the app shows a visible bridge-unavailable startup error.
+
+The preview should not silently fall back to mock data at runtime. Unit tests may keep fixture clients for deterministic component and API behavior.
+
+## Reuse
+
+The reusable boundary is the route/client contract, not the local server process itself.
+
+Future apps can reuse:
+
+- `PiDesktopApi` as the renderer contract.
+- The HTTP/WebSocket client shape.
+- The AppBackend-style operation boundary.
+- The typed route schemas and event stream contract.
+
+Future hosted implementations can replace `LocalDevHttpServer` with a production transport host while keeping the renderer contract stable.
+
+## Testing
+
+Unit tests should cover:
+
+- HTTP client maps success and error responses into `PiDesktopApi` results.
+- WebSocket session events are parsed and delivered to listeners.
+- Local dev server routes validate inputs and call the backend operation boundary.
+- Bridge-unavailable startup state is visible.
+
+Smoke coverage should verify:
+
+- `pnpm dev:web` preview shows real project state from the local dev server.
+- Creating/selecting a chat through web preview updates the same backend state shape as Electron.
+- Submitting a prompt through web preview streams session events when the local Pi runtime is available.
+
+Final verification should use `pnpm check` after implementation.
