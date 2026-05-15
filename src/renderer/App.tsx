@@ -2,7 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
-import { isSessionScopeSelected, shouldAcceptSessionEvent } from "./session/session-scope";
+import {
+	bufferPendingSessionEvent,
+	createPendingSessionEventBuffer,
+	isSessionScopeSelected,
+	shouldAcceptSessionEvent,
+	shouldBufferPendingStartEvent,
+	takeBufferedSessionEvents,
+} from "./session/session-scope";
 import {
 	applySessionStartResult,
 	createInitialSessionState,
@@ -61,6 +68,7 @@ export function App() {
 	const activeSessionChatIdRef = useRef<string | null>(activeSessionChatId);
 	const latestSessionRequestRef = useRef<SessionRequest | null>(null);
 	const pendingStartRequestRef = useRef<SessionRequest | null>(null);
+	const pendingStartEventsRef = useRef(createPendingSessionEventBuffer());
 	const acceptedSessionIdRef = useRef<string | null>(null);
 	const nextSessionRequestIdRef = useRef(0);
 
@@ -100,6 +108,7 @@ export function App() {
 		activeSessionChatIdRef.current = null;
 		acceptedSessionIdRef.current = null;
 		pendingStartRequestRef.current = null;
+		pendingStartEventsRef.current.clear();
 		setActiveSessionProjectId(null);
 		setActiveSessionChatId(null);
 		setSessionState(createInitialSessionState());
@@ -115,11 +124,11 @@ export function App() {
 				return;
 			}
 
+			const sessionEvent = event as typeof event & { sessionId: string };
 			const pendingStart = pendingStartRequestRef.current;
 			const eventIsAccepted = shouldAcceptSessionEvent({
-				eventSessionId: event.sessionId,
+				eventSessionId: sessionEvent.sessionId,
 				acceptedSessionId: acceptedSessionIdRef.current,
-				pendingStart,
 				active: {
 					projectId: activeSessionProjectIdRef.current,
 					chatId: activeSessionChatIdRef.current,
@@ -131,14 +140,30 @@ export function App() {
 			});
 
 			if (!eventIsAccepted) {
+				if (
+					shouldBufferPendingStartEvent({
+						acceptedSessionId: acceptedSessionIdRef.current,
+						pendingStart,
+						active: {
+							projectId: activeSessionProjectIdRef.current,
+							chatId: activeSessionChatIdRef.current,
+						},
+						selection: {
+							projectId: selectedProjectIdRef.current,
+							chatId: selectedChatIdRef.current,
+						},
+					})
+				) {
+					bufferPendingSessionEvent(pendingStartEventsRef.current, sessionEvent);
+				}
 				return;
 			}
 
-			if (event.sessionId !== acceptedSessionIdRef.current) {
-				acceptedSessionIdRef.current = event.sessionId;
+			if (sessionEvent.sessionId !== acceptedSessionIdRef.current) {
+				acceptedSessionIdRef.current = sessionEvent.sessionId;
 			}
 
-			setSessionState((current) => reduceSessionEvent(current, event));
+			setSessionState((current) => reduceSessionEvent(current, sessionEvent));
 		});
 	}, []);
 
@@ -171,6 +196,7 @@ export function App() {
 			latestSessionRequestRef.current = request;
 			if (!reusableSessionId) {
 				pendingStartRequestRef.current = request;
+				pendingStartEventsRef.current.clear();
 				acceptedSessionIdRef.current = null;
 			}
 
@@ -199,6 +225,10 @@ export function App() {
 				(reusableSessionId || pendingStartRequestRef.current?.id === request.id);
 
 			if (!requestIsCurrent) {
+				if (!reusableSessionId && pendingStartRequestRef.current?.id === request.id) {
+					pendingStartRequestRef.current = null;
+					pendingStartEventsRef.current.clear();
+				}
 				if (result.ok && !reusableSessionId) {
 					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
 				}
@@ -208,6 +238,7 @@ export function App() {
 			if (!result.ok) {
 				if (!reusableSessionId) {
 					pendingStartRequestRef.current = null;
+					pendingStartEventsRef.current.clear();
 				}
 				setSessionState((current) => ({
 					...current,
@@ -223,19 +254,24 @@ export function App() {
 			}
 
 			if (!reusableSessionId) {
+				const bufferedEvents = takeBufferedSessionEvents(pendingStartEventsRef.current, result.data.sessionId);
 				pendingStartRequestRef.current = null;
 				acceptedSessionIdRef.current = result.data.sessionId;
 				activeSessionProjectIdRef.current = requestProjectId;
 				activeSessionChatIdRef.current = requestChatId;
 				setActiveSessionProjectId(requestProjectId);
 				setActiveSessionChatId(requestChatId);
-				setSessionState((current) =>
-					applySessionStartResult(current, {
+				setSessionState((current) => {
+					let next = applySessionStartResult(current, {
 						sessionId: result.data.sessionId,
 						status: result.data.status,
 						statusLabel: toSessionStatusLabel(result.data.status),
-					}),
-				);
+					});
+					for (const event of bufferedEvents) {
+						next = reduceSessionEvent(next, event);
+					}
+					return next;
+				});
 			}
 
 			return true;
