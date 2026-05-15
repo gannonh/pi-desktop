@@ -1,7 +1,7 @@
 import { createHttpPiDesktopApi } from "../../src/renderer/app-api/http-client";
 import type { PiSessionEvent } from "../../src/shared/pi-session";
 
-type MockWebSocketEvent = { data?: unknown };
+type MockWebSocketEvent = { data?: unknown; type?: string };
 type MockWebSocketListener = (event: MockWebSocketEvent) => void;
 
 class MockWebSocket {
@@ -33,6 +33,10 @@ class MockWebSocket {
 
 	emitMessage(data: unknown) {
 		this.dispatch("message", { data });
+	}
+
+	emitError(event: MockWebSocketEvent) {
+		this.dispatch("error", event);
 	}
 
 	private dispatch(type: string, event: MockWebSocketEvent) {
@@ -157,6 +161,47 @@ describe("HTTP PiDesktop API client", () => {
 		expect(socket.close).not.toHaveBeenCalled();
 		unsubscribeSecond();
 		expect(socket.close).toHaveBeenCalledTimes(1);
+	});
+
+	it("ignores event socket errors after intentional cleanup", () => {
+		installMockWebSocket();
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+
+		const unsubscribe = api.piSession.onEvent(vi.fn());
+		const socket = MockWebSocket.instances[0];
+		unsubscribe();
+		socket.emitError({ type: "error" });
+
+		expect(consoleError).not.toHaveBeenCalled();
+	});
+
+	it("ignores event socket errors from stale sockets after resubscribe", () => {
+		installMockWebSocket();
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+
+		const unsubscribeStale = api.piSession.onEvent(vi.fn());
+		const staleSocket = MockWebSocket.instances[0];
+		unsubscribeStale();
+		const unsubscribeCurrent = api.piSession.onEvent(vi.fn());
+		staleSocket.emitError({ type: "error" });
+
+		expect(consoleError).not.toHaveBeenCalled();
+		unsubscribeCurrent();
+	});
+
+	it("logs event socket errors while listeners are subscribed to the current socket", () => {
+		installMockWebSocket();
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+		const socketError = { type: "error" };
+
+		const unsubscribe = api.piSession.onEvent(vi.fn());
+		MockWebSocket.instances[0].emitError(socketError);
+
+		expect(consoleError).toHaveBeenCalledWith("Dev data bridge event socket failed.", socketError);
+		unsubscribe();
 	});
 
 	it("isolates listener exceptions so later listeners still receive events", () => {

@@ -88,6 +88,9 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			}
 		});
 		socket.addEventListener("error", (error) => {
+			if (eventsSocket !== socket || eventListeners.size === 0) {
+				return;
+			}
 			console.error("Dev data bridge event socket failed.", error);
 		});
 	};
