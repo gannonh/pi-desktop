@@ -175,7 +175,7 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
-	it("uses deterministic fallback ids for custom messages without timestamps", () => {
+	it("normalizes timestamped custom messages", () => {
 		expect(
 			normalizeAndParse({
 				type: "message_start",
@@ -184,13 +184,14 @@ describe("pi session event normalizer", () => {
 					customType: "notice",
 					display: true,
 					content: "Heads up",
+					timestamp: 5,
 				},
 			} as unknown as AgentSessionEvent),
 		).toEqual([
 			{
 				type: "message_start",
 				sessionId: "pi-session:one",
-				messageId: "custom:customType=notice:content=Heads up:0",
+				messageId: "custom:5",
 				role: "user",
 				content: "Heads up",
 				receivedAt,
@@ -198,50 +199,54 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
-	it("uses collision-resistant fallback ids for malformed messages without timestamps", () => {
-		const first = normalizeAndParse({
-			type: "message_start",
-			message: {
-				role: "custom",
-				customType: "notice",
-				display: true,
-				content: "Heads up",
-			},
-		} as unknown as AgentSessionEvent)[0];
-		const second = normalizeAndParse({
-			type: "message_start",
-			message: {
-				role: "custom",
-				customType: "notice",
-				display: true,
-				content: "Different",
-			},
-		} as unknown as AgentSessionEvent)[0];
-
-		expect(first).toMatchObject({ type: "message_start", messageId: "custom:customType=notice:content=Heads up:0" });
-		expect(second).toMatchObject({
-			type: "message_start",
-			messageId: "custom:customType=notice:content=Different:0",
-		});
-	});
-
-	it("uses event-local fallback indexes for identical timestamp-less messages in one batch", () => {
+	it("ignores standalone timestamp-less malformed message events", () => {
 		const message = {
 			role: "custom",
 			customType: "notice",
 			display: true,
 			content: "Same",
 		};
+		const partial = assistantMessage({ timestamp: 5 });
 
-		const events = normalizeAndParse({
-			type: "agent_end",
-			messages: [message, message],
-		} as unknown as AgentSessionEvent);
+		expect(normalizeAndParse({ type: "message_start", message } as unknown as AgentSessionEvent)).toEqual([]);
+		expect(normalizeAndParse({ type: "message_end", message } as unknown as AgentSessionEvent)).toEqual([]);
+		expect(
+			normalizeAndParse({
+				type: "message_update",
+				message,
+				assistantMessageEvent: {
+					type: "text_delta",
+					contentIndex: 0,
+					delta: "ignored",
+					partial,
+				},
+			} as unknown as AgentSessionEvent),
+		).toEqual([]);
+	});
 
-		expect(events).toMatchObject([
+	it("skips timestamp-less malformed messages in agent end batches", () => {
+		expect(
+			normalizeAndParse({
+				type: "agent_end",
+				messages: [
+					{
+						role: "custom",
+						customType: "notice",
+						display: true,
+						content: "Same",
+					},
+					{
+						role: "custom",
+						customType: "notice",
+						display: true,
+						content: "Same",
+						timestamp: 6,
+					},
+				],
+			} as unknown as AgentSessionEvent),
+		).toMatchObject([
 			{ type: "status", status: "idle" },
-			{ type: "message_end", messageId: "custom:customType=notice:content=Same:0" },
-			{ type: "message_end", messageId: "custom:customType=notice:content=Same:1" },
+			{ type: "message_end", messageId: "custom:6" },
 		]);
 	});
 

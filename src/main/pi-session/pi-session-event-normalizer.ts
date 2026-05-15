@@ -43,39 +43,11 @@ const hasContent = (message: AgentMessage): message is AgentMessage & { content:
 const stringValue = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined;
 
-const fallbackIdFor = (message: AgentMessage, fallbackIndex: number): number | string => {
-	if (!isRecord(message)) {
-		return fallbackIndex;
-	}
-
-	const parts: string[] = [];
-	const customType = stringValue(message.customType);
-	if (customType) {
-		parts.push(`customType=${customType}`);
-	}
-
-	const toolCallId = stringValue(message.toolCallId);
-	if (toolCallId) {
-		parts.push(`toolCallId=${toolCallId}`);
-	}
-
-	const content = hasContent(message) ? textFromContent(message.content) : "";
-	if (content.length > 0) {
-		parts.push(`content=${content}`);
-	}
-
-	if (parts.length > 0) {
-		return `${parts.join(":")}:${fallbackIndex}`;
-	}
-
-	return fallbackIndex;
-};
-
-const messageStableIdFor = (message: AgentMessage, fallbackIndex: number): number | string => {
+const messageStableIdFor = (message: AgentMessage): number | string | undefined => {
 	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
 		return message.timestamp;
 	}
-	return fallbackIdFor(message, fallbackIndex);
+	return undefined;
 };
 
 const roleLabelForId = (message: AgentMessage): string => {
@@ -85,33 +57,44 @@ const roleLabelForId = (message: AgentMessage): string => {
 	return "message";
 };
 
-const messageIdFor = (message: AgentMessage, fallbackIndex = 0): string => {
+const messageIdFor = (message: AgentMessage): string | undefined => {
+	const stableId = messageStableIdFor(message);
+	// SDK stream messages carry timestamps; ignore malformed timestamp-less messages to avoid unstable renderer IDs.
+	if (stableId === undefined) {
+		return undefined;
+	}
+
 	const role = roleLabelForId(message);
 
 	if (role === "toolResult" && isRecord(message)) {
-		const timestamp = messageStableIdFor(message, fallbackIndex);
 		const toolCallId = stringValue(message.toolCallId);
 		if (toolCallId) {
-			return `toolResult:${toolCallId}:${timestamp}`;
+			return `toolResult:${toolCallId}:${stableId}`;
 		}
 	}
 
-	return `${role}:${messageStableIdFor(message, fallbackIndex)}`;
+	return `${role}:${stableId}`;
 };
 
 const createMessageEndEvent = (
 	sessionId: string,
 	message: AgentMessage,
 	receivedAt: string,
-	fallbackIndex: number,
-): PiSessionEvent => ({
-	type: "message_end",
-	sessionId,
-	messageId: messageIdFor(message, fallbackIndex),
-	role: roleFor(message.role),
-	content: contentFor(message),
-	receivedAt,
-});
+): PiSessionEvent | undefined => {
+	const messageId = messageIdFor(message);
+	if (!messageId) {
+		return undefined;
+	}
+
+	return {
+		type: "message_end",
+		sessionId,
+		messageId,
+		role: roleFor(message.role),
+		content: contentFor(message),
+		receivedAt,
+	};
+};
 
 const contentFor = (message: AgentMessage): string => {
 	if (!hasContent(message)) {
@@ -170,16 +153,24 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	if (event.type === "agent_end") {
 		return [
 			{ type: "status", sessionId, status: "idle", label: "Idle", receivedAt },
-			...event.messages.map((message, index) => createMessageEndEvent(sessionId, message, receivedAt, index)),
+			...event.messages.flatMap((message) => {
+				const normalized = createMessageEndEvent(sessionId, message, receivedAt);
+				return normalized ? [normalized] : [];
+			}),
 		];
 	}
 
 	if (event.type === "message_start") {
+		const messageId = messageIdFor(event.message);
+		if (!messageId) {
+			return [];
+		}
+
 		return [
 			{
 				type: "message_start",
 				sessionId,
-				messageId: messageIdFor(event.message, 0),
+				messageId,
 				role: roleFor(event.message.role),
 				content: contentFor(event.message),
 				receivedAt,
@@ -188,11 +179,16 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
+		const messageId = messageIdFor(event.message);
+		if (!messageId) {
+			return [];
+		}
+
 		return [
 			{
 				type: "assistant_delta",
 				sessionId,
-				messageId: messageIdFor(event.message, 0),
+				messageId,
 				delta: event.assistantMessageEvent.delta,
 				receivedAt,
 			},
@@ -200,7 +196,8 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "message_end") {
-		return [createMessageEndEvent(sessionId, event.message, receivedAt, 0)];
+		const normalized = createMessageEndEvent(sessionId, event.message, receivedAt);
+		return normalized ? [normalized] : [];
 	}
 
 	if (event.type === "auto_retry_start") {
