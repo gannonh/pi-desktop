@@ -1,6 +1,7 @@
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import { useState } from "react";
+import type { LiveSessionState } from "../session/session-state";
 import { Badge } from "./ui/badge";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
@@ -8,10 +9,20 @@ import { ProjectSidebar } from "./project-sidebar";
 interface AppShellProps {
 	state: ProjectStateView;
 	statusMessage?: string;
+	session: LiveSessionState;
 	onProjectState: (result: ProjectStateViewResult) => void;
+	onSubmitPrompt: (prompt: string) => void;
+	onAbortSession: () => void;
 }
 
-export function AppShell({ state, statusMessage, onProjectState }: AppShellProps) {
+export function AppShell({
+	state,
+	statusMessage,
+	session,
+	onProjectState,
+	onSubmitPrompt,
+	onAbortSession,
+}: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const showHeaderMeta = Boolean(state.selectedChat) && !sidebarCollapsed;
 	const selectedProjectPath = state.selectedProject?.path ?? "No active project path";
@@ -41,7 +52,14 @@ export function AppShell({ state, statusMessage, onProjectState }: AppShellProps
 					) : null}
 				</header>
 
-				<ProjectMain state={state} statusMessage={statusMessage} onProjectState={onProjectState} />
+				<ProjectMain
+					state={state}
+					statusMessage={statusMessage}
+					session={session}
+					onProjectState={onProjectState}
+					onSubmitPrompt={onSubmitPrompt}
+					onAbortSession={onAbortSession}
+				/>
 			</div>
 		</div>
 	);

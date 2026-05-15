@@ -1,12 +1,16 @@
 import { createChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
+import type { LiveSessionState } from "../session/session-state";
 import { ChatShell } from "./chat-shell";
 
 interface ProjectMainProps {
 	state: ProjectStateView;
 	statusMessage?: string;
+	session: LiveSessionState;
 	onProjectState: (result: ProjectStateViewResult) => void;
+	onSubmitPrompt: (prompt: string) => void;
+	onAbortSession: () => void;
 }
 
 const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
@@ -17,7 +21,14 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 	},
 });
 
-export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMainProps) {
+export function ProjectMain({
+	state,
+	statusMessage,
+	session,
+	onProjectState,
+	onSubmitPrompt,
+	onAbortSession,
+}: ProjectMainProps) {
 	const route = createChatShellRoute(state);
 
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
@@ -82,7 +93,12 @@ export function ProjectMain({ state, statusMessage, onProjectState }: ProjectMai
 					</div>
 				</section>
 			) : (
-				<ChatShell route={route} />
+				<ChatShell
+					route={route}
+					session={session}
+					onSubmitPrompt={onSubmitPrompt}
+					onAbortSession={onAbortSession}
+				/>
 			)}
 		</main>
 	);

@@ -6,13 +6,16 @@ import { createComposerState } from "../chat/composer-state";
 interface ComposerProps {
 	context: ComposerContext;
 	layout?: "center" | "bottom";
+	running?: boolean;
+	onSubmit?: (prompt: string) => void;
+	onAbort?: () => void;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
 
 const inputHint = "Ask Pi anything. @ to use skills or mention files";
 
-export function Composer({ context, layout = "center" }: ComposerProps) {
+export function Composer({ context, layout = "center", running = false, onSubmit, onAbort }: ComposerProps) {
 	const statusId = useId();
 	const [text, setText] = useState("");
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
@@ -31,7 +34,14 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 			className={["composer", `composer--${layout}`].join(" ")}
 			aria-label="Pi composer"
 			aria-describedby={state.statusLabel ? statusId : undefined}
-			onSubmit={(event) => event.preventDefault()}
+			onSubmit={(event) => {
+				event.preventDefault();
+				const prompt = text.trim();
+				if (!state.sendDisabled && prompt) {
+					onSubmit?.(prompt);
+					setText("");
+				}
+			}}
 		>
 			<div className="composer__input-panel">
 				<div className="composer__message-row">
@@ -53,14 +63,25 @@ export function Composer({ context, layout = "center" }: ComposerProps) {
 					<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
 						<Mic className="composer__icon" />
 					</button>
-					<button
-						className="composer__send-button"
-						type="submit"
-						disabled={state.sendDisabled}
-						aria-label="Send message"
-					>
-						<ArrowUp className="composer__icon" />
-					</button>
+					{running ? (
+						<button
+							className="composer__send-button composer__send-button--abort"
+							type="button"
+							aria-label="Abort run"
+							onClick={onAbort}
+						>
+							<span className="composer__abort-mark" />
+						</button>
+					) : (
+						<button
+							className="composer__send-button"
+							type="submit"
+							disabled={state.sendDisabled}
+							aria-label="Send message"
+						>
+							<ArrowUp className="composer__icon" />
+						</button>
+					)}
 				</div>
 			</div>
 			<div className="composer__control-row">
