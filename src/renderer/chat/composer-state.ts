@@ -11,9 +11,10 @@ export interface ComposerState {
 
 export const createComposerState = ({ text, runtimeAvailable, disabledReason }: ComposerStateInput): ComposerState => {
 	const hasText = text.trim().length > 0;
+	const blockedByRuntime = !runtimeAvailable;
 
 	return {
-		sendDisabled: !hasText || !runtimeAvailable,
-		statusLabel: runtimeAvailable ? "" : disabledReason,
+		sendDisabled: !hasText || blockedByRuntime,
+		statusLabel: blockedByRuntime ? disabledReason : "",
 	};
 };

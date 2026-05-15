@@ -7,7 +7,8 @@ export interface ComposerContext {
 	branchLabel?: string;
 	modelLabel: "5.5 High";
 	runtimeAvailable: boolean;
-	disabledReason: "Pi runtime unavailable until Milestone 3.";
+	disabledReason: string;
+	projectId?: string;
 }
 
 export type ChatSuggestion =
@@ -58,14 +59,16 @@ const suggestions = [
 	"Connect your favorite apps to Pi",
 ] as const satisfies readonly ChatSuggestion[];
 
-const runtimeUnavailableReason = "Pi runtime unavailable until Milestone 3.";
-
-const createComposerContext = (projectSelectorLabel: string): ComposerContext => ({
+const createComposerContext = (
+	projectSelectorLabel: string,
+	options: { runtimeAvailable: boolean; disabledReason: string; projectId?: string },
+): ComposerContext => ({
 	projectSelectorLabel,
 	modeLabel: "Work locally",
 	modelLabel: "5.5 High",
-	runtimeAvailable: false,
-	disabledReason: runtimeUnavailableReason,
+	runtimeAvailable: options.runtimeAvailable,
+	disabledReason: options.disabledReason,
+	projectId: options.projectId,
 });
 
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
@@ -75,7 +78,10 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		return {
 			kind: "global-start",
 			title: "What should we work on?",
-			composer: createComposerContext("Work in a project"),
+			composer: createComposerContext("Work in a project", {
+				runtimeAvailable: false,
+				disabledReason: "Select an available project to start a Pi session.",
+			}),
 			suggestions,
 		};
 	}
@@ -95,7 +101,11 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		};
 	}
 
-	const composer = createComposerContext(projectSelectorLabel);
+	const composer = createComposerContext(projectSelectorLabel, {
+		runtimeAvailable: true,
+		disabledReason: "",
+		projectId: selectedProject.id,
+	});
 	const selectedChat = view.selectedChat;
 
 	if (!selectedChat) {

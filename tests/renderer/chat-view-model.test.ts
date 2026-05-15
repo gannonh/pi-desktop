@@ -67,7 +67,7 @@ describe("createChatShellRoute", () => {
 				modeLabel: "Work locally",
 				modelLabel: "5.5 High",
 				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
+				disabledReason: "Select an available project to start a Pi session.",
 			},
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
@@ -96,8 +96,9 @@ describe("createChatShellRoute", () => {
 				projectSelectorLabel: "pi-desktop",
 				modeLabel: "Work locally",
 				modelLabel: "5.5 High",
-				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
+				runtimeAvailable: true,
+				disabledReason: "",
+				projectId: project.id,
 			},
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
@@ -174,7 +175,9 @@ describe("createChatShellRoute", () => {
 		expect(route.chatId).toBe(chat.id);
 		expect(route.composer.projectSelectorLabel).toBe("pi-desktop");
 		expect(route.composer.branchLabel).toBeUndefined();
-		expect(route.composer.disabledReason).toBe("Pi runtime unavailable until Milestone 3.");
+		expect(route.composer.runtimeAvailable).toBe(true);
+		expect(route.composer.disabledReason).toBe("");
+		expect(route.composer.projectId).toBe(project.id);
 		expect(route.transcript.workedLabel).toBe("Worked for 7m 10s");
 		expect(route.transcript.cards[0]).toEqual({
 			title: "SKILL.md",
@@ -207,8 +210,9 @@ describe("createChatShellRoute", () => {
 				projectSelectorLabel: "pi-desktop",
 				modeLabel: "Work locally",
 				modelLabel: "5.5 High",
-				runtimeAvailable: false,
-				disabledReason: "Pi runtime unavailable until Milestone 3.",
+				runtimeAvailable: true,
+				disabledReason: "",
+				projectId: project.id,
 			},
 		});
 	});
