@@ -59,7 +59,10 @@ export const shouldBufferPendingStartEvent = ({
 
 export const createPendingSessionEventBuffer = (): PendingSessionEventBuffer => new Map();
 
-export const bufferPendingSessionEvent = (buffer: PendingSessionEventBuffer, event: SessionEventWithSessionId): void => {
+export const bufferPendingSessionEvent = (
+	buffer: PendingSessionEventBuffer,
+	event: SessionEventWithSessionId,
+): void => {
 	const events = buffer.get(event.sessionId);
 	if (events) {
 		events.push(event);
