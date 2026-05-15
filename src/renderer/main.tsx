@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Agentation } from "agentation";
 import { App } from "./App";
 import { installDevPreviewApi } from "./dev-preview-api";
 import "./styles.css";
@@ -17,5 +18,6 @@ if (!root) {
 createRoot(root).render(
 	<StrictMode>
 		<App />
+		{process.env.NODE_ENV === "development" && <Agentation />}
 	</StrictMode>,
 );
