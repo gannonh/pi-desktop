@@ -7,6 +7,7 @@ interface ComposerProps {
 	context: ComposerContext;
 	layout?: "center" | "bottom";
 	running?: boolean;
+	abortable?: boolean;
 	onSubmit?: (prompt: string) => Promise<boolean> | boolean;
 	onAbort?: () => void;
 }
@@ -15,7 +16,14 @@ type ComposerMenu = "project" | "mode" | "model" | null;
 
 const inputHint = "Ask Pi anything. @ to use skills or mention files";
 
-export function Composer({ context, layout = "center", running = false, onSubmit, onAbort }: ComposerProps) {
+export function Composer({
+	context,
+	layout = "center",
+	running = false,
+	abortable = running,
+	onSubmit,
+	onAbort,
+}: ComposerProps) {
 	const statusId = useId();
 	const [text, setText] = useState("");
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
@@ -65,7 +73,7 @@ export function Composer({ context, layout = "center", running = false, onSubmit
 					<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
 						<Mic className="composer__icon" />
 					</button>
-					{running ? (
+					{running && abortable ? (
 						<button
 							className="composer__send-button composer__send-button--abort"
 							type="button"
@@ -78,7 +86,7 @@ export function Composer({ context, layout = "center", running = false, onSubmit
 						<button
 							className="composer__send-button"
 							type="submit"
-							disabled={state.sendDisabled}
+							disabled={state.sendDisabled || running}
 							aria-label="Send message"
 						>
 							<ArrowUp className="composer__icon" />

@@ -148,6 +148,27 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
+	it("surfaces terminal assistant errors instead of blank assistant messages", () => {
+		expect(
+			normalizeAndParse({
+				type: "message_end",
+				message: assistantMessage({
+					content: [],
+					stopReason: "error",
+					errorMessage: "provider failed token=secret",
+				} as Partial<AssistantMessage>),
+			}),
+		).toEqual([
+			{
+				type: "runtime_error",
+				sessionId: "pi-session:one",
+				code: "pi.prompt_failed",
+				message: "provider failed",
+				receivedAt,
+			},
+		]);
+	});
+
 	it("maps tool result messages to renderer tool messages with tool call ids", () => {
 		expect(
 			normalizeAndParse({
@@ -313,12 +334,26 @@ describe("pi session event normalizer", () => {
 			},
 		]);
 
-		expect(normalizeAndParse({ type: "auto_retry_end", attempt: 1, success: false, finalError: "failed" })).toEqual([
+		expect(
+			normalizeAndParse({
+				type: "auto_retry_end",
+				attempt: 1,
+				success: false,
+				finalError: "failed Authorization: Bearer secret",
+			}),
+		).toEqual([
 			{
 				type: "status",
 				sessionId: "pi-session:one",
 				status: "failed",
 				label: "Failed",
+				receivedAt,
+			},
+			{
+				type: "runtime_error",
+				sessionId: "pi-session:one",
+				code: "pi.retry_failed",
+				message: "failed",
 				receivedAt,
 			},
 		]);

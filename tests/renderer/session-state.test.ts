@@ -49,6 +49,35 @@ describe("session state reducer", () => {
 		expect(state.errorMessage).toBe("No API key");
 	});
 
+	it("stops in-flight assistant messages when runtime errors arrive", () => {
+		let state = createInitialSessionState();
+		state = reduceSessionEvent(state, {
+			type: "message_start",
+			sessionId: "pi-session:one",
+			messageId: "assistant:1",
+			role: "assistant",
+			content: "",
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "assistant_delta",
+			sessionId: "pi-session:one",
+			messageId: "assistant:1",
+			delta: "Partial",
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "runtime_error",
+			sessionId: "pi-session:one",
+			code: "pi.prompt_failed",
+			message: "provider failed",
+			receivedAt,
+		});
+
+		expect(state.messages).toEqual([{ id: "assistant:1", role: "assistant", content: "Partial", streaming: false }]);
+		expect(state.status).toBe("failed");
+	});
+
 	it("records retry messages", () => {
 		const state = reduceSessionEvent(createInitialSessionState(), {
 			type: "retry",

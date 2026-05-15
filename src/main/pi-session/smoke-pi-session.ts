@@ -6,6 +6,8 @@ const assistantContent = "I can see this project. Pi session streaming is connec
 export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSession }> => {
 	const listeners = new Set<(event: AgentSessionEvent) => void>();
 	let pendingPrompt: ReturnType<typeof setTimeout> | null = null;
+	let pendingPromptResolve: (() => void) | null = null;
+	let nextMessageTimestamp = 1;
 
 	const emit = (event: AgentSessionEvent) => {
 		for (const listener of listeners) {
@@ -18,6 +20,8 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 			clearTimeout(pendingPrompt);
 			pendingPrompt = null;
 		}
+		pendingPromptResolve?.();
+		pendingPromptResolve = null;
 	};
 
 	const session: PiSdkSession = {
@@ -32,17 +36,22 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 		prompt: (prompt) =>
 			new Promise((resolve) => {
 				clearPendingPrompt();
+				pendingPromptResolve = resolve;
 				pendingPrompt = setTimeout(() => {
 					pendingPrompt = null;
+					pendingPromptResolve = null;
+					const userTimestamp = nextMessageTimestamp;
+					const assistantTimestamp = nextMessageTimestamp + 1;
+					nextMessageTimestamp += 2;
 					const userMessage = {
 						role: "user",
 						content: [{ type: "text", text: prompt }],
-						timestamp: 1,
+						timestamp: userTimestamp,
 					};
 					const assistantMessage = {
 						role: "assistant",
 						content: [{ type: "text", text: assistantContent }],
-						timestamp: 2,
+						timestamp: assistantTimestamp,
 					};
 					const assistantStart = {
 						...assistantMessage,

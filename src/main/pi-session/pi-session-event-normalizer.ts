@@ -76,6 +76,14 @@ const messageIdFor = (message: AgentMessage): string | undefined => {
 	return `${role}:${stableId}`;
 };
 
+const terminalAssistantErrorFor = (message: AgentMessage): string | undefined => {
+	if (!isRecord(message) || message.role !== "assistant" || message.stopReason !== "error") {
+		return undefined;
+	}
+
+	return stringValue(message.errorMessage);
+};
+
 const createMessageEndEvent = (
 	sessionId: string,
 	message: AgentMessage,
@@ -84,6 +92,17 @@ const createMessageEndEvent = (
 	const messageId = messageIdFor(message);
 	if (!messageId) {
 		return undefined;
+	}
+
+	const terminalError = terminalAssistantErrorFor(message);
+	if (terminalError) {
+		return {
+			type: "runtime_error",
+			sessionId,
+			code: "pi.prompt_failed",
+			message: sanitizeRuntimeErrorMessage(terminalError),
+			receivedAt,
+		};
 	}
 
 	return {
@@ -219,12 +238,25 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "auto_retry_end") {
+		const statusEvent: PiSessionEvent = {
+			type: "status",
+			sessionId,
+			status: event.success ? "running" : "failed",
+			label: event.success ? "Running" : "Failed",
+			receivedAt,
+		};
+
+		if (event.success) {
+			return [statusEvent];
+		}
+
 		return [
+			statusEvent,
 			{
-				type: "status",
+				type: "runtime_error",
 				sessionId,
-				status: event.success ? "running" : "failed",
-				label: event.success ? "Running" : "Failed",
+				code: "pi.retry_failed",
+				message: sanitizeMessage(event.finalError ?? "", "Retry failed."),
 				receivedAt,
 			},
 		];

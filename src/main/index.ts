@@ -26,6 +26,7 @@ import { createProjectStore } from "./projects/project-store";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
+let disposePiSessions: (() => void) | undefined;
 
 const createWindow = () => {
 	const createdWindow = new BrowserWindow({
@@ -53,6 +54,7 @@ const createWindow = () => {
 
 	createdWindow.on("closed", () => {
 		if (mainWindow === createdWindow) {
+			disposePiSessions?.();
 			mainWindow = null;
 		}
 	});
@@ -120,6 +122,11 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		},
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
 	});
+	disposePiSessions = () => {
+		void piSessionRuntime.disposeAll().catch((error) => {
+			console.error("Failed to dispose Pi sessions.", error);
+		});
+	};
 
 	ipcMain.handle(IpcChannels.appGetVersion, () =>
 		ok({

@@ -18,6 +18,8 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 		session.status === "running" ||
 		session.status === "retrying" ||
 		session.status === "aborting";
+	const abortable = Boolean(session.sessionId) && session.status !== "starting";
+	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 
 	if (route.kind === "global-start" || route.kind === "project-start") {
 		return (
@@ -38,7 +40,7 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 				</h1>
 			</header>
 			<div className="chat-shell__scroll">
-				{session.messages.length > 0 || session.errorMessage ? (
+				{hasLiveSession ? (
 					<LiveSessionTranscript session={session} />
 				) : route.kind === "continued-chat" ? (
 					<ChatTranscript title={route.title} transcript={route.transcript} />
@@ -53,6 +55,7 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 					context={route.composer}
 					layout="bottom"
 					running={running}
+					abortable={abortable}
 					onSubmit={onSubmitPrompt}
 					onAbort={onAbortSession}
 				/>

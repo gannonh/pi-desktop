@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
+import { isSessionScopeSelected, shouldAcceptSessionEvent } from "./session/session-scope";
 import { createInitialSessionState, reduceSessionEvent, type LiveSessionState } from "./session/session-state";
 
 type StatusMessage = {
@@ -12,6 +13,7 @@ type StatusMessage = {
 type SessionRequest = {
 	id: number;
 	projectId: string;
+	chatId: string | null;
 };
 
 const createEmptyProjectStateView = (): ProjectStateView => ({
@@ -44,10 +46,14 @@ export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
 	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
+	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
 	const selectedProjectId = projectState.selectedProject?.id ?? null;
+	const selectedChatId = projectState.selectedChat?.id ?? null;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
+	const selectedChatIdRef = useRef<string | null>(selectedChatId);
 	const activeSessionProjectIdRef = useRef<string | null>(activeSessionProjectId);
+	const activeSessionChatIdRef = useRef<string | null>(activeSessionChatId);
 	const latestSessionRequestRef = useRef<SessionRequest | null>(null);
 	const pendingStartRequestRef = useRef<SessionRequest | null>(null);
 	const acceptedSessionIdRef = useRef<string | null>(null);
@@ -65,28 +71,38 @@ export function App() {
 
 	useLayoutEffect(() => {
 		selectedProjectIdRef.current = selectedProjectId;
-	}, [selectedProjectId]);
+		selectedChatIdRef.current = selectedChatId;
+	}, [selectedProjectId, selectedChatId]);
 
 	useEffect(() => {
 		activeSessionProjectIdRef.current = activeSessionProjectId;
-	}, [activeSessionProjectId]);
+		activeSessionChatIdRef.current = activeSessionChatId;
+	}, [activeSessionProjectId, activeSessionChatId]);
 
 	useEffect(() => {
-		if (!activeSessionProjectId || activeSessionProjectId === selectedProjectId) {
+		if (
+			!activeSessionProjectId ||
+			isSessionScopeSelected(
+				{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+				{ projectId: selectedProjectId, chatId: selectedChatId },
+			)
+		) {
 			return;
 		}
 
 		const sessionId = sessionState.sessionId;
 		activeSessionProjectIdRef.current = null;
+		activeSessionChatIdRef.current = null;
 		acceptedSessionIdRef.current = null;
 		pendingStartRequestRef.current = null;
 		setActiveSessionProjectId(null);
+		setActiveSessionChatId(null);
 		setSessionState(createInitialSessionState());
 
 		if (sessionId) {
 			void window.piDesktop.piSession.dispose({ sessionId });
 		}
-	}, [activeSessionProjectId, selectedProjectId, sessionState.sessionId]);
+	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
 
 	useEffect(() => {
 		return window.piDesktop.piSession.onEvent((event) => {
@@ -94,13 +110,27 @@ export function App() {
 				return;
 			}
 
-			const currentProjectId = selectedProjectIdRef.current;
-			if (
-				event.sessionId !== acceptedSessionIdRef.current ||
-				!currentProjectId ||
-				!event.sessionId.startsWith(`${currentProjectId}:`)
-			) {
+			const pendingStart = pendingStartRequestRef.current;
+			const eventIsAccepted = shouldAcceptSessionEvent({
+				eventSessionId: event.sessionId,
+				acceptedSessionId: acceptedSessionIdRef.current,
+				pendingStart,
+				active: {
+					projectId: activeSessionProjectIdRef.current,
+					chatId: activeSessionChatIdRef.current,
+				},
+				selection: {
+					projectId: selectedProjectIdRef.current,
+					chatId: selectedChatIdRef.current,
+				},
+			});
+
+			if (!eventIsAccepted) {
 				return;
+			}
+
+			if (event.sessionId !== acceptedSessionIdRef.current) {
+				acceptedSessionIdRef.current = event.sessionId;
 			}
 
 			setSessionState((current) => reduceSessionEvent(current, event));
@@ -121,11 +151,16 @@ export function App() {
 				return false;
 			}
 
-			const reusableSessionId = activeSessionProjectId === selectedProject.id ? acceptedSessionIdRef.current : null;
+			const requestChatId = projectState.selectedChat?.id ?? null;
+			const reusableSessionId =
+				activeSessionProjectId === selectedProject.id && activeSessionChatId === requestChatId
+					? acceptedSessionIdRef.current
+					: null;
 			const requestProjectId = selectedProject.id;
 			const request: SessionRequest = {
 				id: nextSessionRequestIdRef.current + 1,
 				projectId: requestProjectId,
+				chatId: requestChatId,
 			};
 			nextSessionRequestIdRef.current = request.id;
 			latestSessionRequestRef.current = request;
@@ -135,7 +170,9 @@ export function App() {
 			}
 
 			activeSessionProjectIdRef.current = requestProjectId;
+			activeSessionChatIdRef.current = requestChatId;
 			setActiveSessionProjectId(requestProjectId);
+			setActiveSessionChatId(requestChatId);
 			setSessionState((current) => ({
 				...current,
 				status: reusableSessionId ? "running" : "starting",
@@ -151,7 +188,9 @@ export function App() {
 			const requestIsCurrent =
 				latestSessionRequestRef.current?.id === request.id &&
 				selectedProjectIdRef.current === requestProjectId &&
+				selectedChatIdRef.current === requestChatId &&
 				activeSessionProjectIdRef.current === requestProjectId &&
+				activeSessionChatIdRef.current === requestChatId &&
 				(reusableSessionId || pendingStartRequestRef.current?.id === request.id);
 
 			if (!requestIsCurrent) {
@@ -172,6 +211,9 @@ export function App() {
 					errorMessage: result.error.message,
 					retryMessage: "",
 				}));
+				if (!reusableSessionId) {
+					applyProjectStateViewResult(await window.piDesktop.project.getState());
+				}
 				return false;
 			}
 
@@ -179,7 +221,9 @@ export function App() {
 				pendingStartRequestRef.current = null;
 				acceptedSessionIdRef.current = result.data.sessionId;
 				activeSessionProjectIdRef.current = requestProjectId;
+				activeSessionChatIdRef.current = requestChatId;
 				setActiveSessionProjectId(requestProjectId);
+				setActiveSessionChatId(requestChatId);
 				setSessionState((current) => ({
 					...current,
 					sessionId: result.data.sessionId,
@@ -190,11 +234,23 @@ export function App() {
 
 			return true;
 		},
-		[activeSessionProjectId, projectState.selectedProject],
+		[
+			activeSessionChatId,
+			activeSessionProjectId,
+			applyProjectStateViewResult,
+			projectState.selectedChat,
+			projectState.selectedProject,
+		],
 	);
 
 	const abortSession = useCallback(async () => {
-		if (!sessionState.sessionId || activeSessionProjectId !== selectedProjectId) {
+		if (
+			!sessionState.sessionId ||
+			!isSessionScopeSelected(
+				{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+				{ projectId: selectedProjectId, chatId: selectedChatId },
+			)
+		) {
 			return;
 		}
 
@@ -208,7 +264,7 @@ export function App() {
 				retryMessage: "",
 			}));
 		}
-	}, [activeSessionProjectId, selectedProjectId, sessionState.sessionId]);
+	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -259,7 +315,14 @@ export function App() {
 		<AppShell
 			state={projectState}
 			statusMessage={statusMessage?.message}
-			session={activeSessionProjectId === selectedProjectId ? sessionState : createInitialSessionState()}
+			session={
+				isSessionScopeSelected(
+					{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+					{ projectId: selectedProjectId, chatId: selectedChatId },
+				)
+					? sessionState
+					: createInitialSessionState()
+			}
 			onProjectState={applyProjectStateViewResult}
 			onSubmitPrompt={submitPrompt}
 			onAbortSession={abortSession}

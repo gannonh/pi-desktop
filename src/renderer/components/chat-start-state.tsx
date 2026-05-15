@@ -21,6 +21,7 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 		session.status === "running" ||
 		session.status === "retrying" ||
 		session.status === "aborting";
+	const abortable = Boolean(session.sessionId) && session.status !== "starting";
 	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 
 	return (
@@ -32,6 +33,7 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 				context={route.composer}
 				layout="center"
 				running={running}
+				abortable={abortable}
 				onSubmit={onSubmitPrompt}
 				onAbort={onAbortSession}
 			/>

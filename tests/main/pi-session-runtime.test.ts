@@ -365,6 +365,30 @@ describe("createPiSessionRuntime", () => {
 		});
 	});
 
+	it("disposes all active sessions when the host window closes", async () => {
+		const events: PiSessionEvent[] = [];
+		const { promptResult, session } = createControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+
+		await runtime.disposeAll();
+
+		expect(session.abort).toHaveBeenCalled();
+		expect(session.dispose).toHaveBeenCalled();
+		await expect(runtime.whenIdle(result.sessionId)).rejects.toThrow("Pi session not found.");
+		promptResult.resolve();
+	});
+
 	it("emits abort failures and rethrows them", async () => {
 		const events: PiSessionEvent[] = [];
 		const { promptResult, session } = createControlledSession();
@@ -400,5 +424,52 @@ describe("createPiSessionRuntime", () => {
 
 		promptResult.resolve();
 		await runtime.whenIdle(result.sessionId);
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual([
+			"running",
+			"aborting",
+			"failed",
+		]);
+	});
+
+	it("keeps terminal SDK errors failed after the prompt promise resolves", async () => {
+		const events: PiSessionEvent[] = [];
+		const { emitSdkEvent, promptResult, session } = createControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+
+		emitSdkEvent({
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				api: "openai-responses",
+				provider: "openai",
+				model: "gpt-5.5",
+				stopReason: "error",
+				errorMessage: "No API key found for provider",
+				timestamp: 2,
+			},
+		} as unknown as AgentSessionEvent);
+		promptResult.resolve();
+		await runtime.whenIdle(result.sessionId);
+
+		expect(events).toContainEqual({
+			type: "runtime_error",
+			sessionId: result.sessionId,
+			code: "pi.prompt_failed",
+			message: "No API key found for provider",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events.filter((event) => event.type === "status").map((event) => event.status)).toEqual(["running"]);
 	});
 });

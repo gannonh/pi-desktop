@@ -80,6 +80,21 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		entry.scheduledPrompt = null;
 	};
 
+	const disposeEntry = async (sessionId: string, entry: RuntimeEntry): Promise<PiSessionActionPayload> => {
+		entry.disposed = true;
+		clearScheduledPrompt(entry);
+		entry.unsubscribe();
+		try {
+			if (entry.activePromptToken || busyStatuses.has(entry.status)) {
+				await entry.session.abort();
+			}
+		} finally {
+			entry.session.dispose();
+			sessions.delete(sessionId);
+		}
+		return { sessionId, status: "idle" };
+	};
+
 	const runPrompt = (sessionId: string, prompt: string): Promise<void> => {
 		const entry = getEntry(sessionId);
 		const promptToken = Symbol("pi-session-prompt");
@@ -92,6 +107,9 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			.then(() => {
 				const currentEntry = sessions.get(sessionId);
 				if (currentEntry === entry && !entry.disposed && entry.activePromptToken === promptToken) {
+					if (entry.status === "failed") {
+						return;
+					}
 					const shouldEmitIdle = entry.status !== "idle";
 					entry.status = "idle";
 					if (shouldEmitIdle) {
@@ -156,6 +174,8 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					}
 					if (normalized.type === "status") {
 						entry.status = normalized.status;
+					} else if (normalized.type === "runtime_error") {
+						entry.status = "failed";
 					}
 					deps.emit(normalized);
 				}
@@ -212,18 +232,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async dispose(input: PiSessionDisposeInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			entry.disposed = true;
-			clearScheduledPrompt(entry);
-			entry.unsubscribe();
-			try {
-				if (entry.activePromptToken || busyStatuses.has(entry.status)) {
-					await entry.session.abort();
-				}
-			} finally {
-				entry.session.dispose();
-				sessions.delete(input.sessionId);
-			}
-			return { sessionId: input.sessionId, status: "idle" };
+			return disposeEntry(input.sessionId, entry);
+		},
+
+		async disposeAll(): Promise<void> {
+			await Promise.all([...sessions.entries()].map(([sessionId, entry]) => disposeEntry(sessionId, entry)));
 		},
 
 		async whenIdle(sessionId: string): Promise<void> {

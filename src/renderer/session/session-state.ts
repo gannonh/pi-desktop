@@ -103,6 +103,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			sessionId: event.sessionId ?? state.sessionId,
 			status: "failed",
 			statusLabel: "Failed",
+			messages: state.messages.map((message) => ({ ...message, streaming: false })),
 			errorMessage: event.message,
 			retryMessage: "",
 		};
