@@ -275,13 +275,21 @@ export const installDevPreviewApi = () => {
 		piSession: {
 			start: async ({ projectId }) => {
 				const result = findProject(projectId);
-				const workspacePath = result.ok ? result.project.path : previewRoot;
+				if (!result.ok) {
+					return {
+						ok: false,
+						error: {
+							code: "preview.project_not_found",
+							message: "Project not found in preview data.",
+						},
+					};
+				}
 				return {
 					ok: true,
 					data: {
 						sessionId: `pi-session:preview:${projectId}`,
 						projectId,
-						workspacePath,
+						workspacePath: result.project.path,
 						status: "running",
 					},
 				};

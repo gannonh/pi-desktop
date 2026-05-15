@@ -5,6 +5,7 @@ import {
 	ChatCreateInputSchema,
 	ChatSelectionInputSchema,
 	IpcChannels,
+	PiSessionOperationFailedCode,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -22,9 +23,10 @@ import { createProjectService, type ProjectService } from "./projects/project-se
 import { createProjectStore } from "./projects/project-store";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
+let mainWindow: BrowserWindow | null = null;
 
 const createWindow = () => {
-	const mainWindow = new BrowserWindow({
+	const createdWindow = new BrowserWindow({
 		width: 1280,
 		height: 820,
 		minWidth: 960,
@@ -39,14 +41,21 @@ const createWindow = () => {
 			sandbox: true,
 		},
 	});
+	mainWindow = createdWindow;
 
 	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-		void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-		return mainWindow;
+		void createdWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+	} else {
+		void createdWindow.loadFile(path.join(currentDirectory, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
 	}
 
-	void mainWindow.loadFile(path.join(currentDirectory, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-	return mainWindow;
+	createdWindow.on("closed", () => {
+		if (mainWindow === createdWindow) {
+			mainWindow = null;
+		}
+	});
+
+	return createdWindow;
 };
 
 const openFolderDialog = async (): Promise<string | null> => {
@@ -89,11 +98,19 @@ const handleProjectOperation = async (operation: () => Promise<unknown>) => {
 	}
 };
 
-const registerIpcHandlers = (projectService: ProjectService, mainWindow: BrowserWindow) => {
+const handlePiSessionOperation = async (operation: () => Promise<unknown>) => {
+	try {
+		return ok(await operation());
+	} catch (error) {
+		return err(PiSessionOperationFailedCode, toErrorMessage(error));
+	}
+};
+
+const registerIpcHandlers = (projectService: ProjectService) => {
 	const piSessionRuntime = createPiSessionRuntime({
 		now: () => new Date().toISOString(),
 		emit: (event) => {
-			if (!mainWindow.isDestroyed()) {
+			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(IpcChannels.piSessionEvent, event);
 			}
 		},
@@ -141,7 +158,7 @@ const registerIpcHandlers = (projectService: ProjectService, mainWindow: Browser
 		handleProjectOperation(() => projectService.selectChat(ChatSelectionInputSchema.parse(input))),
 	);
 	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) =>
-		handleProjectOperation(async () => {
+		handlePiSessionOperation(async () => {
 			const parsed = PiSessionStartInputSchema.parse(input);
 			const workspace = await projectService.getSessionWorkspace({ projectId: parsed.projectId });
 			return piSessionRuntime.start({
@@ -152,13 +169,13 @@ const registerIpcHandlers = (projectService: ProjectService, mainWindow: Browser
 		}),
 	);
 	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) =>
-		handleProjectOperation(() => piSessionRuntime.submit(PiSessionSubmitInputSchema.parse(input))),
+		handlePiSessionOperation(() => piSessionRuntime.submit(PiSessionSubmitInputSchema.parse(input))),
 	);
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) =>
-		handleProjectOperation(() => piSessionRuntime.abort(PiSessionAbortInputSchema.parse(input))),
+		handlePiSessionOperation(() => piSessionRuntime.abort(PiSessionAbortInputSchema.parse(input))),
 	);
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) =>
-		handleProjectOperation(() => piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(input))),
+		handlePiSessionOperation(() => piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(input))),
 	);
 };
 
@@ -172,8 +189,8 @@ app.whenReady().then(() => {
 		initializeGitRepository,
 	});
 
-	const mainWindow = createWindow();
-	registerIpcHandlers(projectService, mainWindow);
+	createWindow();
+	registerIpcHandlers(projectService);
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

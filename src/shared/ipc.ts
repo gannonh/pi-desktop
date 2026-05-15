@@ -39,6 +39,8 @@ export const IpcChannels = {
 	piSessionEvent: "pi-session:event",
 } as const;
 
+export const PiSessionOperationFailedCode = "pi_session.operation_failed";
+
 export const AppVersionSchema = z.strictObject({
 	name: z.string().min(1),
 	version: z.string().min(1),

@@ -8,6 +8,7 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionOperationFailedCode,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
 	PiSessionSubmitInputSchema,
@@ -113,6 +114,7 @@ describe("IPC contracts", () => {
 	});
 
 	it("exports Pi session schemas from the IPC contract boundary", () => {
+		expect(PiSessionOperationFailedCode).toBe("pi_session.operation_failed");
 		expect(PiSessionStartInputSchema.parse({ projectId: "project:/tmp/pi-desktop", prompt: "Start" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 			prompt: "Start",
@@ -144,6 +146,21 @@ describe("IPC contracts", () => {
 				projectId: "project:/tmp/pi-desktop",
 				workspacePath: "/tmp/pi-desktop",
 				status: "running",
+			},
+		});
+		expect(
+			PiSessionActionResultSchema.parse({
+				ok: false,
+				error: {
+					code: PiSessionOperationFailedCode,
+					message: "Pi session not found.",
+				},
+			}),
+		).toEqual({
+			ok: false,
+			error: {
+				code: PiSessionOperationFailedCode,
+				message: "Pi session not found.",
 			},
 		});
 		expect(
