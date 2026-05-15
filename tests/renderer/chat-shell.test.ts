@@ -73,9 +73,11 @@ describe("ChatShell", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "empty-chat",
 			title: "Empty chat",
+			startTitle: "What should we build in pi-desktop?",
 			projectId: "project:/tmp/pi-desktop",
 			chatId: "chat:empty",
 			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
 		};
 
 		const markup = renderChatShell(route);
@@ -83,5 +85,25 @@ describe("ChatShell", () => {
 		expect(markup).toContain("Live response");
 		expect(markup).toContain("Pi session transcript");
 		expect(markup).not.toContain("No messages yet.");
+	});
+
+	it("renders an empty selected chat as the centered project start state before the first message", () => {
+		const route = {
+			kind: "empty-chat",
+			title: "New chat",
+			startTitle: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:empty",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+		} as Exclude<ChatShellRoute, { kind: "unavailable-project" }>;
+
+		const markup = renderChatShell(route, createInitialSessionState());
+
+		expect(markup).toContain("chat-shell--start");
+		expect(markup).toContain("What should we build in pi-desktop?");
+		expect(markup).not.toContain("chat-shell__metadata");
+		expect(markup).not.toContain("No messages yet.");
+		expect(markup).not.toContain("chat-shell__bottom-composer");
 	});
 });

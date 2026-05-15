@@ -204,6 +204,7 @@ describe("createChatShellRoute", () => {
 		expect(createChatShellRoute(view)).toEqual({
 			kind: "empty-chat",
 			title: "Static metadata only",
+			startTitle: "What should we build in pi-desktop?",
 			projectId: project.id,
 			chatId: chat.id,
 			composer: {
@@ -214,6 +215,11 @@ describe("createChatShellRoute", () => {
 				disabledReason: "",
 				projectId: project.id,
 			},
+			suggestions: [
+				"Review my recent commits for correctness risks and maintainability concerns",
+				"Unblock my most recent open PR",
+				"Connect your favorite apps to Pi",
+			],
 		});
 	});
 });

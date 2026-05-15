@@ -33,9 +33,11 @@ export type ChatShellRoute =
 	| {
 			kind: "empty-chat";
 			title: string;
+			startTitle: string;
 			projectId: string;
 			chatId: string;
 			composer: ComposerContext;
+			suggestions: readonly ChatSuggestion[];
 	  }
 	| {
 			kind: "continued-chat";
@@ -124,9 +126,11 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		return {
 			kind: "empty-chat",
 			title: selectedChat.title,
+			startTitle: `What should we build in ${selectedProject.displayName}?`,
 			projectId: selectedProject.id,
 			chatId: selectedChat.id,
 			composer,
+			suggestions,
 		};
 	}
 

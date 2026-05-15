@@ -32,6 +32,23 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 		);
 	}
 
+	if (route.kind === "empty-chat" && !hasLiveSession) {
+		return (
+			<ChatStartState
+				route={{
+					kind: "project-start",
+					title: route.startTitle,
+					projectId: route.projectId,
+					composer: route.composer,
+					suggestions: route.suggestions,
+				}}
+				session={session}
+				onSubmitPrompt={onSubmitPrompt}
+				onAbortSession={onAbortSession}
+			/>
+		);
+	}
+
 	return (
 		<section className="chat-shell chat-shell--session" aria-labelledby="chat-shell-title">
 			<header className="chat-shell__metadata">

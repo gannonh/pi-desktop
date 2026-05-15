@@ -349,7 +349,7 @@ test("renders a static continued chat route with the composer anchored to the bo
 	}
 });
 
-test("renders an empty chat route with static metadata and bottom composer", async () => {
+test("renders an empty selected chat as a centered start state before streaming", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
 	const projectId = createProjectId(projectPath);
@@ -395,15 +395,17 @@ test("renders an empty chat route with static metadata and bottom composer", asy
 	try {
 		const window = await app.firstWindow();
 
-		await expect(window.getByRole("heading", { name: "Static metadata only" })).toBeVisible();
-		await expect(window.getByLabel("Empty chat")).toBeVisible();
-		await expectComposerNearBottom(window);
+		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await expect(window.getByLabel("Empty chat")).toHaveCount(0);
+		await expectSelectedComposerVisualTokens(window);
 		await window.getByLabel("Message Pi").fill("Summarize this chat");
 		await window.getByRole("button", { name: "Send message" }).click();
 
+		await expect(window.getByRole("heading", { name: "Static metadata only" })).toBeVisible();
 		await expect(window.getByText("Summarize this chat")).toBeVisible();
 		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
 		await expect(window.getByText("Idle")).toBeVisible();
+		await expectComposerNearBottom(window);
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
