@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import { AppShell } from "./components/app-shell";
@@ -7,6 +7,11 @@ import { createInitialSessionState, reduceSessionEvent, type LiveSessionState } 
 type StatusMessage = {
 	source: "project" | "startup";
 	message: string;
+};
+
+type SessionRequest = {
+	id: number;
+	projectId: string;
 };
 
 const createEmptyProjectStateView = (): ProjectStateView => ({
@@ -25,6 +30,9 @@ export function App() {
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
 	const selectedProjectId = projectState.selectedProject?.id ?? null;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
+	const activeSessionProjectIdRef = useRef<string | null>(activeSessionProjectId);
+	const latestSessionRequestRef = useRef<SessionRequest | null>(null);
+	const nextSessionRequestIdRef = useRef(0);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -36,9 +44,13 @@ export function App() {
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
 	}, []);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		selectedProjectIdRef.current = selectedProjectId;
 	}, [selectedProjectId]);
+
+	useEffect(() => {
+		activeSessionProjectIdRef.current = activeSessionProjectId;
+	}, [activeSessionProjectId]);
 
 	useEffect(() => {
 		if (!activeSessionProjectId || activeSessionProjectId === selectedProjectId) {
@@ -46,6 +58,7 @@ export function App() {
 		}
 
 		const sessionId = sessionState.sessionId;
+		activeSessionProjectIdRef.current = null;
 		setActiveSessionProjectId(null);
 		setSessionState(createInitialSessionState());
 
@@ -59,6 +72,16 @@ export function App() {
 			const currentProjectId = selectedProjectIdRef.current;
 			if (event.sessionId && (!currentProjectId || !event.sessionId.startsWith(`${currentProjectId}:`))) {
 				return;
+			}
+			if (!event.sessionId) {
+				const latestRequest = latestSessionRequestRef.current;
+				if (
+					!currentProjectId ||
+					latestRequest?.projectId !== currentProjectId ||
+					activeSessionProjectIdRef.current !== currentProjectId
+				) {
+					return;
+				}
 			}
 
 			setSessionState((current) => reduceSessionEvent(current, event));
@@ -80,8 +103,16 @@ export function App() {
 			}
 
 			const reusableSessionId = activeSessionProjectId === selectedProject.id ? sessionState.sessionId : null;
+			const requestProjectId = selectedProject.id;
+			const request: SessionRequest = {
+				id: nextSessionRequestIdRef.current + 1,
+				projectId: requestProjectId,
+			};
+			nextSessionRequestIdRef.current = request.id;
+			latestSessionRequestRef.current = request;
 
-			setActiveSessionProjectId(selectedProject.id);
+			activeSessionProjectIdRef.current = requestProjectId;
+			setActiveSessionProjectId(requestProjectId);
 			setSessionState((current) => ({
 				...current,
 				status: reusableSessionId ? "running" : "starting",
@@ -92,7 +123,19 @@ export function App() {
 
 			const result = reusableSessionId
 				? await window.piDesktop.piSession.submit({ sessionId: reusableSessionId, prompt })
-				: await window.piDesktop.piSession.start({ projectId: selectedProject.id, prompt });
+				: await window.piDesktop.piSession.start({ projectId: requestProjectId, prompt });
+
+			const requestIsCurrent =
+				latestSessionRequestRef.current?.id === request.id &&
+				selectedProjectIdRef.current === requestProjectId &&
+				activeSessionProjectIdRef.current === requestProjectId;
+
+			if (!requestIsCurrent) {
+				if (result.ok && !reusableSessionId) {
+					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
+				}
+				return false;
+			}
 
 			if (!result.ok) {
 				setSessionState((current) => ({
@@ -106,12 +149,8 @@ export function App() {
 			}
 
 			if (!reusableSessionId) {
-				if (selectedProjectIdRef.current !== selectedProject.id) {
-					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
-					return false;
-				}
-
-				setActiveSessionProjectId(selectedProject.id);
+				activeSessionProjectIdRef.current = requestProjectId;
+				setActiveSessionProjectId(requestProjectId);
 				setSessionState((current) => ({
 					...current,
 					sessionId: result.data.sessionId,
