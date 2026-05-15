@@ -28,11 +28,22 @@ describe("app transport contract", () => {
 	});
 
 	it("parses the response schema for each declared operation", () => {
-		const operations = Object.keys(AppRpcResponseSchemas) as AppRpcOperation[];
+		const declaredOperations = AppRpcRequestSchema.options.map(
+			(option) => option.shape.operation.value as AppRpcOperation,
+		);
+		const responseOperations = Object.keys(AppRpcResponseSchemas) as AppRpcOperation[];
 
-		expect(operations).toContain("app.getVersion");
-		expect(operations).toContain("project.getState");
-		expect(operations).toContain("piSession.start");
+		expect(responseOperations.toSorted()).toEqual(declaredOperations.toSorted());
+		expect(responseOperations).toContain("app.getVersion");
+		expect(responseOperations).toContain("project.getState");
+		expect(responseOperations).toContain("piSession.start");
+
+		for (const operation of declaredOperations) {
+			AppRpcResponseSchemas[operation].parse({
+				ok: false,
+				error: { code: "transport.test", message: "Representative failure" },
+			});
+		}
 	});
 
 	it("wraps Pi session events for websocket delivery", () => {

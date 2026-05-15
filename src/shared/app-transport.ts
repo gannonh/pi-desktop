@@ -36,6 +36,9 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	z.strictObject({ operation: z.literal("piSession.dispose"), input: PiSessionDisposeInputSchema }),
 ]);
 
+export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
+export type AppRpcOperation = AppRpcRequest["operation"];
+
 export const AppRpcResponseSchemas = {
 	"app.getVersion": AppVersionResultSchema,
 	"project.getState": ProjectStateViewResultSchema,
@@ -54,13 +57,11 @@ export const AppRpcResponseSchemas = {
 	"piSession.submit": PiSessionActionResultSchema,
 	"piSession.abort": PiSessionActionResultSchema,
 	"piSession.dispose": PiSessionActionResultSchema,
-} as const;
+} as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({
 	type: z.literal("pi-session:event"),
 	event: PiSessionEventSchema,
 });
 
-export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
-export type AppRpcOperation = AppRpcRequest["operation"];
 export type PiSessionEventEnvelope = z.infer<typeof PiSessionEventEnvelopeSchema>;
