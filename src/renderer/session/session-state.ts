@@ -1,8 +1,8 @@
-import type { PiSessionEvent, PiSessionStatus } from "../../shared/pi-session";
+import type { PiSessionEvent, PiSessionMessageRole, PiSessionStatus } from "../../shared/pi-session";
 
 export type LiveSessionMessage = {
 	id: string;
-	role: "user" | "assistant" | "tool" | "system";
+	role: PiSessionMessageRole;
 	content: string;
 	streaming: boolean;
 };
@@ -25,16 +25,19 @@ export const createInitialSessionState = (): LiveSessionState => ({
 	retryMessage: "",
 });
 
-const upsertMessage = (messages: readonly LiveSessionMessage[], next: LiveSessionMessage): LiveSessionMessage[] => {
-	const index = messages.findIndex((message) => message.id === next.id);
-	if (index === -1) {
-		return [...messages, next];
-	}
+const findMessage = (messages: readonly LiveSessionMessage[], messageId: string) =>
+	messages.find((message) => message.id === messageId);
 
-	return messages.map((message, messageIndex) => (messageIndex === index ? next : message));
-};
+const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSessionMessage): LiveSessionMessage[] =>
+	findMessage(messages, next.id)
+		? messages.map((message) => (message.id === next.id ? next : message))
+		: [...messages, next];
 
 export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEvent): LiveSessionState => {
+	if (state.sessionId && event.sessionId && event.sessionId !== state.sessionId) {
+		return state;
+	}
+
 	if (event.type === "status") {
 		return {
 			...state,
@@ -42,30 +45,41 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			status: event.status,
 			statusLabel: event.label,
 			errorMessage: event.status === "failed" ? state.errorMessage : "",
+			retryMessage: event.status === "retrying" ? state.retryMessage : "",
 		};
 	}
 
 	if (event.type === "message_start") {
+		if (findMessage(state.messages, event.messageId)) {
+			return state;
+		}
+
 		return {
 			...state,
 			sessionId: event.sessionId,
-			messages: upsertMessage(state.messages, {
-				id: event.messageId,
-				role: event.role,
-				content: event.content,
-				streaming: event.role === "assistant",
-			}),
+			messages: [
+				...state.messages,
+				{
+					id: event.messageId,
+					role: event.role,
+					content: event.content,
+					streaming: event.role === "assistant",
+				},
+			],
 		};
 	}
 
 	if (event.type === "assistant_delta") {
+		const message = findMessage(state.messages, event.messageId);
+		if (!message?.streaming) {
+			return state;
+		}
+
 		return {
 			...state,
 			sessionId: event.sessionId,
 			messages: state.messages.map((message) =>
-				message.id === event.messageId
-					? { ...message, content: `${message.content}${event.delta}`, streaming: true }
-					: message,
+				message.id === event.messageId ? { ...message, content: `${message.content}${event.delta}` } : message,
 			),
 		};
 	}
@@ -74,7 +88,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 		return {
 			...state,
 			sessionId: event.sessionId,
-			messages: upsertMessage(state.messages, {
+			messages: finalizeMessage(state.messages, {
 				id: event.messageId,
 				role: event.role,
 				content: event.content,
@@ -90,6 +104,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			status: "failed",
 			statusLabel: "Failed",
 			errorMessage: event.message,
+			retryMessage: "",
 		};
 	}
 
