@@ -131,7 +131,6 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByText("Work locally")).toBeVisible();
 		await expect(window.getByText("5.5 High")).toBeVisible();
 		await expect(window.getByText("Full access")).toHaveCount(0);
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectComposerControlPlacement(window);
 	} finally {
 		await app.close();
@@ -179,8 +178,111 @@ test("renders the selected project chat start state", async () => {
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
 		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toHaveCount(0);
-		await expect(window.getByText("Pi runtime unavailable until Milestone 3.")).toBeVisible();
 		await expectSelectedComposerVisualTokens(window);
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
+	}
+});
+
+test("streams a Pi session response in the selected project", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: null,
+		selectedChatId: null,
+		chatsByProject: {
+			[projectId]: [],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await window.getByRole("button", { name: "pi-desktop", exact: true }).click();
+		await window.getByLabel("Message Pi").fill("What files are here?");
+		await window.getByRole("button", { name: "Send message" }).click();
+
+		await expect(window.getByText("What files are here?")).toBeVisible();
+		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
+		await expect(window.getByText("Idle")).toBeVisible();
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+		await rm(projectPath, { recursive: true, force: true });
+	}
+});
+
+test("refreshes project recovery UI after a Pi session start finds the folder missing", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
+	const projectId = createProjectId(projectPath);
+	const now = "2026-05-12T12:00:00.000Z";
+	const store: ProjectStore = {
+		projects: [
+			{
+				id: projectId,
+				displayName: "pi-desktop",
+				path: projectPath,
+				createdAt: now,
+				updatedAt: now,
+				lastOpenedAt: now,
+				pinned: false,
+				availability: { status: "available", checkedAt: now },
+			},
+		],
+		selectedProjectId: projectId,
+		selectedChatId: null,
+		chatsByProject: {
+			[projectId]: [],
+		},
+	};
+	await mkdir(userDataDir, { recursive: true });
+	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await rm(projectPath, { recursive: true, force: true });
+		await window.getByLabel("Message Pi").fill("What files are here?");
+		await window.getByRole("button", { name: "Send message" }).click();
+
+		await expect(window.getByRole("heading", { name: "pi-desktop is unavailable" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "Locate folder" })).toBeVisible();
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
@@ -247,7 +349,7 @@ test("renders a static continued chat route with the composer anchored to the bo
 	}
 });
 
-test("renders an empty chat route with static metadata and bottom composer", async () => {
+test("renders an empty selected chat as a centered start state before streaming", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
 	const projectId = createProjectId(projectPath);
@@ -286,14 +388,23 @@ test("renders an empty chat route with static metadata and bottom composer", asy
 		env: {
 			...process.env,
 			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
 		},
 	});
 
 	try {
 		const window = await app.firstWindow();
 
+		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await expect(window.getByLabel("Empty chat")).toHaveCount(0);
+		await expectSelectedComposerVisualTokens(window);
+		await window.getByLabel("Message Pi").fill("Summarize this chat");
+		await window.getByRole("button", { name: "Send message" }).click();
+
 		await expect(window.getByRole("heading", { name: "Static metadata only" })).toBeVisible();
-		await expect(window.getByLabel("Empty chat")).toBeVisible();
+		await expect(window.getByText("Summarize this chat")).toBeVisible();
+		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
+		await expect(window.getByText("Idle")).toBeVisible();
 		await expectComposerNearBottom(window);
 	} finally {
 		await app.close();

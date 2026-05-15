@@ -3,7 +3,7 @@ import { createComposerState } from "../../src/renderer/chat/composer-state";
 
 describe("createComposerState", () => {
 	it("disables send when text is empty so empty prompts cannot be submitted", () => {
-		expect(createComposerState({ text: "", runtimeAvailable: true, disabledReason: "Runtime unavailable" })).toEqual({
+		expect(createComposerState({ text: "", runtimeAvailable: true, disabledReason: "" })).toEqual({
 			sendDisabled: true,
 			statusLabel: "",
 		});
@@ -14,7 +14,7 @@ describe("createComposerState", () => {
 			createComposerState({
 				text: "Review this project",
 				runtimeAvailable: true,
-				disabledReason: "Runtime unavailable",
+				disabledReason: "",
 			}),
 		).toEqual({
 			sendDisabled: false,
@@ -36,9 +36,7 @@ describe("createComposerState", () => {
 	});
 
 	it("trims whitespace before deciding whether send is available", () => {
-		expect(
-			createComposerState({ text: "   ", runtimeAvailable: true, disabledReason: "Runtime unavailable" }),
-		).toEqual({
+		expect(createComposerState({ text: "   ", runtimeAvailable: true, disabledReason: "" })).toEqual({
 			sendDisabled: true,
 			statusLabel: "",
 		});

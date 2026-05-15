@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -69,6 +69,18 @@ const createProject = (path: string, overrides: Partial<ProjectStore["projects"]
 	availability: { status: "available" as const },
 	...overrides,
 });
+
+const expectRejectsWithMessage = async (promise: Promise<unknown>, message: string) => {
+	let rejection: unknown;
+	try {
+		await promise;
+	} catch (error) {
+		rejection = error;
+	}
+
+	expect(rejection).toBeInstanceOf(Error);
+	expect((rejection as Error).message).toBe(message);
+};
 
 describe("project service", () => {
 	it("returns the current project state", async () => {
@@ -533,6 +545,174 @@ describe("project service", () => {
 		const view = await service.checkAvailability({ projectId: project.id });
 
 		expect(view.projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+	});
+
+	it("updates unavailable availability to available when the folder can be accessed", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-unavailable-recovered-"));
+		const project = createProject(projectPath, {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.checkAvailability({ projectId: project.id });
+
+		expect(view.projects[0]?.availability).toEqual({ status: "available", checkedAt: secondNow });
+	});
+
+	it("updates available availability to unavailable after a non-missing access failure", async () => {
+		const project = createProject("/tmp/pi-invalid\0");
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.checkAvailability({ projectId: project.id });
+
+		expect(view.projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: secondNow,
+			reason: expect.stringContaining("null bytes"),
+		});
+	});
+
+	it("resolves an available project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-workspace-"));
+		const project = createProject(projectPath, { displayName: "Renamed project" });
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).resolves.toEqual({
+			projectId: project.id,
+			displayName: basename(projectPath),
+			path: projectPath,
+		});
+	});
+
+	it("persists a recovered available project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-recovered-"));
+		const project = createProject(projectPath, {
+			availability: { status: "missing", checkedAt: firstNow },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expect(service.getSessionWorkspace({ projectId: project.id })).resolves.toEqual({
+			projectId: project.id,
+			displayName: basename(projectPath),
+			path: projectPath,
+		});
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "available", checkedAt: secondNow });
+	});
+
+	it("rejects a regular file project workspace before starting a session", async () => {
+		const projectDir = await mkdtemp(join(tmpdir(), "pi-session-file-"));
+		const projectPath = join(projectDir, "workspace-file");
+		await writeFile(projectPath, "not a directory");
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project path is not a directory.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: secondNow,
+			reason: "Project path is not a directory.",
+		});
+		expect(memoryStore.file.save).toHaveBeenCalledTimes(1);
+	});
+
+	it("rejects a missing project workspace before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-missing-"));
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project folder is missing. Locate the folder before starting a Pi session.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
+	});
+
+	it("rejects a stored unavailable project workspace after a non-missing access failure", async () => {
+		const project = createProject("/tmp/pi-denied\0", {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+
+		await expectRejectsWithMessage(service.getSessionWorkspace({ projectId: project.id }), "Permission denied");
+		expect(memoryStore.read().projects[0]?.availability).toEqual({
+			status: "unavailable",
+			checkedAt: firstNow,
+			reason: "Permission denied",
+		});
+		expect(memoryStore.file.save).toHaveBeenCalledTimes(1);
+	});
+
+	it("marks a deleted unavailable project workspace missing before starting a session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-session-unavailable-missing-"));
+		const project = createProject(projectPath, {
+			availability: { status: "unavailable", checkedAt: firstNow, reason: "Permission denied" },
+		});
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			now: () => secondNow,
+		});
+		await rm(projectPath, { recursive: true });
+
+		await expectRejectsWithMessage(
+			service.getSessionWorkspace({ projectId: project.id }),
+			"Project folder is missing. Locate the folder before starting a Pi session.",
+		);
+		expect(memoryStore.read().projects[0]?.availability).toEqual({ status: "missing", checkedAt: secondNow });
 	});
 
 	it("creates chat metadata and selects the new chat", async () => {

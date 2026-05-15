@@ -1,4 +1,4 @@
-import { access, mkdir } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import {
 	createProjectId,
@@ -27,6 +27,12 @@ export type ProjectServiceDeps = {
 	initializeGitRepository: (projectPath: string) => Promise<void>;
 };
 
+export type SessionWorkspace = {
+	projectId: string;
+	displayName: string;
+	path: string;
+};
+
 export type ProjectService = {
 	getState: () => Promise<ProjectStateView>;
 	createFromScratch: () => Promise<ProjectStateView>;
@@ -38,6 +44,7 @@ export type ProjectService = {
 	locateFolder: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	setPinned: (input: ProjectPinnedInput) => Promise<ProjectStateView>;
 	checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateView>;
+	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
 	selectChat: (input: ChatSelectionInput) => Promise<ProjectStateView>;
 };
@@ -77,13 +84,21 @@ const saveAndView = async (storeFile: ProjectStoreFile, store: ProjectStore): Pr
 	return createProjectStateView(store);
 };
 
+const getErrorCode = (error: unknown): unknown =>
+	typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+
 const checkPathAvailable = async (projectPath: string) => {
 	try {
-		await access(projectPath);
-		return { status: "available" as const };
+		const stats = await stat(projectPath);
+		if (stats.isDirectory()) {
+			return { status: "available" as const };
+		}
+
+		return { status: "unavailable" as const, reason: "Project path is not a directory." };
 	} catch (error) {
+		const code = getErrorCode(error);
 		return {
-			status: "missing" as const,
+			status: code === "ENOENT" || code === "ENOTDIR" ? ("missing" as const) : ("unavailable" as const),
 			reason: error instanceof Error ? error.message : String(error),
 		};
 	}
@@ -94,7 +109,11 @@ const refreshProjectAvailability = async (project: ProjectRecord, now: string) =
 	const nextAvailability =
 		availability.status === "available"
 			? { status: "available" as const, checkedAt: now }
-			: { status: "missing" as const, checkedAt: now };
+			: availability.status === "missing"
+				? { status: "missing" as const, checkedAt: now }
+				: project.availability.status === "unavailable"
+					? project.availability
+					: { status: "unavailable" as const, checkedAt: now, reason: availability.reason };
 	const changed = project.availability.status !== nextAvailability.status;
 
 	return {
@@ -348,6 +367,38 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
 
 				return saveAndView(deps.store, store);
+			});
+		},
+
+		async getSessionWorkspace(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				const availabilityChanged = await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
+				const project = store.projects[projectIndex];
+				if (availabilityChanged) {
+					await deps.store.save(store);
+				}
+
+				if (project.availability.status === "missing") {
+					if (!availabilityChanged) {
+						await deps.store.save(store);
+					}
+					throw new Error("Project folder is missing. Locate the folder before starting a Pi session.");
+				}
+
+				if (project.availability.status === "unavailable") {
+					if (!availabilityChanged) {
+						await deps.store.save(store);
+					}
+					throw new Error(project.availability.reason);
+				}
+
+				return {
+					projectId: project.id,
+					displayName: basename(project.path),
+					path: project.path,
+				};
 			});
 		},
 

@@ -1,15 +1,52 @@
 import type { ChatShellRoute } from "../chat/chat-view-model";
+import type { LiveSessionState } from "../session/session-state";
 import { ChatStartState } from "./chat-start-state";
 import { ChatTranscript } from "./chat-transcript";
 import { Composer } from "./composer";
+import { LiveSessionTranscript } from "./live-session-transcript";
 
 interface ChatShellProps {
 	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>;
+	session: LiveSessionState;
+	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	onAbortSession: () => void;
 }
 
-export function ChatShell({ route }: ChatShellProps) {
+export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: ChatShellProps) {
+	const running =
+		session.status === "starting" ||
+		session.status === "running" ||
+		session.status === "retrying" ||
+		session.status === "aborting";
+	const abortable = Boolean(session.sessionId) && session.status !== "starting";
+	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
+
 	if (route.kind === "global-start" || route.kind === "project-start") {
-		return <ChatStartState route={route} />;
+		return (
+			<ChatStartState
+				route={route}
+				session={session}
+				onSubmitPrompt={onSubmitPrompt}
+				onAbortSession={onAbortSession}
+			/>
+		);
+	}
+
+	if (route.kind === "empty-chat" && !hasLiveSession) {
+		return (
+			<ChatStartState
+				route={{
+					kind: "project-start",
+					title: route.startTitle,
+					projectId: route.projectId,
+					composer: route.composer,
+					suggestions: route.suggestions,
+				}}
+				session={session}
+				onSubmitPrompt={onSubmitPrompt}
+				onAbortSession={onAbortSession}
+			/>
+		);
 	}
 
 	return (
@@ -20,7 +57,9 @@ export function ChatShell({ route }: ChatShellProps) {
 				</h1>
 			</header>
 			<div className="chat-shell__scroll">
-				{route.kind === "continued-chat" ? (
+				{hasLiveSession ? (
+					<LiveSessionTranscript session={session} />
+				) : route.kind === "continued-chat" ? (
 					<ChatTranscript title={route.title} transcript={route.transcript} />
 				) : (
 					<section className="chat-shell__empty-chat" aria-label="Empty chat">
@@ -29,7 +68,14 @@ export function ChatShell({ route }: ChatShellProps) {
 				)}
 			</div>
 			<div className="chat-shell__bottom-composer">
-				<Composer context={route.composer} layout="bottom" />
+				<Composer
+					context={route.composer}
+					layout="bottom"
+					running={running}
+					abortable={abortable}
+					onSubmit={onSubmitPrompt}
+					onAbort={onAbortSession}
+				/>
 			</div>
 		</section>
 	);

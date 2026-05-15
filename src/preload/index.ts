@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { z } from "zod";
-import { AppVersionResultSchema, IpcChannels, ProjectStateViewResultSchema } from "../shared/ipc";
+import {
+	AppVersionResultSchema,
+	IpcChannels,
+	PiSessionActionResultSchema,
+	PiSessionEventSchema,
+	PiSessionStartResultSchema,
+	ProjectStateViewResultSchema,
+} from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
 
@@ -47,6 +54,22 @@ const api: PiDesktopApi = {
 	chat: {
 		create: async (input) => safeInvokeParse(IpcChannels.chatCreate, ProjectStateViewResultSchema, input),
 		select: async (input) => safeInvokeParse(IpcChannels.chatSelect, ProjectStateViewResultSchema, input),
+	},
+	piSession: {
+		start: async (input) => safeInvokeParse(IpcChannels.piSessionStart, PiSessionStartResultSchema, input),
+		submit: async (input) => safeInvokeParse(IpcChannels.piSessionSubmit, PiSessionActionResultSchema, input),
+		abort: async (input) => safeInvokeParse(IpcChannels.piSessionAbort, PiSessionActionResultSchema, input),
+		dispose: async (input) => safeInvokeParse(IpcChannels.piSessionDispose, PiSessionActionResultSchema, input),
+		onEvent: (listener) => {
+			const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+				const parsed = PiSessionEventSchema.safeParse(payload);
+				if (parsed.success) {
+					listener(parsed.data);
+				}
+			};
+			ipcRenderer.on(IpcChannels.piSessionEvent, handler);
+			return () => ipcRenderer.removeListener(IpcChannels.piSessionEvent, handler);
+		},
 	},
 };
 

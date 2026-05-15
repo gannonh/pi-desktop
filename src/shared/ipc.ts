@@ -1,5 +1,21 @@
 import { z } from "zod";
-import { ProjectStateViewSchema, type ProjectStateView } from "./project-state";
+import {
+	PiSessionAbortInputSchema,
+	PiSessionActionResultSchema,
+	PiSessionDisposeInputSchema,
+	PiSessionEventSchema,
+	PiSessionStartInputSchema,
+	PiSessionStartResultSchema,
+	PiSessionSubmitInputSchema,
+	type PiSessionAbortInput,
+	type PiSessionActionResult,
+	type PiSessionDisposeInput,
+	type PiSessionEvent,
+	type PiSessionStartInput,
+	type PiSessionStartResult,
+	type PiSessionSubmitInput,
+} from "./pi-session";
+import { type ProjectStateView, ProjectStateViewSchema } from "./project-state";
 import { createResultSchema, type IpcResult } from "./result";
 
 export const IpcChannels = {
@@ -16,7 +32,14 @@ export const IpcChannels = {
 	projectCheckAvailability: "project:checkAvailability",
 	chatCreate: "chat:create",
 	chatSelect: "chat:select",
+	piSessionStart: "pi-session:start",
+	piSessionSubmit: "pi-session:submit",
+	piSessionAbort: "pi-session:abort",
+	piSessionDispose: "pi-session:dispose",
+	piSessionEvent: "pi-session:event",
 } as const;
+
+export const PiSessionOperationFailedCode = "pi_session.operation_failed";
 
 export const AppVersionSchema = z.strictObject({
 	name: z.string().min(1),
@@ -49,6 +72,16 @@ export const ChatSelectionInputSchema = z.strictObject({
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
 export const ProjectStateViewResultSchema = createResultSchema(ProjectStateViewSchema);
 
+export {
+	PiSessionAbortInputSchema,
+	PiSessionActionResultSchema,
+	PiSessionDisposeInputSchema,
+	PiSessionEventSchema,
+	PiSessionStartInputSchema,
+	PiSessionStartResultSchema,
+	PiSessionSubmitInputSchema,
+};
+
 export type AppVersion = z.infer<typeof AppVersionSchema>;
 export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
@@ -57,3 +90,12 @@ export type ChatCreateInput = z.infer<typeof ChatCreateInputSchema>;
 export type ChatSelectionInput = z.infer<typeof ChatSelectionInputSchema>;
 export type AppVersionResult = IpcResult<AppVersion>;
 export type ProjectStateViewResult = IpcResult<ProjectStateView>;
+export type {
+	PiSessionAbortInput,
+	PiSessionActionResult,
+	PiSessionDisposeInput,
+	PiSessionEvent,
+	PiSessionStartInput,
+	PiSessionStartResult,
+	PiSessionSubmitInput,
+};

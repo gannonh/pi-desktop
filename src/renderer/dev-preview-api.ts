@@ -1,5 +1,6 @@
 import type { PiDesktopApi } from "../shared/preload-api";
 import type { ProjectStateViewResult } from "../shared/ipc";
+import type { PiSessionEvent } from "../shared/pi-session";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -57,6 +58,10 @@ const standaloneChat = (
 
 const previewRoot = "/tmp/pi-desktop-preview";
 const previewDocumentsDir = `${previewRoot}/Documents`;
+const previewSessionReceivedAtBase = Date.parse("2026-05-12T18:00:00.000Z");
+
+const previewSessionReceivedAt = (streamIndex: number, eventIndex: number) =>
+	new Date(previewSessionReceivedAtBase + streamIndex * 1_000 + eventIndex).toISOString();
 
 const piDesktop = project(`${previewRoot}/pi-desktop`, {
 	displayName: "pi-desktop",
@@ -165,6 +170,73 @@ export const installDevPreviewApi = () => {
 		return;
 	}
 
+	const sessionListeners = new Set<(event: PiSessionEvent) => void>();
+	const pendingPreviewStreams = new Map<string, ReturnType<typeof setTimeout>>();
+	let previewStreamIndex = 0;
+	const emitSessionEvent = (event: PiSessionEvent) => {
+		for (const listener of sessionListeners) {
+			listener(event);
+		}
+	};
+	const clearPendingPreviewStream = (sessionId: string) => {
+		const timeout = pendingPreviewStreams.get(sessionId);
+		if (timeout) {
+			globalThis.clearTimeout(timeout);
+			pendingPreviewStreams.delete(sessionId);
+		}
+	};
+	const emitPreviewStream = (sessionId: string, prompt: string) => {
+		const streamIndex = previewStreamIndex;
+		previewStreamIndex += 1;
+		let eventIndex = 0;
+		const receivedAt = () => previewSessionReceivedAt(streamIndex, eventIndex++);
+		const userMessageId = `${sessionId}:preview:${streamIndex}:user`;
+		const assistantMessageId = `${sessionId}:preview:${streamIndex}:assistant`;
+		emitSessionEvent({ type: "status", sessionId, status: "running", label: "Running", receivedAt: receivedAt() });
+		emitSessionEvent({
+			type: "message_start",
+			sessionId,
+			messageId: userMessageId,
+			role: "user",
+			content: prompt,
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({
+			type: "message_start",
+			sessionId,
+			messageId: assistantMessageId,
+			role: "assistant",
+			content: "",
+			receivedAt: receivedAt(),
+		});
+		for (const delta of ["I can see this project. ", "Pi session streaming is connected."]) {
+			emitSessionEvent({
+				type: "assistant_delta",
+				sessionId,
+				messageId: assistantMessageId,
+				delta,
+				receivedAt: receivedAt(),
+			});
+		}
+		emitSessionEvent({
+			type: "message_end",
+			sessionId,
+			messageId: assistantMessageId,
+			role: "assistant",
+			content: "I can see this project. Pi session streaming is connected.",
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({ type: "status", sessionId, status: "idle", label: "Idle", receivedAt: receivedAt() });
+	};
+	const schedulePreviewStream = (sessionId: string, prompt: string) => {
+		clearPendingPreviewStream(sessionId);
+		const timeout = globalThis.setTimeout(() => {
+			pendingPreviewStreams.delete(sessionId);
+			emitPreviewStream(sessionId, prompt);
+		}, 0);
+		pendingPreviewStreams.set(sessionId, timeout);
+	};
+
 	const api: PiDesktopApi = {
 		app: {
 			getVersion: async () => ({ ok: true, data: { name: "pi-desktop web preview", version: "dev" } }),
@@ -268,6 +340,65 @@ export const installDevPreviewApi = () => {
 				store.selectedProjectId = projectId;
 				store.selectedChatId = chatId;
 				return ok();
+			},
+		},
+		piSession: {
+			start: async ({ projectId, prompt }) => {
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const sessionId = `${projectId}:preview-session`;
+				schedulePreviewStream(sessionId, prompt);
+				return {
+					ok: true,
+					data: {
+						sessionId,
+						projectId,
+						workspacePath: result.project.path,
+						status: "running",
+					},
+				};
+			},
+			submit: async ({ sessionId, prompt }) => {
+				schedulePreviewStream(sessionId, prompt);
+				return { ok: true, data: { sessionId, status: "running" } };
+			},
+			abort: async ({ sessionId }) => {
+				clearPendingPreviewStream(sessionId);
+				const streamIndex = previewStreamIndex;
+				previewStreamIndex += 1;
+				emitSessionEvent({
+					type: "status",
+					sessionId,
+					status: "aborting",
+					label: "Aborting",
+					receivedAt: previewSessionReceivedAt(streamIndex, 0),
+				});
+				emitSessionEvent({
+					type: "status",
+					sessionId,
+					status: "idle",
+					label: "Idle",
+					receivedAt: previewSessionReceivedAt(streamIndex, 1),
+				});
+				return { ok: true, data: { sessionId, status: "idle" } };
+			},
+			dispose: async ({ sessionId }) => {
+				clearPendingPreviewStream(sessionId);
+				return {
+					ok: true,
+					data: {
+						sessionId,
+						status: "idle",
+					},
+				};
+			},
+			onEvent: (listener) => {
+				sessionListeners.add(listener);
+				return () => {
+					sessionListeners.delete(listener);
+				};
 			},
 		},
 	};
