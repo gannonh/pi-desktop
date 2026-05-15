@@ -16,6 +16,8 @@ const createDeferred = <T = void>() => {
 	return { promise, resolve, reject };
 };
 
+const waitForScheduledPrompt = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 const createFakeSession = () => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	const session: PiSdkSession = {
@@ -92,6 +94,27 @@ describe("createPiSessionRuntime", () => {
 		expect(events.map((event) => event.type)).toEqual(["status", "message_start", "assistant_delta", "status"]);
 	});
 
+	it("returns the started session before emitting first prompt events", async () => {
+		const events: PiSessionEvent[] = [];
+		const { session } = createFakeSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+
+		expect(result.status).toBe("running");
+		expect(events).toEqual([]);
+		await runtime.whenIdle(result.sessionId);
+		expect(events.map((event) => event.type)).toEqual(["status", "message_start", "assistant_delta", "status"]);
+	});
+
 	it("aborts an active session", async () => {
 		const events: PiSessionEvent[] = [];
 		const { promptResult, session } = createControlledSession();
@@ -160,6 +183,7 @@ describe("createPiSessionRuntime", () => {
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
+		await waitForScheduledPrompt();
 		promptResult.reject(new Error("provider failed"));
 		await runtime.whenIdle(result.sessionId);
 
@@ -198,6 +222,7 @@ describe("createPiSessionRuntime", () => {
 		await expect(runtime.submit({ sessionId: result.sessionId, prompt: "Second" })).rejects.toThrow(
 			"Pi session is already running.",
 		);
+		await waitForScheduledPrompt();
 		expect(session.prompt).toHaveBeenCalledTimes(1);
 
 		promptResult.resolve();
@@ -219,6 +244,7 @@ describe("createPiSessionRuntime", () => {
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
+		await waitForScheduledPrompt();
 		const idle = runtime.whenIdle(result.sessionId);
 		let idleSettled = false;
 		void idle.then(() => {
@@ -316,6 +342,7 @@ describe("createPiSessionRuntime", () => {
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
+		await waitForScheduledPrompt();
 		await runtime.dispose({ sessionId: result.sessionId });
 		promptResult.reject(new Error("late failure"));
 		await expect(runtime.whenIdle(result.sessionId)).rejects.toThrow("Pi session not found.");
@@ -353,6 +380,7 @@ describe("createPiSessionRuntime", () => {
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
+		await waitForScheduledPrompt();
 
 		await expect(runtime.abort({ sessionId: result.sessionId })).rejects.toThrow("abort failed");
 		expect(events).toContainEqual({

@@ -17,6 +17,7 @@ import {
 	PiSessionSubmitInputSchema,
 } from "../shared/pi-session";
 import { err, ok } from "../shared/result";
+import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
@@ -105,7 +106,7 @@ const handlePiSessionOperation = async (operation: () => Promise<unknown>) => {
 	try {
 		return ok(await operation());
 	} catch (error) {
-		return err(PiSessionOperationFailedCode, toErrorMessage(error));
+		return err(PiSessionOperationFailedCode, sanitizeRuntimeErrorMessage(error));
 	}
 };
 

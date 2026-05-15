@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createRuntimeErrorEvent,
 	normalizePiSessionEvent,
+	sanitizeRuntimeErrorMessage,
 } from "../../src/main/pi-session/pi-session-event-normalizer";
 import { PiSessionEventSchema } from "../../src/shared/pi-session";
 
@@ -344,6 +345,15 @@ describe("pi session event normalizer", () => {
 			message: "No API key",
 			receivedAt,
 		});
+	});
+
+	it("sanitizes runtime error messages for IPC results", () => {
+		expect(
+			sanitizeRuntimeErrorMessage(
+				new Error("No API key\n    at Provider.request\nAuthorization: Bearer secret\napi_key=secret"),
+			),
+		).toBe("No API key");
+		expect(sanitizeRuntimeErrorMessage("token=secret")).toBe("Pi runtime error.");
 	});
 
 	it("falls back to non-empty sanitized runtime and retry messages", () => {

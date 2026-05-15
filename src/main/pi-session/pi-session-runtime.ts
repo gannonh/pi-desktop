@@ -42,6 +42,7 @@ type RuntimeEntry = {
 	unsubscribe: () => void;
 	idle: Promise<void>;
 	activePromptToken: symbol | null;
+	scheduledPrompt: { timeout: ReturnType<typeof setTimeout>; resolve: () => void } | null;
 	disposed: boolean;
 };
 
@@ -65,9 +66,18 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	};
 
 	const assertNotBusy = (entry: RuntimeEntry) => {
-		if (entry.activePromptToken) {
+		if (entry.activePromptToken || busyStatuses.has(entry.status)) {
 			throw new Error("Pi session is already running.");
 		}
+	};
+
+	const clearScheduledPrompt = (entry: RuntimeEntry) => {
+		if (!entry.scheduledPrompt) {
+			return;
+		}
+		clearTimeout(entry.scheduledPrompt.timeout);
+		entry.scheduledPrompt.resolve();
+		entry.scheduledPrompt = null;
 	};
 
 	const runPrompt = (sessionId: string, prompt: string): Promise<void> => {
@@ -108,6 +118,23 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return idle;
 	};
 
+	const schedulePrompt = (sessionId: string, prompt: string): void => {
+		const entry = getEntry(sessionId);
+		entry.status = "running";
+		entry.idle = new Promise<void>((resolve) => {
+			const timeout = setTimeout(() => {
+				const currentEntry = sessions.get(sessionId);
+				if (currentEntry !== entry || entry.disposed) {
+					resolve();
+					return;
+				}
+				entry.scheduledPrompt = null;
+				void runPrompt(sessionId, prompt).then(resolve, resolve);
+			}, 0);
+			entry.scheduledPrompt = { timeout, resolve };
+		});
+	};
+
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
 			let created: CreateAgentSessionResult | undefined;
@@ -139,10 +166,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				unsubscribe,
 				idle: Promise.resolve(),
 				activePromptToken: null,
+				scheduledPrompt: null,
 				disposed: false,
 			};
 			sessions.set(sessionId, entry);
-			runPrompt(sessionId, input.prompt);
+			schedulePrompt(sessionId, input.prompt);
 
 			return {
 				sessionId,
@@ -164,6 +192,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			if (!entry.activePromptToken && !busyStatuses.has(entry.status)) {
 				return { sessionId: input.sessionId, status: entry.status };
 			}
+			clearScheduledPrompt(entry);
 			entry.status = "aborting";
 			emitStatus(input.sessionId, "aborting", "Aborting");
 			try {
@@ -184,6 +213,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		async dispose(input: PiSessionDisposeInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
 			entry.disposed = true;
+			clearScheduledPrompt(entry);
 			entry.unsubscribe();
 			try {
 				if (entry.activePromptToken || busyStatuses.has(entry.status)) {

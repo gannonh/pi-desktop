@@ -135,11 +135,14 @@ const sanitizeMessage = (message: string, fallback: string): string => {
 
 const errorMessageFor = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
+export const sanitizeRuntimeErrorMessage = (error: unknown): string =>
+	sanitizeMessage(errorMessageFor(error), "Pi runtime error.");
+
 export const createRuntimeErrorEvent = ({ sessionId, code, error, now }: RuntimeErrorInput): PiSessionEvent => ({
 	type: "runtime_error",
 	sessionId,
 	code,
-	message: sanitizeMessage(errorMessageFor(error), "Pi runtime error."),
+	message: sanitizeRuntimeErrorMessage(error),
 	receivedAt: now(),
 });
 
