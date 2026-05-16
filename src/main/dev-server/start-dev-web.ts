@@ -2,6 +2,12 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type InlineConfig } from "vite";
+import {
+	resolveElectronDevUserDataDir,
+	resolvePiAgentDir,
+	resolvePiSessionFilesRoot,
+	resolveProjectStorePath,
+} from "../app-paths";
 import { createAppBackend, type AppBackend } from "../app-backend";
 import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
@@ -51,14 +57,23 @@ const unavailableNativeOperation = async () => {
 	throw new Error("Native desktop operation unavailable in web preview.");
 };
 
+export const resolveDevWebUserDataDir = (
+	env: NodeJS.ProcessEnv = process.env,
+	homeDir = homedir(),
+	platform: NodeJS.Platform | string = process.platform,
+): string => env.PI_DESKTOP_USER_DATA_DIR ?? resolveElectronDevUserDataDir(homeDir, platform);
+
 export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBackend => {
 	const documentsDir = env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
-	const userDataDir = env.PI_DESKTOP_USER_DATA_DIR ?? path.join(process.cwd(), ".pi-desktop-dev");
+	const projectStorePath = resolveProjectStorePath({
+		env,
+		defaultUserDataDir: resolveDevWebUserDataDir(env),
+	});
 
 	return createAppBackend({
 		appInfo: { name: "pi-desktop web", version: "dev" },
 		projectService: createProjectService({
-			store: createProjectStore(path.join(userDataDir, "project-store.json")),
+			store: createProjectStore(projectStorePath),
 			documentsDir,
 			now: () => new Date().toISOString(),
 			openFolderDialog: unavailableNativeOperation,
@@ -133,6 +148,14 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 		await resources.vite.listen();
 		resources.vite.printUrls();
 		logger.log(`Local app data bridge: ${resources.appServer.url}`);
+		logger.log(
+			`pi-desktop workspace store: ${resolveProjectStorePath({
+				env,
+				defaultUserDataDir: resolveDevWebUserDataDir(env),
+			})}`,
+		);
+		logger.log(`Pi agent config directory: ${resolvePiAgentDir(env)}`);
+		logger.log(`Pi session files root: ${resolvePiSessionFilesRoot(env)}`);
 	} catch (error) {
 		await shutdown();
 		throw error;

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pi-desktop State and Session Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-title: 'Instrument Serif', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --bg: #fbf7f0;
+  --surface: #fffdf8;
+  --surface-2: #f3ecdf;
+  --surface-3: #ebe1d1;
+  --border: rgba(54, 42, 25, 0.12);
+  --border-strong: rgba(54, 42, 25, 0.22);
+  --text: #2d261b;
+  --text-dim: #716552;
+  --desktop: #1e3a5f;
+  --desktop-dim: rgba(30, 58, 95, 0.10);
+  --config: #0f766e;
+  --config-dim: rgba(15, 118, 110, 0.10);
+  --session: #b45309;
+  --session-dim: rgba(180, 83, 9, 0.12);
+  --runtime: #7f1d1d;
+  --runtime-dim: rgba(127, 29, 29, 0.10);
+  --ok: #3f6212;
+  --gap: #a16207;
+  --code-bg: #241f18;
+  --code-text: #f8efe0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15120e;
+    --surface: #201b15;
+    --surface-2: #2a241c;
+    --surface-3: #332b21;
+    --border: rgba(255, 244, 224, 0.10);
+    --border-strong: rgba(255, 244, 224, 0.20);
+    --text: #f2eadf;
+    --text-dim: #b8aa98;
+    --desktop: #93c5fd;
+    --desktop-dim: rgba(147, 197, 253, 0.12);
+    --config: #5eead4;
+    --config-dim: rgba(94, 234, 212, 0.11);
+    --session: #fbbf24;
+    --session-dim: rgba(251, 191, 36, 0.12);
+    --runtime: #fca5a5;
+    --runtime-dim: rgba(252, 165, 165, 0.12);
+    --ok: #bef264;
+    --gap: #fcd34d;
+    --code-bg: #0f0d0a;
+    --code-text: #f8efe0;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 12% 10%, var(--desktop-dim), transparent 34%),
+    radial-gradient(circle at 90% 18%, var(--config-dim), transparent 30%),
+    radial-gradient(circle at 50% 100%, var(--session-dim), transparent 42%);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.45;
+}
+
+main {
+  width: min(1180px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 42px 0 60px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 22px;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 18px 50px rgba(48, 36, 20, 0.08);
+}
+
+h1 {
+  font-family: var(--font-title);
+  font-size: clamp(44px, 7vw, 78px);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  margin: 0 0 18px;
+  font-weight: 400;
+}
+
+.lead {
+  font-size: 18px;
+  color: var(--text-dim);
+  max-width: 780px;
+  margin: 0;
+}
+
+.kicker, .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.kicker::before, .label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status-card {
+  display: grid;
+  gap: 14px;
+}
+
+.status-row {
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.status-row strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.status-row span {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.section {
+  margin-top: 22px;
+}
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 34px 2px 14px;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+.section-title p {
+  margin: 0;
+  max-width: 520px;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.term {
+  min-height: 245px;
+  position: relative;
+  overflow: hidden;
+}
+
+.term::after {
+  content: attr(data-index);
+  position: absolute;
+  right: 18px;
+  top: 8px;
+  font-family: var(--font-title);
+  font-size: 92px;
+  line-height: 1;
+  opacity: 0.07;
+}
+
+.term h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.term p { margin: 0 0 14px; color: var(--text-dim); }
+
+.term ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.term li {
+  padding-left: 16px;
+  position: relative;
+  font-size: 14px;
+}
+
+.term li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+.desktop { border-top: 4px solid var(--desktop); }
+.config { border-top: 4px solid var(--config); }
+.session { border-top: 4px solid var(--session); }
+.runtime { border-top: 4px solid var(--runtime); }
+
+code, .code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: color-mix(in srgb, var(--surface-2) 86%, var(--text) 4%);
+  border: 1px solid var(--border);
+  padding: 2px 5px;
+  border-radius: 6px;
+}
+
+.diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.lane {
+  border-radius: 22px;
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.lane h3 {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.block {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.block .topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.block strong {
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+.badge.gap { color: var(--gap); background: color-mix(in srgb, var(--gap) 12%, transparent); }
+
+.block p { margin: 0; color: var(--text-dim); font-size: 14px; }
+
+.arrow {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  position: relative;
+  padding: 2px 0;
+}
+
+.arrow::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 20px;
+  margin: 0 auto 4px;
+  background: var(--border-strong);
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.compare-card {
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.compare-card header {
+  padding: 16px 18px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-card header h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.compare-card header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.rows { display: grid; }
+.row {
+  display: grid;
+  grid-template-columns: 155px 1fr;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.row:last-child { border-bottom: 0; }
+.row .key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.row .value {
+  font-size: 14px;
+}
+
+.callout {
+  border-left: 4px solid var(--desktop);
+  background: color-mix(in srgb, var(--desktop-dim) 55%, var(--surface));
+}
+
+.definitions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.definition {
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.definition h3 { margin: 0 0 8px; font-size: 16px; }
+.definition p { margin: 0; color: var(--text-dim); font-size: 14px; }
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 18px;
+  padding: 18px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  border: 1px solid var(--border-strong);
+}
+
+@media (max-width: 900px) {
+  main { width: min(100vw - 24px, 1180px); padding-top: 24px; }
+  .hero, .glossary, .diagram, .comparison, .definitions { grid-template-columns: 1fr; }
+  .section-title { display: block; }
+  .section-title p { text-align: left; margin-top: 8px; }
+  .row { grid-template-columns: 1fr; gap: 5px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="panel">
+      <div class="kicker">Terminology lock</div>
+      <h1>pi-desktop state and Pi session model</h1>
+      <p class="lead">This page uses one stable set of names. The goal is to separate pi-desktop UI data from Pi agent configuration and Pi session files.</p>
+    </div>
+    <div class="panel status-card">
+      <div class="status-row">
+        <strong>Default alignment</strong>
+        <span>Web dev and Electron dev use the same pi-desktop workspace store path by default.</span>
+      </div>
+      <div class="status-row">
+        <strong>Real Pi runtime</strong>
+        <span>Both use the real Pi SDK session runtime unless smoke mode is enabled.</span>
+      </div>
+      <div class="status-row">
+        <strong>Important boundary</strong>
+        <span>Active running sessions are process memory. Persisted history is Pi session files.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>The three persisted things</h2>
+      <p>These names are the glossary. Avoid replacing them with “store” or “sessions” without the qualifier.</p>
+    </div>
+    <div class="glossary">
+      <article class="panel term desktop" data-index="1">
+        <div class="label" style="color: var(--desktop)">pi-desktop workspace store</div>
+        <h3>Projects and chat metadata</h3>
+        <p>The app’s own UI state. It is not the Pi agent conversation history.</p>
+        <ul>
+          <li>Projects</li>
+          <li>Chat metadata</li>
+          <li>Selected project and selected chat</li>
+          <li>File: <code>project-store.json</code></li>
+        </ul>
+      </article>
+
+      <article class="panel term config" data-index="2">
+        <div class="label" style="color: var(--config)">Pi agent config directory</div>
+        <h3>Auth, models, settings, resources</h3>
+        <p>The Pi SDK reads this directory to know how to run real agent sessions.</p>
+        <ul>
+          <li>Default: <code>~/.pi/agent</code></li>
+          <li><code>auth.json</code></li>
+          <li><code>models.json</code></li>
+          <li><code>settings.json</code></li>
+        </ul>
+      </article>
+
+      <article class="panel term session" data-index="3">
+        <div class="label" style="color: var(--session)">Pi session files</div>
+        <h3>Persisted conversation history</h3>
+        <p>JSONL files created by the Pi SDK session manager for a workspace cwd.</p>
+        <ul>
+          <li>Default parent: <code>~/.pi/agent/sessions</code></li>
+          <li>Per-cwd encoded subdirectories</li>
+          <li>Files contain Pi conversation/session entries</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>How Electron dev and web dev should line up</h2>
+      <p>The two dev surfaces should differ only in transport, not in default data sources.</p>
+    </div>
+    <div class="diagram">
+      <article class="lane">
+        <div class="label" style="color: var(--desktop)">Electron dev</div>
+        <div class="stack">
+          <div class="block desktop">
+            <div class="topline"><strong>Renderer</strong><span class="badge ok">UI</span></div>
+            <p>React app inside Electron.</p>
+          </div>
+          <div class="arrow">IPC transport</div>
+          <div class="block runtime">
+            <div class="topline"><strong>App backend</strong><span class="badge ok">real</span></div>
+            <p>Handles project operations and Pi session operations.</p>
+          </div>
+          <div class="arrow">reads and writes</div>
+          <div class="block desktop">
+            <div class="topline"><strong>pi-desktop workspace store</strong><span class="badge ok">should match</span></div>
+            <p><code>~/Library/Application Support/pi-desktop/project-store.json</code></p>
+          </div>
+          <div class="arrow">uses SDK defaults</div>
+          <div class="block config">
+            <div class="topline"><strong>Pi agent config directory</strong><span class="badge ok">default</span></div>
+            <p><code>~/.pi/agent</code></p>
+          </div>
+          <div class="block session">
+            <div class="topline"><strong>Pi session files</strong><span class="badge ok">default</span></div>
+            <p><code>~/.pi/agent/sessions/...</code></p>
+          </div>
+        </div>
+      </article>
+
+      <article class="lane">
+        <div class="label" style="color: var(--session)">Web dev preview</div>
+        <div class="stack">
+          <div class="block desktop">
+            <div class="topline"><strong>Browser renderer</strong><span class="badge ok">UI</span></div>
+            <p>Same React app running in the browser.</p>
+          </div>
+          <div class="arrow">HTTP and WebSocket transport</div>
+          <div class="block runtime">
+            <div class="topline"><strong>Local app data bridge</strong><span class="badge ok">real</span></div>
+            <p>Reusable transport boundary to the same backend shape.</p>
+          </div>
+          <div class="arrow">reads and writes</div>
+          <div class="block desktop">
+            <div class="topline"><strong>pi-desktop workspace store</strong><span class="badge ok">default match</span></div>
+            <p>Defaults to the Electron dev path. Override with <code>PI_DESKTOP_USER_DATA_DIR</code> for seeded state.</p>
+          </div>
+          <div class="arrow">uses SDK defaults</div>
+          <div class="block config">
+            <div class="topline"><strong>Pi agent config directory</strong><span class="badge ok">default</span></div>
+            <p><code>~/.pi/agent</code></p>
+          </div>
+          <div class="block session">
+            <div class="topline"><strong>Pi session files</strong><span class="badge ok">default</span></div>
+            <p><code>~/.pi/agent/sessions/...</code></p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>Override model</h2>
+      <p>Overrides should be explicit and named by the thing they control.</p>
+    </div>
+    <div class="comparison">
+      <article class="compare-card">
+        <header>
+          <h3>pi-desktop workspace store override</h3>
+          <p>Controls projects and chat metadata.</p>
+        </header>
+        <div class="rows">
+          <div class="row"><div class="key">Variable</div><div class="value"><code>PI_DESKTOP_USER_DATA_DIR</code></div></div>
+          <div class="row"><div class="key">Contains</div><div class="value"><code>project-store.json</code></div></div>
+          <div class="row"><div class="key">Use for</div><div class="value">Seeded UI state, e2e projects, human verification fixtures.</div></div>
+          <div class="row"><div class="key">Default target</div><div class="value">Electron dev Application Support path.</div></div>
+        </div>
+      </article>
+
+      <article class="compare-card">
+        <header>
+          <h3>Pi agent data overrides</h3>
+          <p>Control Pi auth/config/resources and Pi session file history.</p>
+        </header>
+        <div class="rows">
+          <div class="row"><div class="key">Config variable</div><div class="value"><code>PI_CODING_AGENT_DIR</code></div></div>
+          <div class="row"><div class="key">Session variable</div><div class="value"><code>PI_CODING_AGENT_SESSION_DIR</code></div></div>
+          <div class="row"><div class="key">Use for</div><div class="value">Seeded Pi sessions, isolated auth/model settings, reproducible runtime tests.</div></div>
+          <div class="row"><div class="key">Default target</div><div class="value"><code>~/.pi/agent</code> and <code>~/.pi/agent/sessions</code>.</div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>Runtime memory versus persisted files</h2>
+      <p>This is the part that can sound like “sessions” means two things.</p>
+    </div>
+    <div class="definitions">
+      <article class="definition runtime">
+        <h3>Active Pi session runtime</h3>
+        <p>A currently running SDK session object in one backend process. Electron and web preview do not share this memory if they run separate backends.</p>
+      </article>
+      <article class="definition session">
+        <h3>Pi session files</h3>
+        <p>Persisted JSONL history under <code>~/.pi/agent/sessions</code>. Both dev modes can read and write the same files when configured to the same Pi agent paths.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>Implementation invariant</h2>
+      <p>The implementation should keep these true by default.</p>
+    </div>
+    <div class="panel callout">
+<pre>Default dev behavior:
+  Electron dev and web dev use the same pi-desktop workspace store.
+  Electron dev and web dev use the same Pi agent config directory.
+  Electron dev and web dev use the same Pi session files.
+
+Override behavior:
+  PI_DESKTOP_USER_DATA_DIR controls only the pi-desktop workspace store.
+  PI_CODING_AGENT_DIR controls the Pi agent config directory.
+  PI_CODING_AGENT_SESSION_DIR controls the Pi session files directory.
+
+Terminology rule:
+  Never say "store" alone.
+  Never say "sessions" alone.
+  Say "pi-desktop workspace store", "Pi agent config directory", or "Pi session files".</pre>
+    </div>
+  </section>
+</main>
+</body>
+</html>

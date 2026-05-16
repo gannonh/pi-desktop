@@ -5,6 +5,7 @@ import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transpo
 import { IpcChannels } from "../shared/ipc";
 import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
+import { resolveProjectStorePath } from "./app-paths";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
@@ -65,10 +66,8 @@ const openFolderDialog = async (): Promise<string | null> => {
 	return selectedPath;
 };
 
-const getProjectStorePath = () => {
-	const userDataPath = process.env.PI_DESKTOP_USER_DATA_DIR ?? app.getPath("userData");
-	return path.join(userDataPath, "project-store.json");
-};
+const getProjectStorePath = () =>
+	resolveProjectStorePath({ env: process.env, defaultUserDataDir: app.getPath("userData") });
 
 const shouldUseSmokePiSession = () => !app.isPackaged && process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1";
 
