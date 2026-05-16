@@ -161,6 +161,8 @@ test("renders the selected project chat start state", async () => {
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -209,6 +211,8 @@ test("streams a Pi session response in the selected project", async () => {
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -261,6 +265,8 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -315,12 +321,21 @@ test("renders a static continued chat route with the composer anchored to the bo
 				{
 					id: "chat:milestone-01",
 					projectId,
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: projectPath,
 					title: "Execute milestone 01: project home sidebar refinements",
 					status: "idle",
+					attention: false,
+					createdAt: now,
 					updatedAt: now,
+					lastOpenedAt: null,
 				},
 			],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -374,12 +389,21 @@ test("renders an empty selected chat as a centered start state before streaming"
 				{
 					id: "chat:no-fixture",
 					projectId,
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: projectPath,
 					title: "Static metadata only",
 					status: "idle",
+					attention: false,
+					createdAt: now,
 					updatedAt: now,
+					lastOpenedAt: null,
 				},
 			],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -449,6 +473,8 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 			[availableProjectId]: [],
 			[missingProjectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");

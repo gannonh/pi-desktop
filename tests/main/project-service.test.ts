@@ -4,7 +4,12 @@ import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createProjectService } from "../../src/main/projects/project-service";
 import type { ProjectStoreFile } from "../../src/main/projects/project-store";
-import { createEmptyProjectStore, createProjectId, type ProjectStore } from "../../src/shared/project-state";
+import {
+	createEmptyProjectStore,
+	createProjectId,
+	type ChatMetadata,
+	type ProjectStore,
+} from "../../src/shared/project-state";
 
 const firstNow = "2026-05-12T09:00:00.000Z";
 const secondNow = "2026-05-12T10:00:00.000Z";
@@ -67,6 +72,25 @@ const createProject = (path: string, overrides: Partial<ProjectStore["projects"]
 	lastOpenedAt: firstNow,
 	pinned: false,
 	availability: { status: "available" as const },
+	...overrides,
+});
+
+const createChat = (
+	project: ProjectStore["projects"][number],
+	overrides: Partial<ChatMetadata> = {},
+): ChatMetadata => ({
+	id: "chat:one",
+	projectId: project.id,
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: project.path,
+	title: "Plan",
+	status: "idle",
+	attention: false,
+	createdAt: firstNow,
+	updatedAt: firstNow,
+	lastOpenedAt: null,
 	...overrides,
 });
 
@@ -159,13 +183,10 @@ describe("project service", () => {
 		const missingProject = createProject(missingProjectPath, {
 			availability: { status: "missing", checkedAt: firstNow },
 		});
-		const missingChat = {
+		const missingChat = createChat(missingProject, {
 			id: "chat:missing",
-			projectId: missingProject.id,
 			title: "Existing work",
-			status: "idle" as const,
-			updatedAt: firstNow,
-		};
+		});
 		const { memoryStore, service } = await createService({
 			documentsDir,
 			initialStore: {
@@ -328,15 +349,7 @@ describe("project service", () => {
 				selectedProjectId: project.id,
 				selectedChatId: "chat:one",
 				chatsByProject: {
-					[project.id]: [
-						{
-							id: "chat:one",
-							projectId: project.id,
-							title: "Plan",
-							status: "idle",
-							updatedAt: firstNow,
-						},
-					],
+					[project.id]: [createChat(project)],
 				},
 			},
 		});
@@ -357,15 +370,7 @@ describe("project service", () => {
 				selectedProjectId: selectedProject.id,
 				selectedChatId: "chat:selected",
 				chatsByProject: {
-					[selectedProject.id]: [
-						{
-							id: "chat:selected",
-							projectId: selectedProject.id,
-							title: "Selected",
-							status: "idle",
-							updatedAt: firstNow,
-						},
-					],
+					[selectedProject.id]: [createChat(selectedProject, { id: "chat:selected", title: "Selected" })],
 					[removedProject.id]: [],
 				},
 			},
@@ -391,15 +396,7 @@ describe("project service", () => {
 				projects: [oldProject],
 				selectedProjectId: oldProject.id,
 				chatsByProject: {
-					[oldProject.id]: [
-						{
-							id: "chat:one",
-							projectId: oldProject.id,
-							title: "Plan",
-							status: "idle",
-							updatedAt: firstNow,
-						},
-					],
+					[oldProject.id]: [createChat(oldProject)],
 				},
 			},
 			now: () => secondNow,
@@ -414,11 +411,8 @@ describe("project service", () => {
 		expect(view.selectedProject?.availability.status).toBe("available");
 		expect(view.selectedProject?.chats).toEqual([
 			{
-				id: "chat:one",
+				...createChat(oldProject),
 				projectId: recoveredId,
-				title: "Plan",
-				status: "idle",
-				updatedAt: firstNow,
 			},
 		]);
 		expect(memoryStore.read().chatsByProject[oldProject.id]).toBeUndefined();
@@ -463,24 +457,8 @@ describe("project service", () => {
 			projects: [oldProject, trackedProject],
 			selectedProjectId: oldProject.id,
 			chatsByProject: {
-				[oldProject.id]: [
-					{
-						id: "chat:old",
-						projectId: oldProject.id,
-						title: "Old project chat",
-						status: "idle" as const,
-						updatedAt: firstNow,
-					},
-				],
-				[trackedProject.id]: [
-					{
-						id: "chat:tracked",
-						projectId: trackedProject.id,
-						title: "Tracked project chat",
-						status: "idle" as const,
-						updatedAt: firstNow,
-					},
-				],
+				[oldProject.id]: [createChat(oldProject, { id: "chat:old", title: "Old project chat" })],
+				[trackedProject.id]: [createChat(trackedProject, { id: "chat:tracked", title: "Tracked project chat" })],
 			},
 		};
 		const { memoryStore, service } = await createService({
@@ -729,13 +707,14 @@ describe("project service", () => {
 
 		expect(view.selectedProjectId).toBe(project.id);
 		expect(view.selectedChatId).toBe(`chat:${secondNow}:1`);
-		expect(view.selectedChat).toEqual({
-			id: `chat:${secondNow}:1`,
-			projectId: project.id,
-			title: "New chat",
-			status: "idle",
-			updatedAt: secondNow,
-		});
+		expect(view.selectedChat).toEqual(
+			createChat(project, {
+				id: `chat:${secondNow}:1`,
+				title: "New chat",
+				createdAt: secondNow,
+				updatedAt: secondNow,
+			}),
+		);
 	});
 
 	it("creates distinct chat ids when multiple chats share the same timestamp", async () => {
@@ -781,13 +760,7 @@ describe("project service", () => {
 
 	it("selects a chat that belongs to the provided project", async () => {
 		const project = createProject("/tmp/pi-desktop");
-		const chat = {
-			id: "chat:one",
-			projectId: project.id,
-			title: "Plan",
-			status: "idle" as const,
-			updatedAt: firstNow,
-		};
+		const chat = createChat(project);
 		const { memoryStore, service } = await createService({
 			initialStore: {
 				...createEmptyProjectStore(),
@@ -812,15 +785,7 @@ describe("project service", () => {
 				...createEmptyProjectStore(),
 				projects: [firstProject, secondProject],
 				chatsByProject: {
-					[firstProject.id]: [
-						{
-							id: "chat:one",
-							projectId: firstProject.id,
-							title: "Plan",
-							status: "idle",
-							updatedAt: firstNow,
-						},
-					],
+					[firstProject.id]: [createChat(firstProject)],
 				},
 			},
 		});

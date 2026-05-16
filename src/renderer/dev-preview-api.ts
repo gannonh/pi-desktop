@@ -30,6 +30,8 @@ const project = (path: string, overrides: Partial<ProjectRecord> = {}): ProjectR
 	...overrides,
 });
 
+const projectPathFromId = (projectId: string) => projectId.replace(/^project:/, "");
+
 const chat = (
 	projectId: string,
 	id: string,
@@ -39,9 +41,16 @@ const chat = (
 ): ChatMetadata => ({
 	id,
 	projectId,
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: projectPathFromId(projectId),
 	title,
 	status,
+	attention: false,
+	createdAt: updatedAt,
 	updatedAt,
+	lastOpenedAt: null,
 });
 
 const standaloneChat = (
@@ -51,9 +60,16 @@ const standaloneChat = (
 	status: StandaloneChatMetadata["status"] = "idle",
 ): StandaloneChatMetadata => ({
 	id,
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: previewRoot,
 	title,
 	status,
+	attention: false,
+	createdAt: updatedAt,
 	updatedAt,
+	lastOpenedAt: null,
 });
 
 const previewRoot = "/tmp/pi-desktop-preview";
@@ -106,6 +122,8 @@ const store: ProjectStore = {
 		],
 		[missing.id]: [chat(missing.id, "chat:missing-plan", "Draft first task", hoursAgo(16))],
 	},
+	standaloneChats: [],
+	sessionUiByPath: {},
 };
 
 const standaloneChats = [

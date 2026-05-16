@@ -47,6 +47,8 @@ const writeProjectStore = async (userDataDir: string, projectPath: string) => {
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 
 	await mkdir(userDataDir, { recursive: true });

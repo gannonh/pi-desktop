@@ -405,15 +405,22 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 		async createChat(input) {
 			return runSerialized(async () => {
 				const store = await deps.store.load();
-				findProjectIndex(store, input.projectId);
+				const project = store.projects[findProjectIndex(store, input.projectId)];
 				const now = deps.now();
 				const existingChats = store.chatsByProject[input.projectId] ?? [];
 				const chat: ChatMetadata = {
 					id: createChatId(now, existingChats),
 					projectId: input.projectId,
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: project.path,
 					title: "New chat",
 					status: "idle",
+					attention: false,
+					createdAt: now,
 					updatedAt: now,
+					lastOpenedAt: null,
 				};
 
 				store.chatsByProject[input.projectId] = [...existingChats, chat];

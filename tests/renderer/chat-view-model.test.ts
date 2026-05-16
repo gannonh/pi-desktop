@@ -28,9 +28,16 @@ const createProject = (overrides: Partial<ProjectWithChats> = {}): ProjectWithCh
 const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	id: "chat:milestone-01",
 	projectId: "project:/Users/gannonhall/dev/pi-desktop",
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: "/Users/gannonhall/dev/pi-desktop",
 	title: "Execute milestone 01: project home sidebar refinements",
 	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T10:00:00.000Z",
 	updatedAt: "2026-05-12T10:00:00.000Z",
+	lastOpenedAt: null,
 	...overrides,
 });
 

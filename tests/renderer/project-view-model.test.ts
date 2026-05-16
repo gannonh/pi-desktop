@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
+import type {
+	ChatMetadata,
+	ProjectStateView,
+	ProjectWithChats,
+	StandaloneChatMetadata,
+} from "../../src/shared/project-state";
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
@@ -23,9 +28,31 @@ const createProject = (overrides: Partial<ProjectWithChats> = {}): ProjectWithCh
 const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	id: "chat:project-home",
 	projectId: "project:/Users/gannonhall/dev/pi",
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: "/Users/gannonhall/dev/pi",
 	title: "Project home",
 	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T10:00:00.000Z",
 	updatedAt: "2026-05-12T10:00:00.000Z",
+	lastOpenedAt: null,
+	...overrides,
+});
+
+const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): StandaloneChatMetadata => ({
+	id: "chat:standalone",
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: "/Users/gannonhall/dev/pi",
+	title: "Would NextJS be good for this app?",
+	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T11:09:00.000Z",
+	updatedAt: "2026-05-12T11:09:00.000Z",
+	lastOpenedAt: null,
 	...overrides,
 });
 
@@ -152,14 +179,7 @@ describe("project view model", () => {
 	it("creates standalone chat rows directly under chats", () => {
 		const view: ProjectStateView = {
 			projects: [],
-			standaloneChats: [
-				{
-					id: "chat:standalone",
-					title: "Would NextJS be good for this app?",
-					status: "idle",
-					updatedAt: "2026-05-12T11:09:00.000Z",
-				},
-			],
+			standaloneChats: [createStandaloneChat()],
 			selectedProjectId: null,
 			selectedChatId: null,
 			selectedProject: null,
@@ -180,12 +200,12 @@ describe("project view model", () => {
 	});
 
 	it("adds a show-more row when standalone chats exceed the visible limit", () => {
-		const standaloneChats = Array.from({ length: 6 }, (_, index) => ({
-			id: `chat:standalone:${index + 1}`,
-			title: `Standalone ${index + 1}`,
-			status: "idle" as const,
-			updatedAt: "2026-05-12T11:09:00.000Z",
-		}));
+		const standaloneChats = Array.from({ length: 6 }, (_, index) =>
+			createStandaloneChat({
+				id: `chat:standalone:${index + 1}`,
+				title: `Standalone ${index + 1}`,
+			}),
+		);
 		const view: ProjectStateView = {
 			projects: [],
 			standaloneChats,
