@@ -1,5 +1,6 @@
 import { mkdir, stat } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
+import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -15,6 +16,11 @@ import type {
 	ProjectPinnedInput,
 	ProjectRenameInput,
 } from "../../shared/ipc";
+import {
+	createChatFromSessionInfo,
+	createStandaloneChatFromSessionInfo,
+	filterStandaloneSessionInfos,
+} from "../sessions/pi-session-index";
 import { getNextScratchProjectPath } from "./project-paths";
 import type { ProjectStoreFile } from "./project-store";
 
@@ -25,12 +31,18 @@ export type ProjectServiceDeps = {
 	openFolderDialog: () => Promise<string | null>;
 	openInFinder: (path: string) => Promise<unknown>;
 	initializeGitRepository: (projectPath: string) => Promise<void>;
+	listProjectSessions: (cwd: string) => Promise<SessionInfo[]>;
+	listAllSessions: () => Promise<SessionInfo[]>;
 };
 
 export type SessionWorkspace = {
 	projectId: string;
 	displayName: string;
 	path: string;
+};
+
+type ChatStandaloneSelectionInput = {
+	chatId: string;
 };
 
 export type ProjectService = {
@@ -47,6 +59,7 @@ export type ProjectService = {
 	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
 	selectChat: (input: ChatSelectionInput) => Promise<ProjectStateView>;
+	selectStandaloneChat: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateView>;
 };
 
 const findProjectIndex = (store: ProjectStore, projectId: string): number => {
@@ -79,9 +92,77 @@ const selectProjectInStore = (store: ProjectStore, projectId: string, now: strin
 	store.selectedChatId = null;
 };
 
+const getResolvedTrackedProjectPaths = (store: ProjectStore): Set<string> =>
+	new Set(store.projects.map((project) => resolve(project.path)));
+
+const pruneStandaloneChatsForTrackedProjects = (store: ProjectStore) => {
+	const trackedProjectPaths = getResolvedTrackedProjectPaths(store);
+	store.standaloneChats = store.standaloneChats.filter((chat) => !trackedProjectPaths.has(resolve(chat.cwd)));
+
+	if (
+		store.selectedProjectId === null &&
+		store.selectedChatId !== null &&
+		!store.standaloneChats.some((chat) => chat.id === store.selectedChatId)
+	) {
+		store.selectedChatId = null;
+	}
+};
+
 const saveAndView = async (storeFile: ProjectStoreFile, store: ProjectStore): Promise<ProjectStateView> => {
+	pruneStandaloneChatsForTrackedProjects(store);
 	await storeFile.save(store);
 	return createProjectStateView(store);
+};
+
+const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore): Promise<ProjectStore> => {
+	const nextStore = structuredClone(store);
+	const trackedProjectPaths = new Set(nextStore.projects.map((project) => project.path));
+	const trackedProjectCwds = getResolvedTrackedProjectPaths(nextStore);
+
+	for (const project of nextStore.projects) {
+		if (project.availability.status !== "available") {
+			continue;
+		}
+
+		const sessions = await deps.listProjectSessions(project.path);
+		const piChats = sessions.map((session) => {
+			const ui = nextStore.sessionUiByPath[session.path];
+			const base = createChatFromSessionInfo({
+				session,
+				projectId: project.id,
+				status: ui?.status ?? "idle",
+				attention: ui?.attention ?? false,
+				lastOpenedAt: ui?.lastOpenedAt ?? null,
+			});
+			return ui ? { ...base, id: ui.chatId } : base;
+		});
+		const existingChats = nextStore.chatsByProject[project.id] ?? [];
+		const drafts = existingChats.filter((chat) => chat.source === "draft");
+		const chats = [...piChats, ...drafts];
+		if (chats.length > 0 || nextStore.chatsByProject[project.id] !== undefined) {
+			nextStore.chatsByProject[project.id] = chats;
+		}
+	}
+
+	const standaloneSessions = filterStandaloneSessionInfos(await deps.listAllSessions(), trackedProjectPaths);
+	const standaloneChats = standaloneSessions.map((session) => {
+		const ui = nextStore.sessionUiByPath[session.path];
+		const base = createStandaloneChatFromSessionInfo({
+			session,
+			status: ui?.status ?? "idle",
+			attention: ui?.attention ?? false,
+			lastOpenedAt: ui?.lastOpenedAt ?? null,
+		});
+		return ui ? { ...base, id: ui.chatId } : base;
+	});
+	const seenStandaloneSessionPaths = new Set(standaloneChats.map((chat) => chat.sessionPath));
+	const preservedStandaloneChats = nextStore.standaloneChats.filter(
+		(chat) => !seenStandaloneSessionPaths.has(chat.sessionPath) && !trackedProjectCwds.has(resolve(chat.cwd)),
+	);
+	nextStore.standaloneChats = [...standaloneChats, ...preservedStandaloneChats];
+	pruneStandaloneChatsForTrackedProjects(nextStore);
+
+	return nextStore;
 };
 
 const getErrorCode = (error: unknown): unknown =>
@@ -186,11 +267,12 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				const changed = await refreshAllProjectAvailability(store, deps.now());
-				if (changed) {
-					await deps.store.save(store);
+				const withSessions = await refreshSessionChats(deps, store);
+				if (changed || JSON.stringify(withSessions) !== JSON.stringify(store)) {
+					await deps.store.save(withSessions);
 				}
 
-				return createProjectStateView(store);
+				return createProjectStateView(withSessions);
 			});
 		},
 
@@ -420,7 +502,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					attention: false,
 					createdAt: now,
 					updatedAt: now,
-					lastOpenedAt: null,
+					lastOpenedAt: now,
 				};
 
 				store.chatsByProject[input.projectId] = [...existingChats, chat];
@@ -446,6 +528,39 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				store.selectedChatId = input.chatId;
 
 				return saveAndView(deps.store, store);
+			});
+		},
+
+		async selectStandaloneChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const refreshed = await refreshSessionChats(deps, store);
+				const chatIndex = refreshed.standaloneChats.findIndex((chat) => chat.id === input.chatId);
+				if (chatIndex === -1) {
+					throw new Error("Standalone chat not found.");
+				}
+
+				const now = deps.now();
+				refreshed.standaloneChats[chatIndex] = {
+					...refreshed.standaloneChats[chatIndex],
+					lastOpenedAt: now,
+				};
+				const selected = refreshed.standaloneChats[chatIndex];
+				if (selected.sessionPath) {
+					refreshed.sessionUiByPath[selected.sessionPath] = {
+						chatId: selected.id,
+						sessionId: selected.sessionId,
+						sessionPath: selected.sessionPath,
+						projectId: null,
+						lastOpenedAt: now,
+						status: selected.status,
+						attention: selected.attention,
+					};
+				}
+				refreshed.selectedProjectId = null;
+				refreshed.selectedChatId = input.chatId;
+
+				return saveAndView(deps.store, refreshed);
 			});
 		},
 	};

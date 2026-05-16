@@ -13,6 +13,7 @@ import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
 import { createProjectService } from "../projects/project-service";
 import { createProjectStore } from "../projects/project-store";
+import { createPiSessionLister } from "../sessions/pi-session-index";
 import { createLocalDevServer, type LocalDevServer, type LocalDevServerOptions } from "./local-dev-server";
 
 const host = "127.0.0.1";
@@ -65,6 +66,7 @@ export const resolveDevWebUserDataDir = (
 
 export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBackend => {
 	const documentsDir = env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
+	const piSessionLister = createPiSessionLister(env);
 	const projectStorePath = resolveProjectStorePath({
 		env,
 		defaultUserDataDir: resolveDevWebUserDataDir(env),
@@ -79,6 +81,8 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 			openFolderDialog: unavailableNativeOperation,
 			openInFinder: unavailableNativeOperation,
 			initializeGitRepository,
+			listProjectSessions: piSessionLister.listProject,
+			listAllSessions: piSessionLister.listAll,
 		}),
 		now: () => new Date().toISOString(),
 		createAgentSession: env.PI_DESKTOP_SMOKE_PI_SESSION === "1" ? createSmokePiAgentSession : undefined,

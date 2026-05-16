@@ -10,6 +10,7 @@ import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
+import { createPiSessionLister } from "./sessions/pi-session-index";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
@@ -127,6 +128,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 };
 
 app.whenReady().then(() => {
+	const piSessionLister = createPiSessionLister(process.env);
 	const projectService = createProjectService({
 		store: createProjectStore(getProjectStorePath()),
 		documentsDir: app.getPath("documents"),
@@ -134,6 +136,8 @@ app.whenReady().then(() => {
 		openFolderDialog,
 		openInFinder,
 		initializeGitRepository,
+		listProjectSessions: piSessionLister.listProject,
+		listAllSessions: piSessionLister.listAll,
 	});
 
 	createWindow();

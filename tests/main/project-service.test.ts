@@ -2,7 +2,7 @@ import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { createProjectService } from "../../src/main/projects/project-service";
+import { createProjectService, type ProjectServiceDeps } from "../../src/main/projects/project-service";
 import type { ProjectStoreFile } from "../../src/main/projects/project-store";
 import {
 	createEmptyProjectStore,
@@ -38,6 +38,8 @@ const createService = async (
 		openFolderDialog?: () => Promise<string | null>;
 		openInFinder?: (path: string) => Promise<unknown>;
 		initializeGitRepository?: (path: string) => Promise<void>;
+		listProjectSessions?: ProjectServiceDeps["listProjectSessions"];
+		listAllSessions?: ProjectServiceDeps["listAllSessions"];
 	} = {},
 ) => {
 	const documentsDir = options.documentsDir ?? (await mkdtemp(join(tmpdir(), "pi-documents-")));
@@ -45,6 +47,8 @@ const createService = async (
 	const initializeGitRepository = vi.fn(options.initializeGitRepository ?? (async () => undefined));
 	const openInFinder = vi.fn(options.openInFinder ?? (async () => undefined));
 	const openFolderDialog = vi.fn(options.openFolderDialog ?? (async () => null));
+	const listProjectSessions = vi.fn(options.listProjectSessions ?? (async () => []));
+	const listAllSessions = vi.fn(options.listAllSessions ?? (async () => []));
 
 	return {
 		documentsDir,
@@ -52,6 +56,8 @@ const createService = async (
 		initializeGitRepository,
 		openInFinder,
 		openFolderDialog,
+		listProjectSessions,
+		listAllSessions,
 		service: createProjectService({
 			store: memoryStore.file,
 			documentsDir,
@@ -59,6 +65,8 @@ const createService = async (
 			openFolderDialog,
 			openInFinder,
 			initializeGitRepository,
+			listProjectSessions,
+			listAllSessions,
 		}),
 	};
 };
@@ -227,6 +235,36 @@ describe("project service", () => {
 		expect(view.selectedProjectId).toBe(createProjectId(selectedPath));
 		expect(view.selectedProject?.displayName).toBe(folderName);
 		expect(view.selectedProject?.path).toBe(selectedPath);
+	});
+
+	it("prunes a stale standalone chat when adding its cwd as an existing folder", async () => {
+		const selectedPath = await mkdtemp(join(tmpdir(), "pi-existing-standalone-"));
+		const staleStandaloneChat = {
+			id: "chat:session:stale",
+			source: "pi-session" as const,
+			sessionId: "stale",
+			sessionPath: join(selectedPath, "stale.jsonl"),
+			cwd: selectedPath,
+			title: "Stale standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: firstNow,
+			updatedAt: firstNow,
+			lastOpenedAt: null,
+		};
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				standaloneChats: [staleStandaloneChat],
+			},
+			openFolderDialog: async () => selectedPath,
+		});
+
+		const view = await service.addExistingFolder();
+
+		expect(view.selectedProjectId).toBe(createProjectId(selectedPath));
+		expect(view.standaloneChats).toEqual([]);
+		expect(memoryStore.read().standaloneChats).toEqual([]);
 	});
 
 	it("updates an existing folder record when adding the same path again", async () => {
@@ -713,6 +751,7 @@ describe("project service", () => {
 				title: "New chat",
 				createdAt: secondNow,
 				updatedAt: secondNow,
+				lastOpenedAt: secondNow,
 			}),
 		);
 	});
@@ -840,5 +879,178 @@ describe("project service", () => {
 		});
 
 		await expect(service.openProjectInFinder({ projectId: project.id })).rejects.toThrow(/The file does not exist/);
+	});
+
+	it("loads project chats from Pi session metadata", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-project-sessions-"));
+		const project = createProject(projectPath);
+		const session = {
+			path: join(projectPath, ".pi-session.jsonl"),
+			id: "session-project",
+			cwd: projectPath,
+			name: "Project session",
+			parentSessionPath: undefined,
+			created: new Date("2026-05-12T08:00:00.000Z"),
+			modified: new Date("2026-05-12T11:00:00.000Z"),
+			messageCount: 4,
+			firstMessage: "ignored because name wins",
+			allMessagesText: "Project session text",
+		};
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+			},
+			listProjectSessions: async () => [session],
+		});
+
+		const view = await service.getState();
+
+		expect(view.selectedProject?.chats).toEqual([
+			expect.objectContaining({
+				id: "chat:session:session-project",
+				projectId: project.id,
+				source: "pi-session",
+				sessionId: "session-project",
+				sessionPath: session.path,
+				title: "Project session",
+				updatedAt: "2026-05-12T11:00:00.000Z",
+			}),
+		]);
+	});
+
+	it("loads standalone chats from Pi sessions outside tracked projects", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-tracked-"));
+		const outsidePath = await mkdtemp(join(tmpdir(), "pi-outside-"));
+		const project = createProject(projectPath);
+		const trackedSession = {
+			path: join(projectPath, "tracked.jsonl"),
+			id: "tracked",
+			cwd: projectPath,
+			name: "Tracked",
+			parentSessionPath: undefined,
+			created: new Date("2026-05-12T08:00:00.000Z"),
+			modified: new Date("2026-05-12T09:00:00.000Z"),
+			messageCount: 2,
+			firstMessage: "Tracked",
+			allMessagesText: "Tracked",
+		};
+		const standaloneSession = {
+			...trackedSession,
+			path: join(outsidePath, "standalone.jsonl"),
+			id: "standalone",
+			cwd: outsidePath,
+			name: "Standalone",
+		};
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+			},
+			listAllSessions: async () => [trackedSession, standaloneSession],
+		});
+
+		const view = await service.getState();
+
+		expect(view.standaloneChats.map((chat) => chat.id)).toEqual(["chat:session:standalone"]);
+		expect(view.standaloneChats[0]?.title).toBe("Standalone");
+	});
+
+	it("removes preserved standalone chats when their cwd is now a tracked project", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-reclassified-"));
+		const project = createProject(projectPath);
+		const staleStandaloneChat = {
+			id: "chat:session:stale",
+			source: "pi-session" as const,
+			sessionId: "stale",
+			sessionPath: join(projectPath, "stale.jsonl"),
+			cwd: projectPath,
+			title: "Stale standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: firstNow,
+			updatedAt: firstNow,
+			lastOpenedAt: null,
+		};
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				standaloneChats: [staleStandaloneChat],
+			},
+		});
+
+		const view = await service.getState();
+
+		expect(view.standaloneChats).toEqual([]);
+		expect(memoryStore.read().standaloneChats).toEqual([]);
+	});
+
+	it("clears stale selected standalone chats when loading state", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-selected-reclassified-"));
+		const project = createProject(projectPath);
+		const staleStandaloneChat = {
+			id: "chat:session:stale-selected",
+			source: "pi-session" as const,
+			sessionId: "stale-selected",
+			sessionPath: join(projectPath, "stale-selected.jsonl"),
+			cwd: projectPath,
+			title: "Stale selected standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: firstNow,
+			updatedAt: firstNow,
+			lastOpenedAt: null,
+		};
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				standaloneChats: [staleStandaloneChat],
+				selectedProjectId: null,
+				selectedChatId: staleStandaloneChat.id,
+			},
+		});
+
+		const view = await service.getState();
+		const saved = memoryStore.read();
+
+		expect(view.standaloneChats).toEqual([]);
+		expect(view.selectedProjectId).toBeNull();
+		expect(view.selectedChatId).toBeNull();
+		expect(saved.standaloneChats).toEqual([]);
+		expect(saved.selectedProjectId).toBeNull();
+		expect(saved.selectedChatId).toBeNull();
+	});
+
+	it("selects standalone chats through the service", async () => {
+		const standaloneChat = {
+			id: "chat:standalone",
+			source: "pi-session" as const,
+			sessionId: "standalone",
+			sessionPath: "/tmp/standalone.jsonl",
+			cwd: "/tmp/outside",
+			title: "Standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: firstNow,
+			updatedAt: firstNow,
+			lastOpenedAt: null,
+		};
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				standaloneChats: [standaloneChat],
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.selectStandaloneChat({ chatId: standaloneChat.id });
+
+		expect(view.selectedProjectId).toBeNull();
+		expect(view.selectedChatId).toBe(standaloneChat.id);
+		expect(view.selectedChat).toEqual({ ...standaloneChat, lastOpenedAt: secondNow });
+		expect(memoryStore.read().standaloneChats[0]?.lastOpenedAt).toBe(secondNow);
 	});
 });
