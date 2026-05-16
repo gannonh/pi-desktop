@@ -1,6 +1,7 @@
 import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { createProjectService, type ProjectServiceDeps } from "../../src/main/projects/project-service";
 import type { ProjectStoreFile } from "../../src/main/projects/project-store";
@@ -40,6 +41,10 @@ const createService = async (
 		initializeGitRepository?: (path: string) => Promise<void>;
 		listProjectSessions?: ProjectServiceDeps["listProjectSessions"];
 		listAllSessions?: ProjectServiceDeps["listAllSessions"];
+		writeSessionName?: ProjectServiceDeps["writeSessionName"];
+		forkSession?: ProjectServiceDeps["forkSession"];
+		cloneSession?: ProjectServiceDeps["cloneSession"];
+		branchSession?: ProjectServiceDeps["branchSession"];
 	} = {},
 ) => {
 	const documentsDir = options.documentsDir ?? (await mkdtemp(join(tmpdir(), "pi-documents-")));
@@ -49,6 +54,10 @@ const createService = async (
 	const openFolderDialog = vi.fn(options.openFolderDialog ?? (async () => null));
 	const listProjectSessions = vi.fn(options.listProjectSessions ?? (async () => []));
 	const listAllSessions = vi.fn(options.listAllSessions ?? (async () => []));
+	const writeSessionName = vi.fn(options.writeSessionName ?? (async () => undefined));
+	const forkSession = vi.fn(options.forkSession ?? (async () => "/tmp/forked-session.jsonl"));
+	const cloneSession = vi.fn(options.cloneSession ?? (async () => "/tmp/cloned-session.jsonl"));
+	const branchSession = vi.fn(options.branchSession ?? (async () => "/tmp/branched-session.jsonl"));
 
 	return {
 		documentsDir,
@@ -58,6 +67,10 @@ const createService = async (
 		openFolderDialog,
 		listProjectSessions,
 		listAllSessions,
+		writeSessionName,
+		forkSession,
+		cloneSession,
+		branchSession,
 		service: createProjectService({
 			store: memoryStore.file,
 			documentsDir,
@@ -67,6 +80,10 @@ const createService = async (
 			initializeGitRepository,
 			listProjectSessions,
 			listAllSessions,
+			writeSessionName,
+			forkSession,
+			cloneSession,
+			branchSession,
 		}),
 	};
 };
@@ -99,6 +116,20 @@ const createChat = (
 	createdAt: firstNow,
 	updatedAt: firstNow,
 	lastOpenedAt: null,
+	...overrides,
+});
+
+const createSessionInfo = (overrides: Partial<SessionInfo> = {}): SessionInfo => ({
+	path: "/tmp/session.jsonl",
+	id: "session",
+	cwd: "/tmp/pi-desktop",
+	name: "Session",
+	parentSessionPath: undefined,
+	created: new Date(firstNow),
+	modified: new Date(secondNow),
+	messageCount: 1,
+	firstMessage: "First message",
+	allMessagesText: "First message",
 	...overrides,
 });
 
@@ -832,6 +863,151 @@ describe("project service", () => {
 		await expect(service.selectChat({ projectId: secondProject.id, chatId: "chat:one" })).rejects.toThrow(
 			/Chat does not belong to the selected project/,
 		);
+	});
+
+	it("renames a Pi-backed chat through session name writer", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const sessionPath = "/tmp/pi-desktop/session.jsonl";
+		const chat = createChat(project, {
+			id: "chat:session:source",
+			source: "pi-session",
+			sessionId: "source",
+			sessionPath,
+			title: "Old title",
+		});
+		const { memoryStore, service, writeSessionName } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				chatsByProject: {
+					[project.id]: [chat],
+				},
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.renameChat({ projectId: project.id, chatId: chat.id, title: "New title" });
+
+		expect(writeSessionName).toHaveBeenCalledWith(sessionPath, "New title");
+		expect(view.selectedProject?.chats[0]).toEqual({ ...chat, title: "New title", updatedAt: secondNow });
+		expect(memoryStore.read().chatsByProject[project.id]?.[0]).toEqual({
+			...chat,
+			title: "New title",
+			updatedAt: secondNow,
+		});
+	});
+
+	it("renames a draft chat in the desktop store", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const chat = createChat(project, { title: "Draft title" });
+		const { memoryStore, service, writeSessionName } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				chatsByProject: {
+					[project.id]: [chat],
+				},
+			},
+			now: () => secondNow,
+		});
+
+		const view = await service.renameChat({ projectId: project.id, chatId: chat.id, title: "Renamed draft" });
+
+		expect(writeSessionName).not.toHaveBeenCalled();
+		expect(view.selectedProject?.chats[0]).toEqual({ ...chat, title: "Renamed draft", updatedAt: secondNow });
+		expect(memoryStore.read().chatsByProject[project.id]?.[0]).toEqual({
+			...chat,
+			title: "Renamed draft",
+			updatedAt: secondNow,
+		});
+	});
+
+	it("forks a Pi-backed chat into the same project", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const sourcePath = "/tmp/pi-desktop/source.jsonl";
+		const forkedPath = "/tmp/pi-desktop/forked.jsonl";
+		const sourceChat = createChat(project, {
+			id: "chat:session:source",
+			source: "pi-session",
+			sessionId: "source",
+			sessionPath: sourcePath,
+			title: "Source session",
+		});
+		const { forkSession, memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				chatsByProject: {
+					[project.id]: [sourceChat],
+				},
+			},
+			now: () => secondNow,
+			forkSession: async () => forkedPath,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sourcePath,
+					id: "source",
+					cwd: project.path,
+					name: "Source session",
+				}),
+				createSessionInfo({
+					path: forkedPath,
+					id: "forked",
+					cwd: project.path,
+					name: "Forked session",
+					parentSessionPath: sourcePath,
+				}),
+			],
+		});
+
+		const view = await service.forkChat({ projectId: project.id, chatId: sourceChat.id });
+
+		expect(forkSession).toHaveBeenCalledWith(sourcePath, project.path);
+		expect(memoryStore.read().sessionUiByPath[forkedPath]).toEqual({
+			chatId: `chat:${secondNow}:2`,
+			sessionId: null,
+			sessionPath: forkedPath,
+			projectId: project.id,
+			lastOpenedAt: secondNow,
+			status: "idle",
+			attention: false,
+		});
+		expect(view.selectedProject?.chats).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: `chat:${secondNow}:2`,
+					projectId: project.id,
+					sessionPath: forkedPath,
+					title: "Forked session",
+					status: "idle",
+					attention: false,
+					lastOpenedAt: secondNow,
+				}),
+			]),
+		);
+	});
+
+	it("rejects clone for a draft chat without Pi session path", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const chat = createChat(project);
+		const { cloneSession, memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				chatsByProject: {
+					[project.id]: [chat],
+				},
+			},
+		});
+
+		await expect(service.cloneChat({ projectId: project.id, chatId: chat.id })).rejects.toThrow(
+			/Chat does not have a Pi session file yet/,
+		);
+		expect(cloneSession).not.toHaveBeenCalled();
+		expect(memoryStore.file.save).not.toHaveBeenCalled();
 	});
 
 	it("sets pinned state and pinned projects sort before unpinned projects", async () => {

@@ -10,7 +10,11 @@ import {
 	type ProjectStore,
 } from "../../shared/project-state";
 import type {
+	ChatBranchInput,
+	ChatCloneInput,
 	ChatCreateInput,
+	ChatForkInput,
+	ChatRenameInput,
 	ChatSelectionInput,
 	ChatStandaloneSelectionInput,
 	ProjectIdInput,
@@ -34,6 +38,10 @@ export type ProjectServiceDeps = {
 	initializeGitRepository: (projectPath: string) => Promise<void>;
 	listProjectSessions: (cwd: string) => Promise<SessionInfo[]>;
 	listAllSessions: () => Promise<SessionInfo[]>;
+	writeSessionName: (sessionPath: string, name: string) => Promise<void>;
+	forkSession: (sourcePath: string, targetCwd: string) => Promise<string>;
+	cloneSession: (sourcePath: string, targetCwd: string) => Promise<string>;
+	branchSession: (sourcePath: string, targetCwd: string, entryId: string) => Promise<string>;
 };
 
 export type SessionWorkspace = {
@@ -56,7 +64,11 @@ export type ProjectService = {
 	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
 	selectChat: (input: ChatSelectionInput) => Promise<ProjectStateView>;
+	renameChat: (input: ChatRenameInput) => Promise<ProjectStateView>;
 	selectStandaloneChat: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateView>;
+	forkChat: (input: ChatForkInput) => Promise<ProjectStateView>;
+	cloneChat: (input: ChatCloneInput) => Promise<ProjectStateView>;
+	branchChat: (input: ChatBranchInput) => Promise<ProjectStateView>;
 };
 
 const findProjectIndex = (store: ProjectStore, projectId: string): number => {
@@ -66,6 +78,24 @@ const findProjectIndex = (store: ProjectStore, projectId: string): number => {
 	}
 
 	return index;
+};
+
+const findProjectChat = (store: ProjectStore, projectId: string, chatId: string): ChatMetadata => {
+	findProjectIndex(store, projectId);
+	const chat = (store.chatsByProject[projectId] ?? []).find((candidate) => candidate.id === chatId);
+	if (!chat) {
+		throw new Error("Chat not found.");
+	}
+
+	return chat;
+};
+
+const requireSessionPath = (chat: ChatMetadata): string => {
+	if (!chat.sessionPath) {
+		throw new Error("Chat does not have a Pi session file yet.");
+	}
+
+	return chat.sessionPath;
 };
 
 const createAvailableProject = (projectPath: string, now: string): ProjectRecord => ({
@@ -528,6 +558,43 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			});
 		},
 
+		async renameChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const now = deps.now();
+
+				if (input.projectId === null) {
+					const chatIndex = store.standaloneChats.findIndex((chat) => chat.id === input.chatId);
+					if (chatIndex === -1) {
+						throw new Error("Standalone chat not found.");
+					}
+
+					const chat = store.standaloneChats[chatIndex];
+					if (chat.sessionPath) {
+						await deps.writeSessionName(chat.sessionPath, input.title);
+					}
+					store.standaloneChats[chatIndex] = {
+						...chat,
+						title: input.title,
+						updatedAt: now,
+					};
+
+					return saveAndView(deps.store, store);
+				}
+
+				const chat = findProjectChat(store, input.projectId, input.chatId);
+				if (chat.sessionPath) {
+					await deps.writeSessionName(chat.sessionPath, input.title);
+				}
+				const projectChats = store.chatsByProject[input.projectId] ?? [];
+				store.chatsByProject[input.projectId] = projectChats.map((candidate) =>
+					candidate.id === input.chatId ? { ...candidate, title: input.title, updatedAt: now } : candidate,
+				);
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
 		async selectStandaloneChat(input) {
 			return runSerialized(async () => {
 				const store = await deps.store.load();
@@ -557,6 +624,75 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				refreshed.selectedProjectId = null;
 				refreshed.selectedChatId = input.chatId;
 
+				return saveAndView(deps.store, refreshed);
+			});
+		},
+
+		async forkChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const project = store.projects[findProjectIndex(store, input.projectId)];
+				const chat = findProjectChat(store, input.projectId, input.chatId);
+				const targetPath = await deps.forkSession(requireSessionPath(chat), project.path);
+				const now = deps.now();
+
+				store.sessionUiByPath[targetPath] = {
+					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					sessionId: null,
+					sessionPath: targetPath,
+					projectId: input.projectId,
+					lastOpenedAt: now,
+					status: "idle",
+					attention: false,
+				};
+
+				const refreshed = await refreshSessionChats(deps, store);
+				return saveAndView(deps.store, refreshed);
+			});
+		},
+
+		async cloneChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const project = store.projects[findProjectIndex(store, input.projectId)];
+				const chat = findProjectChat(store, input.projectId, input.chatId);
+				const targetPath = await deps.cloneSession(requireSessionPath(chat), project.path);
+				const now = deps.now();
+
+				store.sessionUiByPath[targetPath] = {
+					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					sessionId: null,
+					sessionPath: targetPath,
+					projectId: input.projectId,
+					lastOpenedAt: now,
+					status: "idle",
+					attention: false,
+				};
+
+				const refreshed = await refreshSessionChats(deps, store);
+				return saveAndView(deps.store, refreshed);
+			});
+		},
+
+		async branchChat(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const project = store.projects[findProjectIndex(store, input.projectId)];
+				const chat = findProjectChat(store, input.projectId, input.chatId);
+				const targetPath = await deps.branchSession(requireSessionPath(chat), project.path, input.entryId);
+				const now = deps.now();
+
+				store.sessionUiByPath[targetPath] = {
+					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					sessionId: null,
+					sessionPath: targetPath,
+					projectId: input.projectId,
+					lastOpenedAt: now,
+					status: "idle",
+					attention: false,
+				};
+
+				const refreshed = await refreshSessionChats(deps, store);
 				return saveAndView(deps.store, refreshed);
 			});
 		},

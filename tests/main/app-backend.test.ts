@@ -32,7 +32,11 @@ const createProjectService = (): ProjectService => ({
 	})),
 	createChat: vi.fn(async () => emptyState),
 	selectChat: vi.fn(async () => emptyState),
+	renameChat: vi.fn(async () => emptyState),
 	selectStandaloneChat: vi.fn(async () => emptyState),
+	forkChat: vi.fn(async () => emptyState),
+	cloneChat: vi.fn(async () => emptyState),
+	branchChat: vi.fn(async () => emptyState),
 });
 
 const waitForScheduledPrompt = async (events: unknown[]) => {

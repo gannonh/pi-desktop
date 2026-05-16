@@ -79,6 +79,10 @@ const openInFinder = async (projectPath: string): Promise<void> => {
 	}
 };
 
+const unavailableChatSessionOperation = async (): Promise<never> => {
+	throw new Error("Chat session management operation is not available.");
+};
+
 const registerIpcHandlers = (projectService: ProjectService) => {
 	const backend = createAppBackend({
 		appInfo: {
@@ -143,6 +147,10 @@ app.whenReady().then(() => {
 		initializeGitRepository,
 		listProjectSessions: piSessionLister.listProject,
 		listAllSessions: piSessionLister.listAll,
+		writeSessionName: unavailableChatSessionOperation,
+		forkSession: unavailableChatSessionOperation,
+		cloneSession: unavailableChatSessionOperation,
+		branchSession: unavailableChatSessionOperation,
 	});
 
 	createWindow();
