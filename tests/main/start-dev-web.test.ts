@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AppBackend } from "../../src/main/app-backend";
 import type { LocalDevServer, LocalDevServerOptions } from "../../src/main/dev-server/local-dev-server";
-import { startDevWebServer, type StartDevWebServerDeps } from "../../src/main/dev-server/start-dev-web";
+import {
+	resolveDevWebUserDataDir,
+	startDevWebServer,
+	type StartDevWebServerDeps,
+} from "../../src/main/dev-server/start-dev-web";
 import { err, ok } from "../../src/shared/result";
 
 const createBackend = (): AppBackend =>
@@ -66,6 +70,20 @@ const createViteServer = (overrides: Partial<StartDevWebServerDeps> = {}) => {
 	};
 };
 
+describe("resolveDevWebUserDataDir", () => {
+	it("defaults to the Electron dev app user data path on macOS", () => {
+		expect(resolveDevWebUserDataDir({}, "/Users/tester", "darwin")).toBe(
+			"/Users/tester/Library/Application Support/pi-desktop",
+		);
+	});
+
+	it("keeps the explicit user data path override", () => {
+		expect(
+			resolveDevWebUserDataDir({ PI_DESKTOP_USER_DATA_DIR: "/tmp/pi-desktop-web" }, "/Users/tester", "darwin"),
+		).toBe("/tmp/pi-desktop-web");
+	});
+});
+
 describe("startDevWebServer", () => {
 	it("sets the app server URL environment variable before creating the Vite server", async () => {
 		const fixture = createViteServer({
@@ -89,6 +107,9 @@ describe("startDevWebServer", () => {
 		expect(fixture.vite.listen).toHaveBeenCalledOnce();
 		expect(fixture.vite.printUrls).toHaveBeenCalledOnce();
 		expect(fixture.logger.log).toHaveBeenCalledWith(`Local app data bridge: ${fixture.appServer.url}`);
+		expect(fixture.logger.log).toHaveBeenCalledWith(expect.stringContaining("pi-desktop workspace store: "));
+		expect(fixture.logger.log).toHaveBeenCalledWith(expect.stringContaining("Pi agent config directory: "));
+		expect(fixture.logger.log).toHaveBeenCalledWith(expect.stringContaining("Pi session files root: "));
 
 		await handle.shutdown();
 	});

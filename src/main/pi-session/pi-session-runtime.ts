@@ -1,4 +1,4 @@
-import { createAgentSession as createPiAgentSession } from "@earendil-works/pi-coding-agent";
+import { createAgentSession as createPiAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type {
 	PiSessionAbortInput,
@@ -9,6 +9,7 @@ import type {
 	PiSessionStatus,
 	PiSessionSubmitInput,
 } from "../../shared/pi-session";
+import { resolvePiAgentDir, resolvePiSessionFilesDirForCwd } from "../app-paths";
 import { createRuntimeErrorEvent, normalizePiSessionEvent } from "./pi-session-event-normalizer";
 
 export type PiSdkSession = {
@@ -33,6 +34,7 @@ type RuntimeStartInput = {
 type RuntimeDeps = {
 	now: () => string;
 	emit: (event: PiSessionEvent) => void;
+	env?: NodeJS.ProcessEnv;
 	createAgentSession?: (options: { cwd: string }) => Promise<CreateAgentSessionResult>;
 };
 
@@ -50,7 +52,17 @@ type RuntimeEntry = {
 const createDesktopSessionId = (projectId: string, piSessionId: string): string => `${projectId}:${piSessionId}`;
 
 export const createPiSessionRuntime = (deps: RuntimeDeps) => {
-	const createAgentSession = deps.createAgentSession ?? createPiAgentSession;
+	const createAgentSession =
+		deps.createAgentSession ??
+		((options: { cwd: string }) =>
+			createPiAgentSession({
+				...options,
+				agentDir: resolvePiAgentDir(deps.env),
+				sessionManager: SessionManager.create(
+					options.cwd,
+					resolvePiSessionFilesDirForCwd({ cwd: options.cwd, env: deps.env }),
+				),
+			}));
 	const sessions = new Map<string, RuntimeEntry>();
 	const busyStatuses = new Set<PiSessionStatus>(["running", "retrying", "aborting"]);
 
