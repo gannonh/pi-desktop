@@ -18,6 +18,15 @@ describe("unavailable PiDesktop API", () => {
 				message: "No app transport configured.",
 			},
 		});
+		await expect(
+			api.chat.rename({ projectId: "project:one", chatId: "chat:one", title: "Renamed chat" }),
+		).resolves.toEqual({
+			ok: false,
+			error: {
+				code: "app_transport.unavailable",
+				message: "No app transport configured.",
+			},
+		});
 		expect(api.piSession.onEvent(vi.fn())()).toBeUndefined();
 	});
 });

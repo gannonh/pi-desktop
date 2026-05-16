@@ -5,6 +5,7 @@ import {
 	createProjectId,
 	createProjectStateView,
 	type ChatMetadata,
+	type ChatStatus,
 	type ProjectRecord,
 	type ProjectStateView,
 	type ProjectStore,
@@ -50,6 +51,27 @@ export type SessionWorkspace = {
 	path: string;
 };
 
+export type SessionStartTargetInput = { projectId: string | null; chatId: string | null };
+export type SessionStartTarget = {
+	projectId: string | null;
+	chatId: string | null;
+	workspacePath: string;
+	sessionPath: string | null;
+};
+export type SessionStartedInput = {
+	projectId: string | null;
+	chatId: string | null;
+	sessionId: string;
+	sessionPath: string | null;
+	status: ChatStatus;
+};
+export type SessionStatusInput = {
+	sessionId: string;
+	status: ChatStatus;
+	attention: boolean;
+	updatedAt: string;
+};
+
 export type ProjectService = {
 	getState: () => Promise<ProjectStateView>;
 	createFromScratch: () => Promise<ProjectStateView>;
@@ -69,6 +91,9 @@ export type ProjectService = {
 	forkChat: (input: ChatForkInput) => Promise<ProjectStateView>;
 	cloneChat: (input: ChatCloneInput) => Promise<ProjectStateView>;
 	branchChat: (input: ChatBranchInput) => Promise<ProjectStateView>;
+	getSessionStartTarget: (input: SessionStartTargetInput) => Promise<SessionStartTarget>;
+	recordSessionStarted: (input: SessionStartedInput) => Promise<void>;
+	recordSessionStatus: (input: SessionStatusInput) => Promise<void>;
 };
 
 const findProjectIndex = (store: ProjectStore, projectId: string): number => {
@@ -694,6 +719,100 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 				const refreshed = await refreshSessionChats(deps, store);
 				return saveAndView(deps.store, refreshed);
+			});
+		},
+
+		async getSessionStartTarget(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+
+				if (input.projectId === null) {
+					const chat = store.standaloneChats.find((candidate) => candidate.id === input.chatId);
+					if (!chat) {
+						throw new Error("Select a project or existing standalone chat to start a Pi session.");
+					}
+
+					return {
+						projectId: null,
+						chatId: chat.id,
+						workspacePath: chat.cwd,
+						sessionPath: chat.sessionPath,
+					};
+				}
+
+				const projectIndex = findProjectIndex(store, input.projectId);
+				const availabilityChanged = await refreshProjectAvailabilityAtIndex(store, projectIndex, deps.now());
+				const project = store.projects[projectIndex];
+				if (project.availability.status === "missing") {
+					await deps.store.save(store);
+					throw new Error("Project folder is missing. Locate the folder before starting a Pi session.");
+				}
+				if (project.availability.status === "unavailable") {
+					await deps.store.save(store);
+					throw new Error(project.availability.reason);
+				}
+				if (availabilityChanged) {
+					await deps.store.save(store);
+				}
+
+				const chat =
+					input.chatId !== null
+						? (store.chatsByProject[input.projectId] ?? []).find((candidate) => candidate.id === input.chatId)
+						: null;
+				if (input.chatId !== null && !chat) {
+					throw new Error("Chat not found.");
+				}
+
+				return {
+					projectId: input.projectId,
+					chatId: chat?.id ?? null,
+					workspacePath: project.path,
+					sessionPath: chat?.sessionPath ?? null,
+				};
+			});
+		},
+
+		async recordSessionStarted(input) {
+			if (!input.sessionPath) {
+				return;
+			}
+			const sessionPath = input.sessionPath;
+
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const chatId = input.chatId ?? `chat:session:${input.sessionId}`;
+				store.sessionUiByPath[sessionPath] = {
+					chatId,
+					sessionId: input.sessionId,
+					sessionPath,
+					projectId: input.projectId,
+					lastOpenedAt: deps.now(),
+					status: input.status,
+					attention: false,
+				};
+				if (input.projectId !== null && input.chatId !== null) {
+					store.chatsByProject[input.projectId] = (store.chatsByProject[input.projectId] ?? []).filter(
+						(chat) => chat.id !== input.chatId || chat.source !== "draft",
+					);
+				}
+				await deps.store.save(store);
+			});
+		},
+
+		async recordSessionStatus(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				for (const [sessionPath, ui] of Object.entries(store.sessionUiByPath)) {
+					if (ui.sessionId && (input.sessionId === ui.sessionId || input.sessionId.endsWith(ui.sessionId))) {
+						store.sessionUiByPath[sessionPath] = {
+							...ui,
+							status: input.status,
+							attention: input.attention,
+							lastOpenedAt: input.updatedAt,
+						};
+					}
+				}
+				await deps.store.save(store);
 			});
 		},
 	};

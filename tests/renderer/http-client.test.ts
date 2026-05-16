@@ -65,6 +65,15 @@ const sessionEvent: PiSessionEvent = {
 
 const sessionEventEnvelope = JSON.stringify({ type: "pi-session:event", event: sessionEvent });
 
+const emptyProjectState = {
+	projects: [],
+	standaloneChats: [],
+	selectedProjectId: null,
+	selectedChatId: null,
+	selectedProject: null,
+	selectedChat: null,
+};
+
 describe("HTTP PiDesktop API client", () => {
 	afterEach(() => {
 		vi.useRealTimers();
@@ -94,6 +103,65 @@ describe("HTTP PiDesktop API client", () => {
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ operation: "app.getVersion" }),
 				signal: expect.any(AbortSignal),
+			}),
+		);
+	});
+
+	it("calls chat RPC operations", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => ({
+				ok: true,
+				json: async () => ({ ok: true, data: emptyProjectState }),
+			})),
+		);
+		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
+
+		await api.chat.rename({ projectId: "project:one", chatId: "chat:one", title: "Renamed chat" });
+		await api.chat.selectStandalone({ chatId: "chat:standalone" });
+		await api.chat.fork({ projectId: "project:one", chatId: "chat:one" });
+		await api.chat.clone({ projectId: "project:one", chatId: "chat:one" });
+		await api.chat.branch({ projectId: "project:one", chatId: "chat:one", entryId: "entry:one" });
+
+		expect(fetch).toHaveBeenNthCalledWith(
+			1,
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				body: JSON.stringify({
+					operation: "chat.rename",
+					input: { projectId: "project:one", chatId: "chat:one", title: "Renamed chat" },
+				}),
+			}),
+		);
+		expect(fetch).toHaveBeenNthCalledWith(
+			2,
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				body: JSON.stringify({ operation: "chat.selectStandalone", input: { chatId: "chat:standalone" } }),
+			}),
+		);
+		expect(fetch).toHaveBeenNthCalledWith(
+			3,
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				body: JSON.stringify({ operation: "chat.fork", input: { projectId: "project:one", chatId: "chat:one" } }),
+			}),
+		);
+		expect(fetch).toHaveBeenNthCalledWith(
+			4,
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				body: JSON.stringify({ operation: "chat.clone", input: { projectId: "project:one", chatId: "chat:one" } }),
+			}),
+		);
+		expect(fetch).toHaveBeenNthCalledWith(
+			5,
+			"http://127.0.0.1:49321/api/rpc",
+			expect.objectContaining({
+				body: JSON.stringify({
+					operation: "chat.branch",
+					input: { projectId: "project:one", chatId: "chat:one", entryId: "entry:one" },
+				}),
 			}),
 		);
 	});

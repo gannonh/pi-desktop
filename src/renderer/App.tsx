@@ -211,7 +211,11 @@ export function App() {
 
 			const result = reusableSessionId
 				? await window.piDesktop.piSession.submit({ sessionId: reusableSessionId, prompt })
-				: await window.piDesktop.piSession.start({ projectId: requestProjectId, prompt });
+				: await window.piDesktop.piSession.start({
+						projectId: requestProjectId,
+						chatId: requestChatId,
+						prompt,
+					});
 
 			const requestIsCurrent =
 				latestSessionRequestRef.current?.id === request.id &&

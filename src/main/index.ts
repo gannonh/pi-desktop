@@ -1,3 +1,4 @@
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,7 +6,7 @@ import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transpo
 import { IpcChannels } from "../shared/ipc";
 import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
-import { resolveProjectStorePath } from "./app-paths";
+import { resolvePiSessionFilesDirForCwd, resolveProjectStorePath } from "./app-paths";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
@@ -79,8 +80,52 @@ const openInFinder = async (projectPath: string): Promise<void> => {
 	}
 };
 
-const unavailableChatSessionOperation = async (): Promise<never> => {
-	throw new Error("Chat session management operation is not available.");
+const writeSessionName = async (sessionPath: string, name: string): Promise<void> => {
+	SessionManager.open(sessionPath).appendSessionInfo(name);
+};
+
+const forkSession = async (sourcePath: string, targetCwd: string): Promise<string> => {
+	const manager = SessionManager.forkFrom(
+		sourcePath,
+		targetCwd,
+		resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env: process.env }),
+	);
+	const forkedPath = manager.getSessionFile();
+	if (!forkedPath) {
+		throw new Error("Pi session fork did not create a persisted session file.");
+	}
+	return forkedPath;
+};
+
+const cloneSession = async (sourcePath: string, targetCwd: string): Promise<string> => {
+	const manager = SessionManager.open(
+		sourcePath,
+		resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env: process.env }),
+		targetCwd,
+	);
+	const leafId = manager.getLeafId();
+	if (!leafId) {
+		throw new Error("Cannot clone a session without entries.");
+	}
+	const clonedPath = manager.createBranchedSession(leafId);
+	if (!clonedPath) {
+		throw new Error("Pi session clone did not create a persisted session file.");
+	}
+	return clonedPath;
+};
+
+const branchSession = async (sourcePath: string, targetCwd: string, entryId: string): Promise<string> => {
+	const manager = SessionManager.open(
+		sourcePath,
+		resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env: process.env }),
+		targetCwd,
+	);
+	manager.branch(entryId);
+	const branchedPath = manager.createBranchedSession(entryId);
+	if (!branchedPath) {
+		throw new Error("Pi session branch did not create a persisted session file.");
+	}
+	return branchedPath;
 };
 
 const registerIpcHandlers = (projectService: ProjectService) => {
@@ -147,10 +192,10 @@ app.whenReady().then(() => {
 		initializeGitRepository,
 		listProjectSessions: piSessionLister.listProject,
 		listAllSessions: piSessionLister.listAll,
-		writeSessionName: unavailableChatSessionOperation,
-		forkSession: unavailableChatSessionOperation,
-		cloneSession: unavailableChatSessionOperation,
-		branchSession: unavailableChatSessionOperation,
+		writeSessionName,
+		forkSession,
+		cloneSession,
+		branchSession,
 	});
 
 	createWindow();

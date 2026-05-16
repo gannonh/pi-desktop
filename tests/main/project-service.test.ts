@@ -865,6 +865,81 @@ describe("project service", () => {
 		);
 	});
 
+	it("rejects a project session start target for an unknown chat id", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-start-target-"));
+		const project = createProject(projectPath);
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				chatsByProject: {
+					[project.id]: [],
+				},
+			},
+		});
+
+		await expect(service.getSessionStartTarget({ projectId: project.id, chatId: "chat:missing" })).rejects.toThrow(
+			/Chat not found\./,
+		);
+	});
+
+	it("converts a started draft chat to one Pi-backed chat after state refresh", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-started-draft-"));
+		const project = createProject(projectPath);
+		const draftChat = createChat(project, {
+			id: "chat:draft",
+			title: "Draft plan",
+		});
+		const sessionPath = join(projectPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				selectedChatId: draftChat.id,
+				chatsByProject: {
+					[project.id]: [draftChat],
+				},
+			},
+			now: () => secondNow,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sessionPath,
+					id: "sdk-session-one",
+					cwd: projectPath,
+					name: "Started draft",
+				}),
+			],
+		});
+
+		await service.recordSessionStarted({
+			projectId: project.id,
+			chatId: draftChat.id,
+			sessionId: "sdk-session-one",
+			sessionPath,
+			status: "running",
+		});
+		const storedAfterStart = memoryStore.read();
+		const view = await service.getState();
+
+		expect(storedAfterStart.chatsByProject[project.id]).toEqual([]);
+		expect(view.selectedProject?.chats).toHaveLength(1);
+		expect(view.selectedProject?.chats[0]).toEqual(
+			expect.objectContaining({
+				id: draftChat.id,
+				projectId: project.id,
+				source: "pi-session",
+				sessionId: "sdk-session-one",
+				sessionPath,
+				title: "Started draft",
+				status: "running",
+				attention: false,
+				lastOpenedAt: secondNow,
+			}),
+		);
+		expect(view.selectedChat?.id).toBe(draftChat.id);
+	});
+
 	it("renames a Pi-backed chat through session name writer", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const sessionPath = "/tmp/pi-desktop/session.jsonl";

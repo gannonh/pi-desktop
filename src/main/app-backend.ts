@@ -1,6 +1,10 @@
 import type { AppRpcRequest } from "../shared/app-transport";
 import {
+	ChatBranchInputSchema,
+	ChatCloneInputSchema,
 	ChatCreateInputSchema,
+	ChatForkInputSchema,
+	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
@@ -13,7 +17,12 @@ import {
 	ProjectRenameInputSchema,
 	type AppVersion,
 } from "../shared/ipc";
-import type { PiSessionActionPayload, PiSessionEvent, PiSessionStartPayload } from "../shared/pi-session";
+import type {
+	PiSessionActionPayload,
+	PiSessionEvent,
+	PiSessionStartPayload,
+	PiSessionStatus,
+} from "../shared/pi-session";
 import type { ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
@@ -21,12 +30,14 @@ import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
 
 type CreateAgentSession = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createAgentSession"]>;
+type CreateSessionManager = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createSessionManager"]>;
 type PiSessionEventListener = (event: PiSessionEvent) => void;
 
 export type AppBackendDeps = {
 	appInfo: AppVersion;
 	projectService: ProjectService;
 	now: () => string;
+	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
 };
 
@@ -42,6 +53,9 @@ export type AppBackend = {
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const toChatStatus = (status: PiSessionStatus) =>
+	status === "failed" ? "failed" : status === "running" ? "running" : "idle";
+
 const assertNever = (value: never): never => {
 	throw new Error(`Unhandled app backend request: ${JSON.stringify(value)}`);
 };
@@ -56,10 +70,36 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				console.error("Pi session event listener failed.", error);
 			}
 		}
+
+		if (event.type === "status") {
+			void deps.projectService
+				.recordSessionStatus({
+					sessionId: event.sessionId,
+					status: toChatStatus(event.status),
+					attention: event.status === "failed",
+					updatedAt: event.receivedAt,
+				})
+				.catch((error) => {
+					console.error("Failed to record Pi session status.", error);
+				});
+		}
+		if (event.type === "runtime_error" && event.sessionId) {
+			void deps.projectService
+				.recordSessionStatus({
+					sessionId: event.sessionId,
+					status: "failed",
+					attention: true,
+					updatedAt: event.receivedAt,
+				})
+				.catch((error) => {
+					console.error("Failed to record Pi session status.", error);
+				});
+		}
 	};
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
 		emit: emitPiSessionEvent,
+		createSessionManager: deps.createSessionManager,
 		createAgentSession: deps.createAgentSession,
 	});
 
@@ -133,25 +173,43 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						deps.projectService.selectStandaloneChat(ChatStandaloneSelectionInputSchema.parse(request.input)),
 					);
 				case "chat.rename":
+					return handleProjectOperation(() =>
+						deps.projectService.renameChat(ChatRenameInputSchema.parse(request.input)),
+					);
 				case "chat.fork":
+					return handleProjectOperation(() =>
+						deps.projectService.forkChat(ChatForkInputSchema.parse(request.input)),
+					);
 				case "chat.clone":
+					return handleProjectOperation(() =>
+						deps.projectService.cloneChat(ChatCloneInputSchema.parse(request.input)),
+					);
 				case "chat.branch":
-					return Promise.resolve(
-						err("chat.operation_not_implemented", "Chat management operation is not implemented."),
+					return handleProjectOperation(() =>
+						deps.projectService.branchChat(ChatBranchInputSchema.parse(request.input)),
 					);
 				case "piSession.start":
 					return handlePiSessionOperation(async () => {
 						const parsed = PiSessionStartInputSchema.parse(request.input);
-						if (parsed.projectId === null) {
-							throw new Error("Project ID is required to start a Pi session.");
-						}
-						const workspace = await deps.projectService.getSessionWorkspace({ projectId: parsed.projectId });
-						return piSessionRuntime.start({
-							projectId: workspace.projectId,
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
 							chatId: parsed.chatId ?? null,
-							workspacePath: workspace.path,
+						});
+						const started = await piSessionRuntime.start({
+							projectId: target.projectId,
+							chatId: target.chatId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
 							prompt: parsed.prompt,
 						});
+						await deps.projectService.recordSessionStarted({
+							projectId: started.projectId,
+							chatId: started.chatId,
+							sessionId: started.sessionId,
+							sessionPath: started.sessionPath,
+							status: toChatStatus(started.status),
+						});
+						return started;
 					});
 				case "piSession.submit":
 					return handlePiSessionOperation(() =>

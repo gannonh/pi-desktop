@@ -85,6 +85,32 @@ describe("local dev server", () => {
 		}
 	});
 
+	it("routes chat management RPC requests to the backend", async () => {
+		const { backend } = createBackend();
+		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
+
+		try {
+			const body = {
+				operation: "chat.rename",
+				input: { projectId: "project:one", chatId: "chat:one", title: "Renamed chat" },
+			};
+			const response = await fetch(`${server.url}/api/rpc`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(body),
+			});
+
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual({
+				ok: false,
+				error: { code: "test.unhandled", message: "chat.rename" },
+			});
+			expect(backend.handle).toHaveBeenCalledWith(body);
+		} finally {
+			await server.close();
+		}
+	});
+
 	it("returns a structured validation error for invalid RPC input", async () => {
 		const { backend } = createBackend();
 		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });

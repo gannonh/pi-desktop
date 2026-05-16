@@ -30,6 +30,14 @@ const createProjectService = (): ProjectService => ({
 		displayName: "one",
 		path: "/tmp/one",
 	})),
+	getSessionStartTarget: vi.fn(async () => ({
+		projectId: "project:one",
+		chatId: null,
+		workspacePath: "/tmp/one",
+		sessionPath: null,
+	})),
+	recordSessionStarted: vi.fn(async () => undefined),
+	recordSessionStatus: vi.fn(async () => undefined),
 	createChat: vi.fn(async () => emptyState),
 	selectChat: vi.fn(async () => emptyState),
 	renameChat: vi.fn(async () => emptyState),
@@ -44,6 +52,11 @@ const waitForScheduledPrompt = async (events: unknown[]) => {
 		expect(events).toContainEqual(expect.objectContaining({ type: "status", status: "running" }));
 	});
 };
+
+const createSessionManager = (sessionPath: string | null = null) => ({
+	getSessionFile: vi.fn(() => sessionPath ?? undefined),
+	getSessionId: vi.fn(() => "sdk-session:one"),
+});
 
 const createSession = (): PiSdkSession => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
@@ -82,12 +95,34 @@ describe("app backend", () => {
 		});
 	});
 
+	it("routes chat.rename to the project service", async () => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+		});
+
+		const result = await backend.handle({
+			operation: "chat.rename",
+			input: { projectId: "project:one", chatId: "chat:one", title: "Renamed chat" },
+		});
+
+		expect(result).toEqual({ ok: true, data: emptyState });
+		expect(projectService.renameChat).toHaveBeenCalledWith({
+			projectId: "project:one",
+			chatId: "chat:one",
+			title: "Renamed chat",
+		});
+	});
+
 	it("wraps Pi session operation failures in structured results with sanitized messages", async () => {
 		const projectService = createProjectService();
 		const backend = createAppBackend({
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
 			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
 			createAgentSession: vi.fn(async () => {
 				throw new Error("provider failed\nAuthorization: Bearer secret-token");
 			}),
@@ -111,6 +146,7 @@ describe("app backend", () => {
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
 			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
 			createAgentSession: vi.fn(async () => ({ session })),
 		});
 		const events: unknown[] = [];
@@ -124,7 +160,20 @@ describe("app backend", () => {
 		await waitForScheduledPrompt(events);
 		unsubscribe();
 		expect(result.ok).toBe(true);
-		expect(projectService.getSessionWorkspace).toHaveBeenCalledWith({ projectId: "project:one" });
+		expect(projectService.getSessionStartTarget).toHaveBeenCalledWith({ projectId: "project:one", chatId: null });
+		expect(projectService.recordSessionStarted).toHaveBeenCalledWith({
+			projectId: "project:one",
+			chatId: null,
+			sessionId: "project:one:sdk-session:one",
+			sessionPath: null,
+			status: "running",
+		});
+		expect(projectService.recordSessionStatus).toHaveBeenCalledWith({
+			sessionId: "project:one:sdk-session:one",
+			status: "running",
+			attention: false,
+			updatedAt: "2026-05-15T12:00:00.000Z",
+		});
 		expect(events).toContainEqual({
 			type: "status",
 			sessionId: "project:one:sdk-session:one",
@@ -134,6 +183,57 @@ describe("app backend", () => {
 		});
 	});
 
+	it("resumes a Pi session from the project service start target and records started metadata", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
+			projectId: "project:one",
+			chatId: "chat:one",
+			workspacePath: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+		});
+		const session = createSession();
+		const sessionManager = createSessionManager("/tmp/one-session.jsonl");
+		const createSessionManagerMock = vi.fn(() => sessionManager);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: createSessionManagerMock,
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", chatId: "chat:one", prompt: "Hello" },
+		});
+
+		expect(createSessionManagerMock).toHaveBeenCalledWith({
+			cwd: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+			env: undefined,
+		});
+		expect(result).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:one:sdk-session:one",
+				projectId: "project:one",
+				chatId: "chat:one",
+				workspacePath: "/tmp/one",
+				sessionPath: "/tmp/one-session.jsonl",
+				status: "running",
+				resumed: true,
+			},
+		});
+		expect(projectService.recordSessionStarted).toHaveBeenCalledWith({
+			projectId: "project:one",
+			chatId: "chat:one",
+			sessionId: "project:one:sdk-session:one",
+			sessionPath: "/tmp/one-session.jsonl",
+			status: "running",
+		});
+		await backend.dispose();
+	});
+
 	it("isolates Pi session event listener failures from later listeners", async () => {
 		const projectService = createProjectService();
 		const session = createSession();
@@ -141,6 +241,7 @@ describe("app backend", () => {
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
 			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
 			createAgentSession: vi.fn(async () => ({ session })),
 		});
 		const listenerError = new Error("listener failed");
