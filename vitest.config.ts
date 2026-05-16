@@ -14,6 +14,8 @@ export default defineConfig({
 				"src/renderer/projects/**/*.ts",
 				"src/renderer/chat/**/*.ts",
 				"src/main/projects/**/*.ts",
+				"src/main/app-backend.ts",
+				"src/main/dev-server/**/*.ts",
 			],
 			exclude: ["**/*.test.ts", "**/*.config.ts", "tests/**", "src/**/*.d.ts"],
 			thresholds: {

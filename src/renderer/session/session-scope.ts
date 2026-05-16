@@ -1,3 +1,5 @@
+import type { PiSessionEvent } from "../../shared/pi-session";
+
 export type SessionScope = {
 	projectId: string | null;
 	chatId: string | null;
@@ -7,6 +9,10 @@ type PendingSessionScope = {
 	projectId: string;
 	chatId: string | null;
 } | null;
+
+type SessionEventWithSessionId = PiSessionEvent & { sessionId: string };
+
+type PendingSessionEventBuffer = Map<string, SessionEventWithSessionId[]>;
 
 export const isSessionScopeSelected = (scope: SessionScope, selection: SessionScope): boolean =>
 	Boolean(scope.projectId) && scope.projectId === selection.projectId && scope.chatId === selection.chatId;
@@ -19,7 +25,6 @@ export const shouldAcceptSessionEvent = ({
 }: {
 	eventSessionId: string;
 	acceptedSessionId: string | null;
-	pendingStart: PendingSessionScope;
 	active: SessionScope;
 	selection: SessionScope;
 }): boolean => {
@@ -31,9 +36,49 @@ export const shouldAcceptSessionEvent = ({
 		return false;
 	}
 
-	if (eventSessionId === acceptedSessionId) {
-		return true;
+	return eventSessionId === acceptedSessionId;
+};
+
+export const shouldBufferPendingStartEvent = ({
+	eventSessionId,
+	acceptedSessionId,
+	pendingStart,
+	selection,
+}: {
+	eventSessionId: string;
+	acceptedSessionId: string | null;
+	pendingStart: PendingSessionScope;
+	selection: SessionScope;
+}): boolean => {
+	if (acceptedSessionId !== null || !pendingStart) {
+		return false;
 	}
 
-	return false;
+	return isSessionScopeSelected(pendingStart, selection) && eventSessionId.startsWith(`${pendingStart.projectId}:`);
+};
+
+export const createPendingSessionEventBuffer = (): PendingSessionEventBuffer => new Map();
+
+export const bufferPendingSessionEvent = (
+	buffer: PendingSessionEventBuffer,
+	event: SessionEventWithSessionId,
+): void => {
+	const events = buffer.get(event.sessionId);
+	if (events) {
+		events.push(event);
+		return;
+	}
+
+	buffer.set(event.sessionId, [event]);
+};
+
+export const takeBufferedSessionEvents = (
+	buffer: PendingSessionEventBuffer,
+	sessionId: string,
+): SessionEventWithSessionId[] => {
+	const events = buffer.get(sessionId) ?? [];
+	if (events.length > 0) {
+		buffer.clear();
+	}
+	return events;
 };

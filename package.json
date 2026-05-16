@@ -12,8 +12,9 @@
 	},
 	"scripts": {
 		"preinstall": "node ./scripts/check-node-version.mjs",
-		"dev": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
-		"dev:web": "vite --config vite.renderer.config.ts --host 127.0.0.1 --port 5173",
+		"dev": "pnpm dev:desktop",
+		"dev:desktop": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
+		"dev:web": "tsx src/main/dev-server/start-dev-web.ts",
 		"build": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
 		"package": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
 		"make": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge make",
@@ -49,6 +50,7 @@
 		"react-dom": "^19.2.6",
 		"scheduler": "0.27.0",
 		"tailwind-merge": "^3.6.0",
+		"ws": "^8.20.1",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
@@ -62,11 +64,13 @@
 		"@types/node": "^24.12.3",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
+		"@types/ws": "^8.18.1",
 		"@vitejs/plugin-react": "^6.0.1",
 		"@vitest/coverage-v8": "^4.1.6",
 		"electron": "^42.0.1",
 		"husky": "^9.1.7",
 		"tailwindcss": "^4.3.0",
+		"tsx": "^4.22.0",
 		"typescript": "^6.0.3",
 		"vite": "^8.0.12",
 		"vitest": "^4.1.6"

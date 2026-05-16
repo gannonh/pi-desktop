@@ -33,6 +33,22 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 		? messages.map((message) => (message.id === next.id ? next : message))
 		: [...messages, next];
 
+export const applySessionStartResult = (
+	state: LiveSessionState,
+	result: { sessionId: string; status: PiSessionStatus; statusLabel: string },
+): LiveSessionState => {
+	if (state.sessionId === result.sessionId && state.status !== "starting") {
+		return state;
+	}
+
+	return {
+		...state,
+		sessionId: result.sessionId,
+		status: result.status,
+		statusLabel: result.statusLabel,
+	};
+};
+
 export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEvent): LiveSessionState => {
 	if (state.sessionId && event.sessionId && event.sessionId !== state.sessionId) {
 		return state;

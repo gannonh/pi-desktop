@@ -9,7 +9,7 @@ const installApi = () => {
 	return (previewWindow as Window & typeof globalThis).piDesktop;
 };
 
-describe("dev preview API", () => {
+describe("dev preview fixture API", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 		vi.unstubAllGlobals();

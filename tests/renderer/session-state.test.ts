@@ -1,7 +1,77 @@
 import { describe, expect, it } from "vitest";
-import { createInitialSessionState, reduceSessionEvent } from "../../src/renderer/session/session-state";
+import {
+	applySessionStartResult,
+	createInitialSessionState,
+	reduceSessionEvent,
+} from "../../src/renderer/session/session-state";
 
 const receivedAt = "2026-05-14T12:00:00.000Z";
+
+describe("session start result", () => {
+	it("does not regress an already-idle streamed session when the start RPC response arrives late", () => {
+		const state = applySessionStartResult(
+			{
+				...createInitialSessionState(),
+				sessionId: "project:/tmp/pi-desktop:session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [
+					{
+						id: "assistant:1",
+						role: "assistant",
+						content: "Pi session streaming is connected.",
+						streaming: false,
+					},
+				],
+			},
+			{
+				sessionId: "project:/tmp/pi-desktop:session:one",
+				status: "running",
+				statusLabel: "Running",
+			},
+		);
+
+		expect(state.status).toBe("idle");
+		expect(state.statusLabel).toBe("Idle");
+		expect(state.messages).toEqual([
+			{
+				id: "assistant:1",
+				role: "assistant",
+				content: "Pi session streaming is connected.",
+				streaming: false,
+			},
+		]);
+	});
+
+	it("keeps object identity when a late start RPC response matches a running session", () => {
+		const state = {
+			...createInitialSessionState(),
+			sessionId: "project:/tmp/pi-desktop:session:one",
+			status: "running" as const,
+			statusLabel: "Running",
+		};
+
+		const next = applySessionStartResult(state, {
+			sessionId: "project:/tmp/pi-desktop:session:one",
+			status: "running",
+			statusLabel: "Running",
+		});
+
+		expect(next).toBe(state);
+	});
+
+	it("records the start RPC response when no stream event has identified the session", () => {
+		const state = applySessionStartResult(createInitialSessionState(), {
+			sessionId: "project:/tmp/pi-desktop:session:one",
+			status: "running",
+			statusLabel: "Running",
+		});
+
+		expect(state.sessionId).toBe("project:/tmp/pi-desktop:session:one");
+		expect(state.status).toBe("running");
+		expect(state.statusLabel).toBe("Running");
+	});
+});
 
 describe("session state reducer", () => {
 	it("adds user messages and streams assistant deltas", () => {
