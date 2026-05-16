@@ -273,7 +273,7 @@ Acceptance:
 - AI SDK `UIMessage` remains a possible future transcript shape when durable transcript storage or rich message parts are designed.
 - Prototype code and AI SDK dependencies are not retained in the product branch.
 
-### M04: Project and Session Management
+⏳ ### M04: Project and Session Management
 
 Goal: make sidebar project and chat management functional against real session metadata.
 
