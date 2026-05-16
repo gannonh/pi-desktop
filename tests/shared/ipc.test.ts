@@ -180,8 +180,11 @@ describe("IPC contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: "/tmp/pi-session.jsonl",
 					status: "running",
+					resumed: false,
 				},
 			}),
 		).toEqual({
@@ -189,8 +192,11 @@ describe("IPC contracts", () => {
 			data: {
 				sessionId: "pi-session:one",
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				workspacePath: "/tmp/pi-desktop",
+				sessionPath: "/tmp/pi-session.jsonl",
 				status: "running",
+				resumed: false,
 			},
 		});
 		expect(

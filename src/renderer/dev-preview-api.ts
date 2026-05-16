@@ -428,7 +428,10 @@ export const installDevPreviewApi = () => {
 			branch: async (input) => duplicateChat(input, " branch"),
 		},
 		piSession: {
-			start: async ({ projectId, prompt }) => {
+			start: async ({ projectId, chatId, prompt }) => {
+				if (projectId === null) {
+					return projectNotFound();
+				}
 				const result = findProject(projectId);
 				if (!result.ok) {
 					return result;
@@ -440,8 +443,11 @@ export const installDevPreviewApi = () => {
 					data: {
 						sessionId,
 						projectId,
+						chatId: chatId ?? null,
 						workspacePath: result.project.path,
+						sessionPath: null,
 						status: "running",
+						resumed: false,
 					},
 				};
 			},

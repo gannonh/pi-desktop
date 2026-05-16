@@ -4,7 +4,8 @@ import { createResultSchema, type IpcResult } from "./result";
 export const PiSessionStatusSchema = z.enum(["idle", "starting", "running", "retrying", "aborting", "failed"]);
 
 export const PiSessionStartInputSchema = z.strictObject({
-	projectId: z.string().min(1),
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable().optional(),
 	prompt: z.string().trim().min(1),
 });
 
@@ -23,9 +24,12 @@ export const PiSessionDisposeInputSchema = z.strictObject({
 
 export const PiSessionStartPayloadSchema = z.strictObject({
 	sessionId: z.string().min(1),
-	projectId: z.string().min(1),
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable(),
 	workspacePath: z.string().min(1),
+	sessionPath: z.string().min(1).nullable(),
 	status: PiSessionStatusSchema,
+	resumed: z.boolean(),
 });
 
 export const PiSessionActionPayloadSchema = z.strictObject({

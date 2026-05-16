@@ -14,10 +14,17 @@ describe("Pi session contracts", () => {
 		expect(
 			PiSessionStartInputSchema.parse({
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				prompt: "What files are here?",
 			}),
 		).toEqual({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			prompt: "What files are here?",
+		});
+
+		expect(PiSessionStartInputSchema.parse({ projectId: null, prompt: "What files are here?" })).toEqual({
+			projectId: null,
 			prompt: "What files are here?",
 		});
 
@@ -68,8 +75,11 @@ describe("Pi session contracts", () => {
 			data: {
 				sessionId: "pi-session:one",
 				projectId: "project:/tmp/pi-desktop",
+				chatId: "chat:one",
 				workspacePath: "/tmp/pi-desktop",
+				sessionPath: "/tmp/pi-session.jsonl",
 				status: "running",
+				resumed: false,
 			},
 		});
 
@@ -131,8 +141,11 @@ describe("Pi session contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: null,
 					status: "complete",
+					resumed: false,
 				},
 			}),
 		).toThrow();
@@ -143,8 +156,11 @@ describe("Pi session contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: null,
 					status: "running",
+					resumed: false,
 					providerSecret: "secret",
 				},
 			}),

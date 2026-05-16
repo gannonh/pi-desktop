@@ -142,9 +142,13 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				case "piSession.start":
 					return handlePiSessionOperation(async () => {
 						const parsed = PiSessionStartInputSchema.parse(request.input);
+						if (parsed.projectId === null) {
+							throw new Error("Project ID is required to start a Pi session.");
+						}
 						const workspace = await deps.projectService.getSessionWorkspace({ projectId: parsed.projectId });
 						return piSessionRuntime.start({
 							projectId: workspace.projectId,
+							chatId: parsed.chatId ?? null,
 							workspacePath: workspace.path,
 							prompt: parsed.prompt,
 						});

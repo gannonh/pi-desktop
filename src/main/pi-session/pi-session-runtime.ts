@@ -1,5 +1,9 @@
-import { createAgentSession as createPiAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import {
+	createAgentSession as createPiAgentSession,
+	SessionManager,
+	type AgentSessionEvent,
+	type SessionManager as PiSessionManager,
+} from "@earendil-works/pi-coding-agent";
 import type {
 	PiSessionAbortInput,
 	PiSessionActionPayload,
@@ -26,16 +30,28 @@ type CreateAgentSessionResult = {
 };
 
 type RuntimeStartInput = {
-	projectId: string;
+	projectId: string | null;
+	chatId: string | null;
 	workspacePath: string;
+	sessionPath?: string | null;
 	prompt: string;
 };
+
+type RuntimeSessionManager = Pick<PiSessionManager, "getSessionFile" | "getSessionId">;
 
 type RuntimeDeps = {
 	now: () => string;
 	emit: (event: PiSessionEvent) => void;
 	env?: NodeJS.ProcessEnv;
-	createAgentSession?: (options: { cwd: string }) => Promise<CreateAgentSessionResult>;
+	createSessionManager?: (options: {
+		cwd: string;
+		sessionPath?: string | null;
+		env?: NodeJS.ProcessEnv;
+	}) => RuntimeSessionManager;
+	createAgentSession?: (options: {
+		cwd: string;
+		sessionManager: RuntimeSessionManager;
+	}) => Promise<CreateAgentSessionResult>;
 };
 
 type RuntimeEntry = {
@@ -49,19 +65,25 @@ type RuntimeEntry = {
 	disposed: boolean;
 };
 
-const createDesktopSessionId = (projectId: string, piSessionId: string): string => `${projectId}:${piSessionId}`;
+const createDesktopSessionId = (projectId: string | null, piSessionId: string): string =>
+	`${projectId ?? "standalone"}:${piSessionId}`;
 
 export const createPiSessionRuntime = (deps: RuntimeDeps) => {
+	const createSessionManager =
+		deps.createSessionManager ??
+		((options: { cwd: string; sessionPath?: string | null; env?: NodeJS.ProcessEnv }) => {
+			const sessionDir = resolvePiSessionFilesDirForCwd({ cwd: options.cwd, env: options.env });
+			return options.sessionPath
+				? SessionManager.open(options.sessionPath, sessionDir, options.cwd)
+				: SessionManager.create(options.cwd, sessionDir);
+		});
 	const createAgentSession =
 		deps.createAgentSession ??
-		((options: { cwd: string }) =>
+		((options: { cwd: string; sessionManager: RuntimeSessionManager }) =>
 			createPiAgentSession({
-				...options,
+				cwd: options.cwd,
 				agentDir: resolvePiAgentDir(deps.env),
-				sessionManager: SessionManager.create(
-					options.cwd,
-					resolvePiSessionFilesDirForCwd({ cwd: options.cwd, env: deps.env }),
-				),
+				sessionManager: options.sessionManager as PiSessionManager,
 			}));
 	const sessions = new Map<string, RuntimeEntry>();
 	const busyStatuses = new Set<PiSessionStatus>(["running", "retrying", "aborting"]);
@@ -173,8 +195,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
 			let created: CreateAgentSessionResult | undefined;
+			let sessionManager: RuntimeSessionManager | undefined;
 			try {
-				created = await createAgentSession({ cwd: input.workspacePath });
+				sessionManager = createSessionManager({
+					cwd: input.workspacePath,
+					sessionPath: input.sessionPath ?? undefined,
+					env: deps.env,
+				});
+				created = await createAgentSession({ cwd: input.workspacePath, sessionManager });
 				await created.session.bindExtensions({});
 			} catch (error) {
 				created?.session.dispose();
@@ -213,8 +241,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			return {
 				sessionId,
 				projectId: input.projectId,
+				chatId: input.chatId,
 				workspacePath: input.workspacePath,
+				sessionPath: sessionManager.getSessionFile() ?? input.sessionPath ?? null,
 				status: "running",
+				resumed: Boolean(input.sessionPath),
 			};
 		},
 

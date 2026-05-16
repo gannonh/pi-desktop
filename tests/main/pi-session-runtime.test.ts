@@ -83,6 +83,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -92,6 +93,48 @@ describe("createPiSessionRuntime", () => {
 		expect(session.bindExtensions).toHaveBeenCalledWith({});
 		expect(session.prompt).toHaveBeenCalledWith("Hello");
 		expect(events.map((event) => event.type)).toEqual(["status", "message_start", "assistant_delta", "status"]);
+	});
+
+	it("starts from an existing session manager when resuming a session path", async () => {
+		const events: PiSessionEvent[] = [];
+		const projectId = "project:/tmp/pi-desktop";
+		const chatId = "chat:one";
+		const sessionPath = "/tmp/pi-desktop-session.jsonl";
+		const { session } = createFakeSession();
+		const sessionManager = {
+			getSessionFile: vi.fn(() => sessionPath),
+			getSessionId: vi.fn(() => "sdk-session:one"),
+		};
+		const createSessionManager = vi.fn(({ sessionPath: nextSessionPath }) => {
+			expect(nextSessionPath).toBe(sessionPath);
+			return sessionManager;
+		});
+		const createAgentSession = vi.fn(async ({ sessionManager: nextSessionManager }) => {
+			expect(nextSessionManager).toBe(sessionManager);
+			return { session };
+		});
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createSessionManager,
+			createAgentSession,
+		});
+
+		const result = await runtime.start({
+			projectId,
+			chatId,
+			workspacePath: "/tmp/pi-desktop",
+			sessionPath,
+			prompt: "Hello",
+		});
+
+		expect(createSessionManager).toHaveBeenCalledWith({
+			cwd: "/tmp/pi-desktop",
+			sessionPath,
+			env: undefined,
+		});
+		expect(result.sessionPath).toBe(sessionPath);
+		expect(result.resumed).toBe(true);
 	});
 
 	it("returns the started session before emitting first prompt events", async () => {
@@ -105,6 +148,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -126,6 +170,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -155,6 +200,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -184,6 +230,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -220,6 +267,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -256,6 +304,7 @@ describe("createPiSessionRuntime", () => {
 		await expect(
 			runtime.start({
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				workspacePath: "/tmp/pi-desktop",
 				prompt: "Hello",
 			}),
@@ -280,6 +329,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -314,6 +364,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -341,6 +392,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -383,6 +435,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -414,6 +467,7 @@ describe("createPiSessionRuntime", () => {
 		await expect(
 			runtime.start({
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				workspacePath: "/tmp/pi-desktop",
 				prompt: "Hello",
 			}),
@@ -439,6 +493,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -476,6 +531,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -501,6 +557,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
@@ -542,6 +599,7 @@ describe("createPiSessionRuntime", () => {
 
 		const result = await runtime.start({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
 			workspacePath: "/tmp/pi-desktop",
 			prompt: "Hello",
 		});
