@@ -48,6 +48,22 @@ describe("app paths", () => {
 				env,
 				homeDir: "/Users/tester",
 			}),
-		).toBe("/Users/tester/.pi/agent/sessions/--Users-tester-dev-pi-desktop--");
+		).toBe("/Users/tester/.pi/agent/sessions/--%2FUsers%2Ftester%2Fdev%2Fpi-desktop--");
+	});
+
+	it("keeps Pi session directories distinct for workspace paths that only differ by separators", () => {
+		const env = { PI_CODING_AGENT_SESSION_DIR: "/tmp/pi-sessions" };
+
+		expect(
+			resolvePiSessionFilesDirForCwd({
+				cwd: "/projects/my-app",
+				env,
+			}),
+		).not.toBe(
+			resolvePiSessionFilesDirForCwd({
+				cwd: "/projects-my/app",
+				env,
+			}),
+		);
 	});
 });

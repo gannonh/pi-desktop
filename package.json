@@ -13,7 +13,8 @@
 	"scripts": {
 		"preinstall": "node ./scripts/check-node-version.mjs",
 		"dev": "pnpm dev:desktop",
-		"dev:desktop": "PNPM_CONFIG_NODE_LINKER=hoisted node --env-file-if-exists=.env.development ./node_modules/@electron-forge/cli/dist/electron-forge.js start",
+		"dev:desktop": "node --env-file-if-exists=.env.development --run=forge:start",
+		"forge:start": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge start",
 		"dev:web": "node --env-file-if-exists=.env.development --import tsx src/main/dev-server/start-dev-web.ts",
 		"build": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",
 		"package": "PNPM_CONFIG_NODE_LINKER=hoisted electron-forge package",

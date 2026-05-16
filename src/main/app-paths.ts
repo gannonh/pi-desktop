@@ -57,6 +57,6 @@ export const resolvePiSessionFilesDirForCwd = ({
 	env?: NodeJS.ProcessEnv;
 	homeDir?: string;
 }): string => {
-	const safePath = `--${cwd.replace(/^[\\/]/, "").replace(/[\\/:]/g, "-")}--`;
+	const safePath = `--${encodeURIComponent(cwd)}--`;
 	return path.join(resolvePiSessionFilesRoot(env, homeDir), safePath);
 };
