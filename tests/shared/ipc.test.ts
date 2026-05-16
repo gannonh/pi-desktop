@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
 	AppVersionResultSchema,
+	ChatBranchInputSchema,
+	ChatCloneInputSchema,
 	ChatCreateInputSchema,
+	ChatForkInputSchema,
+	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneSelectionInputSchema,
 	IpcChannels,
 	PiSessionAbortInputSchema,
 	PiSessionActionResultSchema,
@@ -70,6 +75,11 @@ describe("IPC contracts", () => {
 			projectCheckAvailability: "project:checkAvailability",
 			chatCreate: "chat:create",
 			chatSelect: "chat:select",
+			chatRename: "chat:rename",
+			chatSelectStandalone: "chat:selectStandalone",
+			chatFork: "chat:fork",
+			chatClone: "chat:clone",
+			chatBranch: "chat:branch",
 			piSessionStart: "pi-session:start",
 			piSessionSubmit: "pi-session:submit",
 			piSessionAbort: "pi-session:abort",
@@ -117,6 +127,34 @@ describe("IPC contracts", () => {
 		expect(ChatSelectionInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 			chatId: "chat:one",
+		});
+	});
+
+	it("parses chat rename, standalone select, fork, clone, and branch inputs", () => {
+		expect(
+			ChatRenameInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1", title: "New name" }),
+		).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+			title: "New name",
+		});
+		expect(ChatStandaloneSelectionInputSchema.parse({ chatId: "chat:standalone" })).toEqual({
+			chatId: "chat:standalone",
+		});
+		expect(ChatForkInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1" })).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+		});
+		expect(ChatCloneInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1" })).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+		});
+		expect(
+			ChatBranchInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1", entryId: "abcd1234" }),
+		).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+			entryId: "abcd1234",
 		});
 	});
 

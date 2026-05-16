@@ -150,6 +150,14 @@ const projectNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
 	},
 });
 
+const chatNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
+	ok: false,
+	error: {
+		code: "preview.chat_not_found",
+		message: "Chat not found in preview data.",
+	},
+});
+
 const findProject = (projectId: string): PreviewProjectLookup => {
 	const projectIndex = store.projects.findIndex((candidate) => candidate.id === projectId);
 	if (projectIndex === -1) {
@@ -253,6 +261,30 @@ export const installDevPreviewApi = () => {
 			emitPreviewStream(sessionId, prompt);
 		}, 0);
 		pendingPreviewStreams.set(sessionId, timeout);
+	};
+	const duplicateChat = ({ projectId, chatId }: { projectId: string; chatId: string }, titleSuffix: string) => {
+		const result = findProject(projectId);
+		if (!result.ok) {
+			return result;
+		}
+		const chats = store.chatsByProject[projectId] ?? [];
+		const sourceChat = chats.find((candidate) => candidate.id === chatId);
+		if (!sourceChat) {
+			return chatNotFound();
+		}
+		const timestamp = new Date().toISOString();
+		const nextChat = {
+			...sourceChat,
+			id: `chat:preview:${chats.length + 1}`,
+			title: `${sourceChat.title}${titleSuffix}`,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			lastOpenedAt: timestamp,
+		};
+		store.chatsByProject[projectId] = [...chats, nextChat];
+		store.selectedProjectId = projectId;
+		store.selectedChatId = nextChat.id;
+		return ok();
 	};
 
 	const api: PiDesktopApi = {
@@ -359,6 +391,41 @@ export const installDevPreviewApi = () => {
 				store.selectedChatId = chatId;
 				return ok();
 			},
+			rename: async ({ projectId, chatId, title }) => {
+				if (projectId === null) {
+					const chatIndex = standaloneChats.findIndex((candidate) => candidate.id === chatId);
+					if (chatIndex === -1) {
+						return chatNotFound();
+					}
+					standaloneChats[chatIndex] = {
+						...standaloneChats[chatIndex],
+						title,
+						updatedAt: new Date().toISOString(),
+					};
+					return ok();
+				}
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const chats = store.chatsByProject[projectId] ?? [];
+				const chatIndex = chats.findIndex((candidate) => candidate.id === chatId);
+				if (chatIndex === -1) {
+					return chatNotFound();
+				}
+				store.chatsByProject[projectId] = chats.map((candidate, index) =>
+					index === chatIndex ? { ...candidate, title, updatedAt: new Date().toISOString() } : candidate,
+				);
+				return ok();
+			},
+			selectStandalone: async ({ chatId }) => {
+				store.selectedProjectId = null;
+				store.selectedChatId = chatId;
+				return ok();
+			},
+			fork: async (input) => duplicateChat(input, " fork"),
+			clone: async (input) => duplicateChat(input, " copy"),
+			branch: async (input) => duplicateChat(input, " branch"),
 		},
 		piSession: {
 			start: async ({ projectId, prompt }) => {

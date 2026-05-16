@@ -32,6 +32,11 @@ export const IpcChannels = {
 	projectCheckAvailability: "project:checkAvailability",
 	chatCreate: "chat:create",
 	chatSelect: "chat:select",
+	chatRename: "chat:rename",
+	chatSelectStandalone: "chat:selectStandalone",
+	chatFork: "chat:fork",
+	chatClone: "chat:clone",
+	chatBranch: "chat:branch",
 	piSessionStart: "pi-session:start",
 	piSessionSubmit: "pi-session:submit",
 	piSessionAbort: "pi-session:abort",
@@ -69,6 +74,27 @@ export const ChatSelectionInputSchema = z.strictObject({
 	chatId: z.string().min(1),
 });
 
+export const ChatRenameInputSchema = z.strictObject({
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1),
+	title: z.string().trim().min(1),
+});
+
+export const ChatStandaloneSelectionInputSchema = z.strictObject({
+	chatId: z.string().min(1),
+});
+
+export const ChatForkInputSchema = z.strictObject({
+	projectId: z.string().min(1),
+	chatId: z.string().min(1),
+});
+
+export const ChatCloneInputSchema = ChatForkInputSchema;
+
+export const ChatBranchInputSchema = ChatForkInputSchema.extend({
+	entryId: z.string().min(1),
+});
+
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
 export const ProjectStateViewResultSchema = createResultSchema(ProjectStateViewSchema);
 
@@ -88,6 +114,11 @@ export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
 export type ProjectPinnedInput = z.infer<typeof ProjectPinnedInputSchema>;
 export type ChatCreateInput = z.infer<typeof ChatCreateInputSchema>;
 export type ChatSelectionInput = z.infer<typeof ChatSelectionInputSchema>;
+export type ChatRenameInput = z.infer<typeof ChatRenameInputSchema>;
+export type ChatStandaloneSelectionInput = z.infer<typeof ChatStandaloneSelectionInputSchema>;
+export type ChatForkInput = z.infer<typeof ChatForkInputSchema>;
+export type ChatCloneInput = z.infer<typeof ChatCloneInputSchema>;
+export type ChatBranchInput = z.infer<typeof ChatBranchInputSchema>;
 export type AppVersionResult = IpcResult<AppVersion>;
 export type ProjectStateViewResult = IpcResult<ProjectStateView>;
 export type {

@@ -121,6 +121,11 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	);
 	ipcMain.handle(IpcChannels.chatCreate, (_event, input) => invokeBackend("chat.create", input));
 	ipcMain.handle(IpcChannels.chatSelect, (_event, input) => invokeBackend("chat.select", input));
+	ipcMain.handle(IpcChannels.chatRename, (_event, input) => invokeBackend("chat.rename", input));
+	ipcMain.handle(IpcChannels.chatSelectStandalone, (_event, input) => invokeBackend("chat.selectStandalone", input));
+	ipcMain.handle(IpcChannels.chatFork, (_event, input) => invokeBackend("chat.fork", input));
+	ipcMain.handle(IpcChannels.chatClone, (_event, input) => invokeBackend("chat.clone", input));
+	ipcMain.handle(IpcChannels.chatBranch, (_event, input) => invokeBackend("chat.branch", input));
 	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) => invokeBackend("piSession.start", input));
 	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) => invokeBackend("piSession.submit", input));
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));

@@ -54,6 +54,12 @@ const api: PiDesktopApi = {
 	chat: {
 		create: async (input) => safeInvokeParse(IpcChannels.chatCreate, ProjectStateViewResultSchema, input),
 		select: async (input) => safeInvokeParse(IpcChannels.chatSelect, ProjectStateViewResultSchema, input),
+		rename: async (input) => safeInvokeParse(IpcChannels.chatRename, ProjectStateViewResultSchema, input),
+		selectStandalone: async (input) =>
+			safeInvokeParse(IpcChannels.chatSelectStandalone, ProjectStateViewResultSchema, input),
+		fork: async (input) => safeInvokeParse(IpcChannels.chatFork, ProjectStateViewResultSchema, input),
+		clone: async (input) => safeInvokeParse(IpcChannels.chatClone, ProjectStateViewResultSchema, input),
+		branch: async (input) => safeInvokeParse(IpcChannels.chatBranch, ProjectStateViewResultSchema, input),
 	},
 	piSession: {
 		start: async (input) => safeInvokeParse(IpcChannels.piSessionStart, PiSessionStartResultSchema, input),

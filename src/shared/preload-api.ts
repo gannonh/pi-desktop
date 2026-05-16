@@ -1,7 +1,12 @@
 import type {
 	AppVersionResult,
+	ChatBranchInput,
+	ChatCloneInput,
 	ChatCreateInput,
+	ChatForkInput,
+	ChatRenameInput,
 	ChatSelectionInput,
+	ChatStandaloneSelectionInput,
 	PiSessionAbortInput,
 	PiSessionActionResult,
 	PiSessionDisposeInput,
@@ -34,6 +39,11 @@ export interface PiDesktopApi {
 	chat: {
 		create: (input: ChatCreateInput) => Promise<ProjectStateViewResult>;
 		select: (input: ChatSelectionInput) => Promise<ProjectStateViewResult>;
+		rename: (input: ChatRenameInput) => Promise<ProjectStateViewResult>;
+		selectStandalone: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateViewResult>;
+		fork: (input: ChatForkInput) => Promise<ProjectStateViewResult>;
+		clone: (input: ChatCloneInput) => Promise<ProjectStateViewResult>;
+		branch: (input: ChatBranchInput) => Promise<ProjectStateViewResult>;
 	};
 	piSession: {
 		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;

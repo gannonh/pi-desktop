@@ -2,6 +2,7 @@ import type { AppRpcRequest } from "../shared/app-transport";
 import {
 	ChatCreateInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionOperationFailedCode,
@@ -126,6 +127,17 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				case "chat.select":
 					return handleProjectOperation(() =>
 						deps.projectService.selectChat(ChatSelectionInputSchema.parse(request.input)),
+					);
+				case "chat.selectStandalone":
+					return handleProjectOperation(() =>
+						deps.projectService.selectStandaloneChat(ChatStandaloneSelectionInputSchema.parse(request.input)),
+					);
+				case "chat.rename":
+				case "chat.fork":
+				case "chat.clone":
+				case "chat.branch":
+					return Promise.resolve(
+						err("chat.operation_not_implemented", "Chat management operation is not implemented."),
 					);
 				case "piSession.start":
 					return handlePiSessionOperation(async () => {

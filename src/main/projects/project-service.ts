@@ -12,6 +12,7 @@ import {
 import type {
 	ChatCreateInput,
 	ChatSelectionInput,
+	ChatStandaloneSelectionInput,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
@@ -39,10 +40,6 @@ export type SessionWorkspace = {
 	projectId: string;
 	displayName: string;
 	path: string;
-};
-
-type ChatStandaloneSelectionInput = {
-	chatId: string;
 };
 
 export type ProjectService = {
