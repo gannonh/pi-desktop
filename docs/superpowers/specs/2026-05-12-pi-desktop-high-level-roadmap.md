@@ -253,27 +253,25 @@ Acceptance:
 - Native desktop-only operations fail visibly in web preview.
 - The transport contract can be reused by a future hosted web transport.
 
-### M03.2: AI SDK UI Chat Spike
+✅ ### M03.2: AI SDK UI Chat Spike
 
 Goal: decide whether AI SDK UI should own renderer chat state before durable project and session management lands.
 
 Deliverables:
 
-- Prototype mapping `PiSessionEvent` to AI SDK `UIMessage` parts.
-- Custom `ChatTransport` prototype backed by the Pi Desktop session boundary.
-- Session lifecycle check for start, submit, abort, dispose, and scope changes.
-- Runtime error, retry, and stale-event handling assessment.
-- Compatibility assessment for the dev web HTTP/WebSocket bridge.
-- Written adopt, reject, or borrow-message-shape decision in the spike document.
+- Evaluated mapping `PiSessionEvent` to AI SDK `UIMessage` parts.
+- Evaluated a custom `ChatTransport` backed by the Pi Desktop session boundary.
+- Assessed session lifecycle support for start, submit, abort, dispose, and scope changes.
+- Assessed runtime error, retry, and stale-event handling.
+- Assessed compatibility with the dev web HTTP/WebSocket bridge.
+- Recorded the no-go decision in the spike document and ADR.
 
 Acceptance:
 
-- Existing smoke flow can stream a Pi response through the prototype.
-- Abort still cancels active work.
-- Scope changes dispose of or hide stale sessions correctly.
-- Errors remain visible and typed.
-- Tests can cover the adapter without brittle timing.
-- The decision is recorded before M04 changes durable session metadata and resume behavior.
+- Decision recorded before M04 changes durable session metadata and resume behavior.
+- M04 proceeds with the current custom `LiveSessionState` path.
+- AI SDK `UIMessage` remains a possible future transcript shape when durable transcript storage or rich message parts are designed.
+- Prototype code and AI SDK dependencies are not retained in the product branch.
 
 ### M04: Project and Session Management
 
@@ -420,8 +418,7 @@ Acceptance:
 - Should the app reuse `pi-web-ui` components directly, fork/adapt them, or treat them as reference APIs only?
 - What is the first provider/auth path for demos?
 - Should local session metadata use SQLite, IndexedDB, or file-backed JSON for the first milestones?
-- Which Pi SDK APIs need public contracts before Milestone 3 starts?
-- Should the renderer adopt AI SDK UI for chat state and streaming? Track this in [AI SDK UI Chat Spike](./2026-05-15-ai-sdk-ui-chat-spike.md).
+- Which Pi SDK APIs need public contracts before future session-resume and transcript work starts?
 
 ## Current Planning Targets
 
@@ -429,6 +426,6 @@ Milestone 1 should finish sidebar UX polish and avoid expanding into full projec
 
 Milestone 2 should focus on the chat shell and composer UX.
 
-Milestone 3.2 should run before Milestone 4 so the chat-state decision is settled before durable session metadata and resume behavior are built.
+Milestone 3.2 is complete. M04 should keep the current custom `LiveSessionState` path and not adopt `@ai-sdk/react` `useChat` for renderer chat state.
 
 Functional sidebar project and chat management belongs in Milestone 4, after the Pi Session MVP creates real session metadata to manage.

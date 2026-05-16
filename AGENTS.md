@@ -2,7 +2,10 @@
 
 ## Project Map
 
-- Product context and roadmap: [docs/superpowers/specs/2026-05-12-pi-desktop-prd-roadmap-design.md](docs/superpowers/specs/2026-05-12-pi-desktop-prd-roadmap-design.md)
+- Product context and high-level roadmap: [docs/superpowers/specs/2026-05-12-pi-desktop-high-level-roadmap.md](docs/superpowers/specs/2026-05-12-pi-desktop-high-level-roadmap.md)
+- Architecture decisions: [docs/adr](docs/adr)
+- Diagrams: [docs/diagrams](docs/diagrams)
+- Specs and plans: [docs/superpowers](docs/superpowers)
 - Setup, run, test, and release commands belong in `README.md` when that file exists. Link to `README.md` instead of repeating those instructions here.
 - Pi runtime reference repo: `/Volumes/EVO/repos/pi-mono`
 
@@ -17,8 +20,16 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 - Target macOS first.
 - Use the Pi TypeScript SDK first.
 - Execute roadmap milestones sequentially.
-- Start with Milestone 0 from the PRD before building agent-session features.
+- M03.2 decided not to adopt `@ai-sdk/react` `useChat` for M04. Keep the custom `LiveSessionState` and Pi session event path for project/session management.
 - Treat cloud workspaces, browser/computer use, automations, and plugin marketplace work as later milestones.
+
+## Documentation
+
+- Record durable architecture decisions as ADRs under `docs/adr`.
+- Keep diagrams under `docs/diagrams`.
+- Keep specs and execution plans under `docs/superpowers`.
+- Keep roadmap status and ADR decisions aligned when milestone direction changes.
+- Preserve spike outcomes in specs or ADRs; do not keep dead prototype code or dependencies in product branches unless explicitly adopted.
 
 ## Codebase Shape
 
