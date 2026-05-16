@@ -16,9 +16,15 @@ const expandTildePath = (value: string, homeDir = homedir()): string => {
 export const resolveElectronDevUserDataDir = (
 	homeDir = homedir(),
 	platform: DesktopPlatform = process.platform,
+	env: NodeJS.ProcessEnv = process.env,
 ): string => {
 	if (platform === "darwin") {
 		return path.join(homeDir, "Library", "Application Support", "pi-desktop");
+	}
+
+	if (platform === "win32") {
+		const appDataDir = env.APPDATA ?? path.win32.join(homeDir, "AppData", "Roaming");
+		return path.win32.join(appDataDir, "pi-desktop");
 	}
 
 	return path.join(homeDir, ".config", "pi-desktop");

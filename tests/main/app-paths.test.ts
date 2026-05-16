@@ -14,6 +14,21 @@ describe("app paths", () => {
 		);
 	});
 
+	it("resolves the Electron dev user data directory on Linux", () => {
+		expect(resolveElectronDevUserDataDir("/home/tester", "linux")).toBe("/home/tester/.config/pi-desktop");
+	});
+
+	it("resolves the Electron dev user data directory on Windows", () => {
+		expect(resolveElectronDevUserDataDir("C:\\Users\\tester", "win32", {})).toBe(
+			"C:\\Users\\tester\\AppData\\Roaming\\pi-desktop",
+		);
+		expect(
+			resolveElectronDevUserDataDir("C:\\Users\\tester", "win32", {
+				APPDATA: "D:\\Profiles\\tester\\AppData\\Roaming",
+			}),
+		).toBe("D:\\Profiles\\tester\\AppData\\Roaming\\pi-desktop");
+	});
+
 	it("resolves a pi-desktop workspace store from a user data directory", () => {
 		expect(
 			resolveProjectStorePath({
