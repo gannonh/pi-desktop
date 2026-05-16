@@ -231,7 +231,7 @@ Acceptance:
 - User can abort an active run.
 - Runtime startup/auth/model errors display clearly.
 
-### M03.1: Dev Web Real Data Bridge
+✅ ### M03.1: Dev Web Real Data Bridge
 
 Goal: make the browser preview use real local project, chat, and Pi session data through a reusable transport boundary.
 
@@ -252,6 +252,28 @@ Acceptance:
 - Browser preview can submit a prompt and receive streamed Pi session events when the local Pi runtime is available.
 - Native desktop-only operations fail visibly in web preview.
 - The transport contract can be reused by a future hosted web transport.
+
+### M03.2: AI SDK UI Chat Spike
+
+Goal: decide whether AI SDK UI should own renderer chat state before durable project and session management lands.
+
+Deliverables:
+
+- Prototype mapping `PiSessionEvent` to AI SDK `UIMessage` parts.
+- Custom `ChatTransport` prototype backed by the Pi Desktop session boundary.
+- Session lifecycle check for start, submit, abort, dispose, and scope changes.
+- Runtime error, retry, and stale-event handling assessment.
+- Compatibility assessment for the dev web HTTP/WebSocket bridge.
+- Written adopt, reject, or borrow-message-shape decision in the spike document.
+
+Acceptance:
+
+- Existing smoke flow can stream a Pi response through the prototype.
+- Abort still cancels active work.
+- Scope changes dispose of or hide stale sessions correctly.
+- Errors remain visible and typed.
+- Tests can cover the adapter without brittle timing.
+- The decision is recorded before M04 changes durable session metadata and resume behavior.
 
 ### M04: Project and Session Management
 
@@ -406,5 +428,7 @@ Acceptance:
 Milestone 1 should finish sidebar UX polish and avoid expanding into full project-management functionality.
 
 Milestone 2 should focus on the chat shell and composer UX.
+
+Milestone 3.2 should run before Milestone 4 so the chat-state decision is settled before durable session metadata and resume behavior are built.
 
 Functional sidebar project and chat management belongs in Milestone 4, after the Pi Session MVP creates real session metadata to manage.
