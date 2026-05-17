@@ -1,8 +1,10 @@
+import { readdir } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { createProjectId } from "../../shared/project-state";
 import type { ChatMetadata, ChatStatus, StandaloneChatMetadata } from "../../shared/project-state";
-import { resolvePiSessionFilesDirForCwd } from "../app-paths";
+import { resolvePiSessionFilesRoot } from "../app-paths";
 
 const maxChatTitleLength = 80;
 const ellipsis = "...";
@@ -23,8 +25,46 @@ type CreateChatFromSessionInfoInput = {
 
 type CreateStandaloneChatFromSessionInfoInput = Omit<CreateChatFromSessionInfoInput, "projectId">;
 
+const isNotFoundError = (error: unknown): boolean =>
+	typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+
+const normalizeCwd = (cwd: string): string => resolve(cwd);
+
+const readSessionDirs = async (root: string): Promise<string[]> => {
+	try {
+		const entries = await readdir(root, { withFileTypes: true });
+		return entries.filter((entry) => entry.isDirectory()).map((entry) => join(root, entry.name));
+	} catch (error) {
+		if (isNotFoundError(error)) {
+			return [];
+		}
+		throw error;
+	}
+};
+
+const listSessionsMatchingCwd = async (
+	root: string,
+	cwd: string,
+	onProgress?: PiSessionListProgress,
+): Promise<SessionInfo[]> => {
+	const dirs = await readSessionDirs(root);
+	const targetCwd = normalizeCwd(cwd);
+	const sessions: SessionInfo[] = [];
+	let loadedDirs = 0;
+
+	for (const dir of dirs) {
+		const dirSessions = await SessionManager.list("", dir);
+		loadedDirs += 1;
+		onProgress?.(loadedDirs, dirs.length);
+		sessions.push(...dirSessions.filter((session) => normalizeCwd(session.cwd) === targetCwd));
+	}
+
+	sessions.sort((a, b) => b.modified.getTime() - a.modified.getTime());
+	return sessions;
+};
+
 export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => ({
-	listProject: (cwd, onProgress) => SessionManager.list(cwd, resolvePiSessionFilesDirForCwd({ cwd, env }), onProgress),
+	listProject: (cwd, onProgress) => listSessionsMatchingCwd(resolvePiSessionFilesRoot(env), cwd, onProgress),
 });
 
 export const getChatTitleFromSessionInfo = (session: SessionInfo): string => {

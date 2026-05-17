@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -36,20 +39,54 @@ describe("pi session index", () => {
 		sessionManagerMock.list.mockReset();
 	});
 
-	it("creates a lister with a project list method that passes through to Pi SessionManager", async () => {
-		const session = createSessionInfo();
+	it("lists project sessions across all session directories by matching session cwd", async () => {
+		const sessionRoot = await mkdtemp(join(tmpdir(), "pi-session-root-"));
+		const encodedDir = join(sessionRoot, "--%2Ftmp%2Fpi--");
+		const legacyDir = join(sessionRoot, "--tmp-pi--");
+		const outsideDir = join(sessionRoot, "--tmp-outside--");
+		await mkdir(encodedDir);
+		await mkdir(legacyDir);
+		await mkdir(outsideDir);
+		const encodedSession = createSessionInfo({
+			id: "encoded",
+			path: join(encodedDir, "encoded.jsonl"),
+			cwd: "/tmp/pi",
+			modified: new Date("2026-05-12T10:00:00.000Z"),
+		});
+		const legacySession = createSessionInfo({
+			id: "legacy",
+			path: join(legacyDir, "legacy.jsonl"),
+			cwd: "/tmp/pi",
+			modified: new Date("2026-05-12T11:00:00.000Z"),
+		});
+		const outsideSession = createSessionInfo({
+			id: "outside",
+			path: join(outsideDir, "outside.jsonl"),
+			cwd: "/tmp/outside",
+			modified: new Date("2026-05-12T12:00:00.000Z"),
+		});
 		const onProgress = vi.fn();
-		sessionManagerMock.list.mockResolvedValue([session]);
+		sessionManagerMock.list.mockImplementation(async (_cwd: string, dir: string) => {
+			if (dir === encodedDir) {
+				return [encodedSession];
+			}
+			if (dir === legacyDir) {
+				return [legacySession];
+			}
+			if (dir === outsideDir) {
+				return [outsideSession];
+			}
+			return [];
+		});
 
-		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: "/tmp/pi-session-root" });
+		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: sessionRoot });
 
-		await expect(lister.listProject("/tmp/pi", onProgress)).resolves.toEqual([session]);
+		await expect(lister.listProject("/tmp/pi", onProgress)).resolves.toEqual([legacySession, encodedSession]);
 		expect(lister).toHaveProperty("listProject");
-		expect(sessionManagerMock.list).toHaveBeenCalledWith(
-			"/tmp/pi",
-			"/tmp/pi-session-root/--%2Ftmp%2Fpi--",
-			onProgress,
-		);
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", encodedDir);
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", legacyDir);
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", outsideDir);
+		expect(onProgress).toHaveBeenLastCalledWith(3, 3);
 	});
 
 	it("uses explicit Pi session names before first message text", () => {

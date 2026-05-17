@@ -1,5 +1,6 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createAppBackend } from "../../src/main/app-backend";
+import type { AppRpcRequest } from "../../src/shared/app-transport";
 import { PiSessionOperationFailedCode } from "../../src/shared/ipc";
 import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
 import type { ProjectService } from "../../src/main/projects/project-service";
@@ -47,6 +48,122 @@ const createProjectService = (): ProjectService => ({
 	cloneChat: vi.fn(async () => emptyState),
 	branchChat: vi.fn(async () => emptyState),
 });
+
+type ProjectStateMethod =
+	| "getState"
+	| "createFromScratch"
+	| "addExistingFolder"
+	| "selectProject"
+	| "renameProject"
+	| "removeProject"
+	| "openProjectInFinder"
+	| "locateFolder"
+	| "setPinned"
+	| "checkAvailability"
+	| "createChat"
+	| "createStandaloneChat"
+	| "selectChat"
+	| "selectStandaloneChat"
+	| "forkChat"
+	| "cloneChat"
+	| "branchChat";
+
+type ProjectRouteCase = {
+	request: AppRpcRequest;
+	method: ProjectStateMethod;
+	expectedArgs: unknown[];
+};
+
+const projectRouteCases: ProjectRouteCase[] = [
+	{
+		request: { operation: "project.getState" },
+		method: "getState",
+		expectedArgs: [],
+	},
+	{
+		request: { operation: "project.createFromScratch" },
+		method: "createFromScratch",
+		expectedArgs: [],
+	},
+	{
+		request: { operation: "project.addExistingFolder" },
+		method: "addExistingFolder",
+		expectedArgs: [],
+	},
+	{
+		request: { operation: "project.select", input: { projectId: "project:one" } },
+		method: "selectProject",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "project.rename", input: { projectId: "project:one", displayName: "Renamed" } },
+		method: "renameProject",
+		expectedArgs: [{ projectId: "project:one", displayName: "Renamed" }],
+	},
+	{
+		request: { operation: "project.remove", input: { projectId: "project:one" } },
+		method: "removeProject",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "project.openInFinder", input: { projectId: "project:one" } },
+		method: "openProjectInFinder",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "project.locateFolder", input: { projectId: "project:one" } },
+		method: "locateFolder",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "project.setPinned", input: { projectId: "project:one", pinned: true } },
+		method: "setPinned",
+		expectedArgs: [{ projectId: "project:one", pinned: true }],
+	},
+	{
+		request: { operation: "project.checkAvailability", input: { projectId: "project:one" } },
+		method: "checkAvailability",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "chat.create", input: { projectId: "project:one" } },
+		method: "createChat",
+		expectedArgs: [{ projectId: "project:one" }],
+	},
+	{
+		request: { operation: "chat.createStandalone", input: {} },
+		method: "createStandaloneChat",
+		expectedArgs: [{}],
+	},
+	{
+		request: { operation: "chat.select", input: { projectId: "project:one", chatId: "chat:one" } },
+		method: "selectChat",
+		expectedArgs: [{ projectId: "project:one", chatId: "chat:one" }],
+	},
+	{
+		request: { operation: "chat.selectStandalone", input: { chatId: "chat:quick" } },
+		method: "selectStandaloneChat",
+		expectedArgs: [{ chatId: "chat:quick" }],
+	},
+	{
+		request: { operation: "chat.fork", input: { projectId: "project:one", chatId: "chat:one" } },
+		method: "forkChat",
+		expectedArgs: [{ projectId: "project:one", chatId: "chat:one" }],
+	},
+	{
+		request: { operation: "chat.clone", input: { projectId: "project:one", chatId: "chat:one" } },
+		method: "cloneChat",
+		expectedArgs: [{ projectId: "project:one", chatId: "chat:one" }],
+	},
+	{
+		request: {
+			operation: "chat.branch",
+			input: { projectId: "project:one", chatId: "chat:one", entryId: "entry:one" },
+		},
+		method: "branchChat",
+		expectedArgs: [{ projectId: "project:one", chatId: "chat:one", entryId: "entry:one" }],
+	},
+];
 
 const waitForScheduledPrompt = async (events: unknown[]) => {
 	await vi.waitFor(() => {
@@ -96,7 +213,7 @@ describe("app backend", () => {
 		});
 	});
 
-	it("routes chat.createStandalone to the project service", async () => {
+	it("returns app version metadata", async () => {
 		const projectService = createProjectService();
 		const backend = createAppBackend({
 			appInfo: { name: "pi-desktop", version: "dev" },
@@ -104,10 +221,28 @@ describe("app backend", () => {
 			now: () => "2026-05-15T12:00:00.000Z",
 		});
 
-		const result = await backend.handle({ operation: "chat.createStandalone", input: {} });
+		await expect(backend.handle({ operation: "app.getVersion" })).resolves.toEqual({
+			ok: true,
+			data: { name: "pi-desktop", version: "dev" },
+		});
+	});
+
+	it.each(projectRouteCases)("routes $request.operation to the project service", async ({
+		request,
+		method,
+		expectedArgs,
+	}) => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+		});
+
+		const result = await backend.handle(request);
 
 		expect(result).toEqual({ ok: true, data: emptyState });
-		expect(projectService.createStandaloneChat).toHaveBeenCalledWith({});
+		expect(projectService[method]).toHaveBeenCalledWith(...expectedArgs);
 	});
 
 	it("routes chat.rename to the project service", async () => {
