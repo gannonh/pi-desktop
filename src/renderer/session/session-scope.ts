@@ -30,12 +30,12 @@ export const resolvePromptSessionStartSelection = (projectState: ProjectStateVie
 	const selectedProject = projectState.selectedProject;
 	const selectedChat = projectState.selectedChat;
 	const selectedProjectIsAvailable = selectedProject?.availability.status === "available";
-	const selectedStandaloneChatHasSession = selectedProject === null && Boolean(selectedChat?.sessionPath);
+	const selectedStandaloneChat = selectedProject === null && selectedChat !== null;
 
-	if (!selectedProjectIsAvailable && !selectedStandaloneChatHasSession) {
+	if (!selectedProjectIsAvailable && !selectedStandaloneChat) {
 		return {
 			ok: false,
-			errorMessage: "Select an available project or existing standalone chat to start a Pi session.",
+			errorMessage: "Select an available project or quick-start chat to start a Pi session.",
 		};
 	}
 

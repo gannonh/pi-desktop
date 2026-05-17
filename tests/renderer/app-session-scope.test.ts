@@ -24,6 +24,33 @@ const createProjectState = (overrides: Partial<ProjectStateView>): ProjectStateV
 });
 
 describe("resolvePromptSessionStartSelection", () => {
+	it("uses the selected standalone chat id for a quick-start draft payload", () => {
+		const standaloneChat = {
+			id: "chat:quick-start",
+			source: "draft" as const,
+			sessionId: null,
+			sessionPath: null,
+			cwd: "/tmp/desktop-chats",
+			title: "New chat",
+			status: "idle" as const,
+			attention: false,
+			createdAt: now,
+			updatedAt: now,
+			lastOpenedAt: null,
+		};
+
+		expect(
+			resolvePromptSessionStartSelection(
+				createProjectState({
+					standaloneChats: [standaloneChat],
+					selectedProjectId: null,
+					selectedChatId: standaloneChat.id,
+					selectedChat: standaloneChat,
+				}),
+			),
+		).toEqual({ ok: true, projectId: null, chatId: standaloneChat.id });
+	});
+
 	it("uses the selected standalone chat id for a resumable projectless start payload", () => {
 		const standaloneChat = {
 			id: "chat:session:standalone",
@@ -93,10 +120,10 @@ describe("resolvePromptSessionStartSelection", () => {
 		).toEqual({ ok: true, projectId, chatId: projectChat.id });
 	});
 
-	it("requires an available project or existing standalone chat session", () => {
+	it("requires an available project or selected standalone chat", () => {
 		expect(resolvePromptSessionStartSelection(createProjectState({}))).toEqual({
 			ok: false,
-			errorMessage: "Select an available project or existing standalone chat to start a Pi session.",
+			errorMessage: "Select an available project or quick-start chat to start a Pi session.",
 		});
 	});
 });
