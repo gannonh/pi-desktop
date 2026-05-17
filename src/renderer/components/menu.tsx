@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import { cn } from "@/renderer/lib/utils";
+import { cn } from "../lib/utils";
 
 type MenuSurfaceVariant = "popover" | "context";
 

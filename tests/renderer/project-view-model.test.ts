@@ -279,4 +279,23 @@ describe("project view model", () => {
 			hiddenCount: 1,
 		});
 	});
+
+	it("expands standalone chat rows when expandStandaloneChats is true", () => {
+		const standaloneChats = Array.from({ length: 6 }, (_, index) =>
+			createStandaloneChat({
+				id: `chat:standalone:${index + 1}`,
+				title: `Standalone ${index + 1}`,
+			}),
+		);
+		const view: ProjectStateView = {
+			projects: [],
+			standaloneChats,
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		};
+
+		expect(createStandaloneChatSidebarRows(view, fixedNow, { expandStandaloneChats: true })).toHaveLength(6);
+	});
 });
