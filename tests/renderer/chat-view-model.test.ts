@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import type { getStaticTranscript } from "../../src/renderer/chat/static-transcripts";
-import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
+import type {
+	ChatMetadata,
+	ProjectStateView,
+	ProjectWithChats,
+	StandaloneChatMetadata,
+} from "../../src/shared/project-state";
 
 const emptyView: ProjectStateView = {
 	projects: [],
@@ -41,8 +46,23 @@ const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	...overrides,
 });
 
+const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): StandaloneChatMetadata => ({
+	id: "chat:standalone",
+	source: "pi-session",
+	sessionId: "sdk-session:standalone",
+	sessionPath: "/Users/gannonhall/Downloads/pi-session.jsonl",
+	cwd: "/Users/gannonhall/Downloads",
+	title: "Standalone chat",
+	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T10:00:00.000Z",
+	updatedAt: "2026-05-12T10:00:00.000Z",
+	lastOpenedAt: null,
+	...overrides,
+});
+
 const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
-	if (route.kind === "global-start" || route.kind === "project-start") {
+	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
 		// @ts-expect-error Suggestions are shared fixture data and must stay readonly.
 		route.suggestions.push("Connect your favorite apps to Pi");
 	}
@@ -75,6 +95,36 @@ describe("createChatShellRoute", () => {
 				modelLabel: "5.5 High",
 				runtimeAvailable: false,
 				disabledReason: "Select an available project to start a Pi session.",
+			},
+			suggestions: [
+				"Review my recent commits for correctness risks and maintainability concerns",
+				"Unblock my most recent open PR",
+				"Connect your favorite apps to Pi",
+			],
+		});
+	});
+
+	it("creates a standalone start route with an enabled composer for a selected standalone session chat", () => {
+		const chat = createStandaloneChat();
+		const view: ProjectStateView = {
+			projects: [],
+			standaloneChats: [chat],
+			selectedProjectId: null,
+			selectedChatId: chat.id,
+			selectedProject: null,
+			selectedChat: chat,
+		};
+
+		expect(createChatShellRoute(view)).toEqual({
+			kind: "standalone-start",
+			title: "Standalone chat",
+			chatId: chat.id,
+			composer: {
+				projectSelectorLabel: "/Users/gannonhall/Downloads",
+				modeLabel: "Work locally",
+				modelLabel: "5.5 High",
+				runtimeAvailable: true,
+				disabledReason: "",
 			},
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",

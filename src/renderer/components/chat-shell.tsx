@@ -21,7 +21,7 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 	const abortable = Boolean(session.sessionId) && session.status !== "starting";
 	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 
-	if (route.kind === "global-start" || route.kind === "project-start") {
+	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
 		return (
 			<ChatStartState
 				route={route}

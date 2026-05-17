@@ -31,6 +31,13 @@ export type ChatShellRoute =
 			suggestions: readonly ChatSuggestion[];
 	  }
 	| {
+			kind: "standalone-start";
+			title: string;
+			chatId: string;
+			composer: ComposerContext;
+			suggestions: readonly ChatSuggestion[];
+	  }
+	| {
 			kind: "empty-chat";
 			title: string;
 			startTitle: string;
@@ -75,8 +82,22 @@ const createComposerContext = (
 
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
 	const selectedProject = view.selectedProject;
+	const selectedChat = view.selectedChat;
 
 	if (!selectedProject) {
+		if (selectedChat?.sessionPath) {
+			return {
+				kind: "standalone-start",
+				title: selectedChat.title,
+				chatId: selectedChat.id,
+				composer: createComposerContext(selectedChat.cwd, {
+					runtimeAvailable: true,
+					disabledReason: "",
+				}),
+				suggestions,
+			};
+		}
+
 		return {
 			kind: "global-start",
 			title: "What should we work on?",
@@ -108,7 +129,6 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		disabledReason: "",
 		projectId: selectedProject.id,
 	});
-	const selectedChat = view.selectedChat;
 
 	if (!selectedChat) {
 		return {

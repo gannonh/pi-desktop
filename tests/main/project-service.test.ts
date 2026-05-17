@@ -865,6 +865,65 @@ describe("project service", () => {
 		);
 	});
 
+	it("returns an existing project chat session start target", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-start-target-project-"));
+		const project = createProject(projectPath);
+		const sessionPath = join(projectPath, "session.jsonl");
+		const chat = createChat(project, {
+			id: "chat:session:project",
+			source: "pi-session",
+			sessionId: "session-project",
+			sessionPath,
+		});
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				chatsByProject: {
+					[project.id]: [chat],
+				},
+			},
+		});
+
+		await expect(service.getSessionStartTarget({ projectId: project.id, chatId: chat.id })).resolves.toEqual({
+			projectId: project.id,
+			chatId: chat.id,
+			workspacePath: projectPath,
+			sessionPath,
+		});
+	});
+
+	it("returns a standalone chat session start target", async () => {
+		const workspacePath = await mkdtemp(join(tmpdir(), "pi-start-target-standalone-"));
+		const sessionPath = join(workspacePath, "standalone.jsonl");
+		const standaloneChat = {
+			id: "chat:session:standalone",
+			source: "pi-session" as const,
+			sessionId: "standalone",
+			sessionPath,
+			cwd: workspacePath,
+			title: "Standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: firstNow,
+			updatedAt: firstNow,
+			lastOpenedAt: null,
+		};
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				standaloneChats: [standaloneChat],
+			},
+		});
+
+		await expect(service.getSessionStartTarget({ projectId: null, chatId: standaloneChat.id })).resolves.toEqual({
+			projectId: null,
+			chatId: standaloneChat.id,
+			workspacePath,
+			sessionPath,
+		});
+	});
+
 	it("rejects a project session start target for an unknown chat id", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-start-target-"));
 		const project = createProject(projectPath);

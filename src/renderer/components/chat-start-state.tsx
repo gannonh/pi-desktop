@@ -4,7 +4,7 @@ import type { LiveSessionState } from "../session/session-state";
 import { Composer } from "./composer";
 import { LiveSessionTranscript } from "./live-session-transcript";
 
-type StartRoute = Extract<ChatShellRoute, { kind: "global-start" | "project-start" }>;
+type StartRoute = Extract<ChatShellRoute, { kind: "global-start" | "project-start" | "standalone-start" }>;
 
 const suggestionIcons = [GitPullRequest, GitBranch, Workflow] as const;
 

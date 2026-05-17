@@ -6,6 +6,7 @@ import {
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
 	isSessionScopeSelected,
+	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
 	takeBufferedSessionEvents,
@@ -24,7 +25,7 @@ type StatusMessage = {
 
 type SessionRequest = {
 	id: number;
-	projectId: string;
+	projectId: string | null;
 	chatId: string | null;
 };
 
@@ -60,8 +61,8 @@ export function App() {
 	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
 	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
-	const selectedProjectId = projectState.selectedProject?.id ?? null;
-	const selectedChatId = projectState.selectedChat?.id ?? null;
+	const selectedProjectId = projectState.selectedProjectId;
+	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
 	const selectedChatIdRef = useRef<string | null>(selectedChatId);
 	const activeSessionProjectIdRef = useRef<string | null>(activeSessionProjectId);
@@ -94,7 +95,7 @@ export function App() {
 
 	useEffect(() => {
 		if (
-			!activeSessionProjectId ||
+			(activeSessionProjectId === null && activeSessionChatId === null) ||
 			isSessionScopeSelected(
 				{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
 				{ projectId: selectedProjectId, chatId: selectedChatId },
@@ -166,24 +167,24 @@ export function App() {
 
 	const submitPrompt = useCallback(
 		async (prompt: string) => {
-			const selectedProject = projectState.selectedProject;
-			if (!selectedProject || selectedProject.availability.status !== "available") {
+			const startSelection = resolvePromptSessionStartSelection(projectState);
+			if (!startSelection.ok) {
 				setSessionState((current) => ({
 					...current,
 					status: "failed",
 					statusLabel: "Failed",
-					errorMessage: "Select an available project to start a Pi session.",
+					errorMessage: startSelection.errorMessage,
 					retryMessage: "",
 				}));
 				return false;
 			}
 
-			const requestChatId = projectState.selectedChat?.id ?? null;
+			const requestProjectId = startSelection.projectId;
+			const requestChatId = startSelection.chatId;
 			const reusableSessionId =
-				activeSessionProjectId === selectedProject.id && activeSessionChatId === requestChatId
+				activeSessionProjectId === requestProjectId && activeSessionChatId === requestChatId
 					? acceptedSessionIdRef.current
 					: null;
-			const requestProjectId = selectedProject.id;
 			const request: SessionRequest = {
 				id: nextSessionRequestIdRef.current + 1,
 				projectId: requestProjectId,
@@ -273,17 +274,12 @@ export function App() {
 					}
 					return next;
 				});
+				applyProjectStateViewResult(await window.piDesktop.project.getState());
 			}
 
 			return true;
 		},
-		[
-			activeSessionChatId,
-			activeSessionProjectId,
-			applyProjectStateViewResult,
-			projectState.selectedChat,
-			projectState.selectedProject,
-		],
+		[activeSessionChatId, activeSessionProjectId, applyProjectStateViewResult, projectState],
 	);
 
 	const abortSession = useCallback(async () => {
