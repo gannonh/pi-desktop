@@ -475,6 +475,18 @@ export const installDevPreviewApi = () => {
 				});
 				return { ok: true, data: { sessionId, status: "idle" } };
 			},
+			history: async ({ projectId, chatId }) => {
+				const sessionId = `${projectId ?? "standalone"}:${chatId}:preview-history`;
+				return {
+					ok: true,
+					data: {
+						sessionId,
+						status: "idle",
+						statusLabel: "Idle",
+						messages: [],
+					},
+				};
+			},
 			dispose: async ({ sessionId }) => {
 				clearPendingPreviewStream(sessionId);
 				return {

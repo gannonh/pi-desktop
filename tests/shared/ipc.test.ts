@@ -13,6 +13,8 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryInputSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionOperationFailedCode,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
@@ -83,6 +85,7 @@ describe("IPC contracts", () => {
 			piSessionStart: "pi-session:start",
 			piSessionSubmit: "pi-session:submit",
 			piSessionAbort: "pi-session:abort",
+			piSessionHistory: "pi-session:history",
 			piSessionDispose: "pi-session:dispose",
 			piSessionEvent: "pi-session:event",
 		});
@@ -171,6 +174,10 @@ describe("IPC contracts", () => {
 		expect(PiSessionAbortInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
 			sessionId: "pi-session:one",
 		});
+		expect(PiSessionHistoryInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+		});
 		expect(PiSessionDisposeInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
 			sessionId: "pi-session:one",
 		});
@@ -197,6 +204,25 @@ describe("IPC contracts", () => {
 				sessionPath: "/tmp/pi-session.jsonl",
 				status: "running",
 				resumed: false,
+			},
+		});
+		expect(
+			PiSessionHistoryResultSchema.parse({
+				ok: true,
+				data: {
+					sessionId: "pi-session:one",
+					status: "idle",
+					statusLabel: "Idle",
+					messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
+				},
+			}),
+		).toEqual({
+			ok: true,
+			data: {
+				sessionId: "pi-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
 			},
 		});
 		expect(

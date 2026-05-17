@@ -136,6 +136,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		},
 		projectService,
 		now: () => new Date().toISOString(),
+		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
 	});
 	appBackend = backend;
@@ -178,6 +179,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) => invokeBackend("piSession.start", input));
 	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) => invokeBackend("piSession.submit", input));
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));
+	ipcMain.handle(IpcChannels.piSessionHistory, (_event, input) => invokeBackend("piSession.history", input));
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
 };
 

@@ -1,4 +1,9 @@
-import type { PiSessionEvent, PiSessionMessageRole, PiSessionStatus } from "../../shared/pi-session";
+import type {
+	PiSessionEvent,
+	PiSessionHistoryPayload,
+	PiSessionMessageRole,
+	PiSessionStatus,
+} from "../../shared/pi-session";
 
 export type LiveSessionMessage = {
 	id: string;
@@ -32,6 +37,15 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 	findMessage(messages, next.id)
 		? messages.map((message) => (message.id === next.id ? next : message))
 		: [...messages, next];
+
+export const applySessionHistoryResult = (result: PiSessionHistoryPayload): LiveSessionState => ({
+	sessionId: result.sessionId,
+	status: result.status,
+	statusLabel: result.statusLabel,
+	messages: result.messages,
+	errorMessage: "",
+	retryMessage: "",
+});
 
 export const applySessionStartResult = (
 	state: LiveSessionState,

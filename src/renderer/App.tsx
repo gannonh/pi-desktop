@@ -12,6 +12,7 @@ import {
 	takeBufferedSessionEvents,
 } from "./session/session-scope";
 import {
+	applySessionHistoryResult,
 	applySessionStartResult,
 	createInitialSessionState,
 	reduceSessionEvent,
@@ -72,6 +73,7 @@ export function App() {
 	const pendingStartEventsRef = useRef(createPendingSessionEventBuffer());
 	const acceptedSessionIdRef = useRef<string | null>(null);
 	const nextSessionRequestIdRef = useRef(0);
+	const nextHistoryRequestIdRef = useRef(0);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -105,6 +107,7 @@ export function App() {
 		}
 
 		const sessionId = sessionState.sessionId;
+		const runtimeSessionId = acceptedSessionIdRef.current;
 		activeSessionProjectIdRef.current = null;
 		activeSessionChatIdRef.current = null;
 		acceptedSessionIdRef.current = null;
@@ -114,7 +117,7 @@ export function App() {
 		setActiveSessionChatId(null);
 		setSessionState(createInitialSessionState());
 
-		if (sessionId) {
+		if (sessionId && sessionId === runtimeSessionId) {
 			void window.piDesktop.piSession.dispose({ sessionId });
 		}
 	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
@@ -281,6 +284,61 @@ export function App() {
 		},
 		[activeSessionChatId, activeSessionProjectId, applyProjectStateViewResult, projectState],
 	);
+
+	useEffect(() => {
+		const selectedChat = projectState.selectedChat;
+		if (!selectedChat?.sessionPath || !selectedChatId) {
+			return;
+		}
+		if (
+			isSessionScopeSelected(
+				{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+				{ projectId: selectedProjectId, chatId: selectedChatId },
+			) &&
+			acceptedSessionIdRef.current
+		) {
+			return;
+		}
+
+		const requestId = nextHistoryRequestIdRef.current + 1;
+		nextHistoryRequestIdRef.current = requestId;
+		let cancelled = false;
+
+		const loadHistory = async () => {
+			const result = await window.piDesktop.piSession.history({
+				projectId: selectedProjectId,
+				chatId: selectedChatId,
+			});
+			if (
+				cancelled ||
+				nextHistoryRequestIdRef.current !== requestId ||
+				selectedProjectIdRef.current !== selectedProjectId ||
+				selectedChatIdRef.current !== selectedChatId
+			) {
+				return;
+			}
+
+			if (!result.ok) {
+				setStatusMessage({ source: "project", message: result.error.message });
+				return;
+			}
+
+			acceptedSessionIdRef.current = null;
+			pendingStartRequestRef.current = null;
+			pendingStartEventsRef.current.clear();
+			activeSessionProjectIdRef.current = selectedProjectId;
+			activeSessionChatIdRef.current = selectedChatId;
+			setActiveSessionProjectId(selectedProjectId);
+			setActiveSessionChatId(selectedChatId);
+			setSessionState(applySessionHistoryResult(result.data));
+		};
+
+		void loadHistory();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [activeSessionChatId, activeSessionProjectId, projectState.selectedChat, selectedChatId, selectedProjectId]);
 
 	const abortSession = useCallback(async () => {
 		if (

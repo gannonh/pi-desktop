@@ -9,6 +9,7 @@ import {
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
+	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
 	PiSessionStartInputSchema,
 	PiSessionSubmitInputSchema,
@@ -20,12 +21,14 @@ import {
 import type {
 	PiSessionActionPayload,
 	PiSessionEvent,
+	PiSessionHistoryPayload,
 	PiSessionStartPayload,
 	PiSessionStatus,
 } from "../shared/pi-session";
 import type { ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
+import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
 
@@ -37,12 +40,14 @@ export type AppBackendDeps = {
 	appInfo: AppVersion;
 	projectService: ProjectService;
 	now: () => string;
+	env?: NodeJS.ProcessEnv;
 	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
+	loadSessionHistory?: (input: LoadPiSessionHistoryInput) => PiSessionHistoryPayload;
 };
 
 export type AppBackendResult = IpcResult<
-	AppVersion | ProjectStateView | PiSessionStartPayload | PiSessionActionPayload
+	AppVersion | ProjectStateView | PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload
 >;
 
 export type AppBackend = {
@@ -99,6 +104,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
 		emit: emitPiSessionEvent,
+		env: deps.env,
 		createSessionManager: deps.createSessionManager,
 		createAgentSession: deps.createAgentSession,
 	});
@@ -112,7 +118,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 	};
 
 	const handlePiSessionOperation = async (
-		operation: () => Promise<PiSessionStartPayload | PiSessionActionPayload>,
+		operation: () => Promise<PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload>,
 	): Promise<AppBackendResult> => {
 		try {
 			return ok(await operation());
@@ -219,6 +225,23 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.abort(PiSessionAbortInputSchema.parse(request.input)),
 					);
+				case "piSession.history":
+					return handlePiSessionOperation(async () => {
+						const parsed = PiSessionHistoryInputSchema.parse(request.input);
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
+							chatId: parsed.chatId,
+						});
+						if (!target.sessionPath) {
+							throw new Error("Chat does not have a Pi session file yet.");
+						}
+						return (deps.loadSessionHistory ?? loadPiSessionHistory)({
+							projectId: target.projectId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
+							env: deps.env,
+						});
+					});
 				case "piSession.dispose":
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input)),

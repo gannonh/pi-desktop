@@ -5,6 +5,7 @@ import {
 	IpcChannels,
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionStartResultSchema,
 	ProjectStateViewResultSchema,
 } from "../shared/ipc";
@@ -65,6 +66,7 @@ const api: PiDesktopApi = {
 		start: async (input) => safeInvokeParse(IpcChannels.piSessionStart, PiSessionStartResultSchema, input),
 		submit: async (input) => safeInvokeParse(IpcChannels.piSessionSubmit, PiSessionActionResultSchema, input),
 		abort: async (input) => safeInvokeParse(IpcChannels.piSessionAbort, PiSessionActionResultSchema, input),
+		history: async (input) => safeInvokeParse(IpcChannels.piSessionHistory, PiSessionHistoryResultSchema, input),
 		dispose: async (input) => safeInvokeParse(IpcChannels.piSessionDispose, PiSessionActionResultSchema, input),
 		onEvent: (listener) => {
 			const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {

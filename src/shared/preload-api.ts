@@ -11,6 +11,8 @@ import type {
 	PiSessionActionResult,
 	PiSessionDisposeInput,
 	PiSessionEvent,
+	PiSessionHistoryInput,
+	PiSessionHistoryResult,
 	PiSessionStartInput,
 	PiSessionStartResult,
 	PiSessionSubmitInput,
@@ -49,6 +51,7 @@ export interface PiDesktopApi {
 		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;
 		submit: (input: PiSessionSubmitInput) => Promise<PiSessionActionResult>;
 		abort: (input: PiSessionAbortInput) => Promise<PiSessionActionResult>;
+		history: (input: PiSessionHistoryInput) => Promise<PiSessionHistoryResult>;
 		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
 		onEvent: (listener: (event: PiSessionEvent) => void) => () => void;
 	};

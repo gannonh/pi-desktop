@@ -65,7 +65,7 @@ type RuntimeEntry = {
 	disposed: boolean;
 };
 
-const createDesktopSessionId = (projectId: string | null, piSessionId: string): string =>
+export const createDesktopSessionId = (projectId: string | null, piSessionId: string): string =>
 	`${projectId ?? "standalone"}:${piSessionId}`;
 
 export const createPiSessionRuntime = (deps: RuntimeDeps) => {

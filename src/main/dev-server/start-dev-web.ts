@@ -136,6 +136,7 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 			branchSession: (sourcePath, targetCwd, entryId) => branchSession(sourcePath, targetCwd, entryId, env),
 		}),
 		now: () => new Date().toISOString(),
+		env,
 		createAgentSession: env.PI_DESKTOP_SMOKE_PI_SESSION === "1" ? createSmokePiAgentSession : undefined,
 	});
 };

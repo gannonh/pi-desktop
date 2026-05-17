@@ -12,6 +12,8 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryInputSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
 	PiSessionSubmitInputSchema,
@@ -43,6 +45,7 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	z.strictObject({ operation: z.literal("piSession.start"), input: PiSessionStartInputSchema }),
 	z.strictObject({ operation: z.literal("piSession.submit"), input: PiSessionSubmitInputSchema }),
 	z.strictObject({ operation: z.literal("piSession.abort"), input: PiSessionAbortInputSchema }),
+	z.strictObject({ operation: z.literal("piSession.history"), input: PiSessionHistoryInputSchema }),
 	z.strictObject({ operation: z.literal("piSession.dispose"), input: PiSessionDisposeInputSchema }),
 ]);
 
@@ -71,6 +74,7 @@ export const AppRpcResponseSchemas = {
 	"piSession.start": PiSessionStartResultSchema,
 	"piSession.submit": PiSessionActionResultSchema,
 	"piSession.abort": PiSessionActionResultSchema,
+	"piSession.history": PiSessionHistoryResultSchema,
 	"piSession.dispose": PiSessionActionResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 

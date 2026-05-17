@@ -183,6 +183,54 @@ describe("app backend", () => {
 		});
 	});
 
+	it("loads persisted Pi session history for a selected chat", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
+			projectId: "project:one",
+			chatId: "chat:one",
+			workspacePath: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+		});
+		const loadSessionHistory = vi.fn(() => ({
+			sessionId: "project:one:sdk-session:one",
+			status: "idle" as const,
+			statusLabel: "Idle",
+			messages: [{ id: "user:one", role: "user" as const, content: "what time is it?", streaming: false }],
+		}));
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			env: { PI_CODING_AGENT_SESSION_DIR: "/tmp/pi-sessions" },
+			loadSessionHistory,
+		});
+
+		const result = await backend.handle({
+			operation: "piSession.history",
+			input: { projectId: "project:one", chatId: "chat:one" },
+		});
+
+		expect(projectService.getSessionStartTarget).toHaveBeenCalledWith({
+			projectId: "project:one",
+			chatId: "chat:one",
+		});
+		expect(loadSessionHistory).toHaveBeenCalledWith({
+			projectId: "project:one",
+			workspacePath: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+			env: { PI_CODING_AGENT_SESSION_DIR: "/tmp/pi-sessions" },
+		});
+		expect(result).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:one:sdk-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:one", role: "user", content: "what time is it?", streaming: false }],
+			},
+		});
+	});
+
 	it("resumes a Pi session from the project service start target and records started metadata", async () => {
 		const projectService = createProjectService();
 		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
