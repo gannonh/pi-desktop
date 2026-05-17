@@ -199,10 +199,18 @@ const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore
 		return ui ? { ...base, id: ui.chatId } : base;
 	});
 	const seenStandaloneSessionPaths = new Set(standaloneChats.map((chat) => chat.sessionPath));
+	const pendingStartedChats = nextStore.standaloneChats.filter(
+		(chat) =>
+			chat.source === "pi-session" &&
+			chat.cwd === deps.desktopChatsPath &&
+			chat.sessionPath !== null &&
+			nextStore.sessionUiByPath[chat.sessionPath] !== undefined &&
+			!seenStandaloneSessionPaths.has(chat.sessionPath),
+	);
 	const drafts = nextStore.standaloneChats.filter(
 		(chat) => chat.source === "draft" && !seenStandaloneSessionPaths.has(chat.sessionPath),
 	);
-	nextStore.standaloneChats = [...standaloneChats, ...drafts];
+	nextStore.standaloneChats = [...standaloneChats, ...pendingStartedChats, ...drafts];
 	pruneMissingStandaloneSelection(nextStore);
 
 	return nextStore;
@@ -799,13 +807,14 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 			return runSerialized(async () => {
 				const store = await deps.store.load();
+				const now = deps.now();
 				const chatId = input.chatId ?? `chat:session:${input.sessionId}`;
 				store.sessionUiByPath[sessionPath] = {
 					chatId,
 					sessionId: input.sessionId,
 					sessionPath,
 					projectId: input.projectId,
-					lastOpenedAt: deps.now(),
+					lastOpenedAt: now,
 					status: input.status,
 					attention: false,
 				};
@@ -815,8 +824,19 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					);
 				}
 				if (input.projectId === null && input.chatId !== null) {
-					store.standaloneChats = store.standaloneChats.filter(
-						(chat) => chat.id !== input.chatId || chat.source !== "draft",
+					store.standaloneChats = store.standaloneChats.map((chat) =>
+						chat.id === input.chatId && chat.source === "draft"
+							? {
+									...chat,
+									source: "pi-session" as const,
+									sessionId: input.sessionId,
+									sessionPath,
+									status: input.status,
+									attention: false,
+									updatedAt: now,
+									lastOpenedAt: now,
+								}
+							: chat,
 					);
 				}
 				await deps.store.save(store);

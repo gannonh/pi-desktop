@@ -1036,6 +1036,44 @@ describe("project service", () => {
 		expect(view.selectedChat?.id).toBe(draftChat.id);
 	});
 
+	it("keeps a started quick-start draft selected before the session index catches up", async () => {
+		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));
+		const sessionPath = join(desktopChatsPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			desktopChatsPath,
+			now: () => secondNow,
+			listProjectSessions: async () => [],
+		});
+		const created = await service.createStandaloneChat({});
+		const chatId = created.selectedChatId;
+		if (!chatId) {
+			throw new Error("Expected selected quick-start chat.");
+		}
+
+		await service.recordSessionStarted({
+			projectId: null,
+			chatId,
+			sessionId: "sdk-session-quick",
+			sessionPath,
+			status: "running",
+		});
+		const view = await service.getState();
+
+		expect(memoryStore.read().standaloneChats[0]).toEqual(
+			expect.objectContaining({
+				id: chatId,
+				source: "pi-session",
+				sessionId: "sdk-session-quick",
+				sessionPath,
+				cwd: desktopChatsPath,
+				status: "running",
+			}),
+		);
+		expect(view.selectedProjectId).toBeNull();
+		expect(view.selectedChatId).toBe(chatId);
+		expect(view.selectedChat).toEqual(expect.objectContaining({ id: chatId, sessionPath }));
+	});
+
 	it("renames a Pi-backed chat through session name writer", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const sessionPath = "/tmp/pi-desktop/session.jsonl";
