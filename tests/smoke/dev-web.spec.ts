@@ -102,7 +102,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 
 		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible();
 		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible();
-		await expect(page.getByText("Idle")).toBeVisible();
+		await expect(page.getByText("Idle", { exact: true })).toBeVisible();
 	} finally {
 		await server?.shutdown();
 		if (previousUserDataDir === undefined) {

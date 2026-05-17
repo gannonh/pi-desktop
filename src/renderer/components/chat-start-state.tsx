@@ -41,13 +41,13 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 					{getStartTitle(route)}
 				</h1>
 				{hasSelectedChatLabels(route) ? (
-					<div
+					<section
 						className="chat-shell__session-labels chat-shell__session-labels--centered"
 						aria-label="Session metadata"
 					>
 						<span className="chat-shell__resume-label">{route.resumeLabel}</span>
 						<span className="chat-shell__metadata-label">{route.metadataLabel}</span>
-					</div>
+					</section>
 				) : null}
 			</div>
 			<Composer

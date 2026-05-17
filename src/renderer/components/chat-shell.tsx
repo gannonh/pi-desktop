@@ -56,10 +56,10 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 						{route.title}
 					</h1>
 					{hasSelectedChatLabels(route) ? (
-						<div className="chat-shell__session-labels" aria-label="Session metadata">
+						<section className="chat-shell__session-labels" aria-label="Session metadata">
 							<span className="chat-shell__resume-label">{route.resumeLabel}</span>
 							<span className="chat-shell__metadata-label">{route.metadataLabel}</span>
-						</div>
+						</section>
 					) : null}
 				</div>
 			</header>

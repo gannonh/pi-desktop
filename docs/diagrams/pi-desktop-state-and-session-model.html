@@ -460,6 +460,7 @@ pre {
           <li>Projects</li>
           <li>Chat metadata</li>
           <li>Selected project and selected chat</li>
+          <li>Project JSON store: projects, selected chat ids, session UI status, attention, last-opened timestamps</li>
           <li>File: <code>project-store.json</code></li>
         </ul>
       </article>
@@ -484,6 +485,7 @@ pre {
           <li>Default parent: <code>~/.pi/agent/sessions</code></li>
           <li>Per-cwd encoded subdirectories</li>
           <li>Files contain Pi conversation/session entries</li>
+          <li>Pi SessionManager: JSONL session list, session names, resume files, fork and clone source data</li>
         </ul>
       </article>
     </div>
@@ -598,6 +600,9 @@ pre {
       <article class="definition runtime">
         <h3>Active Pi session runtime</h3>
         <p>A currently running SDK session object in one backend process. Electron and web preview do not share this memory if they run separate backends.</p>
+        <ul>
+          <li>Runtime adapter: opens new or existing SessionManager instances and emits LiveSessionState events</li>
+        </ul>
       </article>
       <article class="definition session">
         <h3>Pi session files</h3>
