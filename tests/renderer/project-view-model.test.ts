@@ -176,6 +176,64 @@ describe("project view model", () => {
 		]);
 	});
 
+	it("filters project chat rows by failed and attention status", () => {
+		const failedChat = createChat({ id: "chat:failed", title: "Failed", status: "failed" });
+		const runningChat = createChat({ id: "chat:running", title: "Running", status: "running", attention: true });
+		const idleChat = createChat({ id: "chat:idle", title: "Idle" });
+		const project = createProject({ chats: [failedChat, runningChat, idleChat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(createProjectSidebarRows(view, fixedNow, { chatFilter: "attention" })[0]?.children).toEqual([
+			{
+				kind: "chat",
+				chatId: "chat:failed",
+				label: "Failed",
+				selected: false,
+				status: "failed",
+				updatedLabel: "2h",
+				needsAttention: false,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:running",
+				label: "Running",
+				selected: false,
+				status: "running",
+				updatedLabel: "2h",
+				needsAttention: true,
+			},
+		]);
+	});
+
+	it("expands project chat rows when showMore is true", () => {
+		const chats = Array.from({ length: 6 }, (_, index) =>
+			createChat({
+				id: `chat:${index + 1}`,
+				title: `Chat ${index + 1}`,
+			}),
+		);
+		const project = createProject({ chats });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(
+			createProjectSidebarRows(view, fixedNow, { expandedProjectIds: new Set([project.id]) })[0]?.children,
+		).toHaveLength(6);
+	});
+
 	it("creates standalone chat rows directly under chats", () => {
 		const view: ProjectStateView = {
 			projects: [],
