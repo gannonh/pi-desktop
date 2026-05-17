@@ -40,7 +40,7 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 		);
 	}
 
-	if (route.kind === "empty-chat" && !hasLiveSession) {
+	if (route.kind === "empty-chat" && !hasLiveSession && route.resumeLabel === "Start session") {
 		return (
 			<ChatStartState
 				route={route}

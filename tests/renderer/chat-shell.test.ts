@@ -143,7 +143,31 @@ describe("ChatShell", () => {
 		expect(markup).not.toContain("No messages yet.");
 	});
 
-	it("renders an empty selected chat as the centered project start state before the first message", () => {
+	it("renders a resumable selected chat in the session layout before live messages", () => {
+		const route = {
+			kind: "empty-chat",
+			title: "What is the today's date?",
+			startTitle: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:session:one",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+			resumeLabel: "Resume session",
+			metadataLabel: "running · updated 5/17/2026, 8:46:05 AM",
+		} as Exclude<ChatShellRoute, { kind: "unavailable-project" }>;
+
+		const markup = renderChatShell(route, createInitialSessionState());
+
+		expect(markup).toContain("chat-shell--session");
+		expect(markup).toContain("What is the today&#x27;s date?");
+		expect(markup).toContain("Resume session");
+		expect(markup).toContain("No messages yet.");
+		expect(markup).toContain("chat-shell__bottom-composer");
+		expect(markup).not.toContain("What should we build in pi-desktop?");
+		expect(markup).not.toContain("chat-shell__suggestions");
+	});
+
+	it("renders an empty selected draft chat as the centered project start state before the first message", () => {
 		const route = {
 			kind: "empty-chat",
 			title: "New chat",
