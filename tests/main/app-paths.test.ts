@@ -1,5 +1,7 @@
 import path from "node:path";
+import { describe, expect, it } from "vitest";
 import {
+	resolveDesktopChatsPath,
 	resolveElectronDevUserDataDir,
 	resolvePiAgentDir,
 	resolvePiSessionFilesDirForCwd,
@@ -80,5 +82,27 @@ describe("app paths", () => {
 				env,
 			}),
 		);
+	});
+});
+
+describe("resolveDesktopChatsPath", () => {
+	it("uses an explicit Desktop quick-start chat directory when configured", () => {
+		expect(
+			resolveDesktopChatsPath({
+				env: { PI_DESKTOP_CHATS_DIR: "~/pi-desktop-chats" },
+				defaultUserDataDir: "/Users/gannonhall/Library/Application Support/pi-desktop",
+				homeDir: "/Users/gannonhall",
+			}),
+		).toBe("/Users/gannonhall/pi-desktop-chats");
+	});
+
+	it("places Desktop quick-start chats under app user data by default", () => {
+		expect(
+			resolveDesktopChatsPath({
+				env: {},
+				defaultUserDataDir: "/Users/gannonhall/Library/Application Support/pi-desktop",
+				homeDir: "/Users/gannonhall",
+			}),
+		).toBe("/Users/gannonhall/Library/Application Support/pi-desktop/desktop-chats");
 	});
 });

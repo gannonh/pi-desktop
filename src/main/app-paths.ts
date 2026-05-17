@@ -48,6 +48,22 @@ export const resolveProjectStorePath = ({
 		: path.join(configuredPath, "project-store.json");
 };
 
+export const resolveDesktopChatsPath = ({
+	env = process.env,
+	defaultUserDataDir,
+	homeDir = homedir(),
+}: {
+	env?: NodeJS.ProcessEnv;
+	defaultUserDataDir: string;
+	homeDir?: string;
+}): string => {
+	const configuredPath = env.PI_DESKTOP_CHATS_DIR
+		? expandTildePath(env.PI_DESKTOP_CHATS_DIR, homeDir)
+		: path.join(defaultUserDataDir, "desktop-chats");
+
+	return configuredPath;
+};
+
 export const resolvePiAgentDir = (env: NodeJS.ProcessEnv = process.env, homeDir = homedir()): string =>
 	expandTildePath(env.PI_CODING_AGENT_DIR ?? path.join("~", ".pi", "agent"), homeDir);
 
