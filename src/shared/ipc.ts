@@ -35,6 +35,7 @@ export const IpcChannels = {
 	projectSetPinned: "project:setPinned",
 	projectCheckAvailability: "project:checkAvailability",
 	chatCreate: "chat:create",
+	chatCreateStandalone: "chat:createStandalone",
 	chatSelect: "chat:select",
 	chatRename: "chat:rename",
 	chatSelectStandalone: "chat:selectStandalone",
@@ -73,6 +74,8 @@ export const ProjectPinnedInputSchema = z.strictObject({
 export const ChatCreateInputSchema = z.strictObject({
 	projectId: z.string().min(1),
 });
+
+export const ChatStandaloneCreateInputSchema = z.strictObject({});
 
 export const ChatSelectionInputSchema = z.strictObject({
 	projectId: z.string().min(1),
@@ -120,6 +123,7 @@ export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
 export type ProjectPinnedInput = z.infer<typeof ProjectPinnedInputSchema>;
 export type ChatCreateInput = z.infer<typeof ChatCreateInputSchema>;
+export type ChatStandaloneCreateInput = z.infer<typeof ChatStandaloneCreateInputSchema>;
 export type ChatSelectionInput = z.infer<typeof ChatSelectionInputSchema>;
 export type ChatRenameInput = z.infer<typeof ChatRenameInputSchema>;
 export type ChatStandaloneSelectionInput = z.infer<typeof ChatStandaloneSelectionInputSchema>;

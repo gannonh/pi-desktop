@@ -9,6 +9,7 @@ import {
 	type ProjectRecord,
 	type ProjectStateView,
 	type ProjectStore,
+	type StandaloneChatMetadata,
 } from "../../shared/project-state";
 import type {
 	ChatBranchInput,
@@ -17,6 +18,7 @@ import type {
 	ChatForkInput,
 	ChatRenameInput,
 	ChatSelectionInput,
+	ChatStandaloneCreateInput,
 	ChatStandaloneSelectionInput,
 	ProjectIdInput,
 	ProjectPinnedInput,
@@ -81,6 +83,7 @@ export type ProjectService = {
 	checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
+	createStandaloneChat: (input: ChatStandaloneCreateInput) => Promise<ProjectStateView>;
 	selectChat: (input: ChatSelectionInput) => Promise<ProjectStateView>;
 	renameChat: (input: ChatRenameInput) => Promise<ProjectStateView>;
 	selectStandaloneChat: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateView>;
@@ -277,7 +280,7 @@ const getTrackedProjectNamesUnderDocumentsDir = (store: ProjectStore, documentsD
 		.map((project) => basename(project.path));
 };
 
-const createChatId = (now: string, existingChats: readonly ChatMetadata[]): string => {
+const createChatId = (now: string, existingChats: readonly { id: string }[]): string => {
 	const existingIds = new Set(existingChats.map((chat) => chat.id));
 	let suffix = existingChats.length + 1;
 	let chatId = `chat:${now}:${suffix}`;
@@ -553,6 +556,34 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			});
 		},
 
+		async createStandaloneChat() {
+			return runSerialized(async () => {
+				await mkdir(deps.desktopChatsPath, { recursive: true });
+				const store = await deps.store.load();
+				const now = deps.now();
+				const existingChats = store.standaloneChats;
+				const chat: StandaloneChatMetadata = {
+					id: createChatId(now, existingChats),
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: deps.desktopChatsPath,
+					title: "New chat",
+					status: "idle",
+					attention: false,
+					createdAt: now,
+					updatedAt: now,
+					lastOpenedAt: now,
+				};
+
+				store.standaloneChats = [...existingChats, chat];
+				store.selectedProjectId = null;
+				store.selectedChatId = chat.id;
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
 		async selectChat(input) {
 			return runSerialized(async () => {
 				const store = await deps.store.load();
@@ -780,6 +811,11 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				};
 				if (input.projectId !== null && input.chatId !== null) {
 					store.chatsByProject[input.projectId] = (store.chatsByProject[input.projectId] ?? []).filter(
+						(chat) => chat.id !== input.chatId || chat.source !== "draft",
+					);
+				}
+				if (input.projectId === null && input.chatId !== null) {
+					store.standaloneChats = store.standaloneChats.filter(
 						(chat) => chat.id !== input.chatId || chat.source !== "draft",
 					);
 				}

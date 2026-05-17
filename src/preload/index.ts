@@ -54,6 +54,8 @@ const api: PiDesktopApi = {
 	},
 	chat: {
 		create: async (input) => safeInvokeParse(IpcChannels.chatCreate, ProjectStateViewResultSchema, input),
+		createStandalone: async (input) =>
+			safeInvokeParse(IpcChannels.chatCreateStandalone, ProjectStateViewResultSchema, input),
 		select: async (input) => safeInvokeParse(IpcChannels.chatSelect, ProjectStateViewResultSchema, input),
 		rename: async (input) => safeInvokeParse(IpcChannels.chatRename, ProjectStateViewResultSchema, input),
 		selectStandalone: async (input) =>

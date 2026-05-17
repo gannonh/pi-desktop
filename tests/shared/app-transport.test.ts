@@ -30,6 +30,15 @@ describe("app transport contract", () => {
 		});
 		expect(
 			AppRpcRequestSchema.parse({
+				operation: "chat.createStandalone",
+				input: {},
+			}),
+		).toEqual({
+			operation: "chat.createStandalone",
+			input: {},
+		});
+		expect(
+			AppRpcRequestSchema.parse({
 				operation: "chat.selectStandalone",
 				input: { chatId: "chat:standalone" },
 			}),

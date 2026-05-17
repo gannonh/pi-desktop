@@ -22,6 +22,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 		},
 		chat: {
 			create: unavailable,
+			createStandalone: unavailable,
 			select: unavailable,
 			rename: unavailable,
 			selectStandalone: unavailable,

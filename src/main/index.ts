@@ -173,6 +173,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		invokeBackend("project.checkAvailability", input),
 	);
 	ipcMain.handle(IpcChannels.chatCreate, (_event, input) => invokeBackend("chat.create", input));
+	ipcMain.handle(IpcChannels.chatCreateStandalone, (_event, input) => invokeBackend("chat.createStandalone", input));
 	ipcMain.handle(IpcChannels.chatSelect, (_event, input) => invokeBackend("chat.select", input));
 	ipcMain.handle(IpcChannels.chatRename, (_event, input) => invokeBackend("chat.rename", input));
 	ipcMain.handle(IpcChannels.chatSelectStandalone, (_event, input) => invokeBackend("chat.selectStandalone", input));

@@ -7,6 +7,7 @@ import {
 	ChatForkInputSchema,
 	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneCreateInputSchema,
 	ChatStandaloneSelectionInputSchema,
 	IpcChannels,
 	PiSessionAbortInputSchema,
@@ -76,6 +77,7 @@ describe("IPC contracts", () => {
 			projectSetPinned: "project:setPinned",
 			projectCheckAvailability: "project:checkAvailability",
 			chatCreate: "chat:create",
+			chatCreateStandalone: "chat:createStandalone",
 			chatSelect: "chat:select",
 			chatRename: "chat:rename",
 			chatSelectStandalone: "chat:selectStandalone",
@@ -127,6 +129,8 @@ describe("IPC contracts", () => {
 		expect(ChatCreateInputSchema.parse({ projectId: "project:/tmp/pi-desktop" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 		});
+		expect(ChatStandaloneCreateInputSchema.parse({})).toEqual({});
+		expect(() => ChatStandaloneCreateInputSchema.parse({ projectId: "project:/tmp/pi" })).toThrow();
 		expect(ChatSelectionInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 			chatId: "chat:one",

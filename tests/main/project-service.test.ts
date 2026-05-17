@@ -830,6 +830,24 @@ describe("project service", () => {
 		).toEqual([`chat:${secondNow}:1`, `chat:${secondNow}:2`]);
 	});
 
+	it("creates a Desktop quick-start draft chat in the desktop chats workspace", async () => {
+		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));
+		const { memoryStore, service } = await createService({ desktopChatsPath });
+
+		const view = await service.createStandaloneChat({});
+
+		expect(view.selectedProjectId).toBeNull();
+		expect(view.selectedChat?.cwd).toBe(desktopChatsPath);
+		expect(view.selectedChat?.source).toBe("draft");
+		expect(memoryStore.read().standaloneChats[0]).toEqual(
+			expect.objectContaining({
+				cwd: desktopChatsPath,
+				source: "draft",
+				title: "New chat",
+			}),
+		);
+	});
+
 	it("selects a chat that belongs to the provided project", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const chat = createChat(project);
@@ -892,6 +910,23 @@ describe("project service", () => {
 			chatId: chat.id,
 			workspacePath: projectPath,
 			sessionPath,
+		});
+	});
+
+	it("starts projectless draft chats in the Desktop quick-start workspace", async () => {
+		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));
+		const { service } = await createService({ desktopChatsPath });
+		const view = await service.createStandaloneChat({});
+		const chatId = view.selectedChatId;
+		if (!chatId) {
+			throw new Error("Expected selected quick-start chat.");
+		}
+
+		await expect(service.getSessionStartTarget({ projectId: null, chatId })).resolves.toEqual({
+			projectId: null,
+			chatId,
+			workspacePath: desktopChatsPath,
+			sessionPath: null,
 		});
 	});
 

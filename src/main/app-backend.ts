@@ -6,6 +6,7 @@ import {
 	ChatForkInputSchema,
 	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneCreateInputSchema,
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
@@ -169,6 +170,10 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				case "chat.create":
 					return handleProjectOperation(() =>
 						deps.projectService.createChat(ChatCreateInputSchema.parse(request.input)),
+					);
+				case "chat.createStandalone":
+					return handleProjectOperation(() =>
+						deps.projectService.createStandaloneChat(ChatStandaloneCreateInputSchema.parse(request.input)),
 					);
 				case "chat.select":
 					return handleProjectOperation(() =>

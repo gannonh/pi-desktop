@@ -163,6 +163,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 		},
 		chat: {
 			create: (input) => callRpc("chat.create", input),
+			createStandalone: (input) => callRpc("chat.createStandalone", input),
 			select: (input) => callRpc("chat.select", input),
 			rename: (input) => callRpc("chat.rename", input),
 			selectStandalone: (input) => callRpc("chat.selectStandalone", input),

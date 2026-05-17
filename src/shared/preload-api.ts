@@ -5,6 +5,7 @@ import type {
 	ChatCreateInput,
 	ChatForkInput,
 	ChatRenameInput,
+	ChatStandaloneCreateInput,
 	ChatSelectionInput,
 	ChatStandaloneSelectionInput,
 	PiSessionAbortInput,
@@ -40,6 +41,7 @@ export interface PiDesktopApi {
 	};
 	chat: {
 		create: (input: ChatCreateInput) => Promise<ProjectStateViewResult>;
+		createStandalone: (input: ChatStandaloneCreateInput) => Promise<ProjectStateViewResult>;
 		select: (input: ChatSelectionInput) => Promise<ProjectStateViewResult>;
 		rename: (input: ChatRenameInput) => Promise<ProjectStateViewResult>;
 		selectStandalone: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateViewResult>;

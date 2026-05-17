@@ -39,6 +39,7 @@ const createProjectService = (): ProjectService => ({
 	recordSessionStarted: vi.fn(async () => undefined),
 	recordSessionStatus: vi.fn(async () => undefined),
 	createChat: vi.fn(async () => emptyState),
+	createStandaloneChat: vi.fn(async () => emptyState),
 	selectChat: vi.fn(async () => emptyState),
 	renameChat: vi.fn(async () => emptyState),
 	selectStandaloneChat: vi.fn(async () => emptyState),
@@ -93,6 +94,20 @@ describe("app backend", () => {
 			ok: false,
 			error: { code: "project.operation_failed", message: "store unavailable" },
 		});
+	});
+
+	it("routes chat.createStandalone to the project service", async () => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+		});
+
+		const result = await backend.handle({ operation: "chat.createStandalone", input: {} });
+
+		expect(result).toEqual({ ok: true, data: emptyState });
+		expect(projectService.createStandaloneChat).toHaveBeenCalledWith({});
 	});
 
 	it("routes chat.rename to the project service", async () => {
