@@ -4,7 +4,10 @@ import type { LiveSessionState } from "../session/session-state";
 import { Composer } from "./composer";
 import { LiveSessionTranscript } from "./live-session-transcript";
 
-type StartRoute = Extract<ChatShellRoute, { kind: "global-start" | "project-start" | "standalone-start" }>;
+type StartRoute = Extract<
+	ChatShellRoute,
+	{ kind: "global-start" | "project-start" | "standalone-start" | "empty-chat" }
+>;
 
 const suggestionIcons = [GitPullRequest, GitBranch, Workflow] as const;
 
@@ -14,6 +17,13 @@ interface ChatStartStateProps {
 	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
 }
+
+const hasSelectedChatLabels = (
+	route: StartRoute,
+): route is Extract<StartRoute, { kind: "standalone-start" | "empty-chat" }> =>
+	"resumeLabel" in route && "metadataLabel" in route;
+
+const getStartTitle = (route: StartRoute) => (route.kind === "empty-chat" ? route.startTitle : route.title);
 
 export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession }: ChatStartStateProps) {
 	const running =
@@ -26,9 +36,20 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 
 	return (
 		<section className="chat-shell chat-shell--start" aria-labelledby="chat-shell-title">
-			<h1 id="chat-shell-title" className="chat-shell__title">
-				{route.title}
-			</h1>
+			<div className="chat-shell__start-heading">
+				<h1 id="chat-shell-title" className="chat-shell__title">
+					{getStartTitle(route)}
+				</h1>
+				{hasSelectedChatLabels(route) ? (
+					<div
+						className="chat-shell__session-labels chat-shell__session-labels--centered"
+						aria-label="Session metadata"
+					>
+						<span className="chat-shell__resume-label">{route.resumeLabel}</span>
+						<span className="chat-shell__metadata-label">{route.metadataLabel}</span>
+					</div>
+				) : null}
+			</div>
 			<Composer
 				context={route.composer}
 				layout="center"

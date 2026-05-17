@@ -12,6 +12,11 @@ interface ChatShellProps {
 	onAbortSession: () => void;
 }
 
+const hasSelectedChatLabels = (
+	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>,
+): route is Extract<ChatShellRoute, { kind: "standalone-start" | "empty-chat" | "continued-chat" }> =>
+	"resumeLabel" in route && "metadataLabel" in route;
+
 export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
@@ -35,13 +40,7 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 	if (route.kind === "empty-chat" && !hasLiveSession) {
 		return (
 			<ChatStartState
-				route={{
-					kind: "project-start",
-					title: route.startTitle,
-					projectId: route.projectId,
-					composer: route.composer,
-					suggestions: route.suggestions,
-				}}
+				route={route}
 				session={session}
 				onSubmitPrompt={onSubmitPrompt}
 				onAbortSession={onAbortSession}
@@ -52,9 +51,17 @@ export function ChatShell({ route, session, onSubmitPrompt, onAbortSession }: Ch
 	return (
 		<section className="chat-shell chat-shell--session" aria-labelledby="chat-shell-title">
 			<header className="chat-shell__metadata">
-				<h1 id="chat-shell-title" className="chat-shell__session-title">
-					{route.title}
-				</h1>
+				<div className="chat-shell__metadata-copy">
+					<h1 id="chat-shell-title" className="chat-shell__session-title">
+						{route.title}
+					</h1>
+					{hasSelectedChatLabels(route) ? (
+						<div className="chat-shell__session-labels" aria-label="Session metadata">
+							<span className="chat-shell__resume-label">{route.resumeLabel}</span>
+							<span className="chat-shell__metadata-label">{route.metadataLabel}</span>
+						</div>
+					) : null}
+				</div>
 			</header>
 			<div className="chat-shell__scroll">
 				{hasLiveSession ? (

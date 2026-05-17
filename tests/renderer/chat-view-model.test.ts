@@ -61,6 +61,9 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 	...overrides,
 });
 
+const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt">) =>
+	`${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
+
 const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
 	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
 		// @ts-expect-error Suggestions are shared fixture data and must stay readonly.
@@ -105,7 +108,10 @@ describe("createChatShellRoute", () => {
 	});
 
 	it("creates a standalone start route with an enabled composer for a selected standalone session chat", () => {
-		const chat = createStandaloneChat();
+		const chat = createStandaloneChat({
+			cwd: "/tmp/outside",
+			title: "Standalone",
+		});
 		const view: ProjectStateView = {
 			projects: [],
 			standaloneChats: [chat],
@@ -117,10 +123,10 @@ describe("createChatShellRoute", () => {
 
 		expect(createChatShellRoute(view)).toEqual({
 			kind: "standalone-start",
-			title: "Standalone chat",
+			title: "Standalone",
 			chatId: chat.id,
 			composer: {
-				projectSelectorLabel: "/Users/gannonhall/Downloads",
+				projectSelectorLabel: "/tmp/outside",
 				modeLabel: "Work locally",
 				modelLabel: "5.5 High",
 				runtimeAvailable: true,
@@ -131,6 +137,8 @@ describe("createChatShellRoute", () => {
 				"Unblock my most recent open PR",
 				"Connect your favorite apps to Pi",
 			],
+			resumeLabel: "Resume session",
+			metadataLabel: createMetadataLabel(chat),
 		});
 	});
 
@@ -235,6 +243,8 @@ describe("createChatShellRoute", () => {
 		expect(route.composer.runtimeAvailable).toBe(true);
 		expect(route.composer.disabledReason).toBe("");
 		expect(route.composer.projectId).toBe(project.id);
+		expect(route.resumeLabel).toBe("Start session");
+		expect(route.metadataLabel).toBe(createMetadataLabel(chat));
 		expect(route.transcript.workedLabel).toBe("Worked for 7m 10s");
 		expect(route.transcript.cards[0]).toEqual({
 			title: "SKILL.md",
@@ -277,6 +287,8 @@ describe("createChatShellRoute", () => {
 				"Unblock my most recent open PR",
 				"Connect your favorite apps to Pi",
 			],
+			resumeLabel: "Start session",
+			metadataLabel: createMetadataLabel(chat),
 		});
 	});
 });
