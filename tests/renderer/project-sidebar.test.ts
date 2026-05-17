@@ -64,6 +64,20 @@ const renderSidebar = (state: ProjectStateView) =>
 	);
 
 describe("ProjectSidebar", () => {
+	it("enables the CHATS new-chat button for Desktop quick-start chats", () => {
+		const markup = renderSidebar({
+			projects: [],
+			standaloneChats: [],
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		});
+
+		expect(markup).toContain('aria-label="New quick-start chat"');
+		expect(markup).not.toContain('aria-label="New quick-start chat" disabled=""');
+	});
+
 	it("renders project and standalone show-more controls as enabled buttons", () => {
 		const projectChats = Array.from({ length: 6 }, (_, index) =>
 			createChat({

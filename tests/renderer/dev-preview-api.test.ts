@@ -44,6 +44,20 @@ describe("dev preview fixture API", () => {
 		expect(new Set(piMonoProjects.map((project) => project.id)).size).toBe(piMonoProjects.length);
 	});
 
+	it("creates a quick-start standalone chat in preview mode", async () => {
+		const api = installApi();
+
+		const result = await api.chat.createStandalone({});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) {
+			throw new Error("Expected quick-start chat creation to succeed.");
+		}
+		expect(result.data.selectedProjectId).toBeNull();
+		expect(result.data.selectedChat?.source).toBe("draft");
+		expect(result.data.selectedChat?.cwd).toContain("desktop-chats");
+	});
+
 	it("streams deterministic preview session events", async () => {
 		const api = installApi();
 		const events: PiSessionEvent[] = [];

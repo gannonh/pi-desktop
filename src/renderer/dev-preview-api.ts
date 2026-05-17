@@ -5,7 +5,6 @@ import {
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
-	sortStandaloneChats,
 	type ChatMetadata,
 	type ProjectRecord,
 	type ProjectStore,
@@ -73,6 +72,7 @@ const standaloneChat = (
 });
 
 const previewRoot = "/tmp/pi-desktop-preview";
+const previewDesktopChatsPath = `${previewRoot}/desktop-chats`;
 const previewDocumentsDir = `${previewRoot}/Documents`;
 const previewSessionReceivedAtBase = Date.parse("2026-05-12T18:00:00.000Z");
 
@@ -130,10 +130,7 @@ const standaloneChats = [
 	standaloneChat("chat:standalone-nextjs", "Would NextJS be good for this app?", minutesAgo(51)),
 ];
 
-const view = () => ({
-	...createProjectStateView(store),
-	standaloneChats: sortStandaloneChats(standaloneChats),
-});
+const view = () => createProjectStateView({ ...store, standaloneChats });
 const ok = () => Promise.resolve({ ok: true as const, data: view() });
 type PreviewProjectLookup =
 	| {
@@ -380,6 +377,15 @@ export const installDevPreviewApi = () => {
 				store.chatsByProject[projectId] = [...chats, nextChat];
 				store.selectedProjectId = projectId;
 				store.selectedChatId = nextChat.id;
+				return ok();
+			},
+			createStandalone: async () => {
+				const updatedAt = new Date().toISOString();
+				const nextChat = standaloneChat(`chat:quick-start:${updatedAt}`, "New chat", updatedAt);
+				const chatWithWorkspace = { ...nextChat, cwd: previewDesktopChatsPath };
+				standaloneChats.unshift(chatWithWorkspace);
+				store.selectedProjectId = null;
+				store.selectedChatId = chatWithWorkspace.id;
 				return ok();
 			},
 			select: async ({ projectId, chatId }) => {

@@ -359,8 +359,10 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						<button
 							className="project-sidebar__heading-button"
 							type="button"
-							disabled
-							aria-label="New chat without project"
+							aria-label="New quick-start chat"
+							onClick={() => {
+								void runProjectAction(() => window.piDesktop.chat.createStandalone({}));
+							}}
 						>
 							<SquarePen className="project-sidebar__icon" />
 						</button>
