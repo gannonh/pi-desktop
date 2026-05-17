@@ -105,6 +105,24 @@ describe("ChatShell", () => {
 		expect(markup).toContain("idle · updated 5/12/2026, 10:00:00 AM");
 	});
 
+	it("renders an active project start session in the session layout", () => {
+		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
+			kind: "project-start",
+			title: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+		};
+
+		const markup = renderChatShell(route);
+
+		expect(markup).toContain("chat-shell--session");
+		expect(markup).toContain("Live response");
+		expect(markup).toContain("Pi session transcript");
+		expect(markup).toContain("chat-shell__bottom-composer");
+		expect(markup).not.toContain("chat-shell__suggestions");
+	});
+
 	it("renders live Pi output when a session belongs to an empty chat route", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "empty-chat",

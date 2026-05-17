@@ -1242,7 +1242,7 @@ button {
 	padding-right: 1.875rem;
 }
 
-.project-sidebar__chat-menu-anchor {
+.menu-anchor.project-sidebar__chat-menu-anchor {
 	position: absolute;
 	top: 50%;
 	right: 0.25rem;

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -90,6 +91,13 @@ describe("ProjectSidebar", () => {
 
 		expect(showMoreButtons).toHaveLength(2);
 		expect(showMoreButtons.every((match) => !match[1]?.includes("disabled"))).toBe(true);
+	});
+
+	it("keeps chat menu anchors out of chat row layout flow", () => {
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(styles).toContain(".menu-anchor.project-sidebar__chat-menu-anchor");
+		expect(styles).toContain("position: absolute;");
 	});
 
 	it("renders project chat menus for session-backed project chats", () => {
