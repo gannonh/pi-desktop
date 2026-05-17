@@ -58,6 +58,36 @@ describe("dev preview fixture API", () => {
 		expect(result.data.selectedChat?.cwd).toContain("desktop-chats");
 	});
 
+	it("starts quick-start standalone chats in preview mode", async () => {
+		const api = installApi();
+		const events: PiSessionEvent[] = [];
+		const unsubscribe = api.piSession.onEvent((event) => events.push(event));
+		const created = await api.chat.createStandalone({});
+		expect(created.ok).toBe(true);
+		if (!created.ok || !created.data.selectedChatId) {
+			throw new Error("Expected quick-start chat creation to succeed.");
+		}
+
+		const started = await api.piSession.start({
+			projectId: null,
+			chatId: created.data.selectedChatId,
+			prompt: "Preview quick start",
+		});
+
+		expect(started.ok).toBe(true);
+		if (!started.ok) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		unsubscribe();
+		expect(started.data.projectId).toBeNull();
+		expect(started.data.chatId).toBe(created.data.selectedChatId);
+		expect(started.data.workspacePath).toContain("desktop-chats");
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: "status", sessionId: "standalone:preview-session", status: "running" }),
+		);
+	});
+
 	it("streams deterministic preview session events", async () => {
 		const api = installApi();
 		const events: PiSessionEvent[] = [];

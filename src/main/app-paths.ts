@@ -57,9 +57,16 @@ export const resolveDesktopChatsPath = ({
 	defaultUserDataDir: string;
 	homeDir?: string;
 }): string => {
+	const configuredUserDataDir = env.PI_DESKTOP_USER_DATA_DIR
+		? expandTildePath(env.PI_DESKTOP_USER_DATA_DIR, homeDir)
+		: defaultUserDataDir;
+	const userDataDir =
+		path.basename(configuredUserDataDir) === "project-store.json"
+			? path.dirname(configuredUserDataDir)
+			: configuredUserDataDir;
 	const configuredPath = env.PI_DESKTOP_CHATS_DIR
 		? expandTildePath(env.PI_DESKTOP_CHATS_DIR, homeDir)
-		: path.join(defaultUserDataDir, "desktop-chats");
+		: path.join(userDataDir, "desktop-chats");
 
 	return configuredPath;
 };

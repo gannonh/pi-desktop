@@ -270,7 +270,36 @@ describe("project service", () => {
 		expect(view.selectedProject?.path).toBe(selectedPath);
 	});
 
-	it("preserves standalone chats when adding their cwd as an existing folder", async () => {
+	it("returns indexed Pi sessions when adding an existing folder", async () => {
+		const selectedPath = await mkdtemp(join(tmpdir(), "pi-existing-with-sessions-"));
+		const sessionPath = join(selectedPath, "session.jsonl");
+		const { service } = await createService({
+			openFolderDialog: async () => selectedPath,
+			listProjectSessions: async (cwd) =>
+				cwd === selectedPath
+					? [
+							createSessionInfo({
+								path: sessionPath,
+								id: "session-one",
+								cwd: selectedPath,
+								name: "Existing session",
+							}),
+						]
+					: [],
+		});
+
+		const view = await service.addExistingFolder();
+
+		expect(view.selectedProject?.chats).toEqual([
+			expect.objectContaining({
+				id: "chat:session:session-one",
+				sessionPath,
+				title: "Existing session",
+			}),
+		]);
+	});
+
+	it("removes standalone chats when adding their cwd as an existing folder", async () => {
 		const selectedPath = await mkdtemp(join(tmpdir(), "pi-existing-standalone-"));
 		const staleStandaloneChat = {
 			id: "chat:session:stale",
@@ -296,8 +325,8 @@ describe("project service", () => {
 		const view = await service.addExistingFolder();
 
 		expect(view.selectedProjectId).toBe(createProjectId(selectedPath));
-		expect(view.standaloneChats).toEqual([staleStandaloneChat]);
-		expect(memoryStore.read().standaloneChats).toEqual([staleStandaloneChat]);
+		expect(view.standaloneChats).toEqual([]);
+		expect(memoryStore.read().standaloneChats).toEqual([]);
 	});
 
 	it("updates an existing folder record when adding the same path again", async () => {
@@ -979,6 +1008,212 @@ describe("project service", () => {
 		);
 	});
 
+	it("preserves failed chat attention when a later dispose records idle", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-failed-dispose-"));
+		const project = createProject(projectPath);
+		const sessionPath = join(projectPath, "failed.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				sessionUiByPath: {
+					[sessionPath]: {
+						chatId: "chat:failed",
+						sessionId: "sdk-session-failed",
+						sessionPath,
+						projectId: project.id,
+						lastOpenedAt: secondNow,
+						status: "failed",
+						attention: true,
+					},
+				},
+			},
+		});
+
+		await service.recordSessionStatus({
+			sessionId: `${project.id}:sdk-session-failed`,
+			status: "idle",
+			attention: false,
+			updatedAt: secondNow,
+		});
+
+		expect(memoryStore.read().sessionUiByPath[sessionPath]).toEqual(
+			expect.objectContaining({ status: "failed", attention: true }),
+		);
+	});
+
+	it("hydrates persisted running project sessions as idle after service restart", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-stale-running-"));
+		const project = createProject(projectPath);
+		const sessionPath = join(projectPath, "running.jsonl");
+		const { service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				sessionUiByPath: {
+					[sessionPath]: {
+						chatId: "chat:running",
+						sessionId: "sdk-session-running",
+						sessionPath,
+						projectId: project.id,
+						lastOpenedAt: secondNow,
+						status: "running",
+						attention: false,
+					},
+				},
+			},
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sessionPath,
+					id: "sdk-session-running",
+					cwd: projectPath,
+					name: "Stale running",
+				}),
+			],
+		});
+
+		const view = await service.getState();
+
+		expect(view.projects[0]?.chats[0]).toEqual(expect.objectContaining({ id: "chat:running", status: "idle" }));
+	});
+
+	it("records generated chat metadata for a project-level started session", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-project-start-"));
+		const project = createProject(projectPath);
+		const sessionPath = join(projectPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				selectedChatId: null,
+				chatsByProject: {
+					[project.id]: [],
+				},
+			},
+			now: () => secondNow,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sessionPath,
+					id: "sdk-session-one",
+					cwd: projectPath,
+					name: "Started from project",
+				}),
+			],
+		});
+
+		const recorded = await service.recordSessionStarted({
+			projectId: project.id,
+			chatId: null,
+			sessionId: `${project.id}:sdk-session-one`,
+			sessionPath,
+			status: "running",
+		});
+		const view = await service.getState();
+
+		expect(recorded).toEqual({ chatId: `chat:session:${project.id}:sdk-session-one` });
+		expect(memoryStore.read().selectedChatId).toBeNull();
+		expect(view.selectedProject?.chats).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: `chat:session:${project.id}:sdk-session-one`,
+					projectId: project.id,
+					sessionPath,
+					title: "New chat",
+					status: "running",
+					lastOpenedAt: secondNow,
+				}),
+			]),
+		);
+	});
+
+	it("keeps a failed project start visible before the session index catches up", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-project-pending-failed-"));
+		const project = createProject(projectPath);
+		const draftChat = createChat(project, {
+			id: "chat:draft",
+			title: "Draft plan",
+		});
+		const sessionPath = join(projectPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				selectedChatId: draftChat.id,
+				chatsByProject: {
+					[project.id]: [draftChat],
+				},
+			},
+			now: () => secondNow,
+			listProjectSessions: async () => [],
+		});
+
+		await service.recordSessionStarted({
+			projectId: project.id,
+			chatId: draftChat.id,
+			sessionId: "sdk-session-one",
+			sessionPath,
+			status: "running",
+		});
+		await service.recordSessionStatus({
+			sessionId: "sdk-session-one",
+			status: "failed",
+			attention: true,
+			updatedAt: secondNow,
+		});
+		const view = await service.getState();
+
+		expect(memoryStore.read().chatsByProject[project.id]?.[0]).toEqual(
+			expect.objectContaining({ id: draftChat.id, sessionPath, status: "failed", attention: true }),
+		);
+		expect(view.selectedChat).toEqual(
+			expect.objectContaining({ id: draftChat.id, sessionPath, status: "failed", attention: true }),
+		);
+	});
+
+	it("keeps a started project draft selected before the session index catches up", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-project-pending-start-"));
+		const project = createProject(projectPath);
+		const draftChat = createChat(project, {
+			id: "chat:draft",
+			title: "Draft plan",
+		});
+		const sessionPath = join(projectPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				selectedChatId: draftChat.id,
+				chatsByProject: {
+					[project.id]: [draftChat],
+				},
+			},
+			now: () => secondNow,
+			listProjectSessions: async () => [],
+		});
+
+		await service.recordSessionStarted({
+			projectId: project.id,
+			chatId: draftChat.id,
+			sessionId: "sdk-session-one",
+			sessionPath,
+			status: "running",
+		});
+		const view = await service.getState();
+
+		expect(memoryStore.read().chatsByProject[project.id]?.[0]).toEqual(
+			expect.objectContaining({
+				id: draftChat.id,
+				source: "pi-session",
+				sessionPath,
+				status: "running",
+			}),
+		);
+		expect(view.selectedChat).toEqual(expect.objectContaining({ id: draftChat.id, sessionPath }));
+	});
+
 	it("converts a started draft chat to one Pi-backed chat after state refresh", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-started-draft-"));
 		const project = createProject(projectPath);
@@ -1018,7 +1253,17 @@ describe("project service", () => {
 		const storedAfterStart = memoryStore.read();
 		const view = await service.getState();
 
-		expect(storedAfterStart.chatsByProject[project.id]).toEqual([]);
+		expect(storedAfterStart.chatsByProject[project.id]).toEqual([
+			expect.objectContaining({
+				id: draftChat.id,
+				projectId: project.id,
+				source: "pi-session",
+				sessionId: "sdk-session-one",
+				sessionPath,
+				title: "Draft plan",
+				status: "running",
+			}),
+		]);
 		expect(view.selectedProject?.chats).toHaveLength(1);
 		expect(view.selectedProject?.chats[0]).toEqual(
 			expect.objectContaining({
@@ -1027,7 +1272,7 @@ describe("project service", () => {
 				source: "pi-session",
 				sessionId: "sdk-session-one",
 				sessionPath,
-				title: "Started draft",
+				title: "Draft plan",
 				status: "running",
 				attention: false,
 				lastOpenedAt: secondNow,

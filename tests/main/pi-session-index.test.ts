@@ -47,6 +47,12 @@ describe("pi session index", () => {
 		await mkdir(encodedDir);
 		await mkdir(legacyDir);
 		await mkdir(outsideDir);
+		const directSession = createSessionInfo({
+			id: "direct",
+			path: join(sessionRoot, "direct.jsonl"),
+			cwd: "/tmp/pi",
+			modified: new Date("2026-05-12T12:30:00.000Z"),
+		});
 		const encodedSession = createSessionInfo({
 			id: "encoded",
 			path: join(encodedDir, "encoded.jsonl"),
@@ -56,7 +62,7 @@ describe("pi session index", () => {
 		const legacySession = createSessionInfo({
 			id: "legacy",
 			path: join(legacyDir, "legacy.jsonl"),
-			cwd: "/tmp/pi",
+			cwd: "",
 			modified: new Date("2026-05-12T11:00:00.000Z"),
 		});
 		const outsideSession = createSessionInfo({
@@ -67,6 +73,9 @@ describe("pi session index", () => {
 		});
 		const onProgress = vi.fn();
 		sessionManagerMock.list.mockImplementation(async (_cwd: string, dir: string) => {
+			if (dir === sessionRoot) {
+				return [directSession];
+			}
 			if (dir === encodedDir) {
 				return [encodedSession];
 			}
@@ -81,12 +90,17 @@ describe("pi session index", () => {
 
 		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: sessionRoot });
 
-		await expect(lister.listProject("/tmp/pi", onProgress)).resolves.toEqual([legacySession, encodedSession]);
+		await expect(lister.listProject("/tmp/pi", onProgress)).resolves.toEqual([
+			directSession,
+			legacySession,
+			encodedSession,
+		]);
 		expect(lister).toHaveProperty("listProject");
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", sessionRoot);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", encodedDir);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", legacyDir);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", outsideDir);
-		expect(onProgress).toHaveBeenLastCalledWith(3, 3);
+		expect(onProgress).toHaveBeenLastCalledWith(4, 4);
 	});
 
 	it("uses explicit Pi session names before first message text", () => {
@@ -138,6 +152,21 @@ describe("pi session index", () => {
 		});
 	});
 
+	it("creates project ChatMetadata with fallback cwd for legacy SessionInfo", () => {
+		const session = createSessionInfo({ cwd: "" });
+
+		const chat = createChatFromSessionInfo({
+			session,
+			projectId: createProjectId("/tmp/pi"),
+			cwd: "/tmp/pi",
+			status: "idle",
+			attention: false,
+		});
+
+		expect(ChatMetadataSchema.parse(chat)).toEqual(chat);
+		expect(chat.cwd).toBe("/tmp/pi");
+	});
+
 	it("creates standalone StandaloneChatMetadata from SessionInfo", () => {
 		const session = createSessionInfo({ name: undefined });
 
@@ -162,5 +191,19 @@ describe("pi session index", () => {
 			updatedAt: "2026-05-12T10:00:00.000Z",
 			lastOpenedAt: "2026-05-12T10:30:00.000Z",
 		});
+	});
+
+	it("creates standalone StandaloneChatMetadata with fallback cwd for legacy SessionInfo", () => {
+		const session = createSessionInfo({ cwd: "" });
+
+		const chat = createStandaloneChatFromSessionInfo({
+			session,
+			cwd: "/tmp/pi-desktop-chats",
+			status: "idle",
+			attention: false,
+		});
+
+		expect(StandaloneChatMetadataSchema.parse(chat)).toEqual(chat);
+		expect(chat.cwd).toBe("/tmp/pi-desktop-chats");
 	});
 });

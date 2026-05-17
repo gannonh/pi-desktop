@@ -63,6 +63,9 @@ export type SessionStartedInput = {
 	sessionPath: string | null;
 	status: ChatStatus;
 };
+export type SessionStartedResult = {
+	chatId: string | null;
+};
 export type SessionStatusInput = {
 	sessionId: string;
 	status: ChatStatus;
@@ -91,7 +94,7 @@ export type ProjectService = {
 	cloneChat: (input: ChatCloneInput) => Promise<ProjectStateView>;
 	branchChat: (input: ChatBranchInput) => Promise<ProjectStateView>;
 	getSessionStartTarget: (input: SessionStartTargetInput) => Promise<SessionStartTarget>;
-	recordSessionStarted: (input: SessionStartedInput) => Promise<void>;
+	recordSessionStarted: (input: SessionStartedInput) => Promise<SessionStartedResult>;
 	recordSessionStatus: (input: SessionStatusInput) => Promise<void>;
 };
 
@@ -159,7 +162,11 @@ const saveAndView = async (storeFile: ProjectStoreFile, store: ProjectStore): Pr
 	return createProjectStateView(store);
 };
 
-const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore): Promise<ProjectStore> => {
+const refreshSessionChats = async (
+	deps: ProjectServiceDeps,
+	store: ProjectStore,
+	activeSessionIds: ReadonlySet<string>,
+): Promise<ProjectStore> => {
 	const nextStore = structuredClone(store);
 
 	for (const project of nextStore.projects) {
@@ -168,20 +175,55 @@ const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore
 		}
 
 		const sessions = await deps.listProjectSessions(project.path);
+		const existingChats = nextStore.chatsByProject[project.id] ?? [];
 		const piChats = sessions.map((session) => {
 			const ui = nextStore.sessionUiByPath[session.path];
+			const existingUiChat = ui ? existingChats.find((chat) => chat.id === ui.chatId) : undefined;
+			const status =
+				ui?.status === "running" && !activeSessionIds.has(ui.sessionId ?? "") ? "idle" : (ui?.status ?? "idle");
 			const base = createChatFromSessionInfo({
 				session,
 				projectId: project.id,
-				status: ui?.status ?? "idle",
-				attention: ui?.attention ?? false,
+				cwd: project.path,
+				status,
+				attention: status === "failed" ? (ui?.attention ?? false) : false,
 				lastOpenedAt: ui?.lastOpenedAt ?? null,
 			});
-			return ui ? { ...base, id: ui.chatId } : base;
+			return ui
+				? {
+						...base,
+						id: ui.chatId,
+						title:
+							ui.sessionId && activeSessionIds.has(ui.sessionId)
+								? (existingUiChat?.title ?? base.title)
+								: base.title,
+					}
+				: base;
 		});
-		const existingChats = nextStore.chatsByProject[project.id] ?? [];
+		const seenSessionPaths = new Set(piChats.map((chat) => chat.sessionPath).filter((value) => value !== null));
+		const pendingStartedChats = existingChats
+			.filter(
+				(chat) =>
+					chat.source === "pi-session" &&
+					chat.sessionPath !== null &&
+					nextStore.sessionUiByPath[chat.sessionPath] !== undefined &&
+					(activeSessionIds.has(chat.sessionId ?? "") ||
+						nextStore.sessionUiByPath[chat.sessionPath]?.status === "failed") &&
+					!seenSessionPaths.has(chat.sessionPath),
+			)
+			.map((chat) => {
+				const ui = chat.sessionPath ? nextStore.sessionUiByPath[chat.sessionPath] : undefined;
+				return ui
+					? {
+							...chat,
+							status: ui.status ?? chat.status,
+							attention: ui.attention ?? chat.attention,
+							updatedAt: ui.lastOpenedAt ?? chat.updatedAt,
+						}
+					: chat;
+			});
 		const drafts = existingChats.filter((chat) => chat.source === "draft");
-		const chats = [...piChats, ...drafts];
+		const chats = [...piChats, ...pendingStartedChats, ...drafts];
 		if (chats.length > 0 || nextStore.chatsByProject[project.id] !== undefined) {
 			nextStore.chatsByProject[project.id] = chats;
 		}
@@ -190,23 +232,40 @@ const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore
 	const standaloneSessions = await deps.listProjectSessions(deps.desktopChatsPath);
 	const standaloneChats = standaloneSessions.map((session) => {
 		const ui = nextStore.sessionUiByPath[session.path];
+		const status =
+			ui?.status === "running" && !activeSessionIds.has(ui.sessionId ?? "") ? "idle" : (ui?.status ?? "idle");
 		const base = createStandaloneChatFromSessionInfo({
 			session,
-			status: ui?.status ?? "idle",
-			attention: ui?.attention ?? false,
+			cwd: deps.desktopChatsPath,
+			status,
+			attention: status === "failed" ? (ui?.attention ?? false) : false,
 			lastOpenedAt: ui?.lastOpenedAt ?? null,
 		});
 		return ui ? { ...base, id: ui.chatId } : base;
 	});
 	const seenStandaloneSessionPaths = new Set(standaloneChats.map((chat) => chat.sessionPath));
-	const pendingStartedChats = nextStore.standaloneChats.filter(
-		(chat) =>
-			chat.source === "pi-session" &&
-			chat.cwd === deps.desktopChatsPath &&
-			chat.sessionPath !== null &&
-			nextStore.sessionUiByPath[chat.sessionPath] !== undefined &&
-			!seenStandaloneSessionPaths.has(chat.sessionPath),
-	);
+	const pendingStartedChats = nextStore.standaloneChats
+		.filter(
+			(chat) =>
+				chat.source === "pi-session" &&
+				chat.cwd === deps.desktopChatsPath &&
+				chat.sessionPath !== null &&
+				nextStore.sessionUiByPath[chat.sessionPath] !== undefined &&
+				(activeSessionIds.has(chat.sessionId ?? "") ||
+					nextStore.sessionUiByPath[chat.sessionPath]?.status === "failed") &&
+				!seenStandaloneSessionPaths.has(chat.sessionPath),
+		)
+		.map((chat) => {
+			const ui = chat.sessionPath ? nextStore.sessionUiByPath[chat.sessionPath] : undefined;
+			return ui
+				? {
+						...chat,
+						status: ui.status ?? chat.status,
+						attention: ui.attention ?? chat.attention,
+						updatedAt: ui.lastOpenedAt ?? chat.updatedAt,
+					}
+				: chat;
+		});
 	const drafts = nextStore.standaloneChats.filter(
 		(chat) => chat.source === "draft" && !seenStandaloneSessionPaths.has(chat.sessionPath),
 	);
@@ -303,6 +362,7 @@ const createChatId = (now: string, existingChats: readonly { id: string }[]): st
 
 export const createProjectService = (deps: ProjectServiceDeps): ProjectService => {
 	let transactionQueue: Promise<void> = Promise.resolve();
+	const activeSessionIds = new Set<string>();
 
 	const runSerialized = async <T>(work: () => Promise<T>): Promise<T> => {
 		const run = transactionQueue.then(work, work);
@@ -313,12 +373,18 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 		return run;
 	};
 
+	const saveAndViewWithSessions = async (store: ProjectStore): Promise<ProjectStateView> => {
+		const withSessions = await refreshSessionChats(deps, store, activeSessionIds);
+		await deps.store.save(withSessions);
+		return createProjectStateView(withSessions);
+	};
+
 	return {
 		async getState() {
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				const changed = await refreshAllProjectAvailability(store, deps.now());
-				const withSessions = await refreshSessionChats(deps, store);
+				const withSessions = await refreshSessionChats(deps, store, activeSessionIds);
 				if (changed || JSON.stringify(withSessions) !== JSON.stringify(store)) {
 					await deps.store.save(withSessions);
 				}
@@ -382,7 +448,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				store.selectedProjectId = projectId;
 				store.selectedChatId = null;
 
-				return saveAndView(deps.store, store);
+				return saveAndViewWithSessions(store);
 			});
 		},
 
@@ -394,7 +460,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				selectProjectInStore(store, input.projectId, now);
 				await refreshProjectAvailabilityAtIndex(store, projectIndex, now);
 
-				return saveAndView(deps.store, store);
+				return saveAndViewWithSessions(store);
 			});
 		},
 
@@ -650,7 +716,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 		async selectStandaloneChat(input) {
 			return runSerialized(async () => {
 				const store = await deps.store.load();
-				const refreshed = await refreshSessionChats(deps, store);
+				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				const chatIndex = refreshed.standaloneChats.findIndex((chat) => chat.id === input.chatId);
 				if (chatIndex === -1) {
 					throw new Error("Standalone chat not found.");
@@ -698,7 +764,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					attention: false,
 				};
 
-				const refreshed = await refreshSessionChats(deps, store);
+				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
 			});
 		},
@@ -721,7 +787,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					attention: false,
 				};
 
-				const refreshed = await refreshSessionChats(deps, store);
+				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
 			});
 		},
@@ -744,7 +810,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					attention: false,
 				};
 
-				const refreshed = await refreshSessionChats(deps, store);
+				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
 			});
 		},
@@ -800,15 +866,16 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 		},
 
 		async recordSessionStarted(input) {
+			activeSessionIds.add(input.sessionId);
 			if (!input.sessionPath) {
-				return;
+				return { chatId: input.chatId ?? null };
 			}
+			const chatId = input.chatId ?? `chat:session:${input.sessionId}`;
 			const sessionPath = input.sessionPath;
 
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				const now = deps.now();
-				const chatId = input.chatId ?? `chat:session:${input.sessionId}`;
 				store.sessionUiByPath[sessionPath] = {
 					chatId,
 					sessionId: input.sessionId,
@@ -818,10 +885,30 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					status: input.status,
 					attention: false,
 				};
-				if (input.projectId !== null && input.chatId !== null) {
-					store.chatsByProject[input.projectId] = (store.chatsByProject[input.projectId] ?? []).filter(
-						(chat) => chat.id !== input.chatId || chat.source !== "draft",
-					);
+				if (input.projectId !== null) {
+					const project = store.projects[findProjectIndex(store, input.projectId)];
+					const existingChats = store.chatsByProject[input.projectId] ?? [];
+					const existingChat = input.chatId
+						? existingChats.find((candidate) => candidate.id === input.chatId)
+						: undefined;
+					const startedChat: ChatMetadata = {
+						id: chatId,
+						projectId: input.projectId,
+						source: "pi-session",
+						sessionId: input.sessionId,
+						sessionPath,
+						cwd: existingChat?.cwd ?? project.path,
+						title: existingChat?.title ?? "New chat",
+						status: input.status,
+						attention: false,
+						createdAt: existingChat?.createdAt ?? now,
+						updatedAt: now,
+						lastOpenedAt: now,
+					};
+					store.chatsByProject[input.projectId] = [
+						...existingChats.filter((chat) => chat.id !== input.chatId && chat.id !== chatId),
+						startedChat,
+					];
 				}
 				if (input.projectId === null && input.chatId !== null) {
 					store.standaloneChats = store.standaloneChats.map((chat) =>
@@ -840,18 +927,25 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					);
 				}
 				await deps.store.save(store);
+				return { chatId };
 			});
 		},
 
 		async recordSessionStatus(input) {
+			if (input.status === "running") {
+				activeSessionIds.add(input.sessionId);
+			} else {
+				activeSessionIds.delete(input.sessionId);
+			}
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				for (const [sessionPath, ui] of Object.entries(store.sessionUiByPath)) {
 					if (ui.sessionId && (input.sessionId === ui.sessionId || input.sessionId.endsWith(ui.sessionId))) {
+						const preserveFailure = ui.status === "failed" && input.status === "idle";
 						store.sessionUiByPath[sessionPath] = {
 							...ui,
-							status: input.status,
-							attention: input.attention,
+							status: preserveFailure ? ui.status : input.status,
+							attention: preserveFailure ? ui.attention : input.attention,
 							lastOpenedAt: input.updatedAt,
 						};
 					}

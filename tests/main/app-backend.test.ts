@@ -37,7 +37,9 @@ const createProjectService = (): ProjectService => ({
 		workspacePath: "/tmp/one",
 		sessionPath: null,
 	})),
-	recordSessionStarted: vi.fn(async () => undefined),
+	recordSessionStarted: vi.fn(async (input) => ({
+		chatId: input.sessionPath ? (input.chatId ?? `chat:session:${input.sessionId}`) : (input.chatId ?? null),
+	})),
 	recordSessionStatus: vi.fn(async () => undefined),
 	createChat: vi.fn(async () => emptyState),
 	createStandaloneChat: vi.fn(async () => emptyState),
@@ -176,13 +178,15 @@ const createSessionManager = (sessionPath: string | null = null) => ({
 	getSessionId: vi.fn(() => "sdk-session:one"),
 });
 
-const createSession = (): PiSdkSession => {
+const createSession = (promptEvents: AgentSessionEvent[] = [{ type: "agent_start" }]): PiSdkSession => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	return {
 		sessionId: "sdk-session:one",
 		bindExtensions: vi.fn(async () => undefined),
 		prompt: vi.fn(async () => {
-			listener?.({ type: "agent_start" });
+			for (const event of promptEvents) {
+				listener?.(event);
+			}
 		}),
 		abort: vi.fn(async () => undefined),
 		dispose: vi.fn(() => undefined),
@@ -309,7 +313,18 @@ describe("app backend", () => {
 
 		await waitForScheduledPrompt(events);
 		unsubscribe();
-		expect(result.ok).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:one:sdk-session:one",
+				projectId: "project:one",
+				chatId: null,
+				workspacePath: "/tmp/one",
+				sessionPath: null,
+				status: "running",
+				resumed: false,
+			},
+		});
 		expect(projectService.getSessionStartTarget).toHaveBeenCalledWith({ projectId: "project:one", chatId: null });
 		expect(projectService.recordSessionStarted).toHaveBeenCalledWith({
 			projectId: "project:one",
@@ -331,6 +346,98 @@ describe("app backend", () => {
 			label: "Running",
 			receivedAt: "2026-05-15T12:00:00.000Z",
 		});
+	});
+
+	it("persists retrying session status as running chat metadata", async () => {
+		const projectService = createProjectService();
+		const session = createSession([
+			{
+				type: "auto_retry_start",
+				attempt: 1,
+				maxAttempts: 3,
+				delayMs: 100,
+				errorMessage: "provider overloaded",
+			} as AgentSessionEvent,
+		]);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		const result = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+
+		await vi.waitFor(() => {
+			expect(events).toContainEqual(expect.objectContaining({ type: "status", status: "retrying" }));
+		});
+		unsubscribe();
+		expect(result.ok).toBe(true);
+		expect(projectService.recordSessionStatus).toHaveBeenCalledWith({
+			sessionId: "project:one:sdk-session:one",
+			status: "running",
+			attention: false,
+			updatedAt: "2026-05-15T12:00:00.000Z",
+		});
+	});
+
+	it("records disposed sessions as idle chat metadata", async () => {
+		const projectService = createProjectService();
+		const session = createSession();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+		const result = await backend.handle({
+			operation: "piSession.dispose",
+			input: { sessionId: "project:one:sdk-session:one" },
+		});
+
+		expect(result).toEqual({ ok: true, data: { sessionId: "project:one:sdk-session:one", status: "idle" } });
+		expect(projectService.recordSessionStatus).toHaveBeenLastCalledWith({
+			sessionId: "project:one:sdk-session:one",
+			status: "idle",
+			attention: false,
+			updatedAt: "2026-05-15T12:00:00.000Z",
+		});
+	});
+
+	it("disposes a started runtime when metadata recording fails", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.recordSessionStarted).mockRejectedValueOnce(new Error("store unavailable"));
+		const session = createSession();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { code: PiSessionOperationFailedCode, message: "store unavailable" },
+		});
+		expect(session.dispose).toHaveBeenCalled();
 	});
 
 	it("loads persisted Pi session history for a selected chat", async () => {

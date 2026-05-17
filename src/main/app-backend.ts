@@ -60,7 +60,7 @@ export type AppBackend = {
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const toChatStatus = (status: PiSessionStatus) =>
-	status === "failed" ? "failed" : status === "running" ? "running" : "idle";
+	status === "failed" ? "failed" : status === "idle" ? "idle" : "running";
 
 const assertNever = (value: never): never => {
 	throw new Error(`Unhandled app backend request: ${JSON.stringify(value)}`);
@@ -213,14 +213,21 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 							sessionPath: target.sessionPath,
 							prompt: parsed.prompt,
 						});
-						await deps.projectService.recordSessionStarted({
-							projectId: started.projectId,
-							chatId: started.chatId,
-							sessionId: started.sessionId,
-							sessionPath: started.sessionPath,
-							status: toChatStatus(started.status),
-						});
-						return started;
+						try {
+							const recorded = await deps.projectService.recordSessionStarted({
+								projectId: started.projectId,
+								chatId: started.chatId,
+								sessionId: started.sessionId,
+								sessionPath: started.sessionPath,
+								status: toChatStatus(started.status),
+							});
+							return { ...started, chatId: recorded.chatId };
+						} catch (error) {
+							await piSessionRuntime.dispose({ sessionId: started.sessionId }).catch((disposeError) => {
+								console.error("Failed to dispose Pi session after metadata recording failed.", disposeError);
+							});
+							throw error;
+						}
 					});
 				case "piSession.submit":
 					return handlePiSessionOperation(() =>
@@ -248,9 +255,16 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						});
 					});
 				case "piSession.dispose":
-					return handlePiSessionOperation(() =>
-						piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input)),
-					);
+					return handlePiSessionOperation(async () => {
+						const disposed = await piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input));
+						await deps.projectService.recordSessionStatus({
+							sessionId: disposed.sessionId,
+							status: toChatStatus(disposed.status),
+							attention: disposed.status === "failed",
+							updatedAt: deps.now(),
+						});
+						return disposed;
+					});
 				default:
 					return assertNever(request);
 			}

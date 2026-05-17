@@ -620,8 +620,8 @@ function ProjectChatRow({
 	runProjectAction,
 }: ProjectChatRowProps) {
 	const chatMenuOpen = menu?.kind === "chat" && menu.projectId === projectId && menu.chatId === child.chatId;
-	const chatActionsDisabled = sessionPath === null;
-	const chatActionTitle = chatActionsDisabled ? "Chat does not have a Pi session file yet" : undefined;
+	const sessionActionsDisabled = sessionPath === null;
+	const sessionActionTitle = sessionActionsDisabled ? "Chat does not have a Pi session file yet" : undefined;
 
 	const renameChat = () => {
 		const title = window.prompt("Rename chat", child.label)?.trim();
@@ -692,8 +692,8 @@ function ProjectChatRow({
 				</button>
 				{chatMenuOpen ? (
 					<ChatMenu
-						disabled={chatActionsDisabled}
-						disabledTitle={chatActionTitle}
+						sessionActionsDisabled={sessionActionsDisabled}
+						disabledTitle={sessionActionTitle}
 						onRename={renameChat}
 						onFork={() =>
 							runProjectAction(() =>
@@ -719,29 +719,29 @@ function ProjectChatRow({
 }
 
 interface ChatMenuProps {
-	disabled: boolean;
+	sessionActionsDisabled: boolean;
 	disabledTitle?: string;
 	onRename: () => void;
 	onFork: () => void;
 	onClone: () => void;
 }
 
-function ChatMenu({ disabled, disabledTitle, onRename, onFork, onClone }: ChatMenuProps) {
+function ChatMenu({ sessionActionsDisabled, disabledTitle, onRename, onFork, onClone }: ChatMenuProps) {
 	return (
 		<MenuSurface className="project-sidebar__chat-menu" variant="context">
-			<MenuItem disabled={disabled} title={disabledTitle} onClick={onRename}>
+			<MenuItem onClick={onRename}>
 				<MenuItemIcon>
 					<Pencil />
 				</MenuItemIcon>
 				Rename chat
 			</MenuItem>
-			<MenuItem disabled={disabled} title={disabledTitle} onClick={onFork}>
+			<MenuItem disabled={sessionActionsDisabled} title={disabledTitle} onClick={onFork}>
 				<MenuItemIcon>
 					<GitFork />
 				</MenuItemIcon>
 				Fork chat
 			</MenuItem>
-			<MenuItem disabled={disabled} title={disabledTitle} onClick={onClone}>
+			<MenuItem disabled={sessionActionsDisabled} title={disabledTitle} onClick={onClone}>
 				<MenuItemIcon>
 					<Copy />
 				</MenuItemIcon>

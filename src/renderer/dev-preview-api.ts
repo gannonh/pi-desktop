@@ -436,7 +436,24 @@ export const installDevPreviewApi = () => {
 		piSession: {
 			start: async ({ projectId, chatId, prompt }) => {
 				if (projectId === null) {
-					return projectNotFound();
+					const chat = standaloneChats.find((candidate) => candidate.id === chatId);
+					if (!chat) {
+						return chatNotFound();
+					}
+					const sessionId = "standalone:preview-session";
+					schedulePreviewStream(sessionId, prompt);
+					return {
+						ok: true,
+						data: {
+							sessionId,
+							projectId,
+							chatId: chat.id,
+							workspacePath: chat.cwd,
+							sessionPath: null,
+							status: "running",
+							resumed: false,
+						},
+					};
 				}
 				const result = findProject(projectId);
 				if (!result.ok) {

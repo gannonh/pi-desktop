@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { createProjectId } from "../../shared/project-state";
@@ -18,6 +18,7 @@ export type PiSessionLister = {
 type CreateChatFromSessionInfoInput = {
 	session: SessionInfo;
 	projectId?: string;
+	cwd?: string;
 	status: ChatStatus;
 	attention: boolean;
 	lastOpenedAt?: string | null;
@@ -29,6 +30,20 @@ const isNotFoundError = (error: unknown): boolean =>
 	typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 
 const normalizeCwd = (cwd: string): string => resolve(cwd);
+
+const legacySafePathForCwd = (cwd: string): string => `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
+
+const encodedSafePathForCwd = (cwd: string): string => `--${encodeURIComponent(cwd)}--`;
+
+const sessionDirMatchesCwd = (dir: string, cwd: string): boolean => {
+	const dirName = basename(dir);
+	return dirName === encodedSafePathForCwd(cwd) || dirName === legacySafePathForCwd(cwd);
+};
+
+const sessionMatchesCwd = (session: SessionInfo, dir: string, cwd: string, targetCwd: string): boolean => {
+	const sessionCwd = session.cwd.trim();
+	return sessionCwd ? normalizeCwd(sessionCwd) === targetCwd : sessionDirMatchesCwd(dir, cwd);
+};
 
 const readSessionDirs = async (root: string): Promise<string[]> => {
 	try {
@@ -47,7 +62,7 @@ const listSessionsMatchingCwd = async (
 	cwd: string,
 	onProgress?: PiSessionListProgress,
 ): Promise<SessionInfo[]> => {
-	const dirs = await readSessionDirs(root);
+	const dirs = [root, ...(await readSessionDirs(root))];
 	const targetCwd = normalizeCwd(cwd);
 	const sessions: SessionInfo[] = [];
 	let loadedDirs = 0;
@@ -56,7 +71,7 @@ const listSessionsMatchingCwd = async (
 		const dirSessions = await SessionManager.list("", dir);
 		loadedDirs += 1;
 		onProgress?.(loadedDirs, dirs.length);
-		sessions.push(...dirSessions.filter((session) => normalizeCwd(session.cwd) === targetCwd));
+		sessions.push(...dirSessions.filter((session) => sessionMatchesCwd(session, dir, cwd, targetCwd)));
 	}
 
 	sessions.sort((a, b) => b.modified.getTime() - a.modified.getTime());
@@ -83,29 +98,39 @@ export const getChatTitleFromSessionInfo = (session: SessionInfo): string => {
 	return "Untitled session";
 };
 
+const getSessionCwd = (session: SessionInfo, fallbackCwd?: string): string => {
+	const sessionCwd = session.cwd.trim();
+	return sessionCwd || fallbackCwd || session.cwd;
+};
+
 export const createChatFromSessionInfo = ({
 	session,
-	projectId = createProjectId(session.cwd),
+	cwd,
+	projectId,
 	status,
 	attention,
 	lastOpenedAt = null,
-}: CreateChatFromSessionInfoInput): ChatMetadata => ({
-	id: `chat:session:${session.id}`,
-	projectId,
-	source: "pi-session",
-	sessionId: session.id,
-	sessionPath: session.path,
-	cwd: session.cwd,
-	title: getChatTitleFromSessionInfo(session),
-	status,
-	attention,
-	createdAt: session.created.toISOString(),
-	updatedAt: session.modified.toISOString(),
-	lastOpenedAt,
-});
+}: CreateChatFromSessionInfoInput): ChatMetadata => {
+	const chatCwd = getSessionCwd(session, cwd);
+	return {
+		id: `chat:session:${session.id}`,
+		projectId: projectId ?? createProjectId(chatCwd),
+		source: "pi-session",
+		sessionId: session.id,
+		sessionPath: session.path,
+		cwd: chatCwd,
+		title: getChatTitleFromSessionInfo(session),
+		status,
+		attention,
+		createdAt: session.created.toISOString(),
+		updatedAt: session.modified.toISOString(),
+		lastOpenedAt,
+	};
+};
 
 export const createStandaloneChatFromSessionInfo = ({
 	session,
+	cwd,
 	status,
 	attention,
 	lastOpenedAt = null,
@@ -114,7 +139,7 @@ export const createStandaloneChatFromSessionInfo = ({
 	source: "pi-session",
 	sessionId: session.id,
 	sessionPath: session.path,
-	cwd: session.cwd,
+	cwd: getSessionCwd(session, cwd),
 	title: getChatTitleFromSessionInfo(session),
 	status,
 	attention,

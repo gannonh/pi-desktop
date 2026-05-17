@@ -105,4 +105,24 @@ describe("resolveDesktopChatsPath", () => {
 			}),
 		).toBe("/Users/gannonhall/Library/Application Support/pi-desktop/desktop-chats");
 	});
+
+	it("places Desktop quick-start chats under an overridden user data directory", () => {
+		expect(
+			resolveDesktopChatsPath({
+				env: { PI_DESKTOP_USER_DATA_DIR: "~/isolated-pi-desktop" },
+				defaultUserDataDir: "/Users/gannonhall/Library/Application Support/pi-desktop",
+				homeDir: "/Users/gannonhall",
+			}),
+		).toBe("/Users/gannonhall/isolated-pi-desktop/desktop-chats");
+	});
+
+	it("places Desktop quick-start chats next to an overridden store file path", () => {
+		expect(
+			resolveDesktopChatsPath({
+				env: { PI_DESKTOP_USER_DATA_DIR: "~/isolated-pi-desktop/project-store.json" },
+				defaultUserDataDir: "/Users/gannonhall/Library/Application Support/pi-desktop",
+				homeDir: "/Users/gannonhall",
+			}),
+		).toBe("/Users/gannonhall/isolated-pi-desktop/desktop-chats");
+	});
 });
