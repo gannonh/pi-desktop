@@ -22,23 +22,19 @@ import type {
 	ProjectPinnedInput,
 	ProjectRenameInput,
 } from "../../shared/ipc";
-import {
-	createChatFromSessionInfo,
-	createStandaloneChatFromSessionInfo,
-	filterStandaloneSessionInfos,
-} from "../sessions/pi-session-index";
+import { createChatFromSessionInfo, createStandaloneChatFromSessionInfo } from "../sessions/pi-session-index";
 import { getNextScratchProjectPath } from "./project-paths";
 import type { ProjectStoreFile } from "./project-store";
 
 export type ProjectServiceDeps = {
 	store: ProjectStoreFile;
 	documentsDir: string;
+	desktopChatsPath: string;
 	now: () => string;
 	openFolderDialog: () => Promise<string | null>;
 	openInFinder: (path: string) => Promise<unknown>;
 	initializeGitRepository: (projectPath: string) => Promise<void>;
 	listProjectSessions: (cwd: string) => Promise<SessionInfo[]>;
-	listAllSessions: () => Promise<SessionInfo[]>;
 	writeSessionName: (sessionPath: string, name: string) => Promise<void>;
 	forkSession: (sourcePath: string, targetCwd: string) => Promise<string>;
 	cloneSession: (sourcePath: string, targetCwd: string) => Promise<string>;
@@ -144,13 +140,7 @@ const selectProjectInStore = (store: ProjectStore, projectId: string, now: strin
 	store.selectedChatId = null;
 };
 
-const getResolvedTrackedProjectPaths = (store: ProjectStore): Set<string> =>
-	new Set(store.projects.map((project) => resolve(project.path)));
-
-const pruneStandaloneChatsForTrackedProjects = (store: ProjectStore) => {
-	const trackedProjectPaths = getResolvedTrackedProjectPaths(store);
-	store.standaloneChats = store.standaloneChats.filter((chat) => !trackedProjectPaths.has(resolve(chat.cwd)));
-
+const pruneMissingStandaloneSelection = (store: ProjectStore) => {
 	if (
 		store.selectedProjectId === null &&
 		store.selectedChatId !== null &&
@@ -161,15 +151,13 @@ const pruneStandaloneChatsForTrackedProjects = (store: ProjectStore) => {
 };
 
 const saveAndView = async (storeFile: ProjectStoreFile, store: ProjectStore): Promise<ProjectStateView> => {
-	pruneStandaloneChatsForTrackedProjects(store);
+	pruneMissingStandaloneSelection(store);
 	await storeFile.save(store);
 	return createProjectStateView(store);
 };
 
 const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore): Promise<ProjectStore> => {
 	const nextStore = structuredClone(store);
-	const trackedProjectPaths = new Set(nextStore.projects.map((project) => project.path));
-	const trackedProjectCwds = getResolvedTrackedProjectPaths(nextStore);
 
 	for (const project of nextStore.projects) {
 		if (project.availability.status !== "available") {
@@ -196,7 +184,7 @@ const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore
 		}
 	}
 
-	const standaloneSessions = filterStandaloneSessionInfos(await deps.listAllSessions(), trackedProjectPaths);
+	const standaloneSessions = await deps.listProjectSessions(deps.desktopChatsPath);
 	const standaloneChats = standaloneSessions.map((session) => {
 		const ui = nextStore.sessionUiByPath[session.path];
 		const base = createStandaloneChatFromSessionInfo({
@@ -208,11 +196,11 @@ const refreshSessionChats = async (deps: ProjectServiceDeps, store: ProjectStore
 		return ui ? { ...base, id: ui.chatId } : base;
 	});
 	const seenStandaloneSessionPaths = new Set(standaloneChats.map((chat) => chat.sessionPath));
-	const preservedStandaloneChats = nextStore.standaloneChats.filter(
-		(chat) => !seenStandaloneSessionPaths.has(chat.sessionPath) && !trackedProjectCwds.has(resolve(chat.cwd)),
+	const drafts = nextStore.standaloneChats.filter(
+		(chat) => chat.source === "draft" && !seenStandaloneSessionPaths.has(chat.sessionPath),
 	);
-	nextStore.standaloneChats = [...standaloneChats, ...preservedStandaloneChats];
-	pruneStandaloneChatsForTrackedProjects(nextStore);
+	nextStore.standaloneChats = [...standaloneChats, ...drafts];
+	pruneMissingStandaloneSelection(nextStore);
 
 	return nextStore;
 };

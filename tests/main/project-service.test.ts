@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
@@ -35,25 +35,27 @@ const createService = async (
 	options: {
 		initialStore?: ProjectStore;
 		documentsDir?: string;
+		desktopChatsPath?: string;
 		now?: () => string;
 		openFolderDialog?: () => Promise<string | null>;
 		openInFinder?: (path: string) => Promise<unknown>;
 		initializeGitRepository?: (path: string) => Promise<void>;
 		listProjectSessions?: ProjectServiceDeps["listProjectSessions"];
-		listAllSessions?: ProjectServiceDeps["listAllSessions"];
 		writeSessionName?: ProjectServiceDeps["writeSessionName"];
 		forkSession?: ProjectServiceDeps["forkSession"];
 		cloneSession?: ProjectServiceDeps["cloneSession"];
 		branchSession?: ProjectServiceDeps["branchSession"];
 	} = {},
 ) => {
-	const documentsDir = options.documentsDir ?? (await mkdtemp(join(tmpdir(), "pi-documents-")));
+	const documentsDir = options.documentsDir ?? join(await mkdtemp(join(tmpdir(), "pi-documents-")), "Documents");
+	await mkdir(documentsDir, { recursive: true });
+	const desktopChatsPath =
+		options.desktopChatsPath ?? join(await mkdtemp(join(tmpdir(), "pi-desktop-chats-")), "desktop-chats");
 	const memoryStore = createMemoryStore(options.initialStore);
 	const initializeGitRepository = vi.fn(options.initializeGitRepository ?? (async () => undefined));
 	const openInFinder = vi.fn(options.openInFinder ?? (async () => undefined));
 	const openFolderDialog = vi.fn(options.openFolderDialog ?? (async () => null));
 	const listProjectSessions = vi.fn(options.listProjectSessions ?? (async () => []));
-	const listAllSessions = vi.fn(options.listAllSessions ?? (async () => []));
 	const writeSessionName = vi.fn(options.writeSessionName ?? (async () => undefined));
 	const forkSession = vi.fn(options.forkSession ?? (async () => "/tmp/forked-session.jsonl"));
 	const cloneSession = vi.fn(options.cloneSession ?? (async () => "/tmp/cloned-session.jsonl"));
@@ -61,12 +63,12 @@ const createService = async (
 
 	return {
 		documentsDir,
+		desktopChatsPath,
 		memoryStore,
 		initializeGitRepository,
 		openInFinder,
 		openFolderDialog,
 		listProjectSessions,
-		listAllSessions,
 		writeSessionName,
 		forkSession,
 		cloneSession,
@@ -74,12 +76,12 @@ const createService = async (
 		service: createProjectService({
 			store: memoryStore.file,
 			documentsDir,
+			desktopChatsPath,
 			now: options.now ?? (() => firstNow),
 			openFolderDialog,
 			openInFinder,
 			initializeGitRepository,
 			listProjectSessions,
-			listAllSessions,
 			writeSessionName,
 			forkSession,
 			cloneSession,
@@ -268,7 +270,7 @@ describe("project service", () => {
 		expect(view.selectedProject?.path).toBe(selectedPath);
 	});
 
-	it("prunes a stale standalone chat when adding its cwd as an existing folder", async () => {
+	it("preserves standalone chats when adding their cwd as an existing folder", async () => {
 		const selectedPath = await mkdtemp(join(tmpdir(), "pi-existing-standalone-"));
 		const staleStandaloneChat = {
 			id: "chat:session:stale",
@@ -294,8 +296,8 @@ describe("project service", () => {
 		const view = await service.addExistingFolder();
 
 		expect(view.selectedProjectId).toBe(createProjectId(selectedPath));
-		expect(view.standaloneChats).toEqual([]);
-		expect(memoryStore.read().standaloneChats).toEqual([]);
+		expect(view.standaloneChats).toEqual([staleStandaloneChat]);
+		expect(memoryStore.read().standaloneChats).toEqual([staleStandaloneChat]);
 	});
 
 	it("updates an existing folder record when adding the same path again", async () => {
@@ -1230,41 +1232,55 @@ describe("project service", () => {
 		]);
 	});
 
-	it("loads standalone chats from Pi sessions outside tracked projects", async () => {
+	it("loads sidebar CHATS only from the Desktop quick-start workspace", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-tracked-"));
+		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));
 		const outsidePath = await mkdtemp(join(tmpdir(), "pi-outside-"));
 		const project = createProject(projectPath);
-		const trackedSession = {
-			path: join(projectPath, "tracked.jsonl"),
-			id: "tracked",
+		const projectSession = createSessionInfo({
+			path: join(projectPath, "project.jsonl"),
+			id: "project-session",
 			cwd: projectPath,
-			name: "Tracked",
-			parentSessionPath: undefined,
-			created: new Date("2026-05-12T08:00:00.000Z"),
-			modified: new Date("2026-05-12T09:00:00.000Z"),
-			messageCount: 2,
-			firstMessage: "Tracked",
-			allMessagesText: "Tracked",
-		};
-		const standaloneSession = {
-			...trackedSession,
-			path: join(outsidePath, "standalone.jsonl"),
-			id: "standalone",
+			name: "Project session",
+		});
+		const quickStartSession = createSessionInfo({
+			path: join(desktopChatsPath, "quick.jsonl"),
+			id: "quick-start",
+			cwd: desktopChatsPath,
+			name: "Quick start",
+		});
+		const outsideSession = createSessionInfo({
+			path: join(outsidePath, "outside.jsonl"),
+			id: "outside",
 			cwd: outsidePath,
-			name: "Standalone",
-		};
+			name: "Outside",
+		});
+		const listProjectSessions = vi.fn(async (cwd: string) => {
+			if (cwd === projectPath) {
+				return [projectSession];
+			}
+			if (cwd === desktopChatsPath) {
+				return [quickStartSession];
+			}
+			return [outsideSession];
+		});
 		const { service } = await createService({
 			initialStore: {
 				...createEmptyProjectStore(),
 				projects: [project],
+				selectedProjectId: project.id,
 			},
-			listAllSessions: async () => [trackedSession, standaloneSession],
+			desktopChatsPath,
+			listProjectSessions,
 		});
 
 		const view = await service.getState();
 
-		expect(view.standaloneChats.map((chat) => chat.id)).toEqual(["chat:session:standalone"]);
-		expect(view.standaloneChats[0]?.title).toBe("Standalone");
+		expect(listProjectSessions).toHaveBeenCalledWith(projectPath);
+		expect(listProjectSessions).toHaveBeenCalledWith(desktopChatsPath);
+		expect(view.selectedProject?.chats.map((chat) => chat.title)).toEqual(["Project session"]);
+		expect(view.standaloneChats.map((chat) => chat.title)).toEqual(["Quick start"]);
+		expect(view.standaloneChats.map((chat) => chat.title)).not.toContain("Outside");
 	});
 
 	it("removes preserved standalone chats when their cwd is now a tracked project", async () => {
@@ -1335,12 +1351,20 @@ describe("project service", () => {
 	});
 
 	it("selects standalone chats through the service", async () => {
+		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));
+		const session = createSessionInfo({
+			path: join(desktopChatsPath, "standalone.jsonl"),
+			id: "standalone",
+			cwd: desktopChatsPath,
+			name: "Standalone",
+			modified: new Date(firstNow),
+		});
 		const standaloneChat = {
-			id: "chat:standalone",
+			id: "chat:session:standalone",
 			source: "pi-session" as const,
 			sessionId: "standalone",
-			sessionPath: "/tmp/standalone.jsonl",
-			cwd: "/tmp/outside",
+			sessionPath: session.path,
+			cwd: desktopChatsPath,
 			title: "Standalone",
 			status: "idle" as const,
 			attention: false,
@@ -1349,10 +1373,8 @@ describe("project service", () => {
 			lastOpenedAt: null,
 		};
 		const { memoryStore, service } = await createService({
-			initialStore: {
-				...createEmptyProjectStore(),
-				standaloneChats: [standaloneChat],
-			},
+			desktopChatsPath,
+			listProjectSessions: async (cwd) => (cwd === desktopChatsPath ? [session] : []),
 			now: () => secondNow,
 		});
 

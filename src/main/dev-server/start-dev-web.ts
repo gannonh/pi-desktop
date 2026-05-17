@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type InlineConfig } from "vite";
 import {
+	resolveDesktopChatsPath,
 	resolveElectronDevUserDataDir,
 	resolvePiAgentDir,
 	resolvePiSessionFilesDirForCwd,
@@ -114,9 +115,11 @@ export const resolveDevWebUserDataDir = (
 export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBackend => {
 	const documentsDir = env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
 	const piSessionLister = createPiSessionLister(env);
+	const userDataDir = resolveDevWebUserDataDir(env);
+	const desktopChatsPath = resolveDesktopChatsPath({ env, defaultUserDataDir: userDataDir });
 	const projectStorePath = resolveProjectStorePath({
 		env,
-		defaultUserDataDir: resolveDevWebUserDataDir(env),
+		defaultUserDataDir: userDataDir,
 	});
 
 	return createAppBackend({
@@ -124,12 +127,12 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 		projectService: createProjectService({
 			store: createProjectStore(projectStorePath),
 			documentsDir,
+			desktopChatsPath,
 			now: () => new Date().toISOString(),
 			openFolderDialog: unavailableNativeOperation,
 			openInFinder: unavailableNativeOperation,
 			initializeGitRepository,
 			listProjectSessions: piSessionLister.listProject,
-			listAllSessions: piSessionLister.listAll,
 			writeSessionName,
 			forkSession: (sourcePath, targetCwd) => forkSession(sourcePath, targetCwd, env),
 			cloneSession: (sourcePath, targetCwd) => cloneSession(sourcePath, targetCwd, env),
