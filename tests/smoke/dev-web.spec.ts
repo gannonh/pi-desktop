@@ -85,6 +85,8 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await hideAgentationOverlay(page);
 
 		await expect(page.getByTestId("app-shell")).toBeVisible();
+		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
 		await expect(page.getByTitle(projectPath).getByText(projectName, { exact: true })).toBeVisible();
 		await expect(page.getByRole("heading", { name: `What should we build in ${projectName}?` })).toBeVisible();
 

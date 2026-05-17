@@ -120,6 +120,8 @@ test("shows M04 project and session management controls", async () => {
 		await expect(window.getByLabel("Add project")).toBeVisible();
 		await expect(window.getByLabel("Filter projects")).toBeVisible();
 		await expect(window.getByLabel("Filter chats")).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
 		await expect(window.getByText("Projects", { exact: true })).toBeVisible();
 		await expect(window.getByText("Chats", { exact: true })).toBeVisible();
 	} finally {
@@ -147,7 +149,8 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByLabel("Add project")).toBeVisible();
 		await expect(window.getByText("Chats", { exact: true })).toBeVisible();
 		await expect(window.getByLabel("Filter chats")).toHaveCount(1);
-		await expect(window.getByLabel("New chat without project")).toHaveCount(1);
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
 		await expect(window.getByLabel("Collapse all chats")).toHaveCount(0);
 		await expectHeadingTargetToReachFirstAction(window, "Projects", /^(Collapse|Expand) all projects$/);
 		await expectHeadingTargetToReachFirstAction(window, "Chats", "Filter chats");

@@ -281,7 +281,8 @@ Deliverables:
 
 - Complete project actions: create, add existing folder, select, rename, remove, pin, locate missing folder, and open in Finder.
 - Project availability checks with visible recovery paths.
-- Project chat list backed by real session metadata.
+- Project rows are pinned Desktop folders. Project chat rows mirror Pi CLI current-folder resume for that folder.
+- Sidebar CHATS is a Desktop quick-start workspace, not Pi CLI all-folder resume.
 - Projectless chat list backed by real session metadata where Pi supports it.
 - Session list for the active project.
 - Resume existing session.
