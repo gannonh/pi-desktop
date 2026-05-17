@@ -1,5 +1,8 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sessionManagerMock = vi.hoisted(() => ({
 	list: vi.fn(),
@@ -34,9 +37,15 @@ const createSessionInfo = (overrides: Partial<SessionInfo> = {}): SessionInfo =>
 });
 
 describe("pi session index", () => {
+	const tempDirs: string[] = [];
+
 	beforeEach(() => {
 		sessionManagerMock.list.mockReset();
 		sessionManagerMock.listAll.mockReset();
+	});
+
+	afterEach(async () => {
+		await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { force: true, recursive: true })));
 	});
 
 	it("creates a lister with a project list method that passes through to Pi SessionManager", async () => {
@@ -53,6 +62,43 @@ describe("pi session index", () => {
 			"/tmp/pi-session-root/--%2Ftmp%2Fpi--",
 			onProgress,
 		);
+	});
+
+	it("lists standalone sessions from the configured Pi session root", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "pi-session-root-test-"));
+		tempDirs.push(root);
+		const firstDir = path.join(root, "--%2Ftmp%2Ffirst--");
+		const secondDir = path.join(root, "--%2Ftmp%2Fsecond--");
+		await mkdir(firstDir);
+		await mkdir(secondDir);
+		await writeFile(path.join(firstDir, "first.jsonl"), "");
+		await writeFile(path.join(secondDir, "second.jsonl"), "");
+		const olderSession = createSessionInfo({
+			id: "older-session",
+			cwd: "/tmp/first",
+			modified: new Date("2026-05-12T09:00:00.000Z"),
+		});
+		const newerSession = createSessionInfo({
+			id: "newer-session",
+			cwd: "/tmp/second",
+			modified: new Date("2026-05-12T11:00:00.000Z"),
+		});
+		sessionManagerMock.list.mockImplementation(async (_cwd: string, sessionDir: string) => {
+			if (sessionDir === firstDir) {
+				return [olderSession];
+			}
+			if (sessionDir === secondDir) {
+				return [newerSession];
+			}
+			return [];
+		});
+
+		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: root });
+
+		await expect(lister.listAll()).resolves.toEqual([newerSession, olderSession]);
+		expect(sessionManagerMock.listAll).not.toHaveBeenCalled();
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", firstDir, expect.any(Function));
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", secondDir, expect.any(Function));
 	});
 
 	it("uses explicit Pi session names before first message text", () => {
