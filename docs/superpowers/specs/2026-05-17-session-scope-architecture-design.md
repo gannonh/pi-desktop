@@ -96,16 +96,13 @@ Selecting a `CHATS` row activates quick-start context.
 
 The chat panel can still hydrate messages from persisted session history for any selected Pi-backed chat.
 
-## Migration
+## Existing Data
 
-Existing `standaloneChats` that point to arbitrary external cwd values do not remain in `CHATS` after this change.
+No migration path is required.
 
-A safe migration path:
+On refresh, Desktop rebuilds project rows from each pinned project folder and rebuilds `CHATS` rows from the Desktop pseudo workspace. Historical sessions appear automatically when their session cwd belongs to a pinned project folder or to the Desktop pseudo workspace.
 
-- Keep the project store schema compatible for one release if possible.
-- On refresh, rebuild quick-start rows from the Desktop pseudo workspace.
-- Leave external sessions discoverable later through global resume/search, not the sidebar.
-- Preserve `sessionUiByPath` metadata because it can still apply when a session appears under a pinned project or future global resume.
+External sessions from arbitrary unpinned folders remain in Pi session storage and stay out of the sidebar.
 
 ## Testing
 
