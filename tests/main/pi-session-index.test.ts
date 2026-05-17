@@ -140,7 +140,7 @@ describe("pi session index", () => {
 			id: "chat:session:session-1",
 			projectId: createProjectId("/tmp/pi"),
 			source: "pi-session",
-			sessionId: "session-1",
+			sessionId: "project:/tmp/pi:session-1",
 			sessionPath: "/tmp/pi-sessions/2026_session.jsonl",
 			cwd: "/tmp/pi",
 			title: "Project chat",
@@ -181,7 +181,7 @@ describe("pi session index", () => {
 		expect(chat).toEqual({
 			id: "chat:session:session-1",
 			source: "pi-session",
-			sessionId: "session-1",
+			sessionId: "standalone:session-1",
 			sessionPath: "/tmp/pi-sessions/2026_session.jsonl",
 			cwd: "/tmp/pi",
 			title: "Explain the renderer state",

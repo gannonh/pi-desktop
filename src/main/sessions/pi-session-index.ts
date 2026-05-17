@@ -5,6 +5,7 @@ import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { createProjectId } from "../../shared/project-state";
 import type { ChatMetadata, ChatStatus, StandaloneChatMetadata } from "../../shared/project-state";
 import { resolvePiSessionFilesRoot } from "../app-paths";
+import { createDesktopSessionId } from "../pi-session/pi-session-runtime";
 
 const maxChatTitleLength = 80;
 const ellipsis = "...";
@@ -112,11 +113,12 @@ export const createChatFromSessionInfo = ({
 	lastOpenedAt = null,
 }: CreateChatFromSessionInfoInput): ChatMetadata => {
 	const chatCwd = getSessionCwd(session, cwd);
+	const chatProjectId = projectId ?? createProjectId(chatCwd);
 	return {
 		id: `chat:session:${session.id}`,
-		projectId: projectId ?? createProjectId(chatCwd),
+		projectId: chatProjectId,
 		source: "pi-session",
-		sessionId: session.id,
+		sessionId: createDesktopSessionId(chatProjectId, session.id),
 		sessionPath: session.path,
 		cwd: chatCwd,
 		title: getChatTitleFromSessionInfo(session),
@@ -137,7 +139,7 @@ export const createStandaloneChatFromSessionInfo = ({
 }: CreateStandaloneChatFromSessionInfoInput): StandaloneChatMetadata => ({
 	id: `chat:session:${session.id}`,
 	source: "pi-session",
-	sessionId: session.id,
+	sessionId: createDesktopSessionId(null, session.id),
 	sessionPath: session.path,
 	cwd: getSessionCwd(session, cwd),
 	title: getChatTitleFromSessionInfo(session),

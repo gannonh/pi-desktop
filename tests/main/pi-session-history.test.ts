@@ -37,6 +37,18 @@ const entries: SessionEntry[] = [
 			timestamp: 2,
 		},
 	},
+	{
+		type: "message",
+		id: "bash-one",
+		parentId: "assistant-one",
+		timestamp: "2026-05-17T12:00:02.000Z",
+		message: {
+			role: "bashExecution",
+			command: "pwd",
+			output: "/tmp/pi-desktop",
+			timestamp: 3,
+		},
+	} as SessionEntry,
 ];
 
 describe("loadPiSessionHistory", () => {
@@ -65,6 +77,7 @@ describe("loadPiSessionHistory", () => {
 			messages: [
 				{ id: "user:user-one", role: "user", content: "what time is it?", streaming: false },
 				{ id: "assistant:assistant-one", role: "assistant", content: "It is 8:45 AM.", streaming: false },
+				{ id: "bashExecution:bash-one", role: "tool", content: "pwd\n/tmp/pi-desktop", streaming: false },
 			],
 		});
 	});

@@ -360,6 +360,9 @@ const createChatId = (now: string, existingChats: readonly { id: string }[]): st
 	return chatId;
 };
 
+const sessionIdMatchesUiSession = (sessionId: string, uiSessionId: string | null): boolean =>
+	uiSessionId !== null && (sessionId === uiSessionId || sessionId.endsWith(`:${uiSessionId}`));
+
 export const createProjectService = (deps: ProjectServiceDeps): ProjectService => {
 	let transactionQueue: Promise<void> = Promise.resolve();
 	const activeSessionIds = new Set<string>();
@@ -940,7 +943,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 			return runSerialized(async () => {
 				const store = await deps.store.load();
 				for (const [sessionPath, ui] of Object.entries(store.sessionUiByPath)) {
-					if (ui.sessionId && (input.sessionId === ui.sessionId || input.sessionId.endsWith(ui.sessionId))) {
+					if (sessionIdMatchesUiSession(input.sessionId, ui.sessionId)) {
 						const preserveFailure = ui.status === "failed" && input.status === "idle";
 						store.sessionUiByPath[sessionPath] = {
 							...ui,

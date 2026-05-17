@@ -21,7 +21,8 @@ export type LoadPiSessionHistoryInput = {
 	}) => HistorySessionManager;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
 
 const textFromContent = (content: unknown): string => {
 	if (typeof content === "string") {
@@ -46,7 +47,7 @@ const roleFor = (role: unknown): PiSessionMessageRole => {
 	if (role === "assistant" || role === "tool" || role === "system") {
 		return role;
 	}
-	if (role === "toolResult") {
+	if (role === "toolResult" || role === "bashExecution") {
 		return "tool";
 	}
 	return "user";

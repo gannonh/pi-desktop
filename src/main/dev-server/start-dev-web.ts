@@ -1,4 +1,3 @@
-import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -7,11 +6,11 @@ import {
 	resolveDesktopChatsPath,
 	resolveElectronDevUserDataDir,
 	resolvePiAgentDir,
-	resolvePiSessionFilesDirForCwd,
 	resolvePiSessionFilesRoot,
 	resolveProjectStorePath,
 } from "../app-paths";
 import { createAppBackend, type AppBackend } from "../app-backend";
+import { branchSession, cloneSession, forkSession, writeSessionName } from "../pi-session/pi-session-file-actions";
 import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
 import { createProjectService } from "../projects/project-service";
@@ -59,51 +58,6 @@ export type DevWebServerHandle = DevWebServerResources & {
 
 const unavailableNativeOperation = async () => {
 	throw new Error("Native desktop operation unavailable in web preview.");
-};
-
-const writeSessionName = async (sessionPath: string, name: string): Promise<void> => {
-	SessionManager.open(sessionPath).appendSessionInfo(name);
-};
-
-const forkSession = async (sourcePath: string, targetCwd: string, env: NodeJS.ProcessEnv): Promise<string> => {
-	const manager = SessionManager.forkFrom(
-		sourcePath,
-		targetCwd,
-		resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env }),
-	);
-	const forkedPath = manager.getSessionFile();
-	if (!forkedPath) {
-		throw new Error("Pi session fork did not create a persisted session file.");
-	}
-	return forkedPath;
-};
-
-const cloneSession = async (sourcePath: string, targetCwd: string, env: NodeJS.ProcessEnv): Promise<string> => {
-	const manager = SessionManager.open(sourcePath, resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env }), targetCwd);
-	const leafId = manager.getLeafId();
-	if (!leafId) {
-		throw new Error("Cannot clone a session without entries.");
-	}
-	const clonedPath = manager.createBranchedSession(leafId);
-	if (!clonedPath) {
-		throw new Error("Pi session clone did not create a persisted session file.");
-	}
-	return clonedPath;
-};
-
-const branchSession = async (
-	sourcePath: string,
-	targetCwd: string,
-	entryId: string,
-	env: NodeJS.ProcessEnv,
-): Promise<string> => {
-	const manager = SessionManager.open(sourcePath, resolvePiSessionFilesDirForCwd({ cwd: targetCwd, env }), targetCwd);
-	manager.branch(entryId);
-	const branchedPath = manager.createBranchedSession(entryId);
-	if (!branchedPath) {
-		throw new Error("Pi session branch did not create a persisted session file.");
-	}
-	return branchedPath;
 };
 
 export const resolveDevWebUserDataDir = (

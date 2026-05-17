@@ -328,6 +328,17 @@ export function App() {
 
 			if (!reusableSessionId) {
 				if (!isPiSessionStartPayload(result.data)) {
+					const message = "Invalid session start response.";
+					pendingStartRequestRef.current = null;
+					pendingStartEventsRef.current.clear();
+					setSessionState((current) => ({
+						...current,
+						status: "failed",
+						statusLabel: "Failed",
+						errorMessage: message,
+						retryMessage: "",
+					}));
+					setStatusMessage({ source: "startup", message });
 					return false;
 				}
 				const started = result.data;

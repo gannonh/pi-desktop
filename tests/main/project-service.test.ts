@@ -1042,6 +1042,40 @@ describe("project service", () => {
 		);
 	});
 
+	it("does not apply status updates to session ids with only a loose suffix match", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-status-suffix-"));
+		const project = createProject(projectPath);
+		const sessionPath = join(projectPath, "suffix.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				sessionUiByPath: {
+					[sessionPath]: {
+						chatId: "chat:suffix",
+						sessionId: "c",
+						sessionPath,
+						projectId: project.id,
+						lastOpenedAt: firstNow,
+						status: "running",
+						attention: false,
+					},
+				},
+			},
+		});
+
+		await service.recordSessionStatus({
+			sessionId: `${project.id}:uuid-abc`,
+			status: "failed",
+			attention: true,
+			updatedAt: secondNow,
+		});
+
+		expect(memoryStore.read().sessionUiByPath[sessionPath]).toEqual(
+			expect.objectContaining({ status: "running", attention: false, lastOpenedAt: firstNow }),
+		);
+	});
+
 	it("hydrates persisted running project sessions as idle after service restart", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-stale-running-"));
 		const project = createProject(projectPath);
@@ -1270,7 +1304,7 @@ describe("project service", () => {
 				id: draftChat.id,
 				projectId: project.id,
 				source: "pi-session",
-				sessionId: "sdk-session-one",
+				sessionId: `${project.id}:sdk-session-one`,
 				sessionPath,
 				title: "Draft plan",
 				status: "running",
@@ -1542,7 +1576,7 @@ describe("project service", () => {
 				id: "chat:session:session-project",
 				projectId: project.id,
 				source: "pi-session",
-				sessionId: "session-project",
+				sessionId: `${project.id}:session-project`,
 				sessionPath: session.path,
 				title: "Project session",
 				updatedAt: "2026-05-12T11:00:00.000Z",
@@ -1700,7 +1734,11 @@ describe("project service", () => {
 
 		expect(view.selectedProjectId).toBeNull();
 		expect(view.selectedChatId).toBe(standaloneChat.id);
-		expect(view.selectedChat).toEqual({ ...standaloneChat, lastOpenedAt: secondNow });
+		expect(view.selectedChat).toEqual({
+			...standaloneChat,
+			sessionId: "standalone:standalone",
+			lastOpenedAt: secondNow,
+		});
 		expect(memoryStore.read().standaloneChats[0]?.lastOpenedAt).toBe(secondNow);
 	});
 });

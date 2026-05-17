@@ -62,7 +62,7 @@ const standaloneChat = (
 	source: "draft",
 	sessionId: null,
 	sessionPath: null,
-	cwd: previewRoot,
+	cwd: previewDesktopChatsPath,
 	title,
 	status,
 	attention: false,
@@ -349,6 +349,7 @@ export const installDevPreviewApi = () => {
 				store.chatsByProject[recoveredId] = (store.chatsByProject[projectId] ?? []).map((entry) => ({
 					...entry,
 					projectId: recoveredId,
+					cwd: recoveredPath,
 				}));
 				delete store.chatsByProject[projectId];
 				store.selectedProjectId = recoveredId;
@@ -382,10 +383,9 @@ export const installDevPreviewApi = () => {
 			createStandalone: async () => {
 				const updatedAt = new Date().toISOString();
 				const nextChat = standaloneChat(`chat:quick-start:${updatedAt}`, "New chat", updatedAt);
-				const chatWithWorkspace = { ...nextChat, cwd: previewDesktopChatsPath };
-				standaloneChats.unshift(chatWithWorkspace);
+				standaloneChats.unshift(nextChat);
 				store.selectedProjectId = null;
-				store.selectedChatId = chatWithWorkspace.id;
+				store.selectedChatId = nextChat.id;
 				return ok();
 			},
 			select: async ({ projectId, chatId }) => {
