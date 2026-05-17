@@ -246,6 +246,50 @@ describe("app backend", () => {
 		});
 	});
 
+	it("loads persisted Pi session history for a quick-start chat", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
+			projectId: null,
+			chatId: "chat:quick",
+			workspacePath: "/tmp/desktop-chats",
+			sessionPath: "/tmp/desktop-chats/quick.jsonl",
+		});
+		const loadSessionHistory = vi.fn(() => ({
+			sessionId: "standalone:sdk-session:quick",
+			status: "idle" as const,
+			statusLabel: "Idle",
+			messages: [{ id: "user:quick", role: "user" as const, content: "side discussion", streaming: false }],
+		}));
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			loadSessionHistory,
+		});
+
+		const result = await backend.handle({
+			operation: "piSession.history",
+			input: { projectId: null, chatId: "chat:quick" },
+		});
+
+		expect(projectService.getSessionStartTarget).toHaveBeenCalledWith({ projectId: null, chatId: "chat:quick" });
+		expect(loadSessionHistory).toHaveBeenCalledWith({
+			projectId: null,
+			workspacePath: "/tmp/desktop-chats",
+			sessionPath: "/tmp/desktop-chats/quick.jsonl",
+			env: undefined,
+		});
+		expect(result).toEqual({
+			ok: true,
+			data: {
+				sessionId: "standalone:sdk-session:quick",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:quick", role: "user", content: "side discussion", streaming: false }],
+			},
+		});
+	});
+
 	it("resumes a Pi session from the project service start target and records started metadata", async () => {
 		const projectService = createProjectService();
 		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
