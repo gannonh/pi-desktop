@@ -8,71 +8,198 @@
         "role": "primary",
         "displayName": "Graphite Base",
         "canonical": "oklch(0.145 0 0)",
-        "tonalRamp": ["oklch(0.145 0 0)", "oklch(0.20 0 0)", "oklch(0.28 0 0)", "oklch(0.38 0 0)", "oklch(0.50 0 0)", "oklch(0.64 0 0)", "oklch(0.80 0 0)", "oklch(0.94 0 0)"]
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.20 0 0)",
+          "oklch(0.28 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.64 0 0)",
+          "oklch(0.80 0 0)",
+          "oklch(0.94 0 0)"
+        ]
       },
       "graphite-main": {
         "role": "primary",
         "displayName": "Graphite Main",
         "canonical": "#181818",
-        "tonalRamp": ["oklch(0.14 0 0)", "oklch(0.18 0 0)", "oklch(0.24 0 0)", "oklch(0.34 0 0)", "oklch(0.46 0 0)", "oklch(0.60 0 0)", "oklch(0.76 0 0)", "oklch(0.92 0 0)"]
+        "tonalRamp": [
+          "oklch(0.14 0 0)",
+          "oklch(0.18 0 0)",
+          "oklch(0.24 0 0)",
+          "oklch(0.34 0 0)",
+          "oklch(0.46 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.76 0 0)",
+          "oklch(0.92 0 0)"
+        ]
       },
       "graphite-raised": {
         "role": "primary",
         "displayName": "Graphite Raised",
         "canonical": "#2d2d2d",
-        "tonalRamp": ["oklch(0.16 0 0)", "oklch(0.22 0 0)", "oklch(0.30 0 0)", "oklch(0.40 0 0)", "oklch(0.52 0 0)", "oklch(0.66 0 0)", "oklch(0.82 0 0)", "oklch(0.95 0 0)"]
+        "tonalRamp": [
+          "oklch(0.16 0 0)",
+          "oklch(0.22 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.40 0 0)",
+          "oklch(0.52 0 0)",
+          "oklch(0.66 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.95 0 0)"
+        ]
       },
       "graphite-selected": {
         "role": "primary",
         "displayName": "Graphite Selected",
         "canonical": "oklch(0.269 0 0)",
-        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.22 0 0)", "oklch(0.269 0 0)", "oklch(0.36 0 0)", "oklch(0.48 0 0)", "oklch(0.62 0 0)", "oklch(0.78 0 0)", "oklch(0.94 0 0)"]
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.22 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.94 0 0)"
+        ]
       },
       "text-primary": {
         "role": "neutral",
         "displayName": "Text Primary",
         "canonical": "oklch(0.985 0 0)",
-        "tonalRamp": ["oklch(0.20 0 0)", "oklch(0.32 0 0)", "oklch(0.44 0 0)", "oklch(0.56 0 0)", "oklch(0.68 0 0)", "oklch(0.80 0 0)", "oklch(0.90 0 0)", "oklch(0.985 0 0)"]
+        "tonalRamp": [
+          "oklch(0.20 0 0)",
+          "oklch(0.32 0 0)",
+          "oklch(0.44 0 0)",
+          "oklch(0.56 0 0)",
+          "oklch(0.68 0 0)",
+          "oklch(0.80 0 0)",
+          "oklch(0.90 0 0)",
+          "oklch(0.985 0 0)"
+        ]
       },
       "text-muted": {
         "role": "neutral",
         "displayName": "Text Muted",
         "canonical": "oklch(0.708 0 0)",
-        "tonalRamp": ["oklch(0.18 0 0)", "oklch(0.28 0 0)", "oklch(0.38 0 0)", "oklch(0.50 0 0)", "oklch(0.60 0 0)", "oklch(0.708 0 0)", "oklch(0.82 0 0)", "oklch(0.94 0 0)"]
+        "tonalRamp": [
+          "oklch(0.18 0 0)",
+          "oklch(0.28 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.60 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.94 0 0)"
+        ]
       },
       "state-attention": {
         "role": "secondary",
         "displayName": "State Attention Blue",
         "canonical": "#339cff",
-        "tonalRamp": ["oklch(0.18 0.07 255)", "oklch(0.28 0.10 255)", "oklch(0.40 0.13 255)", "oklch(0.52 0.16 255)", "oklch(0.64 0.17 255)", "oklch(0.74 0.14 255)", "oklch(0.84 0.09 255)", "oklch(0.94 0.04 255)"]
+        "tonalRamp": [
+          "oklch(0.18 0.07 255)",
+          "oklch(0.28 0.10 255)",
+          "oklch(0.40 0.13 255)",
+          "oklch(0.52 0.16 255)",
+          "oklch(0.64 0.17 255)",
+          "oklch(0.74 0.14 255)",
+          "oklch(0.84 0.09 255)",
+          "oklch(0.94 0.04 255)"
+        ]
       },
       "state-danger": {
         "role": "secondary",
         "displayName": "State Danger Red",
         "canonical": "oklch(0.704 0.191 22.216)",
-        "tonalRamp": ["oklch(0.18 0.06 22.216)", "oklch(0.30 0.10 22.216)", "oklch(0.42 0.14 22.216)", "oklch(0.56 0.18 22.216)", "oklch(0.704 0.191 22.216)", "oklch(0.78 0.14 22.216)", "oklch(0.86 0.08 22.216)", "oklch(0.94 0.04 22.216)"]
+        "tonalRamp": [
+          "oklch(0.18 0.06 22.216)",
+          "oklch(0.30 0.10 22.216)",
+          "oklch(0.42 0.14 22.216)",
+          "oklch(0.56 0.18 22.216)",
+          "oklch(0.704 0.191 22.216)",
+          "oklch(0.78 0.14 22.216)",
+          "oklch(0.86 0.08 22.216)",
+          "oklch(0.94 0.04 22.216)"
+        ]
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Start-state prompts and empty screen questions." },
-      "headline": { "displayName": "Headline", "purpose": "Project recovery and detail titles." },
-      "title": { "displayName": "Title", "purpose": "Composer text, transcript body emphasis, and compact content titles." },
-      "body": { "displayName": "Body", "purpose": "Navigation rows, buttons, transcript metadata, project copy, and normal UI text." },
-      "label": { "displayName": "Label", "purpose": "Badges, local menu items, and compact control labels." },
-      "caption": { "displayName": "Caption", "purpose": "Status captions, error metadata, and helper text." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Start-state prompts and empty screen questions."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Project recovery and detail titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Composer text, transcript body emphasis, and compact content titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Navigation rows, buttons, transcript metadata, project copy, and normal UI text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, local menu items, and compact control labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Status captions, error metadata, and helper text."
+      }
     },
     "shadows": [
-      { "name": "composer-lift", "value": "0 0.875rem 1.375rem -0.875rem rgb(0 0 0 / 30%)", "purpose": "Raised active writing surface." },
-      { "name": "menu-float", "value": "0 1rem 2rem rgb(0 0 0 / 28%)", "purpose": "Floating composer menus." },
-      { "name": "context-menu-float", "value": "0 12px 32px oklch(0 0 0 / 35%)", "purpose": "Sidebar and context menus above dense navigation." }
+      {
+        "name": "composer-lift",
+        "value": "0 0.875rem 1.375rem -0.875rem rgb(0 0 0 / 30%)",
+        "purpose": "Raised active writing surface."
+      },
+      {
+        "name": "menu-float",
+        "value": "0 1rem 2rem rgb(0 0 0 / 28%)",
+        "purpose": "Floating composer menus."
+      },
+      {
+        "name": "context-menu-float",
+        "value": "0 12px 32px oklch(0 0 0 / 35%)",
+        "purpose": "Sidebar and context menus above dense navigation."
+      }
     ],
     "motion": [
-      { "name": "sidebar-transition", "value": "220ms ease", "purpose": "Sidebar collapse and chrome transitions." },
-      { "name": "section-reveal", "value": "180ms ease", "purpose": "Sidebar nested chat reveal state." },
-      { "name": "quick-affordance", "value": "120ms ease", "purpose": "Hover-only icon and action affordances." }
+      {
+        "name": "context-motion",
+        "value": "150ms-250ms ease-out",
+        "purpose": "Explain state changes, scope shifts, progressive reveals, and active runtime status."
+      },
+      {
+        "name": "sidebar-transition",
+        "value": "220ms ease-out",
+        "purpose": "Preserve spatial context when the sidebar collapses or expands."
+      },
+      {
+        "name": "section-reveal",
+        "value": "180ms ease-out",
+        "purpose": "Show nested chat hierarchy opening or closing."
+      },
+      {
+        "name": "quick-affordance",
+        "value": "120ms ease-out",
+        "purpose": "Reveal hover-only icons and action affordances without distracting from the task."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion",
+        "purpose": "Shorten or remove nonessential movement while preserving the final state change."
+      }
     ],
     "breakpoints": [
-      { "name": "mobile-shell", "value": "720px" }
+      {
+        "name": "mobile-shell",
+        "value": "720px"
+      }
     ]
   },
   "components": [
@@ -97,7 +224,7 @@
       "kind": "input",
       "refersTo": "composer-surface",
       "description": "Raised active writing surface for starting or steering a Pi session.",
-      "html": "<div class=\"ds-composer\"><textarea class=\"ds-composer-input\" placeholder=\"Ask Pi anything. @ to use skills or mention files\"></textarea><div class=\"ds-composer-row\"><button class=\"ds-ghost-control\">pi-desktop</button><button class=\"ds-send\">↑</button></div></div>",
+      "html": "<div class=\"ds-composer\"><textarea class=\"ds-composer-input\" placeholder=\"Ask Pi anything. @ to use skills or mention files\"></textarea><div class=\"ds-composer-row\"><button class=\"ds-ghost-control\">pi-desktop</button><button class=\"ds-send\">\u2191</button></div></div>",
       "css": ".ds-composer { width: min(100%, 46rem); min-height: 96px; display: grid; gap: 0.75rem; border-radius: var(--radius-composer, 1.5rem); background: #2d2d2d; padding: var(--composer-padding, 0.75rem) var(--composer-padding, 0.75rem) 0.25rem; box-shadow: 0 0.875rem 1.375rem -0.875rem rgb(0 0 0 / 30%); color: var(--color-foreground); } .ds-composer-input { width: 100%; min-height: 2.75rem; resize: none; border: 0; background: transparent; color: var(--color-foreground); font: 400 var(--type-composer)/1.4 Inter, system-ui, sans-serif; outline: none; } .ds-composer-input::placeholder { color: color-mix(in oklch, var(--color-muted-foreground) 78%, transparent); } .ds-composer-input:focus-visible { border-radius: var(--radius-control); outline: 2px solid var(--color-ring); outline-offset: 0.25rem; } .ds-composer-row { display: flex; align-items: center; gap: 0.5rem; } .ds-ghost-control { border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-muted-foreground); padding: 0.25rem 0.375rem; font: 400 var(--type-body)/1.2 Inter, system-ui, sans-serif; } .ds-ghost-control:hover { background: var(--color-accent); color: var(--color-accent-foreground); } .ds-send { margin-left: auto; width: 2rem; height: 2rem; border: 1px solid transparent; border-radius: 999px; background: var(--color-primary); color: var(--color-primary-foreground); font: 600 var(--type-body)/1 Inter, system-ui, sans-serif; } .ds-send:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }"
     },
     {
@@ -105,7 +232,7 @@
       "kind": "nav",
       "refersTo": "sidebar-row-active",
       "description": "Selected project or chat row in the persistent left rail.",
-      "html": "<button class=\"ds-sidebar-row\"><span class=\"ds-sidebar-icon\">▣</span><span class=\"ds-sidebar-label\">Address PR comments</span></button>",
+      "html": "<button class=\"ds-sidebar-row\"><span class=\"ds-sidebar-icon\">\u25a3</span><span class=\"ds-sidebar-label\">Address PR comments</span></button>",
       "css": ".ds-sidebar-row { width: 100%; display: flex; align-items: center; gap: 0.5rem; border: 0; border-radius: var(--radius-control); background: var(--color-secondary); color: var(--sidebar-chat-color); padding: 0.5rem; font: 400 var(--type-body)/1.2 Inter, system-ui, sans-serif; text-align: left; transition: background-color 140ms ease, color 140ms ease; } .ds-sidebar-row:hover { background: var(--color-accent); color: var(--color-accent-foreground); } .ds-sidebar-row:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; } .ds-sidebar-icon { width: 1rem; height: 1rem; color: currentColor; } .ds-sidebar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"
     },
     {
@@ -113,7 +240,7 @@
       "kind": "card",
       "refersTo": "transcript-work-card",
       "description": "Inspectable file or tool-effect record inside a coding transcript.",
-      "html": "<div class=\"ds-work-card\"><div class=\"ds-work-card-icon\">□</div><div class=\"ds-work-card-copy\"><div class=\"ds-work-card-title\">Edited 6 files</div><div class=\"ds-work-card-subtitle\">+168 -29</div></div><button class=\"ds-work-card-action\">Review</button></div>",
+      "html": "<div class=\"ds-work-card\"><div class=\"ds-work-card-icon\">\u25a1</div><div class=\"ds-work-card-copy\"><div class=\"ds-work-card-title\">Edited 6 files</div><div class=\"ds-work-card-subtitle\">+168 -29</div></div><button class=\"ds-work-card-action\">Review</button></div>",
       "css": ".ds-work-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; min-height: 4.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-panel); background: color-mix(in oklch, var(--color-card) 86%, transparent); padding: 0.75rem; color: var(--color-foreground); } .ds-work-card-icon { display: inline-flex; width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; border-radius: var(--radius-panel); background: var(--color-background); color: var(--color-muted-foreground); } .ds-work-card-copy { min-width: 0; } .ds-work-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 var(--type-composer)/1.3 Inter, system-ui, sans-serif; } .ds-work-card-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted-foreground); font: 400 var(--type-body)/1.3 Inter, system-ui, sans-serif; } .ds-work-card-action { border: 1px solid var(--color-border); border-radius: var(--radius-control); background: transparent; color: var(--color-foreground); padding: 0.375rem 0.625rem; font: 400 var(--type-body)/1.2 Inter, system-ui, sans-serif; } .ds-work-card-action:hover { background: var(--color-accent); color: var(--color-accent-foreground); } .ds-work-card-action:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }"
     },
     {
@@ -127,22 +254,56 @@
   ],
   "narrative": {
     "northStar": "The Familiar Agent Workbench",
-    "overview": "Pi Desktop lives in the new desktop coding-agent category, where users already expect a left session rail, a centered start composer, a compact runtime header, and inspectable transcript output. The system should honor that emerging familiarity while staying original, open-source, and tied to Pi's local runtime model.\n\nThe visual language is a Graphite Workbench: dark tonal surfaces, compact macOS density, scarce accent color, and controls that stay quiet until state matters. A developer should trust the interface as a daily work surface, not a spectacle.\n\nThe system explicitly rejects chatbot toy feel, SaaS dashboard clichés, neon hacker styling, and hidden autonomy. It should feel local, precise, and inspectable, with enough category familiarity that users can transfer habits from current desktop coding-agent tools.",
+    "overview": "Pi Desktop lives in the new desktop coding-agent category, where users already expect a left session rail, a centered start composer, a compact runtime header, and inspectable transcript output. The system should honor that emerging familiarity while staying original, open-source, and tied to Pi's local runtime model.\n\nThe visual language is a Graphite Workbench: dark tonal surfaces, compact macOS density, scarce accent color, and controls that stay quiet until state matters. A developer should trust the interface as a daily work surface, not a spectacle.\n\nMotion is part of the workbench. It should preserve spatial context, clarify what changed, reveal hierarchy, and mark active runtime status. It should stay short, interruptible, and reduced-motion-safe.\n\nThe system explicitly rejects chatbot toy feel, SaaS dashboard clich\u00e9s, neon hacker styling, hidden autonomy, and decorative motion. It should feel local, precise, and inspectable, with enough category familiarity that users can transfer habits from current desktop coding-agent tools.",
     "keyCharacteristics": [
       "Dark, low-chroma graphite neutrals with one scarce blue state accent and a clear red danger family.",
       "Compact controls, small radii, and macOS-oriented side navigation.",
       "Tonal layering first, shadows only for raised composer and floating menus.",
+      "Motion that explains state, scope, reveal, and runtime changes without animating layout properties.",
       "Transcript and file-effect surfaces that make agent work inspectable.",
       "Visible scope, status, and recovery context wherever the user can act."
     ],
     "rules": [
-      { "name": "The Scarce Ink Rule", "body": "Blue and red must communicate state, risk, or runtime status. They are forbidden as decoration.", "section": "colors" },
-      { "name": "The Graphite Step Rule", "body": "Separate surfaces by adjacent tonal steps before adding borders or shadows.", "section": "colors" },
-      { "name": "The No Pure Black Rule", "body": "Avoid pure black or pure white in new tokens. Neutrals should stay slightly lifted from extremes, even when very dark.", "section": "colors" },
-      { "name": "The One Family Rule", "body": "Use one sans family unless a dedicated code viewer or terminal surface requires mono text.", "section": "typography" },
-      { "name": "The Density Rule", "body": "Product text should stay compact and scannable. Do not introduce oversized marketing type into task surfaces.", "section": "typography" },
-      { "name": "The Tonal-First Rule", "body": "Add a tonal step before adding a shadow.", "section": "elevation" },
-      { "name": "The Floating-Only Rule", "body": "Shadows belong on composer and menus. Static panels, rows, and transcript cards stay flat.", "section": "elevation" }
+      {
+        "name": "The Scarce Ink Rule",
+        "body": "Blue and red must communicate state, risk, or runtime status. They are forbidden as decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Graphite Step Rule",
+        "body": "Separate surfaces by adjacent tonal steps before adding borders or shadows.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Pure Black Rule",
+        "body": "Avoid pure black or pure white in new tokens. Neutrals should stay slightly lifted from extremes, even when very dark.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Use one sans family unless a dedicated code viewer or terminal surface requires mono text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Density Rule",
+        "body": "Product text should stay compact and scannable. Do not introduce oversized marketing type into task surfaces.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal-First Rule",
+        "body": "Add a tonal step before adding a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Floating-Only Rule",
+        "body": "Shadows belong on composer and menus. Static panels, rows, and transcript cards stay flat.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Context Motion Rule",
+        "body": "Motion should explain state changes, scope shifts, progressive reveals, and active runtime status. Use transform, opacity, clip, and color instead of layout properties.",
+        "section": "components"
+      }
     ],
     "dos": [
       "Do keep workspace scope, active path, session status, and failure context visible around user actions.",
@@ -150,13 +311,16 @@
       "Do reserve State Attention Blue for status, toggles, selected state, retry, and future information states.",
       "Do keep controls compact, familiar, and keyboard reachable.",
       "Do use transcript cards to show tool, file, terminal, and diff effects as inspectable records.",
+      "Do use motion to explain state changes, reveal hierarchy, and preserve spatial context.",
       "Do follow the emerging desktop coding-agent layout pattern: persistent left rail, central composer, scoped session header, and inspectable transcript."
     ],
     "donts": [
       "Don't create a chatbot toy feel with playful assistant chrome, novelty avatars, or casual agent framing.",
-      "Don't use SaaS dashboard clichés: generic metric cards, marketing gradients, repeated icon-card grids, or management-console decoration.",
+      "Don't use SaaS dashboard clich\u00e9s: generic metric cards, marketing gradients, repeated icon-card grids, or management-console decoration.",
       "Don't use neon hacker styling, terminal cosplay, novelty cyber visuals, or saturated inactive states.",
       "Don't hide autonomy. Tool execution, workspace scope, filesystem effects, runtime failures, and active session state must stay visible.",
+      "Don't animate layout properties such as width, height, grid tracks, margin, or padding. Use transform, opacity, clip, and color instead.",
+      "Don't use decorative motion, bounce, elastic easing, indefinite attention loops, or motion that hides latency.",
       "Don't copy Codex app pixels, proprietary assets, or implementation details. Use the category pattern as a reference and keep Pi Desktop original.",
       "Don't use side-stripe borders, gradient text, default glassmorphism, hero metrics, or identical card grids."
     ]

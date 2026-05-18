@@ -116,13 +116,16 @@ Pi Desktop (Electron and web app) lives in the new desktop coding-agent category
 
 The visual language is a Graphite Workbench: dark tonal surfaces, compact macOS density, scarce accent color, and controls that stay quiet until state matters. A developer should trust the interface as a daily work surface, not a spectacle.
 
-The system explicitly rejects chatbot toy feel, SaaS dashboard clichés, neon hacker styling, and hidden autonomy. It should feel local, precise, and inspectable, with enough category familiarity that users can transfer habits from current desktop coding-agent tools.
+Motion is part of the workbench. It should preserve spatial context, clarify what changed, reveal hierarchy, and mark active runtime status. It should stay short, interruptible, and reduced-motion-safe.
+
+The system explicitly rejects chatbot toy feel, SaaS dashboard clichés, neon hacker styling, hidden autonomy, and decorative motion. It should feel local, precise, and inspectable, with enough category familiarity that users can transfer habits from current desktop coding-agent tools.
 
 **Key Characteristics:**
 
 - Dark, low-chroma graphite neutrals with one scarce blue state accent and a clear red danger family.
 - Compact controls, small radii, and macOS-oriented side navigation.
 - Tonal layering first, shadows only for raised composer and floating menus.
+- Motion that explains state, scope, reveal, and runtime changes without animating layout properties.
 - Transcript and file-effect surfaces that make agent work inspectable.
 - Visible scope, status, and recovery context wherever the user can act.
 
@@ -246,6 +249,10 @@ Navigation is a macOS-like left rail with project and chat hierarchy.
 - **Hover / Active:** selected rows use `graphite-selected`; hover reveals menu affordances and archive icons.
 - **Collapsed State:** collapse the sidebar structurally while keeping window controls and active chat title available.
 
+### Motion Behavior
+
+Motion should orient the user. Use transform, opacity, color, and icon state changes to explain sidebar collapse, chat reveal, composer send/running/abort state, menu opening, tool result expansion, and attention changes. Keep most transitions between 150ms and 250ms with ease-out timing. Respect `prefers-reduced-motion` by shortening or removing nonessential movement while preserving the final state change.
+
 ### Signature Component: Composer
 
 The composer is the primary work surface. It combines a raised prompt panel, a recessed control row, compact model/access controls, and a round send or abort button. Its shape and placement define the app's first impression. Do not restyle it as a generic chat input.
@@ -263,6 +270,7 @@ Transcript cards make file and tool effects inspectable. They should remain flat
 - **Do** reserve State Attention Blue for status, toggles, selected state, retry, and future information states.
 - **Do** keep controls compact, familiar, and keyboard reachable.
 - **Do** use transcript cards to show tool, file, terminal, and diff effects as inspectable records.
+- **Do** use motion to explain state changes, reveal hierarchy, and preserve spatial context.
 - **Do** follow the emerging desktop coding-agent layout pattern: persistent left rail, central composer, scoped session header, and inspectable transcript.
 
 ### Don't
@@ -271,5 +279,7 @@ Transcript cards make file and tool effects inspectable. They should remain flat
 - **Don't** use SaaS dashboard clichés: generic metric cards, marketing gradients, repeated icon-card grids, or management-console decoration.
 - **Don't** use neon hacker styling, terminal cosplay, novelty cyber visuals, or saturated inactive states.
 - **Don't** hide autonomy. Tool execution, workspace scope, filesystem effects, runtime failures, and active session state must stay visible.
+- **Don't** use decorative motion, bounce, elastic easing, indefinite attention loops, or motion that hides latency.
+- **Don't** animate layout properties such as width, height, grid tracks, margin, or padding. Use transform, opacity, clip, and color instead.
 - **Don't** copy Codex app pixels, proprietary assets, or implementation details. Use the category pattern as a reference and keep Pi Desktop original.
 - **Don't** use side-stripe borders, gradient text, default glassmorphism, hero metrics, or identical card grids.

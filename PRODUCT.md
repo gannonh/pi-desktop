@@ -34,9 +34,10 @@ The interface should feel like a serious macOS developer tool: restrained, inspe
 - Keep workspace truth visible: show the active project path, session scope, runtime state, and failure context where users make decisions.
 - Make agent work inspectable: tool calls, terminal output, file effects, diffs, and errors should be first-class surfaces.
 - Preserve flow over ceremony: favor direct actions, resumable state, and predictable controls over onboarding friction or decorative reveal.
-- Earn native familiarity: use consistent macOS-oriented product patterns, restrained color, clear focus states, and compact density.
+- Use motion for orientation: motion should explain state changes, scope shifts, progressive reveals, and active runtime status without becoming decoration.
+- Earn native familiarity: use consistent macOS-oriented product patterns, restrained color, clear focus states, compact density, and motion that supports spatial understanding.
 - Fail visibly: auth, runtime, filesystem, session, and tool failures should explain what happened and the next available action.
 
 ## Accessibility & Inclusion
 
-Target WCAG 2.2 AA as the baseline. Product surfaces should provide readable contrast, visible focus, keyboard-reachable controls, reduced-motion-safe transitions, and status indicators that do not rely on color alone.
+Target WCAG 2.2 AA as the baseline. Product surfaces should provide readable contrast, visible focus, keyboard-reachable controls, reduced-motion-safe transitions, and status indicators that do not rely on color alone. Motion should respect `prefers-reduced-motion` and keep an understandable non-motion equivalent for state changes.
