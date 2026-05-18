@@ -62,16 +62,16 @@ const expectComposerControlPlacement = async (page: Page) => {
 };
 
 const expectSelectedComposerVisualTokens = async (page: Page) => {
-	await expect(page.locator(".app-shell__main")).toHaveCSS("background-color", "rgb(24, 24, 24)");
-	await expect(page.locator(".chat-shell--start")).toHaveCSS("background-color", "rgb(24, 24, 24)");
-	await expect(page.locator(".composer__input-panel")).toHaveCSS("background-color", "rgb(45, 45, 45)");
+	await expect(page.locator(".app-shell__main")).toHaveCSS("background-color", "oklch(0.209 0 0)");
+	await expect(page.locator(".chat-shell--start")).toHaveCSS("background-color", "oklch(0.209 0 0)");
+	await expect(page.locator(".composer__input-panel")).toHaveCSS("background-color", "oklch(0.297 0 0)");
 	await expect(page.locator(".composer__input-panel")).toHaveCSS("border-bottom-left-radius", "24px");
 	await expect(page.locator(".composer__input-panel")).toHaveCSS("border-bottom-right-radius", "24px");
 	await expect(page.locator(".composer__input-panel")).toHaveCSS(
 		"box-shadow",
 		"rgba(0, 0, 0, 0.3) 0px 14px 22px -14px",
 	);
-	await expect(page.locator(".composer__control-row")).toHaveCSS("background-color", "rgb(33, 33, 33)");
+	await expect(page.locator(".composer__control-row")).toHaveCSS("background-color", "oklch(0.248 0 0)");
 	await expect(page.locator(".composer__control-row")).toHaveCSS("box-shadow", "none");
 	await expect(page.locator(".composer__control-row")).toHaveCSS("padding", "28px 12px 6px");
 	await expect(page.getByLabel("Pi composer").getByRole("button", { name: "pi-desktop" })).toHaveCSS(
@@ -80,7 +80,7 @@ const expectSelectedComposerVisualTokens = async (page: Page) => {
 	);
 	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("width", "14px");
 	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("height", "14px");
-	await expect(page.locator(".chat-shell__suggestion").first()).toHaveCSS("border-top-color", "rgb(40, 40, 40)");
+	await expect(page.locator(".chat-shell__suggestion").first()).toHaveCSS("border-top-color", "oklch(0.277 0 0)");
 
 	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
 	const controlRowBox = await page.locator(".composer__control-row").boundingBox();

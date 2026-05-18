@@ -10,6 +10,8 @@ import type {
 	StandaloneChatMetadata,
 } from "../../src/shared/project-state";
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	id: "chat:project-1",
 	projectId: "project:/tmp/pi-desktop",
@@ -128,5 +130,43 @@ describe("ProjectSidebar", () => {
 
 		expect(markup).toContain('aria-label="Project chat 1 menu"');
 		expect(markup).not.toContain('aria-label="Standalone chat 1 menu"');
+	});
+
+	it("exposes a dedicated disclosure control for each project row", () => {
+		const chat = createChat();
+		const project = createProject([chat]);
+		const markup = renderSidebar({
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		});
+
+		expect(markup).toContain('class="project-sidebar__project-disclosure"');
+		expect(markup).toContain('aria-expanded="true"');
+		expect(markup).toContain('aria-label="Collapse pi-desktop"');
+	});
+
+	it("declares menu semantics on sidebar disclosure buttons", () => {
+		const chat = createChat();
+		const project = createProject([chat]);
+		const markup = renderSidebar({
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		});
+		const menuLabels = ["Filter projects", "Add project", "Filter chats", "pi-desktop menu", "Project chat 1 menu"];
+
+		for (const label of menuLabels) {
+			const pattern = new RegExp(
+				`aria-label="${escapeRegExp(label)}"[^>]*aria-controls="[^"]+"[^>]*aria-haspopup="menu"`,
+			);
+			expect(markup, `${label} should expose menu semantics`).toMatch(pattern);
+		}
 	});
 });
