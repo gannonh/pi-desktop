@@ -273,7 +273,7 @@ Acceptance:
 - AI SDK `UIMessage` remains a possible future transcript shape when durable transcript storage or rich message parts are designed.
 - Prototype code and AI SDK dependencies are not retained in the product branch.
 
-⏳ ### M04: Project and Session Management
+✅ ### M04: Project and Session Management
 
 Goal: make sidebar project and chat management functional against real session metadata.
 
@@ -281,7 +281,8 @@ Deliverables:
 
 - Complete project actions: create, add existing folder, select, rename, remove, pin, locate missing folder, and open in Finder.
 - Project availability checks with visible recovery paths.
-- Project chat list backed by real session metadata.
+- Project rows are pinned Desktop folders. Project chat rows mirror Pi CLI current-folder resume for that folder.
+- Sidebar CHATS is a Desktop quick-start workspace, not Pi CLI all-folder resume.
 - Projectless chat list backed by real session metadata where Pi supports it.
 - Session list for the active project.
 - Resume existing session.
@@ -295,6 +296,7 @@ Acceptance:
 - User can distinguish sessions by project, name, recency, and status.
 - Missing project folders preserve their chat metadata and can be recovered or removed.
 - Sidebar management actions fail visibly when filesystem or runtime state blocks them.
+- Status: implemented with Pi `SessionManager` metadata as the source of persisted sessions, desktop JSON metadata for UI state, and custom `LiveSessionState` retained for live streaming.
 
 ### M05: Coding Panels
 

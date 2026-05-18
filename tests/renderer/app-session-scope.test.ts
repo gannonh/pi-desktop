@@ -3,11 +3,130 @@ import {
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
 	isSessionScopeSelected,
+	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
 	takeBufferedSessionEvents,
 } from "../../src/renderer/session/session-scope";
 import { createInitialSessionState, reduceSessionEvent } from "../../src/renderer/session/session-state";
+import { createProjectId, type ProjectStateView } from "../../src/shared/project-state";
+
+const now = "2026-05-14T12:00:00.000Z";
+
+const createProjectState = (overrides: Partial<ProjectStateView>): ProjectStateView => ({
+	projects: [],
+	standaloneChats: [],
+	selectedProjectId: null,
+	selectedChatId: null,
+	selectedProject: null,
+	selectedChat: null,
+	...overrides,
+});
+
+describe("resolvePromptSessionStartSelection", () => {
+	it("uses the selected standalone chat id for a quick-start draft payload", () => {
+		const standaloneChat = {
+			id: "chat:quick-start",
+			source: "draft" as const,
+			sessionId: null,
+			sessionPath: null,
+			cwd: "/tmp/desktop-chats",
+			title: "New chat",
+			status: "idle" as const,
+			attention: false,
+			createdAt: now,
+			updatedAt: now,
+			lastOpenedAt: null,
+		};
+
+		expect(
+			resolvePromptSessionStartSelection(
+				createProjectState({
+					standaloneChats: [standaloneChat],
+					selectedProjectId: null,
+					selectedChatId: standaloneChat.id,
+					selectedChat: standaloneChat,
+				}),
+			),
+		).toEqual({ ok: true, projectId: null, chatId: standaloneChat.id });
+	});
+
+	it("uses the selected standalone chat id for a resumable projectless start payload", () => {
+		const standaloneChat = {
+			id: "chat:session:standalone",
+			source: "pi-session" as const,
+			sessionId: "standalone-session-one",
+			sessionPath: "/tmp/outside/standalone.jsonl",
+			cwd: "/tmp/outside",
+			title: "Standalone",
+			status: "idle" as const,
+			attention: false,
+			createdAt: now,
+			updatedAt: now,
+			lastOpenedAt: null,
+		};
+
+		expect(
+			resolvePromptSessionStartSelection(
+				createProjectState({
+					standaloneChats: [standaloneChat],
+					selectedProjectId: null,
+					selectedChatId: standaloneChat.id,
+					selectedChat: standaloneChat,
+				}),
+			),
+		).toEqual({ ok: true, projectId: null, chatId: standaloneChat.id });
+	});
+
+	it("uses the selected project chat id for a project start payload", () => {
+		const projectPath = "/tmp/pi-desktop";
+		const projectId = createProjectId(projectPath);
+		const projectChat = {
+			id: "chat:session:project",
+			projectId,
+			source: "pi-session" as const,
+			sessionId: "project-session-one",
+			sessionPath: "/tmp/pi-desktop/session.jsonl",
+			cwd: projectPath,
+			title: "Project chat",
+			status: "idle" as const,
+			attention: false,
+			createdAt: now,
+			updatedAt: now,
+			lastOpenedAt: null,
+		};
+		const project = {
+			id: projectId,
+			displayName: "pi-desktop",
+			path: projectPath,
+			createdAt: now,
+			updatedAt: now,
+			lastOpenedAt: now,
+			pinned: false,
+			availability: { status: "available" as const },
+			chats: [projectChat],
+		};
+
+		expect(
+			resolvePromptSessionStartSelection(
+				createProjectState({
+					projects: [project],
+					selectedProjectId: projectId,
+					selectedChatId: projectChat.id,
+					selectedProject: project,
+					selectedChat: projectChat,
+				}),
+			),
+		).toEqual({ ok: true, projectId, chatId: projectChat.id });
+	});
+
+	it("requires an available project or selected standalone chat", () => {
+		expect(resolvePromptSessionStartSelection(createProjectState({}))).toEqual({
+			ok: false,
+			errorMessage: "Select an available project or quick-start chat to start a Pi session.",
+		});
+	});
+});
 
 describe("isSessionScopeSelected", () => {
 	it("keeps live session output scoped to the selected project start route", () => {
@@ -45,6 +164,19 @@ describe("isSessionScopeSelected", () => {
 			),
 		).toBe(false);
 	});
+
+	it("keeps live session output scoped to the selected standalone chat route", () => {
+		expect(
+			isSessionScopeSelected(
+				{ projectId: null, chatId: "chat:standalone" },
+				{ projectId: null, chatId: "chat:standalone" },
+			),
+		).toBe(true);
+	});
+
+	it("does not treat the empty project route as a selected session scope", () => {
+		expect(isSessionScopeSelected({ projectId: null, chatId: null }, { projectId: null, chatId: null })).toBe(false);
+	});
 });
 
 describe("shouldAcceptSessionEvent", () => {
@@ -66,6 +198,17 @@ describe("shouldAcceptSessionEvent", () => {
 				acceptedSessionId: "project:/tmp/pi-desktop:session:one",
 				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
+			}),
+		).toBe(true);
+	});
+
+	it("accepts events from the selected standalone chat session", () => {
+		expect(
+			shouldAcceptSessionEvent({
+				eventSessionId: "standalone-session-one",
+				acceptedSessionId: "standalone-session-one",
+				active: { projectId: null, chatId: "chat:standalone" },
+				selection: { projectId: null, chatId: "chat:standalone" },
 			}),
 		).toBe(true);
 	});
@@ -134,6 +277,26 @@ describe("pending start event buffering", () => {
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: null },
 			}),
 		).toBe(true);
+	});
+
+	it("buffers standalone pending start events for the selected standalone chat", () => {
+		expect(
+			shouldBufferPendingStartEvent({
+				eventSessionId: "standalone:sdk-session:pending",
+				acceptedSessionId: null,
+				pendingStart: { projectId: null, chatId: "chat:standalone" },
+				selection: { projectId: null, chatId: "chat:standalone" },
+			}),
+		).toBe(true);
+
+		expect(
+			shouldBufferPendingStartEvent({
+				eventSessionId: "standalone:sdk-session:pending",
+				acceptedSessionId: null,
+				pendingStart: { projectId: null, chatId: "chat:standalone" },
+				selection: { projectId: null, chatId: "chat:other" },
+			}),
+		).toBe(false);
 	});
 
 	it("does not buffer pending start events from another project session", () => {

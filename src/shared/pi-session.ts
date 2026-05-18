@@ -4,7 +4,8 @@ import { createResultSchema, type IpcResult } from "./result";
 export const PiSessionStatusSchema = z.enum(["idle", "starting", "running", "retrying", "aborting", "failed"]);
 
 export const PiSessionStartInputSchema = z.strictObject({
-	projectId: z.string().min(1),
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable().optional(),
 	prompt: z.string().trim().min(1),
 });
 
@@ -17,15 +18,23 @@ export const PiSessionAbortInputSchema = z.strictObject({
 	sessionId: z.string().min(1),
 });
 
+export const PiSessionHistoryInputSchema = z.strictObject({
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1),
+});
+
 export const PiSessionDisposeInputSchema = z.strictObject({
 	sessionId: z.string().min(1),
 });
 
 export const PiSessionStartPayloadSchema = z.strictObject({
 	sessionId: z.string().min(1),
-	projectId: z.string().min(1),
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable(),
 	workspacePath: z.string().min(1),
+	sessionPath: z.string().min(1).nullable(),
 	status: PiSessionStatusSchema,
+	resumed: z.boolean(),
 });
 
 export const PiSessionActionPayloadSchema = z.strictObject({
@@ -34,6 +43,20 @@ export const PiSessionActionPayloadSchema = z.strictObject({
 });
 
 export const PiSessionMessageRoleSchema = z.enum(["user", "assistant", "tool", "system"]);
+
+export const PiSessionHistoryMessageSchema = z.strictObject({
+	id: z.string().min(1),
+	role: PiSessionMessageRoleSchema,
+	content: z.string(),
+	streaming: z.boolean(),
+});
+
+export const PiSessionHistoryPayloadSchema = z.strictObject({
+	sessionId: z.string().min(1),
+	status: PiSessionStatusSchema,
+	statusLabel: z.string().min(1),
+	messages: z.array(PiSessionHistoryMessageSchema),
+});
 
 export const PiSessionEventSchema = z.discriminatedUnion("type", [
 	z.strictObject({
@@ -86,15 +109,20 @@ export const PiSessionEventSchema = z.discriminatedUnion("type", [
 
 export const PiSessionStartResultSchema = createResultSchema(PiSessionStartPayloadSchema);
 export const PiSessionActionResultSchema = createResultSchema(PiSessionActionPayloadSchema);
+export const PiSessionHistoryResultSchema = createResultSchema(PiSessionHistoryPayloadSchema);
 
 export type PiSessionStatus = z.infer<typeof PiSessionStatusSchema>;
 export type PiSessionStartInput = z.infer<typeof PiSessionStartInputSchema>;
 export type PiSessionSubmitInput = z.infer<typeof PiSessionSubmitInputSchema>;
 export type PiSessionAbortInput = z.infer<typeof PiSessionAbortInputSchema>;
+export type PiSessionHistoryInput = z.infer<typeof PiSessionHistoryInputSchema>;
 export type PiSessionDisposeInput = z.infer<typeof PiSessionDisposeInputSchema>;
 export type PiSessionStartPayload = z.infer<typeof PiSessionStartPayloadSchema>;
 export type PiSessionActionPayload = z.infer<typeof PiSessionActionPayloadSchema>;
 export type PiSessionMessageRole = z.infer<typeof PiSessionMessageRoleSchema>;
+export type PiSessionHistoryMessage = z.infer<typeof PiSessionHistoryMessageSchema>;
+export type PiSessionHistoryPayload = z.infer<typeof PiSessionHistoryPayloadSchema>;
 export type PiSessionEvent = z.infer<typeof PiSessionEventSchema>;
 export type PiSessionStartResult = IpcResult<PiSessionStartPayload>;
 export type PiSessionActionResult = IpcResult<PiSessionActionPayload>;
+export type PiSessionHistoryResult = IpcResult<PiSessionHistoryPayload>;

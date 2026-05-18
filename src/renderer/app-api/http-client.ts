@@ -163,12 +163,19 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 		},
 		chat: {
 			create: (input) => callRpc("chat.create", input),
+			createStandalone: (input) => callRpc("chat.createStandalone", input),
 			select: (input) => callRpc("chat.select", input),
+			rename: (input) => callRpc("chat.rename", input),
+			selectStandalone: (input) => callRpc("chat.selectStandalone", input),
+			fork: (input) => callRpc("chat.fork", input),
+			clone: (input) => callRpc("chat.clone", input),
+			branch: (input) => callRpc("chat.branch", input),
 		},
 		piSession: {
 			start: (input) => callRpc("piSession.start", input),
 			submit: (input) => callRpc("piSession.submit", input),
 			abort: (input) => callRpc("piSession.abort", input),
+			history: (input) => callRpc("piSession.history", input),
 			dispose: (input) => callRpc("piSession.dispose", input),
 			onEvent: (listener) => {
 				eventListeners.add(listener);

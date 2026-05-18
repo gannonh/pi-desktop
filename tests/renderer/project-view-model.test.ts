@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ChatMetadata, ProjectStateView, ProjectWithChats } from "../../src/shared/project-state";
+import type {
+	ChatMetadata,
+	ProjectStateView,
+	ProjectWithChats,
+	StandaloneChatMetadata,
+} from "../../src/shared/project-state";
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
@@ -23,9 +28,31 @@ const createProject = (overrides: Partial<ProjectWithChats> = {}): ProjectWithCh
 const createChat = (overrides: Partial<ChatMetadata> = {}): ChatMetadata => ({
 	id: "chat:project-home",
 	projectId: "project:/Users/gannonhall/dev/pi",
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: "/Users/gannonhall/dev/pi",
 	title: "Project home",
 	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T10:00:00.000Z",
 	updatedAt: "2026-05-12T10:00:00.000Z",
+	lastOpenedAt: null,
+	...overrides,
+});
+
+const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): StandaloneChatMetadata => ({
+	id: "chat:standalone",
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: "/Users/gannonhall/dev/pi",
+	title: "Would NextJS be good for this app?",
+	status: "idle",
+	attention: false,
+	createdAt: "2026-05-12T11:09:00.000Z",
+	updatedAt: "2026-05-12T11:09:00.000Z",
+	lastOpenedAt: null,
 	...overrides,
 });
 
@@ -149,17 +176,68 @@ describe("project view model", () => {
 		]);
 	});
 
+	it("filters project chat rows by failed and attention status", () => {
+		const failedChat = createChat({ id: "chat:failed", title: "Failed", status: "failed" });
+		const runningChat = createChat({ id: "chat:running", title: "Running", status: "running", attention: true });
+		const idleChat = createChat({ id: "chat:idle", title: "Idle" });
+		const project = createProject({ chats: [failedChat, runningChat, idleChat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(createProjectSidebarRows(view, fixedNow, { chatFilter: "attention" })[0]?.children).toEqual([
+			{
+				kind: "chat",
+				chatId: "chat:failed",
+				label: "Failed",
+				selected: false,
+				status: "failed",
+				updatedLabel: "2h",
+				needsAttention: false,
+			},
+			{
+				kind: "chat",
+				chatId: "chat:running",
+				label: "Running",
+				selected: false,
+				status: "running",
+				updatedLabel: "2h",
+				needsAttention: true,
+			},
+		]);
+	});
+
+	it("expands project chat rows when showMore is true", () => {
+		const chats = Array.from({ length: 6 }, (_, index) =>
+			createChat({
+				id: `chat:${index + 1}`,
+				title: `Chat ${index + 1}`,
+			}),
+		);
+		const project = createProject({ chats });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: null,
+			selectedProject: project,
+			selectedChat: null,
+		};
+
+		expect(
+			createProjectSidebarRows(view, fixedNow, { expandedProjectIds: new Set([project.id]) })[0]?.children,
+		).toHaveLength(6);
+	});
+
 	it("creates standalone chat rows directly under chats", () => {
 		const view: ProjectStateView = {
 			projects: [],
-			standaloneChats: [
-				{
-					id: "chat:standalone",
-					title: "Would NextJS be good for this app?",
-					status: "idle",
-					updatedAt: "2026-05-12T11:09:00.000Z",
-				},
-			],
+			standaloneChats: [createStandaloneChat()],
 			selectedProjectId: null,
 			selectedChatId: null,
 			selectedProject: null,
@@ -180,12 +258,12 @@ describe("project view model", () => {
 	});
 
 	it("adds a show-more row when standalone chats exceed the visible limit", () => {
-		const standaloneChats = Array.from({ length: 6 }, (_, index) => ({
-			id: `chat:standalone:${index + 1}`,
-			title: `Standalone ${index + 1}`,
-			status: "idle" as const,
-			updatedAt: "2026-05-12T11:09:00.000Z",
-		}));
+		const standaloneChats = Array.from({ length: 6 }, (_, index) =>
+			createStandaloneChat({
+				id: `chat:standalone:${index + 1}`,
+				title: `Standalone ${index + 1}`,
+			}),
+		);
 		const view: ProjectStateView = {
 			projects: [],
 			standaloneChats,
@@ -200,5 +278,24 @@ describe("project view model", () => {
 			label: "Show more",
 			hiddenCount: 1,
 		});
+	});
+
+	it("expands standalone chat rows when expandStandaloneChats is true", () => {
+		const standaloneChats = Array.from({ length: 6 }, (_, index) =>
+			createStandaloneChat({
+				id: `chat:standalone:${index + 1}`,
+				title: `Standalone ${index + 1}`,
+			}),
+		);
+		const view: ProjectStateView = {
+			projects: [],
+			standaloneChats,
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		};
+
+		expect(createStandaloneChatSidebarRows(view, fixedNow, { expandStandaloneChats: true })).toHaveLength(6);
 	});
 });

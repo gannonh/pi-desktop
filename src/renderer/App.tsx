@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ProjectStateView } from "../shared/project-state";
+import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
+import type { PiSessionStartPayload } from "../shared/pi-session";
 import { AppShell } from "./components/app-shell";
 import {
+	type SessionScope,
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
 	isSessionScopeSelected,
+	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
 	takeBufferedSessionEvents,
 } from "./session/session-scope";
 import {
+	applySessionHistoryResult,
 	applySessionStartResult,
 	createInitialSessionState,
 	reduceSessionEvent,
@@ -24,7 +28,7 @@ type StatusMessage = {
 
 type SessionRequest = {
 	id: number;
-	projectId: string;
+	projectId: string | null;
 	chatId: string | null;
 };
 
@@ -36,6 +40,61 @@ const createEmptyProjectStateView = (): ProjectStateView => ({
 	selectedProject: null,
 	selectedChat: null,
 });
+
+type SessionChat = NonNullable<ProjectStateView["selectedChat"]>;
+
+const isPiSessionStartPayload = (payload: unknown): payload is PiSessionStartPayload =>
+	typeof payload === "object" &&
+	payload !== null &&
+	"projectId" in payload &&
+	"chatId" in payload &&
+	"workspacePath" in payload;
+
+const toProjectChatStatus = (status: LiveSessionState["status"]): ChatStatus =>
+	status === "failed" ? "failed" : status === "idle" ? "idle" : "running";
+
+const chatMatchesScope = (chat: SessionChat, scope: SessionScope): boolean =>
+	chat.id === scope.chatId && ("projectId" in chat ? chat.projectId === scope.projectId : scope.projectId === null);
+
+const updateSessionChatStatus = <T extends SessionChat>(
+	chat: T,
+	scope: SessionScope,
+	status: ChatStatus,
+	attention: boolean,
+	updatedAt: string,
+): T => (chatMatchesScope(chat, scope) ? { ...chat, status, attention, updatedAt } : chat);
+
+const applySessionStatusToProjectState = (
+	state: ProjectStateView,
+	scope: SessionScope,
+	status: ChatStatus,
+	attention: boolean,
+	updatedAt: string,
+): ProjectStateView => {
+	if (!scope.chatId) {
+		return state;
+	}
+
+	return {
+		...state,
+		projects: state.projects.map((project) =>
+			project.id === scope.projectId
+				? {
+						...project,
+						chats: project.chats.map((chat) =>
+							updateSessionChatStatus(chat, scope, status, attention, updatedAt),
+						),
+					}
+				: project,
+		),
+		standaloneChats: state.standaloneChats.map((chat) =>
+			updateSessionChatStatus(chat, scope, status, attention, updatedAt),
+		),
+		selectedChat: state.selectedChat
+			? updateSessionChatStatus(state.selectedChat, scope, status, attention, updatedAt)
+			: null,
+	};
+};
 
 const toSessionStatusLabel = (status: LiveSessionState["status"]): string => {
 	switch (status) {
@@ -60,8 +119,8 @@ export function App() {
 	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
 	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
-	const selectedProjectId = projectState.selectedProject?.id ?? null;
-	const selectedChatId = projectState.selectedChat?.id ?? null;
+	const selectedProjectId = projectState.selectedProjectId;
+	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
 	const selectedChatIdRef = useRef<string | null>(selectedChatId);
 	const activeSessionProjectIdRef = useRef<string | null>(activeSessionProjectId);
@@ -71,6 +130,7 @@ export function App() {
 	const pendingStartEventsRef = useRef(createPendingSessionEventBuffer());
 	const acceptedSessionIdRef = useRef<string | null>(null);
 	const nextSessionRequestIdRef = useRef(0);
+	const nextHistoryRequestIdRef = useRef(0);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -94,7 +154,7 @@ export function App() {
 
 	useEffect(() => {
 		if (
-			!activeSessionProjectId ||
+			(activeSessionProjectId === null && activeSessionChatId === null) ||
 			isSessionScopeSelected(
 				{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
 				{ projectId: selectedProjectId, chatId: selectedChatId },
@@ -104,6 +164,7 @@ export function App() {
 		}
 
 		const sessionId = sessionState.sessionId;
+		const runtimeSessionId = acceptedSessionIdRef.current;
 		activeSessionProjectIdRef.current = null;
 		activeSessionChatIdRef.current = null;
 		acceptedSessionIdRef.current = null;
@@ -113,7 +174,7 @@ export function App() {
 		setActiveSessionChatId(null);
 		setSessionState(createInitialSessionState());
 
-		if (sessionId) {
+		if (sessionId && sessionId === runtimeSessionId) {
 			void window.piDesktop.piSession.dispose({ sessionId });
 		}
 	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
@@ -161,29 +222,40 @@ export function App() {
 			}
 
 			setSessionState((current) => reduceSessionEvent(current, sessionEvent));
+			if (sessionEvent.type === "status" || sessionEvent.type === "runtime_error") {
+				const scope = {
+					projectId: activeSessionProjectIdRef.current,
+					chatId: activeSessionChatIdRef.current,
+				};
+				const status = sessionEvent.type === "runtime_error" ? "failed" : toProjectChatStatus(sessionEvent.status);
+				setProjectState((current) =>
+					applySessionStatusToProjectState(current, scope, status, status === "failed", sessionEvent.receivedAt),
+				);
+			}
 		});
 	}, []);
 
 	const submitPrompt = useCallback(
 		async (prompt: string) => {
-			const selectedProject = projectState.selectedProject;
-			if (!selectedProject || selectedProject.availability.status !== "available") {
+			nextHistoryRequestIdRef.current += 1;
+			const startSelection = resolvePromptSessionStartSelection(projectState);
+			if (!startSelection.ok) {
 				setSessionState((current) => ({
 					...current,
 					status: "failed",
 					statusLabel: "Failed",
-					errorMessage: "Select an available project to start a Pi session.",
+					errorMessage: startSelection.errorMessage,
 					retryMessage: "",
 				}));
 				return false;
 			}
 
-			const requestChatId = projectState.selectedChat?.id ?? null;
+			const requestProjectId = startSelection.projectId;
+			const requestChatId = startSelection.chatId;
 			const reusableSessionId =
-				activeSessionProjectId === selectedProject.id && activeSessionChatId === requestChatId
+				activeSessionProjectId === requestProjectId && activeSessionChatId === requestChatId
 					? acceptedSessionIdRef.current
 					: null;
-			const requestProjectId = selectedProject.id;
 			const request: SessionRequest = {
 				id: nextSessionRequestIdRef.current + 1,
 				projectId: requestProjectId,
@@ -211,7 +283,11 @@ export function App() {
 
 			const result = reusableSessionId
 				? await window.piDesktop.piSession.submit({ sessionId: reusableSessionId, prompt })
-				: await window.piDesktop.piSession.start({ projectId: requestProjectId, prompt });
+				: await window.piDesktop.piSession.start({
+						projectId: requestProjectId,
+						chatId: requestChatId,
+						prompt,
+					});
 
 			const requestIsCurrent =
 				latestSessionRequestRef.current?.id === request.id &&
@@ -251,36 +327,110 @@ export function App() {
 			}
 
 			if (!reusableSessionId) {
-				const bufferedEvents = takeBufferedSessionEvents(pendingStartEventsRef.current, result.data.sessionId);
+				if (!isPiSessionStartPayload(result.data)) {
+					const message = "Invalid session start response.";
+					pendingStartRequestRef.current = null;
+					pendingStartEventsRef.current.clear();
+					setSessionState((current) => ({
+						...current,
+						status: "failed",
+						statusLabel: "Failed",
+						errorMessage: message,
+						retryMessage: "",
+					}));
+					setStatusMessage({ source: "startup", message });
+					return false;
+				}
+				const started = result.data;
+				const refreshedProjectState =
+					started.projectId !== null && started.chatId !== null
+						? await window.piDesktop.chat.select({ projectId: started.projectId, chatId: started.chatId })
+						: await window.piDesktop.project.getState();
+				const bufferedEvents = takeBufferedSessionEvents(pendingStartEventsRef.current, started.sessionId);
 				pendingStartRequestRef.current = null;
-				acceptedSessionIdRef.current = result.data.sessionId;
-				activeSessionProjectIdRef.current = requestProjectId;
-				activeSessionChatIdRef.current = requestChatId;
-				setActiveSessionProjectId(requestProjectId);
-				setActiveSessionChatId(requestChatId);
+				acceptedSessionIdRef.current = started.sessionId;
+				if (refreshedProjectState.ok) {
+					selectedProjectIdRef.current = refreshedProjectState.data.selectedProjectId;
+					selectedChatIdRef.current = refreshedProjectState.data.selectedChatId;
+				}
+				activeSessionProjectIdRef.current = started.projectId;
+				activeSessionChatIdRef.current = started.chatId;
+				setActiveSessionProjectId(started.projectId);
+				setActiveSessionChatId(started.chatId);
 				setSessionState((current) => {
 					let next = applySessionStartResult(current, {
-						sessionId: result.data.sessionId,
-						status: result.data.status,
-						statusLabel: toSessionStatusLabel(result.data.status),
+						sessionId: started.sessionId,
+						status: started.status,
+						statusLabel: toSessionStatusLabel(started.status),
 					});
 					for (const event of bufferedEvents) {
 						next = reduceSessionEvent(next, event);
 					}
 					return next;
 				});
+				applyProjectStateViewResult(refreshedProjectState);
 			}
 
 			return true;
 		},
-		[
-			activeSessionChatId,
-			activeSessionProjectId,
-			applyProjectStateViewResult,
-			projectState.selectedChat,
-			projectState.selectedProject,
-		],
+		[activeSessionChatId, activeSessionProjectId, applyProjectStateViewResult, projectState],
 	);
+
+	useEffect(() => {
+		const selectedChat = projectState.selectedChat;
+		if (!selectedChat?.sessionPath || !selectedChatId) {
+			return;
+		}
+		const selectedScope = { projectId: selectedProjectId, chatId: selectedChatId };
+		if (pendingStartRequestRef.current && isSessionScopeSelected(pendingStartRequestRef.current, selectedScope)) {
+			return;
+		}
+		if (
+			isSessionScopeSelected({ projectId: activeSessionProjectId, chatId: activeSessionChatId }, selectedScope) &&
+			acceptedSessionIdRef.current
+		) {
+			return;
+		}
+
+		const requestId = nextHistoryRequestIdRef.current + 1;
+		nextHistoryRequestIdRef.current = requestId;
+		let cancelled = false;
+
+		const loadHistory = async () => {
+			const result = await window.piDesktop.piSession.history({
+				projectId: selectedProjectId,
+				chatId: selectedChatId,
+			});
+			if (
+				cancelled ||
+				nextHistoryRequestIdRef.current !== requestId ||
+				selectedProjectIdRef.current !== selectedProjectId ||
+				selectedChatIdRef.current !== selectedChatId
+			) {
+				return;
+			}
+
+			if (!result.ok) {
+				setStatusMessage({ source: "project", message: result.error.message });
+				return;
+			}
+
+			acceptedSessionIdRef.current = null;
+			pendingStartRequestRef.current = null;
+			pendingStartEventsRef.current.clear();
+			activeSessionProjectIdRef.current = selectedProjectId;
+			activeSessionChatIdRef.current = selectedChatId;
+			setActiveSessionProjectId(selectedProjectId);
+			setActiveSessionChatId(selectedChatId);
+			setSessionState(applySessionHistoryResult(result.data));
+		};
+
+		void loadHistory();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [activeSessionChatId, activeSessionProjectId, projectState.selectedChat, selectedChatId, selectedProjectId]);
 
 	const abortSession = useCallback(async () => {
 		if (

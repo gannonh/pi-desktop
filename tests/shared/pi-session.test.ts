@@ -4,6 +4,8 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryInputSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
 	PiSessionSubmitInputSchema,
@@ -14,10 +16,17 @@ describe("Pi session contracts", () => {
 		expect(
 			PiSessionStartInputSchema.parse({
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				prompt: "What files are here?",
 			}),
 		).toEqual({
 			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			prompt: "What files are here?",
+		});
+
+		expect(PiSessionStartInputSchema.parse({ projectId: null, prompt: "What files are here?" })).toEqual({
+			projectId: null,
 			prompt: "What files are here?",
 		});
 
@@ -44,6 +53,20 @@ describe("Pi session contracts", () => {
 		).toThrow();
 	});
 
+	it("validates history input strictly", () => {
+		expect(PiSessionHistoryInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+		});
+
+		expect(PiSessionHistoryInputSchema.parse({ projectId: null, chatId: "chat:standalone" })).toEqual({
+			projectId: null,
+			chatId: "chat:standalone",
+		});
+
+		expect(() => PiSessionHistoryInputSchema.parse({ projectId: null, chatId: "" })).toThrow();
+	});
+
 	it("validates dispose input strictly", () => {
 		expect(PiSessionDisposeInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
 			sessionId: "pi-session:one",
@@ -68,12 +91,37 @@ describe("Pi session contracts", () => {
 			data: {
 				sessionId: "pi-session:one",
 				projectId: "project:/tmp/pi-desktop",
+				chatId: "chat:one",
 				workspacePath: "/tmp/pi-desktop",
+				sessionPath: "/tmp/pi-session.jsonl",
 				status: "running",
+				resumed: false,
 			},
 		});
 
 		expect(result.ok).toBe(true);
+	});
+
+	it("validates session history results", () => {
+		expect(
+			PiSessionHistoryResultSchema.parse({
+				ok: true,
+				data: {
+					sessionId: "project:/tmp/pi-desktop:sdk-session:one",
+					status: "idle",
+					statusLabel: "Idle",
+					messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
+				},
+			}),
+		).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:/tmp/pi-desktop:sdk-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
+			},
+		});
 	});
 
 	it("validates action and failed result shapes", () => {
@@ -131,8 +179,11 @@ describe("Pi session contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: null,
 					status: "complete",
+					resumed: false,
 				},
 			}),
 		).toThrow();
@@ -143,8 +194,11 @@ describe("Pi session contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: null,
 					status: "running",
+					resumed: false,
 					providerSecret: "secret",
 				},
 			}),

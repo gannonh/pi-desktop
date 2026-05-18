@@ -6,6 +6,14 @@ import type {
 	StandaloneChatMetadata,
 } from "../../shared/project-state";
 
+export type ChatFilter = "all" | "attention" | "failed" | "running";
+
+export interface ProjectSidebarRowOptions {
+	chatFilter?: ChatFilter;
+	expandedProjectIds?: ReadonlySet<string>;
+	expandStandaloneChats?: boolean;
+}
+
 export type SidebarChatRow =
 	| {
 			kind: "chat";
@@ -55,39 +63,21 @@ const formatUpdatedLabel = (updatedAt: string, now: Date): string => {
 	return `${Math.floor(elapsedHours / 24)}d`;
 };
 
-export const createProjectSidebarRows = (view: ProjectStateView, now = new Date()): SidebarProjectRow[] =>
-	view.projects.map((project) => ({
-		kind: "project",
-		projectId: project.id,
-		project,
-		label: project.displayName,
-		path: project.path,
-		selected: project.id === view.selectedProjectId,
-		availability: project.availability,
-		children:
-			project.chats.length > 0
-				? [
-						...project.chats.slice(0, visibleChatLimit).map((chat) => ({
-							kind: "chat" as const,
-							chatId: chat.id,
-							label: chat.title,
-							selected: chat.id === view.selectedChatId,
-							status: chat.status,
-							updatedLabel: formatUpdatedLabel(chat.updatedAt, now),
-							needsAttention: chat.status === "running",
-						})),
-						...(project.chats.length > visibleChatLimit
-							? [
-									{
-										kind: "show-more" as const,
-										label: "Show more" as const,
-										hiddenCount: project.chats.length - visibleChatLimit,
-									},
-								]
-							: []),
-					]
-				: [{ kind: "empty", label: "No chats" }],
-	}));
+const filterChats = <T extends ChatMetadata | StandaloneChatMetadata>(
+	chats: readonly T[],
+	chatFilter: ChatFilter = "all",
+): T[] => {
+	switch (chatFilter) {
+		case "attention":
+			return chats.filter((chat) => chat.attention || chat.status === "failed" || chat.status === "running");
+		case "failed":
+			return chats.filter((chat) => chat.status === "failed");
+		case "running":
+			return chats.filter((chat) => chat.status === "running");
+		case "all":
+			return [...chats];
+	}
+};
 
 const createChatSidebarRow = (
 	chat: ChatMetadata | StandaloneChatMetadata,
@@ -100,26 +90,65 @@ const createChatSidebarRow = (
 	selected: chat.id === selectedChatId,
 	status: chat.status,
 	updatedLabel: formatUpdatedLabel(chat.updatedAt, now),
-	needsAttention: chat.status === "running",
+	needsAttention: chat.attention || chat.status === "running",
 });
 
-export const createStandaloneChatSidebarRows = (view: ProjectStateView, now = new Date()): SidebarChatRow[] => {
-	if (view.standaloneChats.length === 0) {
+const createChatRows = (
+	chats: readonly (ChatMetadata | StandaloneChatMetadata)[],
+	selectedChatId: string | null,
+	now: Date,
+	expanded: boolean,
+): SidebarChatRow[] => {
+	if (chats.length === 0) {
 		return [{ kind: "empty", label: "No chats" }];
 	}
 
-	const selectedChatId = view.selectedProjectId === null ? view.selectedChatId : null;
-	const rows = view.standaloneChats
-		.slice(0, visibleChatLimit)
-		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+	const visibleChats = expanded ? chats : chats.slice(0, visibleChatLimit);
+	const rows = visibleChats.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
 
-	if (view.standaloneChats.length > visibleChatLimit) {
+	if (!expanded && chats.length > visibleChatLimit) {
 		rows.push({
 			kind: "show-more",
 			label: "Show more",
-			hiddenCount: view.standaloneChats.length - visibleChatLimit,
+			hiddenCount: chats.length - visibleChatLimit,
 		});
 	}
 
 	return rows;
+};
+
+export const createProjectSidebarRows = (
+	view: ProjectStateView,
+	now = new Date(),
+	options: ProjectSidebarRowOptions = {},
+): SidebarProjectRow[] =>
+	view.projects.map((project) => {
+		const chats = filterChats(project.chats, options.chatFilter);
+
+		return {
+			kind: "project",
+			projectId: project.id,
+			project,
+			label: project.displayName,
+			path: project.path,
+			selected: project.id === view.selectedProjectId,
+			availability: project.availability,
+			children: createChatRows(
+				chats,
+				view.selectedChatId,
+				now,
+				options.expandedProjectIds?.has(project.id) ?? false,
+			),
+		};
+	});
+
+export const createStandaloneChatSidebarRows = (
+	view: ProjectStateView,
+	now = new Date(),
+	options: ProjectSidebarRowOptions = {},
+): SidebarChatRow[] => {
+	const selectedChatId = view.selectedProjectId === null ? view.selectedChatId : null;
+	const chats = filterChats(view.standaloneChats, options.chatFilter);
+
+	return createChatRows(chats, selectedChatId, now, options.expandStandaloneChats ?? false);
 };

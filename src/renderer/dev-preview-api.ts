@@ -5,7 +5,6 @@ import {
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
-	sortStandaloneChats,
 	type ChatMetadata,
 	type ProjectRecord,
 	type ProjectStore,
@@ -30,6 +29,8 @@ const project = (path: string, overrides: Partial<ProjectRecord> = {}): ProjectR
 	...overrides,
 });
 
+const projectPathFromId = (projectId: string) => projectId.replace(/^project:/, "");
+
 const chat = (
 	projectId: string,
 	id: string,
@@ -39,9 +40,16 @@ const chat = (
 ): ChatMetadata => ({
 	id,
 	projectId,
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: projectPathFromId(projectId),
 	title,
 	status,
+	attention: false,
+	createdAt: updatedAt,
 	updatedAt,
+	lastOpenedAt: null,
 });
 
 const standaloneChat = (
@@ -51,12 +59,20 @@ const standaloneChat = (
 	status: StandaloneChatMetadata["status"] = "idle",
 ): StandaloneChatMetadata => ({
 	id,
+	source: "draft",
+	sessionId: null,
+	sessionPath: null,
+	cwd: previewDesktopChatsPath,
 	title,
 	status,
+	attention: false,
+	createdAt: updatedAt,
 	updatedAt,
+	lastOpenedAt: null,
 });
 
 const previewRoot = "/tmp/pi-desktop-preview";
+const previewDesktopChatsPath = `${previewRoot}/desktop-chats`;
 const previewDocumentsDir = `${previewRoot}/Documents`;
 const previewSessionReceivedAtBase = Date.parse("2026-05-12T18:00:00.000Z");
 
@@ -106,16 +122,15 @@ const store: ProjectStore = {
 		],
 		[missing.id]: [chat(missing.id, "chat:missing-plan", "Draft first task", hoursAgo(16))],
 	},
+	standaloneChats: [],
+	sessionUiByPath: {},
 };
 
 const standaloneChats = [
 	standaloneChat("chat:standalone-nextjs", "Would NextJS be good for this app?", minutesAgo(51)),
 ];
 
-const view = () => ({
-	...createProjectStateView(store),
-	standaloneChats: sortStandaloneChats(standaloneChats),
-});
+const view = () => createProjectStateView({ ...store, standaloneChats });
 const ok = () => Promise.resolve({ ok: true as const, data: view() });
 type PreviewProjectLookup =
 	| {
@@ -129,6 +144,14 @@ const projectNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
 	error: {
 		code: "preview.project_not_found",
 		message: "Project not found in preview data.",
+	},
+});
+
+const chatNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
+	ok: false,
+	error: {
+		code: "preview.chat_not_found",
+		message: "Chat not found in preview data.",
 	},
 });
 
@@ -236,6 +259,30 @@ export const installDevPreviewApi = () => {
 		}, 0);
 		pendingPreviewStreams.set(sessionId, timeout);
 	};
+	const duplicateChat = ({ projectId, chatId }: { projectId: string; chatId: string }, titleSuffix: string) => {
+		const result = findProject(projectId);
+		if (!result.ok) {
+			return result;
+		}
+		const chats = store.chatsByProject[projectId] ?? [];
+		const sourceChat = chats.find((candidate) => candidate.id === chatId);
+		if (!sourceChat) {
+			return chatNotFound();
+		}
+		const timestamp = new Date().toISOString();
+		const nextChat = {
+			...sourceChat,
+			id: `chat:preview:${chats.length + 1}`,
+			title: `${sourceChat.title}${titleSuffix}`,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			lastOpenedAt: timestamp,
+		};
+		store.chatsByProject[projectId] = [...chats, nextChat];
+		store.selectedProjectId = projectId;
+		store.selectedChatId = nextChat.id;
+		return ok();
+	};
 
 	const api: PiDesktopApi = {
 		app: {
@@ -302,6 +349,7 @@ export const installDevPreviewApi = () => {
 				store.chatsByProject[recoveredId] = (store.chatsByProject[projectId] ?? []).map((entry) => ({
 					...entry,
 					projectId: recoveredId,
+					cwd: recoveredPath,
 				}));
 				delete store.chatsByProject[projectId];
 				store.selectedProjectId = recoveredId;
@@ -332,6 +380,14 @@ export const installDevPreviewApi = () => {
 				store.selectedChatId = nextChat.id;
 				return ok();
 			},
+			createStandalone: async () => {
+				const updatedAt = new Date().toISOString();
+				const nextChat = standaloneChat(`chat:quick-start:${updatedAt}`, "New chat", updatedAt);
+				standaloneChats.unshift(nextChat);
+				store.selectedProjectId = null;
+				store.selectedChatId = nextChat.id;
+				return ok();
+			},
 			select: async ({ projectId, chatId }) => {
 				const result = findProject(projectId);
 				if (!result.ok) {
@@ -341,9 +397,64 @@ export const installDevPreviewApi = () => {
 				store.selectedChatId = chatId;
 				return ok();
 			},
+			rename: async ({ projectId, chatId, title }) => {
+				if (projectId === null) {
+					const chatIndex = standaloneChats.findIndex((candidate) => candidate.id === chatId);
+					if (chatIndex === -1) {
+						return chatNotFound();
+					}
+					standaloneChats[chatIndex] = {
+						...standaloneChats[chatIndex],
+						title,
+						updatedAt: new Date().toISOString(),
+					};
+					return ok();
+				}
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const chats = store.chatsByProject[projectId] ?? [];
+				const chatIndex = chats.findIndex((candidate) => candidate.id === chatId);
+				if (chatIndex === -1) {
+					return chatNotFound();
+				}
+				store.chatsByProject[projectId] = chats.map((candidate, index) =>
+					index === chatIndex ? { ...candidate, title, updatedAt: new Date().toISOString() } : candidate,
+				);
+				return ok();
+			},
+			selectStandalone: async ({ chatId }) => {
+				store.selectedProjectId = null;
+				store.selectedChatId = chatId;
+				return ok();
+			},
+			fork: async (input) => duplicateChat(input, " fork"),
+			clone: async (input) => duplicateChat(input, " copy"),
+			branch: async (input) => duplicateChat(input, " branch"),
 		},
 		piSession: {
-			start: async ({ projectId, prompt }) => {
+			start: async ({ projectId, chatId, prompt }) => {
+				if (projectId === null) {
+					const chat = standaloneChats.find((candidate) => candidate.id === chatId);
+					if (!chat) {
+						return chatNotFound();
+					}
+					const sessionId = "standalone:preview-session";
+					schedulePreviewStream(sessionId, prompt);
+					return {
+						ok: true,
+						data: {
+							sessionId,
+							projectId,
+							chatId: chat.id,
+							workspacePath: chat.cwd,
+							sessionPath: null,
+							status: "running",
+							resumed: false,
+						},
+					};
+				}
 				const result = findProject(projectId);
 				if (!result.ok) {
 					return result;
@@ -355,8 +466,11 @@ export const installDevPreviewApi = () => {
 					data: {
 						sessionId,
 						projectId,
+						chatId: chatId ?? null,
 						workspacePath: result.project.path,
+						sessionPath: null,
 						status: "running",
+						resumed: false,
 					},
 				};
 			},
@@ -383,6 +497,18 @@ export const installDevPreviewApi = () => {
 					receivedAt: previewSessionReceivedAt(streamIndex, 1),
 				});
 				return { ok: true, data: { sessionId, status: "idle" } };
+			},
+			history: async ({ projectId, chatId }) => {
+				const sessionId = `${projectId ?? "standalone"}:${chatId}:preview-history`;
+				return {
+					ok: true,
+					data: {
+						sessionId,
+						status: "idle",
+						statusLabel: "Idle",
+						messages: [],
+					},
+				};
 			},
 			dispose: async ({ sessionId }) => {
 				clearPendingPreviewStream(sessionId);

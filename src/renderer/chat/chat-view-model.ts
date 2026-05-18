@@ -1,4 +1,4 @@
-import type { ProjectStateView } from "../../shared/project-state";
+import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
 import { getStaticTranscript, type StaticTranscript } from "./static-transcripts";
 
 export interface ComposerContext {
@@ -9,6 +9,11 @@ export interface ComposerContext {
 	runtimeAvailable: boolean;
 	disabledReason: string;
 	projectId?: string;
+}
+
+interface SelectedChatSessionLabels {
+	resumeLabel: "Start session" | "Resume session";
+	metadataLabel: string;
 }
 
 export type ChatSuggestion =
@@ -30,7 +35,14 @@ export type ChatShellRoute =
 			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
 	  }
-	| {
+	| ({
+			kind: "standalone-start";
+			title: string;
+			chatId: string;
+			composer: ComposerContext;
+			suggestions: readonly ChatSuggestion[];
+	  } & SelectedChatSessionLabels)
+	| ({
 			kind: "empty-chat";
 			title: string;
 			startTitle: string;
@@ -38,15 +50,15 @@ export type ChatShellRoute =
 			chatId: string;
 			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
-	  }
-	| {
+	  } & SelectedChatSessionLabels)
+	| ({
 			kind: "continued-chat";
 			title: string;
 			projectId: string;
 			chatId: string;
 			composer: ComposerContext;
 			transcript: StaticTranscript;
-	  }
+	  } & SelectedChatSessionLabels)
 	| {
 			kind: "unavailable-project";
 			title: string;
@@ -73,10 +85,34 @@ const createComposerContext = (
 	projectId: options.projectId,
 });
 
+const createSelectedChatSessionLabels = (chat: {
+	sessionPath: string | null;
+	status: ChatStatus;
+	updatedAt: string;
+}): SelectedChatSessionLabels => ({
+	resumeLabel: chat.sessionPath ? "Resume session" : "Start session",
+	metadataLabel: `${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
+});
+
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
 	const selectedProject = view.selectedProject;
+	const selectedChat = view.selectedChat;
 
 	if (!selectedProject) {
+		if (selectedChat) {
+			return {
+				kind: "standalone-start",
+				title: selectedChat.title,
+				chatId: selectedChat.id,
+				composer: createComposerContext(selectedChat.cwd, {
+					runtimeAvailable: true,
+					disabledReason: "",
+				}),
+				suggestions,
+				...createSelectedChatSessionLabels(selectedChat),
+			};
+		}
+
 		return {
 			kind: "global-start",
 			title: "What should we work on?",
@@ -108,7 +144,6 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		disabledReason: "",
 		projectId: selectedProject.id,
 	});
-	const selectedChat = view.selectedChat;
 
 	if (!selectedChat) {
 		return {
@@ -131,6 +166,7 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 			chatId: selectedChat.id,
 			composer,
 			suggestions,
+			...createSelectedChatSessionLabels(selectedChat),
 		};
 	}
 
@@ -141,5 +177,6 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		chatId: selectedChat.id,
 		composer,
 		transcript,
+		...createSelectedChatSessionLabels(selectedChat),
 	};
 };

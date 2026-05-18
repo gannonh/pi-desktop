@@ -1,4 +1,5 @@
 import type { PiSessionEvent } from "../../shared/pi-session";
+import type { ProjectStateView } from "../../shared/project-state";
 
 export type SessionScope = {
 	projectId: string | null;
@@ -6,7 +7,7 @@ export type SessionScope = {
 };
 
 type PendingSessionScope = {
-	projectId: string;
+	projectId: string | null;
 	chatId: string | null;
 } | null;
 
@@ -14,8 +15,41 @@ type SessionEventWithSessionId = PiSessionEvent & { sessionId: string };
 
 type PendingSessionEventBuffer = Map<string, SessionEventWithSessionId[]>;
 
+type PromptSessionStartSelection =
+	| {
+			ok: true;
+			projectId: string | null;
+			chatId: string | null;
+	  }
+	| {
+			ok: false;
+			errorMessage: string;
+	  };
+
+export const resolvePromptSessionStartSelection = (projectState: ProjectStateView): PromptSessionStartSelection => {
+	const selectedProject = projectState.selectedProject;
+	const selectedChat = projectState.selectedChat;
+	const selectedProjectIsAvailable = selectedProject?.availability.status === "available";
+	const selectedStandaloneChat = selectedProject === null && selectedChat !== null;
+
+	if (!selectedProjectIsAvailable && !selectedStandaloneChat) {
+		return {
+			ok: false,
+			errorMessage: "Select an available project or quick-start chat to start a Pi session.",
+		};
+	}
+
+	return {
+		ok: true,
+		projectId: selectedProject?.id ?? null,
+		chatId: selectedChat?.id ?? null,
+	};
+};
+
 export const isSessionScopeSelected = (scope: SessionScope, selection: SessionScope): boolean =>
-	Boolean(scope.projectId) && scope.projectId === selection.projectId && scope.chatId === selection.chatId;
+	(scope.projectId !== null || scope.chatId !== null) &&
+	scope.projectId === selection.projectId &&
+	scope.chatId === selection.chatId;
 
 export const shouldAcceptSessionEvent = ({
 	eventSessionId,
@@ -28,15 +62,11 @@ export const shouldAcceptSessionEvent = ({
 	active: SessionScope;
 	selection: SessionScope;
 }): boolean => {
-	if (!selection.projectId || !eventSessionId.startsWith(`${selection.projectId}:`)) {
-		return false;
-	}
-
 	if (!isSessionScopeSelected(active, selection)) {
 		return false;
 	}
 
-	return eventSessionId === acceptedSessionId;
+	return acceptedSessionId !== null && eventSessionId === acceptedSessionId;
 };
 
 export const shouldBufferPendingStartEvent = ({
@@ -54,7 +84,12 @@ export const shouldBufferPendingStartEvent = ({
 		return false;
 	}
 
-	return isSessionScopeSelected(pendingStart, selection) && eventSessionId.startsWith(`${pendingStart.projectId}:`);
+	if (!isSessionScopeSelected(pendingStart, selection)) {
+		return false;
+	}
+
+	const sessionIdPrefix = pendingStart.projectId === null ? "standalone:" : `${pendingStart.projectId}:`;
+	return eventSessionId.startsWith(sessionIdPrefix);
 };
 
 export const createPendingSessionEventBuffer = (): PendingSessionEventBuffer => new Map();

@@ -1,11 +1,19 @@
 import type {
 	AppVersionResult,
+	ChatBranchInput,
+	ChatCloneInput,
 	ChatCreateInput,
+	ChatForkInput,
+	ChatRenameInput,
+	ChatStandaloneCreateInput,
 	ChatSelectionInput,
+	ChatStandaloneSelectionInput,
 	PiSessionAbortInput,
 	PiSessionActionResult,
 	PiSessionDisposeInput,
 	PiSessionEvent,
+	PiSessionHistoryInput,
+	PiSessionHistoryResult,
 	PiSessionStartInput,
 	PiSessionStartResult,
 	PiSessionSubmitInput,
@@ -33,12 +41,19 @@ export interface PiDesktopApi {
 	};
 	chat: {
 		create: (input: ChatCreateInput) => Promise<ProjectStateViewResult>;
+		createStandalone: (input: ChatStandaloneCreateInput) => Promise<ProjectStateViewResult>;
 		select: (input: ChatSelectionInput) => Promise<ProjectStateViewResult>;
+		rename: (input: ChatRenameInput) => Promise<ProjectStateViewResult>;
+		selectStandalone: (input: ChatStandaloneSelectionInput) => Promise<ProjectStateViewResult>;
+		fork: (input: ChatForkInput) => Promise<ProjectStateViewResult>;
+		clone: (input: ChatCloneInput) => Promise<ProjectStateViewResult>;
+		branch: (input: ChatBranchInput) => Promise<ProjectStateViewResult>;
 	};
 	piSession: {
 		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;
 		submit: (input: PiSessionSubmitInput) => Promise<PiSessionActionResult>;
 		abort: (input: PiSessionAbortInput) => Promise<PiSessionActionResult>;
+		history: (input: PiSessionHistoryInput) => Promise<PiSessionHistoryResult>;
 		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
 		onEvent: (listener: (event: PiSessionEvent) => void) => () => void;
 	};

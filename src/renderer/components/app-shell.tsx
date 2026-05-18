@@ -25,7 +25,7 @@ export function AppShell({
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const showHeaderMeta = Boolean(state.selectedChat) && !sidebarCollapsed;
-	const selectedProjectPath = state.selectedProject?.path ?? "No active project path";
+	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 
 	return (
 		<div

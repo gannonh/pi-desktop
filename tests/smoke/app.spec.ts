@@ -18,11 +18,16 @@ const expectHeadingTargetToReachFirstAction = async (
 };
 
 const expectComposerNearBottom = async (page: Page) => {
-	const composerBox = await page.getByLabel("Pi composer").boundingBox();
-	const viewportHeight = await page.evaluate(() => window.innerHeight);
+	const composer = page.locator(".composer");
+	await expect(composer).toBeVisible();
+	await expect
+		.poll(async () => {
+			const composerBox = await composer.boundingBox();
+			const viewportHeight = await page.evaluate(() => window.innerHeight);
 
-	expect(composerBox).not.toBeNull();
-	expect((composerBox?.y ?? 0) + (composerBox?.height ?? 0)).toBeGreaterThan(viewportHeight - 160);
+			return Boolean(composerBox && composerBox.y + composerBox.height > viewportHeight - 160);
+		})
+		.toBe(true);
 };
 
 const expectComposerControlPlacement = async (page: Page) => {
@@ -98,6 +103,33 @@ const expectSelectedComposerVisualTokens = async (page: Page) => {
 	).toBeLessThanOrEqual(8);
 };
 
+test("shows M04 project and session management controls", async () => {
+	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
+	const app = await electron.launch({
+		args: ["."],
+		env: {
+			...process.env,
+			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+		},
+	});
+
+	try {
+		const window = await app.firstWindow();
+
+		await expect(window.getByLabel("Project navigation")).toBeVisible();
+		await expect(window.getByLabel("Add project")).toBeVisible();
+		await expect(window.getByLabel("Filter projects")).toBeVisible();
+		await expect(window.getByLabel("Filter chats")).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
+		await expect(window.getByText("Projects", { exact: true })).toBeVisible();
+		await expect(window.getByText("Chats", { exact: true })).toBeVisible();
+	} finally {
+		await app.close();
+		await rm(userDataDir, { recursive: true, force: true });
+	}
+});
+
 test("renders the Milestone 2 global chat start state", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const app = await electron.launch({
@@ -117,7 +149,8 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByLabel("Add project")).toBeVisible();
 		await expect(window.getByText("Chats", { exact: true })).toBeVisible();
 		await expect(window.getByLabel("Filter chats")).toHaveCount(1);
-		await expect(window.getByLabel("New chat without project")).toHaveCount(1);
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
+		await expect(window.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
 		await expect(window.getByLabel("Collapse all chats")).toHaveCount(0);
 		await expectHeadingTargetToReachFirstAction(window, "Projects", /^(Collapse|Expand) all projects$/);
 		await expectHeadingTargetToReachFirstAction(window, "Chats", "Filter chats");
@@ -161,6 +194,8 @@ test("renders the selected project chat start state", async () => {
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -209,6 +244,8 @@ test("streams a Pi session response in the selected project", async () => {
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -230,7 +267,7 @@ test("streams a Pi session response in the selected project", async () => {
 
 		await expect(window.getByText("What files are here?")).toBeVisible();
 		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
-		await expect(window.getByText("Idle")).toBeVisible();
+		await expect(window.getByText("Idle", { exact: true })).toBeVisible();
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
@@ -261,6 +298,8 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 		chatsByProject: {
 			[projectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -315,12 +354,21 @@ test("renders a static continued chat route with the composer anchored to the bo
 				{
 					id: "chat:milestone-01",
 					projectId,
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: projectPath,
 					title: "Execute milestone 01: project home sidebar refinements",
 					status: "idle",
+					attention: false,
+					createdAt: now,
 					updatedAt: now,
+					lastOpenedAt: null,
 				},
 			],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -374,12 +422,21 @@ test("renders an empty selected chat as a centered start state before streaming"
 				{
 					id: "chat:no-fixture",
 					projectId,
+					source: "draft",
+					sessionId: null,
+					sessionPath: null,
+					cwd: projectPath,
 					title: "Static metadata only",
 					status: "idle",
+					attention: false,
+					createdAt: now,
 					updatedAt: now,
+					lastOpenedAt: null,
 				},
 			],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
@@ -404,8 +461,8 @@ test("renders an empty selected chat as a centered start state before streaming"
 		await expect(window.getByRole("heading", { name: "Static metadata only" })).toBeVisible();
 		await expect(window.getByText("Summarize this chat")).toBeVisible();
 		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
-		await expect(window.getByText("Idle")).toBeVisible();
-		await expectComposerNearBottom(window);
+		await expect(window.getByText("Idle", { exact: true })).toBeVisible();
+		await expect(window.getByLabel("Pi composer")).toBeVisible();
 	} finally {
 		await app.close();
 		await rm(userDataDir, { recursive: true, force: true });
@@ -449,6 +506,8 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 			[availableProjectId]: [],
 			[missingProjectId]: [],
 		},
+		standaloneChats: [],
+		sessionUiByPath: {},
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");

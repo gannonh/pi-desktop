@@ -1,9 +1,16 @@
 import type { AppRpcRequest } from "../shared/app-transport";
 import {
+	ChatBranchInputSchema,
+	ChatCloneInputSchema,
 	ChatCreateInputSchema,
+	ChatForkInputSchema,
+	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneCreateInputSchema,
+	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
+	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
 	PiSessionStartInputSchema,
 	PiSessionSubmitInputSchema,
@@ -12,25 +19,36 @@ import {
 	ProjectRenameInputSchema,
 	type AppVersion,
 } from "../shared/ipc";
-import type { PiSessionActionPayload, PiSessionEvent, PiSessionStartPayload } from "../shared/pi-session";
+import type {
+	PiSessionActionPayload,
+	PiSessionEvent,
+	PiSessionHistoryPayload,
+	PiSessionStartPayload,
+	PiSessionStatus,
+} from "../shared/pi-session";
 import type { ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
+import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
 
 type CreateAgentSession = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createAgentSession"]>;
+type CreateSessionManager = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createSessionManager"]>;
 type PiSessionEventListener = (event: PiSessionEvent) => void;
 
 export type AppBackendDeps = {
 	appInfo: AppVersion;
 	projectService: ProjectService;
 	now: () => string;
+	env?: NodeJS.ProcessEnv;
+	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
+	loadSessionHistory?: (input: LoadPiSessionHistoryInput) => PiSessionHistoryPayload;
 };
 
 export type AppBackendResult = IpcResult<
-	AppVersion | ProjectStateView | PiSessionStartPayload | PiSessionActionPayload
+	AppVersion | ProjectStateView | PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload
 >;
 
 export type AppBackend = {
@@ -40,6 +58,9 @@ export type AppBackend = {
 };
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+const toChatStatus = (status: PiSessionStatus) =>
+	status === "failed" ? "failed" : status === "idle" ? "idle" : "running";
 
 const assertNever = (value: never): never => {
 	throw new Error(`Unhandled app backend request: ${JSON.stringify(value)}`);
@@ -55,10 +76,37 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				console.error("Pi session event listener failed.", error);
 			}
 		}
+
+		if (event.type === "status") {
+			void deps.projectService
+				.recordSessionStatus({
+					sessionId: event.sessionId,
+					status: toChatStatus(event.status),
+					attention: event.status === "failed",
+					updatedAt: event.receivedAt,
+				})
+				.catch((error) => {
+					console.error("Failed to record Pi session status.", error);
+				});
+		}
+		if (event.type === "runtime_error" && event.sessionId) {
+			void deps.projectService
+				.recordSessionStatus({
+					sessionId: event.sessionId,
+					status: "failed",
+					attention: true,
+					updatedAt: event.receivedAt,
+				})
+				.catch((error) => {
+					console.error("Failed to record Pi session status.", error);
+				});
+		}
 	};
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
 		emit: emitPiSessionEvent,
+		env: deps.env,
+		createSessionManager: deps.createSessionManager,
 		createAgentSession: deps.createAgentSession,
 	});
 
@@ -71,7 +119,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 	};
 
 	const handlePiSessionOperation = async (
-		operation: () => Promise<PiSessionStartPayload | PiSessionActionPayload>,
+		operation: () => Promise<PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload>,
 	): Promise<AppBackendResult> => {
 		try {
 			return ok(await operation());
@@ -123,19 +171,63 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handleProjectOperation(() =>
 						deps.projectService.createChat(ChatCreateInputSchema.parse(request.input)),
 					);
+				case "chat.createStandalone":
+					return handleProjectOperation(() =>
+						deps.projectService.createStandaloneChat(ChatStandaloneCreateInputSchema.parse(request.input)),
+					);
 				case "chat.select":
 					return handleProjectOperation(() =>
 						deps.projectService.selectChat(ChatSelectionInputSchema.parse(request.input)),
 					);
+				case "chat.selectStandalone":
+					return handleProjectOperation(() =>
+						deps.projectService.selectStandaloneChat(ChatStandaloneSelectionInputSchema.parse(request.input)),
+					);
+				case "chat.rename":
+					return handleProjectOperation(() =>
+						deps.projectService.renameChat(ChatRenameInputSchema.parse(request.input)),
+					);
+				case "chat.fork":
+					return handleProjectOperation(() =>
+						deps.projectService.forkChat(ChatForkInputSchema.parse(request.input)),
+					);
+				case "chat.clone":
+					return handleProjectOperation(() =>
+						deps.projectService.cloneChat(ChatCloneInputSchema.parse(request.input)),
+					);
+				case "chat.branch":
+					return handleProjectOperation(() =>
+						deps.projectService.branchChat(ChatBranchInputSchema.parse(request.input)),
+					);
 				case "piSession.start":
 					return handlePiSessionOperation(async () => {
 						const parsed = PiSessionStartInputSchema.parse(request.input);
-						const workspace = await deps.projectService.getSessionWorkspace({ projectId: parsed.projectId });
-						return piSessionRuntime.start({
-							projectId: workspace.projectId,
-							workspacePath: workspace.path,
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
+							chatId: parsed.chatId ?? null,
+						});
+						const started = await piSessionRuntime.start({
+							projectId: target.projectId,
+							chatId: target.chatId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
 							prompt: parsed.prompt,
 						});
+						try {
+							const recorded = await deps.projectService.recordSessionStarted({
+								projectId: started.projectId,
+								chatId: started.chatId,
+								sessionId: started.sessionId,
+								sessionPath: started.sessionPath,
+								status: toChatStatus(started.status),
+							});
+							return { ...started, chatId: recorded.chatId };
+						} catch (error) {
+							await piSessionRuntime.dispose({ sessionId: started.sessionId }).catch((disposeError) => {
+								console.error("Failed to dispose Pi session after metadata recording failed.", disposeError);
+							});
+							throw error;
+						}
 					});
 				case "piSession.submit":
 					return handlePiSessionOperation(() =>
@@ -145,10 +237,34 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.abort(PiSessionAbortInputSchema.parse(request.input)),
 					);
+				case "piSession.history":
+					return handlePiSessionOperation(async () => {
+						const parsed = PiSessionHistoryInputSchema.parse(request.input);
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
+							chatId: parsed.chatId,
+						});
+						if (!target.sessionPath) {
+							throw new Error("Chat does not have a Pi session file yet.");
+						}
+						return (deps.loadSessionHistory ?? loadPiSessionHistory)({
+							projectId: target.projectId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
+							env: deps.env,
+						});
+					});
 				case "piSession.dispose":
-					return handlePiSessionOperation(() =>
-						piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input)),
-					);
+					return handlePiSessionOperation(async () => {
+						const disposed = await piSessionRuntime.dispose(PiSessionDisposeInputSchema.parse(request.input));
+						await deps.projectService.recordSessionStatus({
+							sessionId: disposed.sessionId,
+							status: toChatStatus(disposed.status),
+							attention: disposed.status === "failed",
+							updatedAt: deps.now(),
+						});
+						return disposed;
+					});
 				default:
 					return assertNever(request);
 			}

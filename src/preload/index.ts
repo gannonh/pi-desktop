@@ -5,6 +5,7 @@ import {
 	IpcChannels,
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionStartResultSchema,
 	ProjectStateViewResultSchema,
 } from "../shared/ipc";
@@ -53,12 +54,21 @@ const api: PiDesktopApi = {
 	},
 	chat: {
 		create: async (input) => safeInvokeParse(IpcChannels.chatCreate, ProjectStateViewResultSchema, input),
+		createStandalone: async (input) =>
+			safeInvokeParse(IpcChannels.chatCreateStandalone, ProjectStateViewResultSchema, input),
 		select: async (input) => safeInvokeParse(IpcChannels.chatSelect, ProjectStateViewResultSchema, input),
+		rename: async (input) => safeInvokeParse(IpcChannels.chatRename, ProjectStateViewResultSchema, input),
+		selectStandalone: async (input) =>
+			safeInvokeParse(IpcChannels.chatSelectStandalone, ProjectStateViewResultSchema, input),
+		fork: async (input) => safeInvokeParse(IpcChannels.chatFork, ProjectStateViewResultSchema, input),
+		clone: async (input) => safeInvokeParse(IpcChannels.chatClone, ProjectStateViewResultSchema, input),
+		branch: async (input) => safeInvokeParse(IpcChannels.chatBranch, ProjectStateViewResultSchema, input),
 	},
 	piSession: {
 		start: async (input) => safeInvokeParse(IpcChannels.piSessionStart, PiSessionStartResultSchema, input),
 		submit: async (input) => safeInvokeParse(IpcChannels.piSessionSubmit, PiSessionActionResultSchema, input),
 		abort: async (input) => safeInvokeParse(IpcChannels.piSessionAbort, PiSessionActionResultSchema, input),
+		history: async (input) => safeInvokeParse(IpcChannels.piSessionHistory, PiSessionHistoryResultSchema, input),
 		dispose: async (input) => safeInvokeParse(IpcChannels.piSessionDispose, PiSessionActionResultSchema, input),
 		onEvent: (listener) => {
 			const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {

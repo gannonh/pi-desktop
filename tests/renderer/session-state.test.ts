@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
+	applySessionHistoryResult,
 	applySessionStartResult,
 	createInitialSessionState,
 	reduceSessionEvent,
 } from "../../src/renderer/session/session-state";
 
 const receivedAt = "2026-05-14T12:00:00.000Z";
+
+describe("session history result", () => {
+	it("hydrates persisted Pi session history for selected chats", () => {
+		expect(
+			applySessionHistoryResult({
+				sessionId: "project:/tmp/pi-desktop:sdk-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:one", role: "user", content: "what time is it?", streaming: false }],
+			}),
+		).toEqual({
+			sessionId: "project:/tmp/pi-desktop:sdk-session:one",
+			status: "idle",
+			statusLabel: "Idle",
+			messages: [{ id: "user:one", role: "user", content: "what time is it?", streaming: false }],
+			errorMessage: "",
+			retryMessage: "",
+		});
+	});
+});
 
 describe("session start result", () => {
 	it("does not regress an already-idle streamed session when the start RPC response arrives late", () => {

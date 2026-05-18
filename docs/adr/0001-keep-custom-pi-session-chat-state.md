@@ -32,4 +32,5 @@ AI SDK `UIMessage` remains a possible future transcript storage or rich-message 
 - M04 can build durable project and session management on the current explicit Pi session state model.
 - Pi remains the source of provider, tool, model, session, and runtime behavior.
 - The repo does not retain AI SDK dependencies or prototype transport code for this no-go decision.
+- M04 uses Pi `SessionManager` for session listing, resume, names, fork, clone, and JSONL-backed metadata while keeping renderer live streaming state in `LiveSessionState`.
 - Future work should revisit AI SDK UI only if it removes renderer complexity without hiding Pi runtime behavior behind a large adapter.

@@ -44,6 +44,79 @@ describe("dev preview fixture API", () => {
 		expect(new Set(piMonoProjects.map((project) => project.id)).size).toBe(piMonoProjects.length);
 	});
 
+	it("keeps seeded and created quick-start standalone chats on the preview desktop chats path", async () => {
+		const api = installApi();
+		const initialState = await api.project.getState();
+		expect(initialState.ok).toBe(true);
+		if (!initialState.ok) {
+			return;
+		}
+
+		const result = await api.chat.createStandalone({});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) {
+			throw new Error("Expected quick-start chat creation to succeed.");
+		}
+		expect(initialState.data.standaloneChats[0]?.cwd).toContain("desktop-chats");
+		expect(result.data.selectedProjectId).toBeNull();
+		expect(result.data.selectedChat?.source).toBe("draft");
+		expect(result.data.selectedChat?.cwd).toContain("desktop-chats");
+	});
+
+	it("starts quick-start standalone chats in preview mode", async () => {
+		const api = installApi();
+		const events: PiSessionEvent[] = [];
+		const unsubscribe = api.piSession.onEvent((event) => events.push(event));
+		const created = await api.chat.createStandalone({});
+		expect(created.ok).toBe(true);
+		if (!created.ok || !created.data.selectedChatId) {
+			throw new Error("Expected quick-start chat creation to succeed.");
+		}
+
+		const started = await api.piSession.start({
+			projectId: null,
+			chatId: created.data.selectedChatId,
+			prompt: "Preview quick start",
+		});
+
+		expect(started.ok).toBe(true);
+		if (!started.ok) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		unsubscribe();
+		expect(started.data.projectId).toBeNull();
+		expect(started.data.chatId).toBe(created.data.selectedChatId);
+		expect(started.data.workspacePath).toContain("desktop-chats");
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: "status", sessionId: "standalone:preview-session", status: "running" }),
+		);
+	});
+
+	it("updates preview project chat cwd when locating a missing folder", async () => {
+		const api = installApi();
+		const state = await api.project.getState();
+		expect(state.ok).toBe(true);
+		if (!state.ok) {
+			return;
+		}
+		const missingProject = state.data.projects.find((project) => project.availability.status === "missing");
+		expect(missingProject).toBeDefined();
+		if (!missingProject) {
+			return;
+		}
+
+		const recovered = await api.project.locateFolder({ projectId: missingProject.id });
+
+		expect(recovered.ok).toBe(true);
+		if (!recovered.ok) {
+			return;
+		}
+		expect(recovered.data.selectedProject?.path).toContain("/recovered/");
+		expect(recovered.data.selectedProject?.chats[0]?.cwd).toBe(recovered.data.selectedProject?.path);
+	});
+
 	it("streams deterministic preview session events", async () => {
 		const api = installApi();
 		const events: PiSessionEvent[] = [];

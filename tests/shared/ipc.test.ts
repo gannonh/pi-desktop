@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
 	AppVersionResultSchema,
+	ChatBranchInputSchema,
+	ChatCloneInputSchema,
 	ChatCreateInputSchema,
+	ChatForkInputSchema,
+	ChatRenameInputSchema,
 	ChatSelectionInputSchema,
+	ChatStandaloneCreateInputSchema,
+	ChatStandaloneSelectionInputSchema,
 	IpcChannels,
 	PiSessionAbortInputSchema,
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionHistoryInputSchema,
+	PiSessionHistoryResultSchema,
 	PiSessionOperationFailedCode,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
@@ -34,9 +42,16 @@ const projectStateView = {
 				{
 					id: "chat:2026-05-12T10:00:00.000Z",
 					projectId: "project:/tmp/pi-desktop",
+					source: "draft" as const,
+					sessionId: null,
+					sessionPath: null,
+					cwd: "/tmp/pi-desktop",
 					title: "New chat",
 					status: "idle" as const,
+					attention: false,
+					createdAt: "2026-05-12T10:00:00.000Z",
 					updatedAt: "2026-05-12T10:00:00.000Z",
+					lastOpenedAt: "2026-05-12T10:00:00.000Z",
 				},
 			],
 		},
@@ -62,10 +77,17 @@ describe("IPC contracts", () => {
 			projectSetPinned: "project:setPinned",
 			projectCheckAvailability: "project:checkAvailability",
 			chatCreate: "chat:create",
+			chatCreateStandalone: "chat:createStandalone",
 			chatSelect: "chat:select",
+			chatRename: "chat:rename",
+			chatSelectStandalone: "chat:selectStandalone",
+			chatFork: "chat:fork",
+			chatClone: "chat:clone",
+			chatBranch: "chat:branch",
 			piSessionStart: "pi-session:start",
 			piSessionSubmit: "pi-session:submit",
 			piSessionAbort: "pi-session:abort",
+			piSessionHistory: "pi-session:history",
 			piSessionDispose: "pi-session:dispose",
 			piSessionEvent: "pi-session:event",
 		});
@@ -107,9 +129,39 @@ describe("IPC contracts", () => {
 		expect(ChatCreateInputSchema.parse({ projectId: "project:/tmp/pi-desktop" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 		});
+		expect(ChatStandaloneCreateInputSchema.parse({})).toEqual({});
+		expect(() => ChatStandaloneCreateInputSchema.parse({ projectId: "project:/tmp/pi" })).toThrow();
 		expect(ChatSelectionInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
 			projectId: "project:/tmp/pi-desktop",
 			chatId: "chat:one",
+		});
+	});
+
+	it("parses chat rename, standalone select, fork, clone, and branch inputs", () => {
+		expect(
+			ChatRenameInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1", title: "New name" }),
+		).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+			title: "New name",
+		});
+		expect(ChatStandaloneSelectionInputSchema.parse({ chatId: "chat:standalone" })).toEqual({
+			chatId: "chat:standalone",
+		});
+		expect(ChatForkInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1" })).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+		});
+		expect(ChatCloneInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1" })).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+		});
+		expect(
+			ChatBranchInputSchema.parse({ projectId: "project:/tmp/pi", chatId: "chat:1", entryId: "abcd1234" }),
+		).toEqual({
+			projectId: "project:/tmp/pi",
+			chatId: "chat:1",
+			entryId: "abcd1234",
 		});
 	});
 
@@ -126,6 +178,10 @@ describe("IPC contracts", () => {
 		expect(PiSessionAbortInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
 			sessionId: "pi-session:one",
 		});
+		expect(PiSessionHistoryInputSchema.parse({ projectId: "project:/tmp/pi-desktop", chatId: "chat:one" })).toEqual({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+		});
 		expect(PiSessionDisposeInputSchema.parse({ sessionId: "pi-session:one" })).toEqual({
 			sessionId: "pi-session:one",
 		});
@@ -135,8 +191,11 @@ describe("IPC contracts", () => {
 				data: {
 					sessionId: "pi-session:one",
 					projectId: "project:/tmp/pi-desktop",
+					chatId: null,
 					workspacePath: "/tmp/pi-desktop",
+					sessionPath: "/tmp/pi-session.jsonl",
 					status: "running",
+					resumed: false,
 				},
 			}),
 		).toEqual({
@@ -144,8 +203,30 @@ describe("IPC contracts", () => {
 			data: {
 				sessionId: "pi-session:one",
 				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
 				workspacePath: "/tmp/pi-desktop",
+				sessionPath: "/tmp/pi-session.jsonl",
 				status: "running",
+				resumed: false,
+			},
+		});
+		expect(
+			PiSessionHistoryResultSchema.parse({
+				ok: true,
+				data: {
+					sessionId: "pi-session:one",
+					status: "idle",
+					statusLabel: "Idle",
+					messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
+				},
+			}),
+		).toEqual({
+			ok: true,
+			data: {
+				sessionId: "pi-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "user:one", role: "user", content: "Hello", streaming: false }],
 			},
 		});
 		expect(

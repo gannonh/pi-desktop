@@ -18,6 +18,63 @@ describe("app transport contract", () => {
 		});
 	});
 
+	it("accepts M04 chat management RPC operations", () => {
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.rename",
+				input: { projectId: "project:/tmp/pi", chatId: "chat:1", title: "New name" },
+			}),
+		).toEqual({
+			operation: "chat.rename",
+			input: { projectId: "project:/tmp/pi", chatId: "chat:1", title: "New name" },
+		});
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.createStandalone",
+				input: {},
+			}),
+		).toEqual({
+			operation: "chat.createStandalone",
+			input: {},
+		});
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.selectStandalone",
+				input: { chatId: "chat:standalone" },
+			}),
+		).toEqual({
+			operation: "chat.selectStandalone",
+			input: { chatId: "chat:standalone" },
+		});
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.fork",
+				input: { projectId: "project:/tmp/pi", chatId: "chat:1" },
+			}),
+		).toEqual({
+			operation: "chat.fork",
+			input: { projectId: "project:/tmp/pi", chatId: "chat:1" },
+		});
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.clone",
+				input: { projectId: "project:/tmp/pi", chatId: "chat:1" },
+			}),
+		).toEqual({
+			operation: "chat.clone",
+			input: { projectId: "project:/tmp/pi", chatId: "chat:1" },
+		});
+		expect(
+			AppRpcRequestSchema.parse({
+				operation: "chat.branch",
+				input: { projectId: "project:/tmp/pi", chatId: "chat:1", entryId: "abcd1234" },
+			}),
+		).toEqual({
+			operation: "chat.branch",
+			input: { projectId: "project:/tmp/pi", chatId: "chat:1", entryId: "abcd1234" },
+		});
+	});
+
 	it("rejects a prompt submission without a non-empty prompt", () => {
 		const parsed = AppRpcRequestSchema.safeParse({
 			operation: "piSession.submit",

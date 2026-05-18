@@ -3,16 +3,19 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type InlineConfig } from "vite";
 import {
+	resolveDesktopChatsPath,
 	resolveElectronDevUserDataDir,
 	resolvePiAgentDir,
 	resolvePiSessionFilesRoot,
 	resolveProjectStorePath,
 } from "../app-paths";
 import { createAppBackend, type AppBackend } from "../app-backend";
+import { branchSession, cloneSession, forkSession, writeSessionName } from "../pi-session/pi-session-file-actions";
 import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
 import { createProjectService } from "../projects/project-service";
 import { createProjectStore } from "../projects/project-store";
+import { createPiSessionLister } from "../sessions/pi-session-index";
 import { createLocalDevServer, type LocalDevServer, type LocalDevServerOptions } from "./local-dev-server";
 
 const host = "127.0.0.1";
@@ -65,9 +68,12 @@ export const resolveDevWebUserDataDir = (
 
 export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBackend => {
 	const documentsDir = env.PI_DESKTOP_DOCUMENTS_DIR ?? path.join(homedir(), "Documents");
+	const piSessionLister = createPiSessionLister(env);
+	const userDataDir = resolveDevWebUserDataDir(env);
+	const desktopChatsPath = resolveDesktopChatsPath({ env, defaultUserDataDir: userDataDir });
 	const projectStorePath = resolveProjectStorePath({
 		env,
-		defaultUserDataDir: resolveDevWebUserDataDir(env),
+		defaultUserDataDir: userDataDir,
 	});
 
 	return createAppBackend({
@@ -75,12 +81,19 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 		projectService: createProjectService({
 			store: createProjectStore(projectStorePath),
 			documentsDir,
+			desktopChatsPath,
 			now: () => new Date().toISOString(),
 			openFolderDialog: unavailableNativeOperation,
 			openInFinder: unavailableNativeOperation,
 			initializeGitRepository,
+			listProjectSessions: piSessionLister.listProject,
+			writeSessionName,
+			forkSession: (sourcePath, targetCwd) => forkSession(sourcePath, targetCwd, env),
+			cloneSession: (sourcePath, targetCwd) => cloneSession(sourcePath, targetCwd, env),
+			branchSession: (sourcePath, targetCwd, entryId) => branchSession(sourcePath, targetCwd, entryId, env),
 		}),
 		now: () => new Date().toISOString(),
+		env,
 		createAgentSession: env.PI_DESKTOP_SMOKE_PI_SESSION === "1" ? createSmokePiAgentSession : undefined,
 	});
 };

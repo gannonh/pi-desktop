@@ -5,11 +5,13 @@ import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transpo
 import { IpcChannels } from "../shared/ipc";
 import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
-import { resolveProjectStorePath } from "./app-paths";
+import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
+import { branchSession, cloneSession, forkSession, writeSessionName } from "./pi-session/pi-session-file-actions";
 import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
+import { createPiSessionLister } from "./sessions/pi-session-index";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
@@ -69,6 +71,9 @@ const openFolderDialog = async (): Promise<string | null> => {
 const getProjectStorePath = () =>
 	resolveProjectStorePath({ env: process.env, defaultUserDataDir: app.getPath("userData") });
 
+const getDesktopChatsPath = () =>
+	resolveDesktopChatsPath({ env: process.env, defaultUserDataDir: app.getPath("userData") });
+
 const shouldUseSmokePiSession = () => !app.isPackaged && process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1";
 
 const openInFinder = async (projectPath: string): Promise<void> => {
@@ -86,6 +91,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		},
 		projectService,
 		now: () => new Date().toISOString(),
+		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
 	});
 	appBackend = backend;
@@ -119,21 +125,35 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		invokeBackend("project.checkAvailability", input),
 	);
 	ipcMain.handle(IpcChannels.chatCreate, (_event, input) => invokeBackend("chat.create", input));
+	ipcMain.handle(IpcChannels.chatCreateStandalone, (_event, input) => invokeBackend("chat.createStandalone", input));
 	ipcMain.handle(IpcChannels.chatSelect, (_event, input) => invokeBackend("chat.select", input));
+	ipcMain.handle(IpcChannels.chatRename, (_event, input) => invokeBackend("chat.rename", input));
+	ipcMain.handle(IpcChannels.chatSelectStandalone, (_event, input) => invokeBackend("chat.selectStandalone", input));
+	ipcMain.handle(IpcChannels.chatFork, (_event, input) => invokeBackend("chat.fork", input));
+	ipcMain.handle(IpcChannels.chatClone, (_event, input) => invokeBackend("chat.clone", input));
+	ipcMain.handle(IpcChannels.chatBranch, (_event, input) => invokeBackend("chat.branch", input));
 	ipcMain.handle(IpcChannels.piSessionStart, (_event, input) => invokeBackend("piSession.start", input));
 	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) => invokeBackend("piSession.submit", input));
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));
+	ipcMain.handle(IpcChannels.piSessionHistory, (_event, input) => invokeBackend("piSession.history", input));
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
 };
 
 app.whenReady().then(() => {
+	const piSessionLister = createPiSessionLister(process.env);
 	const projectService = createProjectService({
 		store: createProjectStore(getProjectStorePath()),
 		documentsDir: app.getPath("documents"),
+		desktopChatsPath: getDesktopChatsPath(),
 		now: () => new Date().toISOString(),
 		openFolderDialog,
 		openInFinder,
 		initializeGitRepository,
+		listProjectSessions: piSessionLister.listProject,
+		writeSessionName,
+		forkSession,
+		cloneSession,
+		branchSession,
 	});
 
 	createWindow();

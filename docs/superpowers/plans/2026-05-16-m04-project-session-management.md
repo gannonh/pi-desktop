@@ -2655,8 +2655,8 @@ Verify:
 - Failed or active sessions show status and attention indicators.
 - Filter menu changes visible rows for All, Needs attention, Failed, and Running.
 - Show more expands hidden chat rows.
-- Standalone chats appear from Pi sessions outside tracked projects.
-- Selecting a standalone chat uses its Pi session cwd and can resume when the session file exists.
+- Standalone chats appear from the Desktop quick-start workspace.
+- Selecting a standalone chat uses the Desktop quick-start workspace cwd and can resume when the session file exists.
 - Fork chat creates a new Pi session file in the project session directory.
 - Clone current branch creates a new Pi session file for the current leaf.
 - Sidebar management failures display through the existing project status message.
@@ -2667,7 +2667,7 @@ Spec coverage:
 - Complete project actions: Tasks 3, 7, and 9 cover create, add existing folder, select, rename, remove, pin, locate missing folder, and open in Finder.
 - Project availability checks with recovery paths: Tasks 3, 9, and manual checklist cover missing folder refresh, locate, and remove.
 - Project chat list backed by real session metadata: Tasks 2 and 3 derive project chats from `SessionManager.list()`.
-- Projectless chat list backed by real session metadata: Tasks 2, 3, and 10 derive standalone chats from `SessionManager.listAll()` and allow existing standalone resume.
+- Projectless chat list backed by real session metadata: standalone chats now derive from the Desktop quick-start workspace and allow existing standalone resume.
 - Session list for active project: Tasks 2, 3, and 8 expose project session rows in recency order.
 - Resume existing session: Tasks 6, 7, and 10 open existing session files through `SessionManager.open()`.
 - Session names and metadata persistence: Tasks 1, 5, 7, and 10 persist UI state and write Pi `session_info` names.
@@ -2680,3 +2680,7 @@ Placeholder scan:
 Type consistency:
 - `ChatMetadata`, `StandaloneChatMetadata`, `ProjectStateView`, `ProjectService`, `PiSessionStartInput`, and `PiSessionStartPayload` names are consistent across tasks.
 - Chat action names are consistent across shared schemas, RPC operations, preload API, HTTP client, backend routing, and renderer calls.
+
+## Session Scope Correction
+
+M04 now treats `PROJECTS` as Desktop-pinned folders and treats each project's chat rows as Pi current-folder sessions. Sidebar `CHATS` is scoped to the Desktop quick-start workspace rather than all sessions outside pinned projects.
