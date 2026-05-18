@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import type { ComposerContext } from "../../src/renderer/chat/chat-view-model";
 import { Composer } from "../../src/renderer/components/composer";
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const context: ComposerContext = {
 	projectSelectorLabel: "pi-desktop",
 	modeLabel: "Work locally",
@@ -27,7 +29,10 @@ describe("Composer", () => {
 		const labels = [context.projectSelectorLabel, context.modeLabel, context.modelLabel];
 
 		for (const label of labels) {
-			const pattern = new RegExp(`aria-controls="[^"]+"[^>]*aria-haspopup="menu"[^>]*>.*?${label}`, "s");
+			const pattern = new RegExp(
+				`aria-controls="[^"]+"[^>]*aria-haspopup="menu"[^>]*>.*?${escapeRegExp(label)}`,
+				"s",
+			);
 			expect(markup, `${label} control should expose menu semantics`).toMatch(pattern);
 		}
 	});

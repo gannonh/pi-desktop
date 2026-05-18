@@ -68,17 +68,17 @@ Recommendation: Reflow composer controls below 720px, reduce max widths, and ens
 
 Suggested command: `impeccable adapt composer`
 
-### P1: Interactive targets are below 44px
+### P1: Interactive targets are below recommended touch size (WCAG 2.5.8)
 
 Location: `src/renderer/styles.css:900`, `src/renderer/styles.css:1071`, `src/renderer/styles.css:1087`, `src/renderer/styles.css:1231`, `src/renderer/styles.css:1256`
 
 Category: Accessibility / Responsive Design
 
-Impact: Many sidebar buttons measure 24 to 33px high. This can make touch and motor accessibility worse, especially on compact windows or future touch-like environments.
+Impact: Many sidebar buttons measure 24 to 33px high. WCAG 2.5.8 (Target Size, Minimum) requires a 24×24 CSS px target by default, with exceptions for equivalent controls, inline targets, user-agent defaults, and essential presentation. The compact 32–33px desktop rhythm meets the baseline but remains below common 44px touch guidance for dense pointer UIs.
 
-Standard: WCAG 2.5.8 Target Size, WCAG 2.2
+Standard: WCAG 2.5.8 Target Size (Minimum), WCAG 2.2
 
-Recommendation: Add larger hit areas while preserving the compact visual density.
+Recommendation: Add larger hit areas or spacing where practical while preserving the compact visual density. Acceptance: document intentional compact sizes and verify 2.5.8 exceptions or enlarged hit targets where controls are below 24×24 CSS px.
 
 Suggested command: `impeccable harden sidebar controls`
 
@@ -187,7 +187,7 @@ Completed now:
 
 - Sidebar section heading and Show more colors were raised above AA contrast on the graphite sidebar surface.
 - Sidebar and composer menu disclosure controls now expose `aria-haspopup="menu"` and stable `aria-controls` ids.
-- Sidebar rows intentionally keep the compact desktop rhythm: top actions use `32px`, project rows use `33px`, and chat rows use `33px`.
+- Sidebar rows intentionally keep the compact desktop rhythm: top actions use `32px`, project rows use `33px`, and chat rows use `33px`. These sizes meet WCAG 2.5.8’s 24×24 CSS px minimum while staying below common 44px touch-target guidance for dense desktop sidebars.
 - The mobile shell gives the main work area the full viewport width and lets the sidebar behave as an overlay, removing 390px horizontal overflow.
 - Composer controls reflow at the mobile breakpoint and status text aligns left when it wraps.
 - Sidebar collapse and reveal transitions no longer animate layout properties. Motion uses opacity, transform, and clip behavior.

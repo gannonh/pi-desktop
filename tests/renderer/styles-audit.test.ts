@@ -49,8 +49,8 @@ describe("renderer style audit rules", () => {
 		const css = styles();
 
 		expect(css).toContain("@media (prefers-reduced-motion: reduce)");
-		expect(css).toContain("animation-duration: 1ms");
-		expect(css).toContain("transition-duration: 1ms");
+		expect(css).toContain("animation-duration: 0.01ms !important");
+		expect(css).toContain("transition-duration: 0.01ms !important");
 	});
 
 	it("reflows composer controls at mobile width", () => {

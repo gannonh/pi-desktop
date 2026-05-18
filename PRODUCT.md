@@ -2,7 +2,7 @@
 
 ## Register
 
-product
+product — primary surfaces are in-app UI (command center, sidebars, composer, session views), not marketing or brand storytelling.
 
 ## Users
 

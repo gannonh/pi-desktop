@@ -455,7 +455,6 @@ function ProjectSidebarProject({
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
 	const unavailable = row.availability.status !== "available";
-	const hasSelectedChat = row.children.some((child) => child.kind === "chat" && child.selected);
 
 	const removeProject = () => {
 		if (!window.confirm(`Remove ${row.label} from pi-desktop?`)) {
@@ -497,16 +496,25 @@ function ProjectSidebarProject({
 		<div className="project-sidebar__project">
 			<div className="project-sidebar__project-row-wrap">
 				<button
+					className="project-sidebar__project-disclosure"
+					type="button"
+					aria-label={closed ? `Expand ${row.label}` : `Collapse ${row.label}`}
+					aria-expanded={!closed}
+					onClick={() => onToggleOpen(row.projectId)}
+				>
+					{closed ? (
+						<Folder className="project-sidebar__icon" />
+					) : (
+						<FolderOpen className="project-sidebar__icon" />
+					)}
+				</button>
+				<button
 					className={["project-sidebar__project-row", unavailable ? "project-sidebar__project-row--warning" : ""]
 						.filter(Boolean)
 						.join(" ")}
 					type="button"
 					title={row.path}
-					aria-expanded={!closed}
 					onClick={() => {
-						if (closed || (row.selected && !hasSelectedChat)) {
-							onToggleOpen(row.projectId);
-						}
 						void runProjectAction(() =>
 							window.piDesktop.project.select({
 								projectId: row.projectId,
@@ -514,11 +522,6 @@ function ProjectSidebarProject({
 						);
 					}}
 				>
-					{closed ? (
-						<Folder className="project-sidebar__icon" />
-					) : (
-						<FolderOpen className="project-sidebar__icon" />
-					)}
 					<span className="project-sidebar__project-name">{row.label}</span>
 				</button>
 				<button

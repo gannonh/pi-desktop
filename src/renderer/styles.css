@@ -781,7 +781,6 @@ button {
 .live-session__message--user .live-session__message-content {
 	box-sizing: border-box;
 	width: min(100%, 567px);
-	max-width: 567px;
 	border-radius: 1rem;
 	background: var(--color-secondary);
 	padding: 0.75rem 0.9375rem;
@@ -1169,9 +1168,21 @@ button {
 
 .project-sidebar__project-row-wrap {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto auto;
+	grid-template-columns: auto minmax(0, 1fr) auto auto;
 	align-items: center;
 	color: var(--sidebar-project-color);
+}
+
+.project-sidebar__project-disclosure {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: var(--radius-control);
+	background: transparent;
+	color: inherit;
+	padding: var(--sidebar-row-padding);
+	cursor: pointer;
 }
 
 .project-sidebar__project-row-wrap:hover .project-sidebar__project-menu-button,
@@ -1499,10 +1510,13 @@ button {
 	*,
 	*::before,
 	*::after {
-		animation-duration: 1ms;
-		animation-iteration-count: 1;
+		animation-delay: 0ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		animation-play-state: paused !important;
 		scroll-behavior: auto;
-		transition-duration: 1ms;
+		transition-duration: 0.01ms !important;
+		transition-property: none !important;
 	}
 }
 
