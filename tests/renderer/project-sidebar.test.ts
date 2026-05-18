@@ -80,7 +80,7 @@ describe("ProjectSidebar", () => {
 		expect(markup).not.toContain('aria-label="New quick-start chat" disabled=""');
 	});
 
-	it("renders project and standalone show-more controls as enabled buttons", () => {
+	it("renders project and standalone show-more controls as enabled toggle buttons", () => {
 		const projectChats = Array.from({ length: 6 }, (_, index) =>
 			createChat({
 				id: `chat:project-${index + 1}`,
@@ -103,10 +103,14 @@ describe("ProjectSidebar", () => {
 			selectedChat: null,
 		});
 
-		const showMoreButtons = [...markup.matchAll(/<button class="project-sidebar__show-more"([^>]*)>Show more/g)];
+		const showMoreButtons = [...markup.matchAll(/<button class="project-sidebar__show-more"([^>]*)>/g)];
 
 		expect(showMoreButtons).toHaveLength(2);
 		expect(showMoreButtons.every((match) => !match[1]?.includes("disabled"))).toBe(true);
+		expect(markup.match(/Show more/g)?.length).toBe(2);
+		expect(markup).toContain('aria-expanded="false"');
+		expect(markup).toContain("project-sidebar__chats-overflow-shell--collapsed");
+		expect(markup).toContain("project-sidebar__scroll");
 	});
 
 	it("keeps chat menu anchors out of chat row layout flow", () => {

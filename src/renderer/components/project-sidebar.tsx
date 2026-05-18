@@ -30,14 +30,16 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
 	type ChatFilter,
+	type SidebarChatList,
 	type SidebarChatRow,
+	type SidebarConcreteChatRow,
 	type SidebarProjectRow,
 } from "../projects/project-view-model";
 import {
@@ -150,10 +152,14 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		setChatFilter(filter);
 		setMenu(null);
 	};
-	const expandProjectChats = (projectId: string) => {
+	const toggleProjectChats = (projectId: string) => {
 		setExpandedProjectChatIds((current) => {
 			const next = new Set(current);
-			next.add(projectId);
+			if (next.has(projectId)) {
+				next.delete(projectId);
+			} else {
+				next.add(projectId);
+			}
 			return next;
 		});
 	};
@@ -217,6 +223,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 					.filter(Boolean)
 					.join(" ")}
 			>
+				<div className="project-sidebar__scroll">
 				<div className="project-sidebar__top-actions">
 					<button className="project-sidebar__action" type="button" disabled>
 						<SquarePen className="project-sidebar__icon" />
@@ -329,7 +336,8 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								setMenu={setMenu}
 								closed={closedProjectIds.has(row.projectId)}
 								onToggleOpen={toggleProjectOpen}
-								onExpandChats={expandProjectChats}
+								onToggleChats={toggleProjectChats}
+								chatsExpanded={expandedProjectChatIds.has(row.projectId)}
 								runProjectAction={runProjectAction}
 							/>
 						))}
@@ -387,50 +395,104 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 				</div>
 
 				{chatsCollapsed ? null : (
-					<div className="project-sidebar__chats project-sidebar__chats--standalone">
-						{standaloneChatRows.map((child) =>
-							child.kind === "empty" ? (
-								<div className="project-sidebar__empty-chat" key="standalone:empty">
-									{child.label}
-								</div>
-							) : child.kind === "show-more" ? (
-								<button
-									className="project-sidebar__show-more"
-									key="standalone:show-more"
-									type="button"
-									onClick={() => setStandaloneExpanded(true)}
-								>
-									{child.label}
-								</button>
-							) : (
-								<button
-									className={[
-										"project-sidebar__chat-row",
-										"project-sidebar__chat-row--standalone",
-										child.selected ? "project-sidebar__chat-row--selected" : "",
-										child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
-									]
-										.filter(Boolean)
-										.join(" ")}
-									key={child.chatId}
-									type="button"
-									onClick={() => selectStandaloneChat(child.chatId)}
-								>
-									<span className="project-sidebar__chat-label">{child.label}</span>
-									{child.needsAttention ? (
-										<span className="project-sidebar__attention-dot" />
-									) : child.status === "failed" ? (
-										<X className="project-sidebar__chat-failed-icon" />
-									) : (
-										<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
-									)}
-								</button>
-							),
+					<ProjectSidebarChatList
+						chatList={standaloneChatRows}
+						expanded={standaloneExpanded}
+						listClassName="project-sidebar__chats project-sidebar__chats--standalone"
+						onToggleExpanded={() => setStandaloneExpanded((current) => !current)}
+						renderChatRow={(child) => (
+							<button
+								className={[
+									"project-sidebar__chat-row",
+									"project-sidebar__chat-row--standalone",
+									child.selected ? "project-sidebar__chat-row--selected" : "",
+									child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+								]
+									.filter(Boolean)
+									.join(" ")}
+								key={child.chatId}
+								type="button"
+								onClick={() => selectStandaloneChat(child.chatId)}
+							>
+								<span className="project-sidebar__chat-label">{child.label}</span>
+								{child.needsAttention ? (
+									<span className="project-sidebar__attention-dot" />
+								) : child.status === "failed" ? (
+									<X className="project-sidebar__chat-failed-icon" />
+								) : (
+									<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+								)}
+							</button>
 						)}
-					</div>
+					/>
 				)}
+				</div>
 			</div>
 		</aside>
+	);
+}
+
+interface ProjectSidebarChatListProps {
+	chatList: SidebarChatList;
+	expanded: boolean;
+	listClassName?: string;
+	inertWhenHidden?: boolean;
+	onToggleExpanded: () => void;
+	renderChatRow: (child: SidebarConcreteChatRow) => ReactNode;
+}
+
+function ProjectSidebarChatList({
+	chatList,
+	expanded,
+	listClassName,
+	inertWhenHidden = false,
+	onToggleExpanded,
+	renderChatRow,
+}: ProjectSidebarChatListProps) {
+	const emptyRow = chatList.primary.find((row) => row.kind === "empty");
+
+	if (emptyRow) {
+		return (
+			<div className={listClassName ?? "project-sidebar__chats"}>
+				<div className="project-sidebar__empty-chat">{emptyRow.label}</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className={listClassName ?? "project-sidebar__chats"}>
+			{chatList.primary
+				.filter((row): row is SidebarConcreteChatRow => row.kind === "chat")
+				.map((child) => renderChatRow(child))}
+			{chatList.toggle ? (
+				<>
+					<div
+						className={[
+							"project-sidebar__chats-overflow-shell",
+							expanded ? "" : "project-sidebar__chats-overflow-shell--collapsed",
+						]
+							.filter(Boolean)
+							.join(" ")}
+						aria-hidden={!expanded}
+					>
+						<div className="project-sidebar__chats-overflow">
+							{chatList.overflow
+								.filter((row): row is SidebarConcreteChatRow => row.kind === "chat")
+								.map((child) => renderChatRow(child))}
+						</div>
+					</div>
+					<button
+						className="project-sidebar__show-more"
+						type="button"
+						tabIndex={inertWhenHidden ? -1 : undefined}
+						aria-expanded={expanded}
+						onClick={onToggleExpanded}
+					>
+						{chatList.toggle.label}
+					</button>
+				</>
+			) : null}
+		</div>
 	);
 }
 
@@ -440,7 +502,8 @@ interface ProjectSidebarProjectProps {
 	setMenu: (menu: MenuState | ((current: MenuState) => MenuState)) => void;
 	closed: boolean;
 	onToggleOpen: (projectId: string) => void;
-	onExpandChats: (projectId: string) => void;
+	onToggleChats: (projectId: string) => void;
+	chatsExpanded: boolean;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
 }
 
@@ -450,7 +513,8 @@ function ProjectSidebarProject({
 	setMenu,
 	closed,
 	onToggleOpen,
-	onExpandChats,
+	onToggleChats,
+	chatsExpanded,
 	runProjectAction,
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
@@ -590,42 +654,28 @@ function ProjectSidebarProject({
 					.join(" ")}
 				aria-hidden={closed}
 			>
-				<div className="project-sidebar__chats">
-					{row.children.map((child) =>
-						child.kind === "empty" ? (
-							<div className="project-sidebar__empty-chat" key={`${row.projectId}:empty`}>
-								{child.label}
-							</div>
-						) : child.kind === "show-more" ? (
-							<button
-								className="project-sidebar__show-more"
-								key={`${row.projectId}:show-more`}
-								type="button"
-								tabIndex={closed ? -1 : undefined}
-								onClick={() => onExpandChats(row.projectId)}
-							>
-								{child.label}
-							</button>
-						) : (
-							<ProjectChatRow
-								key={child.chatId}
-								child={child}
-								closed={closed}
-								menu={menu}
-								projectId={row.projectId}
-								sessionPath={row.project.chats.find((chat) => chat.id === child.chatId)?.sessionPath ?? null}
-								setMenu={setMenu}
-								runProjectAction={runProjectAction}
-							/>
-						),
+				<ProjectSidebarChatList
+					chatList={row.chatList}
+					expanded={chatsExpanded}
+					inertWhenHidden={closed}
+					onToggleExpanded={() => onToggleChats(row.projectId)}
+					renderChatRow={(child) => (
+						<ProjectChatRow
+							key={child.chatId}
+							child={child}
+							closed={closed}
+							menu={menu}
+							projectId={row.projectId}
+							sessionPath={row.project.chats.find((chat) => chat.id === child.chatId)?.sessionPath ?? null}
+							setMenu={setMenu}
+							runProjectAction={runProjectAction}
+						/>
 					)}
-				</div>
+				/>
 			</div>
 		</div>
 	);
 }
-
-type SidebarConcreteChatRow = Extract<SidebarChatRow, { kind: "chat" }>;
 
 interface ProjectChatRowProps {
 	child: SidebarConcreteChatRow;

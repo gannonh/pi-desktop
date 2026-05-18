@@ -27,12 +27,20 @@ export type SidebarChatRow =
 	| {
 			kind: "empty";
 			label: "No chats";
-	  }
-	| {
-			kind: "show-more";
-			label: "Show more";
-			hiddenCount: number;
 	  };
+
+export type SidebarConcreteChatRow = Extract<SidebarChatRow, { kind: "chat" }>;
+
+export type SidebarChatToggleLabel = "Show more" | "Show less";
+
+export interface SidebarChatList {
+	primary: SidebarChatRow[];
+	overflow: SidebarChatRow[];
+	toggle: {
+		label: SidebarChatToggleLabel;
+		hiddenCount: number;
+	} | null;
+}
 
 export interface SidebarProjectRow {
 	kind: "project";
@@ -42,7 +50,7 @@ export interface SidebarProjectRow {
 	path: string;
 	selected: boolean;
 	availability: ProjectAvailability;
-	children: SidebarChatRow[];
+	chatList: SidebarChatList;
 }
 
 const visibleChatLimit = 5;
@@ -93,28 +101,40 @@ const createChatSidebarRow = (
 	needsAttention: chat.attention || chat.status === "running",
 });
 
-const createChatRows = (
+const createChatList = (
 	chats: readonly (ChatMetadata | StandaloneChatMetadata)[],
 	selectedChatId: string | null,
 	now: Date,
 	expanded: boolean,
-): SidebarChatRow[] => {
+): SidebarChatList => {
 	if (chats.length === 0) {
-		return [{ kind: "empty", label: "No chats" }];
+		return { primary: [{ kind: "empty", label: "No chats" }], overflow: [], toggle: null };
 	}
 
-	const visibleChats = expanded ? chats : chats.slice(0, visibleChatLimit);
-	const rows = visibleChats.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
-
-	if (!expanded && chats.length > visibleChatLimit) {
-		rows.push({
-			kind: "show-more",
-			label: "Show more",
-			hiddenCount: chats.length - visibleChatLimit,
-		});
+	if (chats.length <= visibleChatLimit) {
+		return {
+			primary: chats.map((chat) => createChatSidebarRow(chat, selectedChatId, now)),
+			overflow: [],
+			toggle: null,
+		};
 	}
 
-	return rows;
+	const primary = chats
+		.slice(0, visibleChatLimit)
+		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+	const overflow = chats
+		.slice(visibleChatLimit)
+		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+	const hiddenCount = overflow.length;
+
+	return {
+		primary,
+		overflow,
+		toggle: {
+			label: expanded ? "Show less" : "Show more",
+			hiddenCount,
+		},
+	};
 };
 
 export const createProjectSidebarRows = (
@@ -133,7 +153,7 @@ export const createProjectSidebarRows = (
 			path: project.path,
 			selected: project.id === view.selectedProjectId,
 			availability: project.availability,
-			children: createChatRows(
+			chatList: createChatList(
 				chats,
 				view.selectedChatId,
 				now,
@@ -146,9 +166,9 @@ export const createStandaloneChatSidebarRows = (
 	view: ProjectStateView,
 	now = new Date(),
 	options: ProjectSidebarRowOptions = {},
-): SidebarChatRow[] => {
+): SidebarChatList => {
 	const selectedChatId = view.selectedProjectId === null ? view.selectedChatId : null;
 	const chats = filterChats(view.standaloneChats, options.chatFilter);
 
-	return createChatRows(chats, selectedChatId, now, options.expandStandaloneChats ?? false);
+	return createChatList(chats, selectedChatId, now, options.expandStandaloneChats ?? false);
 };

@@ -962,6 +962,14 @@ button {
 	overflow: visible;
 }
 
+.project-sidebar__scroll {
+	flex: 1;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
 .project-sidebar__project-name,
 .project-sidebar__chat-label {
 	overflow: hidden;
@@ -1246,6 +1254,36 @@ button {
 }
 
 .project-sidebar__chats-shell--closed .project-sidebar__chats {
+	opacity: 0;
+	transform: translateY(-0.25rem);
+}
+
+.project-sidebar__chats-overflow-shell {
+	display: grid;
+	grid-template-rows: 1fr;
+	overflow: hidden;
+	clip-path: inset(0 0 0 0);
+	transition:
+		clip-path 180ms ease,
+		opacity 140ms ease;
+}
+
+.project-sidebar__chats-overflow-shell--collapsed {
+	grid-template-rows: 0fr;
+	clip-path: inset(0 0 100% 0);
+	opacity: 0;
+}
+
+.project-sidebar__chats-overflow {
+	min-height: 0;
+	display: grid;
+	gap: 0.125rem;
+	transition:
+		transform 180ms ease,
+		opacity 140ms ease;
+}
+
+.project-sidebar__chats-overflow-shell--collapsed .project-sidebar__chats-overflow {
 	opacity: 0;
 	transform: translateY(-0.25rem);
 }
