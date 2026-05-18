@@ -15,7 +15,7 @@ colors:
   text-secondary: "oklch(0.907 0 0)"
   text-muted: "oklch(0.708 0 0)"
   text-subtle: "oklch(0.699 0 0)"
-  text-dim: "oklch(0.569 0 0)"
+  text-dim: "oklch(0.64 0 0)"
   border-subtle: "oklch(1 0 0 / 10%)"
   input-border: "oklch(1 0 0 / 15%)"
   focus-ring: "oklch(0.556 0 0)"

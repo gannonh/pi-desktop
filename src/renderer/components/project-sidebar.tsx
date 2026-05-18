@@ -30,7 +30,7 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
 import {
@@ -94,6 +94,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 	const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
 	const [expandedProjectChatIds, setExpandedProjectChatIds] = useState<Set<string>>(() => new Set());
 	const [standaloneExpanded, setStandaloneExpanded] = useState(false);
+	const projectsFilterMenuId = useId();
+	const addProjectMenuId = useId();
+	const chatsFilterMenuId = useId();
 	const rows = createProjectSidebarRows(state, undefined, {
 		chatFilter,
 		expandedProjectIds: expandedProjectChatIds,
@@ -261,7 +264,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								className="project-sidebar__heading-button"
 								type="button"
 								aria-label="Filter projects"
+								aria-controls={projectsFilterMenuId}
 								aria-expanded={menu?.kind === "projects-filter"}
+								aria-haspopup="menu"
 								onClick={() =>
 									setMenu((current) =>
 										current?.kind === "projects-filter" ? null : { kind: "projects-filter" },
@@ -271,7 +276,11 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								<ListFilter className="project-sidebar__icon" />
 							</button>
 							{menu?.kind === "projects-filter" ? (
-								<ProjectsFilterMenu chatFilter={chatFilter} onChatFilterChange={changeChatFilter} />
+								<ProjectsFilterMenu
+									id={projectsFilterMenuId}
+									chatFilter={chatFilter}
+									onChatFilterChange={changeChatFilter}
+								/>
 							) : null}
 						</MenuAnchor>
 						<MenuAnchor>
@@ -279,13 +288,15 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								className="project-sidebar__heading-button"
 								type="button"
 								aria-label="Add project"
+								aria-controls={addProjectMenuId}
 								aria-expanded={menu?.kind === "add"}
+								aria-haspopup="menu"
 								onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
 							>
 								<FolderPlus className="project-sidebar__icon" />
 							</button>
 							{menu?.kind === "add" ? (
-								<MenuSurface className="project-sidebar__add-menu">
+								<MenuSurface className="project-sidebar__add-menu" id={addProjectMenuId}>
 									<MenuItem
 										onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
 									>
@@ -345,7 +356,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								className="project-sidebar__heading-button"
 								type="button"
 								aria-label="Filter chats"
+								aria-controls={chatsFilterMenuId}
 								aria-expanded={menu?.kind === "chats-filter"}
+								aria-haspopup="menu"
 								onClick={() =>
 									setMenu((current) => (current?.kind === "chats-filter" ? null : { kind: "chats-filter" }))
 								}
@@ -353,7 +366,11 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 								<ListFilter className="project-sidebar__icon" />
 							</button>
 							{menu?.kind === "chats-filter" ? (
-								<ChatsFilterMenu chatFilter={chatFilter} onChatFilterChange={changeChatFilter} />
+								<ChatsFilterMenu
+									id={chatsFilterMenuId}
+									chatFilter={chatFilter}
+									onChatFilterChange={changeChatFilter}
+								/>
 							) : null}
 						</MenuAnchor>
 						<button
@@ -436,7 +453,9 @@ function ProjectSidebarProject({
 	onExpandChats,
 	runProjectAction,
 }: ProjectSidebarProjectProps) {
+	const projectMenuId = useId();
 	const unavailable = row.availability.status !== "available";
+	const hasSelectedChat = row.children.some((child) => child.kind === "chat" && child.selected);
 
 	const removeProject = () => {
 		if (!window.confirm(`Remove ${row.label} from pi-desktop?`)) {
@@ -485,7 +504,9 @@ function ProjectSidebarProject({
 					title={row.path}
 					aria-expanded={!closed}
 					onClick={() => {
-						onToggleOpen(row.projectId);
+						if (closed || (row.selected && !hasSelectedChat)) {
+							onToggleOpen(row.projectId);
+						}
 						void runProjectAction(() =>
 							window.piDesktop.project.select({
 								projectId: row.projectId,
@@ -514,7 +535,9 @@ function ProjectSidebarProject({
 						className="project-sidebar__project-menu-button"
 						type="button"
 						aria-label={`${row.label} menu`}
+						aria-controls={projectMenuId}
 						aria-expanded={menu?.kind === "project" && menu.projectId === row.projectId}
+						aria-haspopup="menu"
 						onClick={() =>
 							setMenu((current) =>
 								current?.kind === "project" && current.projectId === row.projectId
@@ -527,6 +550,7 @@ function ProjectSidebarProject({
 					</button>
 					{menu?.kind === "project" && menu.projectId === row.projectId ? (
 						<ProjectMenu
+							id={projectMenuId}
 							row={row}
 							onPin={() =>
 								runProjectAction(() =>
@@ -619,6 +643,7 @@ function ProjectChatRow({
 	setMenu,
 	runProjectAction,
 }: ProjectChatRowProps) {
+	const chatMenuId = useId();
 	const chatMenuOpen = menu?.kind === "chat" && menu.projectId === projectId && menu.chatId === child.chatId;
 	const sessionActionsDisabled = sessionPath === null;
 	const sessionActionTitle = sessionActionsDisabled ? "Chat does not have a Pi session file yet" : undefined;
@@ -678,7 +703,9 @@ function ProjectChatRow({
 					className="project-sidebar__chat-menu-button"
 					type="button"
 					aria-label={`${child.label} menu`}
+					aria-controls={chatMenuId}
 					aria-expanded={chatMenuOpen}
+					aria-haspopup="menu"
 					tabIndex={closed ? -1 : undefined}
 					onClick={() =>
 						setMenu((current) =>
@@ -692,6 +719,7 @@ function ProjectChatRow({
 				</button>
 				{chatMenuOpen ? (
 					<ChatMenu
+						id={chatMenuId}
 						sessionActionsDisabled={sessionActionsDisabled}
 						disabledTitle={sessionActionTitle}
 						onRename={renameChat}
@@ -719,6 +747,7 @@ function ProjectChatRow({
 }
 
 interface ChatMenuProps {
+	id: string;
 	sessionActionsDisabled: boolean;
 	disabledTitle?: string;
 	onRename: () => void;
@@ -726,9 +755,9 @@ interface ChatMenuProps {
 	onClone: () => void;
 }
 
-function ChatMenu({ sessionActionsDisabled, disabledTitle, onRename, onFork, onClone }: ChatMenuProps) {
+function ChatMenu({ id, sessionActionsDisabled, disabledTitle, onRename, onFork, onClone }: ChatMenuProps) {
 	return (
-		<MenuSurface className="project-sidebar__chat-menu" variant="context">
+		<MenuSurface className="project-sidebar__chat-menu" id={id} variant="context">
 			<MenuItem onClick={onRename}>
 				<MenuItemIcon>
 					<Pencil />
@@ -752,6 +781,7 @@ function ChatMenu({ sessionActionsDisabled, disabledTitle, onRename, onFork, onC
 }
 
 interface ProjectMenuProps {
+	id: string;
 	row: SidebarProjectRow;
 	onPin: () => void;
 	onOpenInFinder: () => void;
@@ -761,6 +791,7 @@ interface ProjectMenuProps {
 }
 
 interface ProjectSidebarFilterMenuProps {
+	id: string;
 	chatFilter: ChatFilter;
 	onChatFilterChange: (filter: ChatFilter) => void;
 }
@@ -777,7 +808,7 @@ interface SidebarFilterMenuProps extends ProjectSidebarFilterMenuProps {
 	moveDirection: "up" | "down";
 }
 
-function SidebarFilterMenu({ moveDirection, chatFilter, onChatFilterChange }: SidebarFilterMenuProps) {
+function SidebarFilterMenu({ id, moveDirection, chatFilter, onChatFilterChange }: SidebarFilterMenuProps) {
 	const MoveIcon = moveDirection === "up" ? ArrowUp : ArrowDown;
 	const chatFilterItems: Array<{ filter: ChatFilter; label: string; icon: typeof MessageCircle }> = [
 		{ filter: "all", label: "All chats", icon: MessageCircle },
@@ -787,7 +818,7 @@ function SidebarFilterMenu({ moveDirection, chatFilter, onChatFilterChange }: Si
 	];
 
 	return (
-		<MenuSurface className="project-sidebar__filter-menu">
+		<MenuSurface className="project-sidebar__filter-menu" id={id}>
 			<MenuSectionHeading>Organize</MenuSectionHeading>
 			<MenuItem inactive aria-disabled="true">
 				<MenuItemIcon>
@@ -862,12 +893,12 @@ function SidebarFilterMenu({ moveDirection, chatFilter, onChatFilterChange }: Si
 	);
 }
 
-function ProjectMenu({ row, onPin, onOpenInFinder, onLocateFolder, onRename, onRemove }: ProjectMenuProps) {
+function ProjectMenu({ id, row, onPin, onOpenInFinder, onLocateFolder, onRename, onRemove }: ProjectMenuProps) {
 	const projectFolderUnavailable = row.project.availability.status !== "available";
 	const projectFolderMissing = row.project.availability.status === "missing";
 
 	return (
-		<MenuSurface className="project-sidebar__project-menu">
+		<MenuSurface className="project-sidebar__project-menu" id={id}>
 			<MenuItem onClick={onPin}>
 				<MenuItemIcon>
 					<Pin />

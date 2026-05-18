@@ -21,4 +21,14 @@ describe("Composer", () => {
 		expect(markup).toContain('aria-label="Send message"');
 		expect(markup).toContain("disabled");
 	});
+
+	it("declares menu semantics on composer disclosure controls", () => {
+		const markup = renderToStaticMarkup(createElement(Composer, { context }));
+		const labels = [context.projectSelectorLabel, context.modeLabel, context.modelLabel];
+
+		for (const label of labels) {
+			const pattern = new RegExp(`aria-controls="[^"]+"[^>]*aria-haspopup="menu"[^>]*>.*?${label}`, "s");
+			expect(markup, `${label} control should expose menu semantics`).toMatch(pattern);
+		}
+	});
 });

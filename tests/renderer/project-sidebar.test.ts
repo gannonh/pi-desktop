@@ -129,4 +129,23 @@ describe("ProjectSidebar", () => {
 		expect(markup).toContain('aria-label="Project chat 1 menu"');
 		expect(markup).not.toContain('aria-label="Standalone chat 1 menu"');
 	});
+
+	it("declares menu semantics on sidebar disclosure buttons", () => {
+		const chat = createChat();
+		const project = createProject([chat]);
+		const markup = renderSidebar({
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		});
+		const menuLabels = ["Filter projects", "Add project", "Filter chats", "pi-desktop menu", "Project chat 1 menu"];
+
+		for (const label of menuLabels) {
+			const pattern = new RegExp(`aria-label="${label}"[^>]*aria-controls="[^"]+"[^>]*aria-haspopup="menu"`);
+			expect(markup, `${label} should expose menu semantics`).toMatch(pattern);
+		}
+	});
 });

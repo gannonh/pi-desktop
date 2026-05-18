@@ -134,18 +134,28 @@ interface ComposerControlProps {
 }
 
 function ComposerControl({ label, menu, openMenu, icon, onToggle }: ComposerControlProps) {
+	const menuId = useId();
 	const open = openMenu === menu;
 
 	return (
 		<span className="composer__control-wrap">
-			<button className="composer__control" type="button" aria-expanded={open} onClick={() => onToggle(menu)}>
+			<button
+				className="composer__control"
+				type="button"
+				aria-controls={menuId}
+				aria-expanded={open}
+				aria-haspopup="menu"
+				onClick={() => onToggle(menu)}
+			>
 				{icon}
 				<span className="composer__control-label">{label}</span>
 				<ChevronDown className="composer__control-icon" />
 			</button>
 			{open ? (
-				<span className="composer__local-menu">
-					<span className="composer__local-menu-item">{label}</span>
+				<span className="composer__local-menu" id={menuId} role="menu">
+					<span className="composer__local-menu-item" role="menuitem" tabIndex={-1}>
+						{label}
+					</span>
 				</span>
 			) : null}
 		</span>

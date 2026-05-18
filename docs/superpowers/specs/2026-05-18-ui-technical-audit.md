@@ -179,4 +179,30 @@ Suggested command: `impeccable polish repo checks`
 4. `impeccable extract color tokens`: Move hard-coded surface colors into named design tokens.
 5. `impeccable polish`: Final cleanup after fixes.
 
-Re-run `impeccable audit` after fixes to measure improvement.
+## Follow-up Implementation
+
+Date: 2026-05-18
+
+Completed now:
+
+- Sidebar section heading and Show more colors were raised above AA contrast on the graphite sidebar surface.
+- Sidebar and composer menu disclosure controls now expose `aria-haspopup="menu"` and stable `aria-controls` ids.
+- Sidebar rows intentionally keep the compact desktop rhythm: top actions use `32px`, project rows use `33px`, and chat rows use `33px`.
+- The mobile shell gives the main work area the full viewport width and lets the sidebar behave as an overlay, removing 390px horizontal overflow.
+- Composer controls reflow at the mobile breakpoint and status text aligns left when it wraps.
+- Sidebar collapse and reveal transitions no longer animate layout properties. Motion uses opacity, transform, and clip behavior.
+- A global `prefers-reduced-motion: reduce` rule shortens transitions and animations.
+- Core surface colors are now named CSS tokens instead of direct surface values.
+- Renderer audit regression tests cover color token use, sidebar motion, reduced motion, mobile composer reflow, target sizes, and menu semantics.
+
+Follow-up verification:
+
+- `pnpm check` passed. Biome still reports the known schema version info notice.
+- Browser preview at `390px` measured `scrollWidth: 390` and `overflow: 0`.
+- Browser preview confirmed the compact sidebar rhythm at the feedback viewport: top actions `32px`, project rows `33px`, show-more rows `33px`, and chat rows `33px`.
+- Sidebar muted text contrast improved from `4.11:1` to approximately `5.48:1` against the sidebar background.
+
+Remaining deferred items:
+
+- Dev bridge socket warnings still appear in preview console during idle reconnects.
+- Biome schema version remains stale.
