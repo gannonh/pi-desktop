@@ -145,12 +145,16 @@ const createAvailableProject = (projectPath: string, now: string): ProjectRecord
 	availability: { status: "available", checkedAt: now },
 });
 
-const selectProjectInStore = (store: ProjectStore, projectId: string, now: string) => {
+const touchProjectLastOpened = (store: ProjectStore, projectId: string, now: string) => {
 	const projectIndex = findProjectIndex(store, projectId);
 	store.projects[projectIndex] = {
 		...store.projects[projectIndex],
 		lastOpenedAt: now,
 	};
+};
+
+const selectProjectInStore = (store: ProjectStore, projectId: string, now: string) => {
+	touchProjectLastOpened(store, projectId, now);
 	store.selectedProjectId = projectId;
 	store.selectedChatId = null;
 };
@@ -704,6 +708,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				};
 
 				store.chatsByProject[input.projectId] = [...existingChats, chat];
+				touchProjectLastOpened(store, input.projectId, now);
 				store.selectedProjectId = input.projectId;
 				store.selectedChatId = chat.id;
 
@@ -750,6 +755,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					throw new Error("Chat does not belong to the selected project.");
 				}
 
+				touchProjectLastOpened(store, input.projectId, deps.now());
 				store.selectedProjectId = input.projectId;
 				store.selectedChatId = input.chatId;
 
@@ -967,6 +973,7 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					attention: false,
 				};
 				if (input.projectId !== null) {
+					touchProjectLastOpened(store, input.projectId, now);
 					const project = store.projects[findProjectIndex(store, input.projectId)];
 					const existingChats = store.chatsByProject[input.projectId] ?? [];
 					const existingChat = input.chatId

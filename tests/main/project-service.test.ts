@@ -912,6 +912,28 @@ describe("project service", () => {
 		expect(memoryStore.read().selectedChatId).toBe(chat.id);
 	});
 
+	it("updates project lastOpenedAt when selecting a chat", async () => {
+		const olderProject = createProject("/tmp/older", { lastOpenedAt: firstNow });
+		const activeProject = createProject("/tmp/active", { lastOpenedAt: "2026-05-12T08:00:00.000Z" });
+		const chat = createChat(activeProject);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [olderProject, activeProject],
+				chatsByProject: {
+					[activeProject.id]: [chat],
+				},
+			},
+			now: () => secondNow,
+		});
+
+		await service.selectChat({ projectId: activeProject.id, chatId: chat.id });
+
+		expect(memoryStore.read().projects.find((project) => project.id === activeProject.id)?.lastOpenedAt).toBe(
+			secondNow,
+		);
+	});
+
 	it("rejects selecting a chat that belongs to a different project", async () => {
 		const firstProject = createProject("/tmp/one");
 		const secondProject = createProject("/tmp/two");
