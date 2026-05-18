@@ -3,8 +3,45 @@ import { describe, expect, it } from "vitest";
 
 const styles = () => readFileSync("src/renderer/styles.css", "utf8");
 
+const isSelectorListContinuation = (css: string, matchStart: number) => {
+	const lineStart = css.lastIndexOf("\n", matchStart) + 1;
+	let cursor = lineStart - 1;
+
+	while (cursor >= 0) {
+		if (css[cursor] === "\n") {
+			const previousLineStart = css.lastIndexOf("\n", cursor - 1) + 1;
+			const previousLine = css.slice(previousLineStart, cursor).trim();
+			if (previousLine.endsWith(",")) {
+				return true;
+			}
+			return false;
+		}
+		if (css[cursor] === "}") {
+			return false;
+		}
+		cursor -= 1;
+	}
+
+	return false;
+};
+
 const ruleBody = (css: string, selector: string) => {
-	const start = css.indexOf(`${selector} {`);
+	const needle = `${selector} {`;
+	let index = 0;
+	let start = -1;
+
+	while (index < css.length) {
+		const found = css.indexOf(needle, index);
+		if (found < 0) {
+			break;
+		}
+		if (!isSelectorListContinuation(css, found)) {
+			start = found;
+			break;
+		}
+		index = found + 1;
+	}
+
 	expect(start, `${selector} rule should exist`).toBeGreaterThanOrEqual(0);
 	const bodyStart = css.indexOf("{", start) + 1;
 	const bodyEnd = css.indexOf("}\n", bodyStart);
@@ -90,6 +127,8 @@ describe("renderer style audit rules", () => {
 		expect(css).toContain("--sidebar-row-padding: 0.375rem 0.5rem");
 		expect(ruleBody(css, ".project-sidebar__project-row")).not.toContain("min-height");
 		expect(ruleBody(css, ".project-sidebar__heading-button")).not.toContain("min-height");
-		expect(ruleBody(css, ".project-sidebar__show-more")).not.toContain("min-height");
+		const showMore = ruleBody(css, ".project-sidebar__show-more");
+		expect(showMore).toContain("width: 100%");
+		expect(showMore).not.toContain("min-height");
 	});
 });
