@@ -17,6 +17,7 @@ import {
 	createPiSessionLister,
 	createStandaloneChatFromSessionInfo,
 	getChatTitleFromSessionInfo,
+	resolveChatTitleForSession,
 } from "../../src/main/sessions/pi-session-index";
 import { ChatMetadataSchema, createProjectId, StandaloneChatMetadataSchema } from "../../src/shared/project-state";
 
@@ -101,6 +102,12 @@ describe("pi session index", () => {
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", legacyDir);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", outsideDir);
 		expect(onProgress).toHaveBeenLastCalledWith(4, 4);
+	});
+
+	it("replaces placeholder chat titles with session-derived titles", () => {
+		expect(resolveChatTitleForSession("New chat", "Started from project")).toBe("Started from project");
+		expect(resolveChatTitleForSession("Untitled session", "First prompt summary")).toBe("First prompt summary");
+		expect(resolveChatTitleForSession("Draft plan", "Started from project")).toBe("Draft plan");
 	});
 
 	it("uses explicit Pi session names before first message text", () => {

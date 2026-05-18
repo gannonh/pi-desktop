@@ -131,6 +131,7 @@ export function App() {
 	const acceptedSessionIdRef = useRef<string | null>(null);
 	const nextSessionRequestIdRef = useRef(0);
 	const nextHistoryRequestIdRef = useRef(0);
+	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -141,6 +142,17 @@ export function App() {
 		setProjectState(result.data);
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
 	}, []);
+
+	const scheduleProjectTitleRefresh = useCallback(() => {
+		if (projectTitleRefreshTimeoutRef.current) {
+			clearTimeout(projectTitleRefreshTimeoutRef.current);
+		}
+
+		projectTitleRefreshTimeoutRef.current = setTimeout(() => {
+			projectTitleRefreshTimeoutRef.current = null;
+			void window.piDesktop.project.getState().then(applyProjectStateViewResult);
+		}, 100);
+	}, [applyProjectStateViewResult]);
 
 	useLayoutEffect(() => {
 		selectedProjectIdRef.current = selectedProjectId;
@@ -178,6 +190,14 @@ export function App() {
 			void window.piDesktop.piSession.dispose({ sessionId });
 		}
 	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
+
+	useEffect(() => {
+		return () => {
+			if (projectTitleRefreshTimeoutRef.current) {
+				clearTimeout(projectTitleRefreshTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	useEffect(() => {
 		return window.piDesktop.piSession.onEvent((event) => {
@@ -231,9 +251,15 @@ export function App() {
 				setProjectState((current) =>
 					applySessionStatusToProjectState(current, scope, status, status === "failed", sessionEvent.receivedAt),
 				);
+				if (sessionEvent.type === "status" && sessionEvent.status === "idle") {
+					scheduleProjectTitleRefresh();
+				}
+			}
+			if (sessionEvent.type === "message_end") {
+				scheduleProjectTitleRefresh();
 			}
 		});
-	}, []);
+	}, [scheduleProjectTitleRefresh]);
 
 	const submitPrompt = useCallback(
 		async (prompt: string) => {

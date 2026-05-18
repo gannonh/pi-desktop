@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { createProjectId } from "../../shared/project-state";
@@ -9,6 +9,10 @@ import { createDesktopSessionId } from "../pi-session/pi-session-runtime";
 
 const maxChatTitleLength = 80;
 const ellipsis = "...";
+
+export const defaultChatTitle = "New chat";
+
+const placeholderChatTitles = new Set([defaultChatTitle, "Untitled session"]);
 
 export type PiSessionListProgress = (loaded: number, total: number) => void;
 
@@ -82,6 +86,20 @@ const listSessionsMatchingCwd = async (
 export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => ({
 	listProject: (cwd, onProgress) => listSessionsMatchingCwd(resolvePiSessionFilesRoot(env), cwd, onProgress),
 });
+
+export const resolveChatTitleForSession = (existingTitle: string | undefined, sessionTitle: string): string => {
+	const trimmed = existingTitle?.trim();
+	if (!trimmed || placeholderChatTitles.has(trimmed)) {
+		return sessionTitle;
+	}
+
+	return trimmed;
+};
+
+export const readSessionInfoForPath = async (sessionPath: string): Promise<SessionInfo | null> => {
+	const sessions = await SessionManager.list("", dirname(sessionPath));
+	return sessions.find((session) => session.path === sessionPath) ?? null;
+};
 
 export const getChatTitleFromSessionInfo = (session: SessionInfo): string => {
 	const name = session.name?.trim();

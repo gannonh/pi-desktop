@@ -88,6 +88,30 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				.catch((error) => {
 					console.error("Failed to record Pi session status.", error);
 				});
+			if (event.status === "idle") {
+				void deps.projectService
+					.syncSessionChatTitle({
+						sessionId: event.sessionId,
+						status: "idle",
+						attention: false,
+						updatedAt: event.receivedAt,
+					})
+					.catch((error) => {
+						console.error("Failed to sync Pi session chat title.", error);
+					});
+			}
+		}
+		if (event.type === "message_end" && event.sessionId) {
+			void deps.projectService
+				.syncSessionChatTitle({
+					sessionId: event.sessionId,
+					status: "running",
+					attention: false,
+					updatedAt: event.receivedAt,
+				})
+				.catch((error) => {
+					console.error("Failed to sync Pi session chat title.", error);
+				});
 		}
 		if (event.type === "runtime_error" && event.sessionId) {
 			void deps.projectService
