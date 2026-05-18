@@ -29,3 +29,4 @@ yarn-error.log*
 
 .worktrees/
 docs/codex-screens/
+~/.pi/agent/cache/pi-cursor-agent/models.json
