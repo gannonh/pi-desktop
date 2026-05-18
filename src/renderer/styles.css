@@ -774,11 +774,15 @@ button {
 }
 
 .live-session__message--user .live-session__message-content {
-	max-width: min(24rem, 80%);
+	box-sizing: border-box;
+	width: min(100%, 567px);
+	max-width: 567px;
 	border-radius: 1rem;
 	background: var(--color-secondary);
-	padding: 0.625rem 0.875rem;
+	padding: 0.75rem 0.9375rem;
 	font-size: var(--type-body);
+	line-height: 1.55;
+	letter-spacing: 0.002em;
 }
 
 .live-session__cursor {
