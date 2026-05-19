@@ -119,12 +119,8 @@ const createChatList = (
 		};
 	}
 
-	const primary = chats
-		.slice(0, visibleChatLimit)
-		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
-	const overflow = chats
-		.slice(visibleChatLimit)
-		.map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+	const primary = chats.slice(0, visibleChatLimit).map((chat) => createChatSidebarRow(chat, selectedChatId, now));
+	const overflow = chats.slice(visibleChatLimit).map((chat) => createChatSidebarRow(chat, selectedChatId, now));
 	const hiddenCount = overflow.length;
 
 	return {

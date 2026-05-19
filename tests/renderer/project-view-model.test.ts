@@ -341,10 +341,7 @@ describe("toggleAllUnpinnedProjectClosedIds", () => {
 	});
 
 	it("expands only unpinned projects while preserving pinned closed state", () => {
-		const next = toggleAllUnpinnedProjectClosedIds(
-			new Set([pinnedId, unpinnedA, unpinnedB]),
-			[unpinnedA, unpinnedB],
-		);
+		const next = toggleAllUnpinnedProjectClosedIds(new Set([pinnedId, unpinnedA, unpinnedB]), [unpinnedA, unpinnedB]);
 
 		expect([...next]).toEqual([pinnedId]);
 	});

@@ -160,14 +160,8 @@ export const createEmptyProjectStore = (): ProjectStore => ({
 
 export const createProjectId = (path: string): string => `project:${path}`;
 
-const getProjectActivityAt = (
-	project: ProjectRecord,
-	chats: readonly Pick<ChatMetadata, "updatedAt">[],
-): string => {
-	const latestChatActivity = chats.reduce(
-		(latest, chat) => (chat.updatedAt > latest ? chat.updatedAt : latest),
-		"",
-	);
+const getProjectActivityAt = (project: ProjectRecord, chats: readonly Pick<ChatMetadata, "updatedAt">[]): string => {
+	const latestChatActivity = chats.reduce((latest, chat) => (chat.updatedAt > latest ? chat.updatedAt : latest), "");
 
 	return latestChatActivity > project.lastOpenedAt ? latestChatActivity : project.lastOpenedAt;
 };
@@ -191,9 +185,7 @@ const compareProjectsByRecency = (
 };
 
 export const sortProjects = (projects: readonly ProjectRecord[]): ProjectRecord[] =>
-	[...projects].sort((left, right) =>
-		compareProjectsByRecency(left, right, left.lastOpenedAt, right.lastOpenedAt),
-	);
+	[...projects].sort((left, right) => compareProjectsByRecency(left, right, left.lastOpenedAt, right.lastOpenedAt));
 
 export const sortProjectsWithChats = (projects: readonly ProjectWithChats[]): ProjectWithChats[] =>
 	[...projects].sort((left, right) =>

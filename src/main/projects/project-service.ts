@@ -254,9 +254,7 @@ const refreshSessionChats = async (
 			attention: status === "failed" ? (ui?.attention ?? false) : false,
 			lastOpenedAt: ui?.lastOpenedAt ?? null,
 		});
-		const existingUiChat = ui
-			? nextStore.standaloneChats.find((chat) => chat.id === ui.chatId)
-			: undefined;
+		const existingUiChat = ui ? nextStore.standaloneChats.find((chat) => chat.id === ui.chatId) : undefined;
 		return ui
 			? {
 					...base,
