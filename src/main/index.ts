@@ -11,7 +11,7 @@ import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
-import { createPiSessionLister } from "./sessions/pi-session-index";
+import { createPiSessionLister, readSessionInfoForPath } from "./sessions/pi-session-index";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
@@ -150,6 +150,7 @@ app.whenReady().then(() => {
 		openInFinder,
 		initializeGitRepository,
 		listProjectSessions: piSessionLister.listProject,
+		readSessionInfoForPath,
 		writeSessionName,
 		forkSession,
 		cloneSession,

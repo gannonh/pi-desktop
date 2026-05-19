@@ -41,6 +41,7 @@ const createService = async (
 		openInFinder?: (path: string) => Promise<unknown>;
 		initializeGitRepository?: (path: string) => Promise<void>;
 		listProjectSessions?: ProjectServiceDeps["listProjectSessions"];
+		readSessionInfoForPath?: ProjectServiceDeps["readSessionInfoForPath"];
 		writeSessionName?: ProjectServiceDeps["writeSessionName"];
 		forkSession?: ProjectServiceDeps["forkSession"];
 		cloneSession?: ProjectServiceDeps["cloneSession"];
@@ -56,6 +57,19 @@ const createService = async (
 	const openInFinder = vi.fn(options.openInFinder ?? (async () => undefined));
 	const openFolderDialog = vi.fn(options.openFolderDialog ?? (async () => null));
 	const listProjectSessions = vi.fn(options.listProjectSessions ?? (async () => []));
+	const readSessionInfoForPath = vi.fn(
+		options.readSessionInfoForPath ??
+			(async (sessionPath: string) => {
+				for (const cwd of [documentsDir, desktopChatsPath]) {
+					const sessions = await listProjectSessions(cwd);
+					const match = sessions.find((session) => session.path === sessionPath);
+					if (match) {
+						return match;
+					}
+				}
+				return null;
+			}),
+	);
 	const writeSessionName = vi.fn(options.writeSessionName ?? (async () => undefined));
 	const forkSession = vi.fn(options.forkSession ?? (async () => "/tmp/forked-session.jsonl"));
 	const cloneSession = vi.fn(options.cloneSession ?? (async () => "/tmp/cloned-session.jsonl"));
@@ -69,6 +83,7 @@ const createService = async (
 		openInFinder,
 		openFolderDialog,
 		listProjectSessions,
+		readSessionInfoForPath,
 		writeSessionName,
 		forkSession,
 		cloneSession,
@@ -82,6 +97,7 @@ const createService = async (
 			openInFinder,
 			initializeGitRepository,
 			listProjectSessions,
+			readSessionInfoForPath,
 			writeSessionName,
 			forkSession,
 			cloneSession,
@@ -896,6 +912,28 @@ describe("project service", () => {
 		expect(memoryStore.read().selectedChatId).toBe(chat.id);
 	});
 
+	it("updates project lastOpenedAt when selecting a chat", async () => {
+		const olderProject = createProject("/tmp/older", { lastOpenedAt: firstNow });
+		const activeProject = createProject("/tmp/active", { lastOpenedAt: "2026-05-12T08:00:00.000Z" });
+		const chat = createChat(activeProject);
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [olderProject, activeProject],
+				chatsByProject: {
+					[activeProject.id]: [chat],
+				},
+			},
+			now: () => secondNow,
+		});
+
+		await service.selectChat({ projectId: activeProject.id, chatId: chat.id });
+
+		expect(memoryStore.read().projects.find((project) => project.id === activeProject.id)?.lastOpenedAt).toBe(
+			secondNow,
+		);
+	});
+
 	it("rejects selecting a chat that belongs to a different project", async () => {
 		const firstProject = createProject("/tmp/one");
 		const secondProject = createProject("/tmp/two");
@@ -1153,7 +1191,7 @@ describe("project service", () => {
 					id: `chat:session:${project.id}:sdk-session-one`,
 					projectId: project.id,
 					sessionPath,
-					title: "New chat",
+					title: "Started from project",
 					status: "running",
 					lastOpenedAt: secondNow,
 				}),
@@ -1246,6 +1284,53 @@ describe("project service", () => {
 			}),
 		);
 		expect(view.selectedChat).toEqual(expect.objectContaining({ id: draftChat.id, sessionPath }));
+	});
+
+	it("syncs a generated session title into project chat metadata", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-project-title-sync-"));
+		const project = createProject(projectPath);
+		const draftChat = createChat(project, {
+			id: "chat:draft",
+			title: "New chat",
+		});
+		const sessionPath = join(projectPath, "started.jsonl");
+		const { memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				selectedChatId: draftChat.id,
+				chatsByProject: {
+					[project.id]: [draftChat],
+				},
+			},
+			now: () => secondNow,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sessionPath,
+					id: "sdk-session-one",
+					cwd: projectPath,
+					name: "Generated title",
+				}),
+			],
+		});
+
+		await service.recordSessionStarted({
+			projectId: project.id,
+			chatId: draftChat.id,
+			sessionId: "sdk-session-one",
+			sessionPath,
+			status: "running",
+		});
+		const view = await service.syncSessionChatTitle({
+			sessionId: "sdk-session-one",
+			status: "idle",
+			attention: false,
+			updatedAt: secondNow,
+		});
+
+		expect(memoryStore.read().chatsByProject[project.id]?.[0]?.title).toBe("Generated title");
+		expect(view.selectedProject?.chats[0]?.title).toBe("Generated title");
 	});
 
 	it("converts a started draft chat to one Pi-backed chat after state refresh", async () => {
@@ -1530,7 +1615,6 @@ describe("project service", () => {
 
 		expect(openInFinder).toHaveBeenCalledWith(projectPath);
 	});
-
 	it("rejects when opening the project path in Finder returns an error string", async () => {
 		const projectPath = "/tmp/pi-desktop";
 		const project = createProject(projectPath);
@@ -1583,7 +1667,6 @@ describe("project service", () => {
 			}),
 		]);
 	});
-
 	it("loads sidebar CHATS only from the Desktop quick-start workspace", async () => {
 		const projectPath = await mkdtemp(join(tmpdir(), "pi-tracked-"));
 		const desktopChatsPath = await mkdtemp(join(tmpdir(), "pi-desktop-chats-"));

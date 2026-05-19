@@ -270,7 +270,7 @@ Acceptance:
 
 - Decision recorded before M04 changes durable session metadata and resume behavior.
 - M04 proceeds with the current custom `LiveSessionState` path.
-- AI SDK `UIMessage` remains a possible future transcript shape when durable transcript storage or rich message parts are designed.
+- AI SDK `UIMessage` remains a possible future transcript shape when M05 designs durable transcript storage or rich message parts.
 - Prototype code and AI SDK dependencies are not retained in the product branch.
 
 ✅ ### M04: Project and Session Management
@@ -298,7 +298,50 @@ Acceptance:
 - Sidebar management actions fail visibly when filesystem or runtime state blocks them.
 - Status: implemented with Pi `SessionManager` metadata as the source of persisted sessions, desktop JSON metadata for UI state, and custom `LiveSessionState` retained for live streaming.
 
-### M05: Coding Panels
+### M05: Chat Transcript Rendering
+
+Goal: bring the main chat transcript to production quality for real Pi sessions. The plumbing is largely in place; this milestone is mostly fit, finish, and readable output—not greenfield transcript infrastructure.
+
+**Current state (already shipped from M03/M04):**
+
+- Live Pi sessions stream into `LiveSessionState` through the runtime adapter and `piSession.onEvent`.
+- Selecting a chat with a session file loads persisted history via `piSession.history` and `loadPiSessionHistory` (`SessionManager` branch → flat messages).
+- `LiveSessionTranscript` renders user, assistant, system, and tool rows with basic role labels, a user bubble, streaming cursor, and status/retry/error affordances.
+- `ChatShell` switches between centered start states and a session layout; live output overrides the Milestone 2 static fixture when messages or run state are present.
+- Session scope handling ties active runs to the selected chat and disposes runtime sessions on chat switch.
+
+**Gaps today (why the panel still feels rough):**
+
+- Assistant and tool text render as plain `pre-wrap` strings (raw markdown visible, no formatting).
+- The transcript does not auto-scroll to the latest message during streaming or after history load.
+- Layout is inconsistent: resumed chats use the session shell, but first prompts from a draft can still use the centered start layout with the transcript below suggestions.
+- Tool/bash/compaction content is flattened to strings in the adapter; rows are readable but not structured for later panel work.
+- `static-transcripts.ts` remains only for the `chat:milestone-01` smoke fixture, not real sidebar chats.
+
+Deliverables:
+
+- Markdown (or equivalent) rendering for assistant and user message bodies in the live transcript.
+- Reliable transcript scrolling: stick to bottom while streaming, restore sensibly on history load and manual scroll-up.
+- One coherent session transcript layout inside `chat-shell__scroll` for resumed history, active runs, and follow-up prompts.
+- Loading and empty states while history hydrates (avoid flashing “No messages yet” on resumed chats).
+- Readability pass: typography, spacing, message grouping, and calmer status/error placement.
+- Retire the Milestone 2 static transcript fixture from product paths (`static-transcripts.ts` / `continued-chat` mock), keeping smoke coverage on real history where practical.
+- Light inline treatment for tool and bash rows (collapsible or monospace blocks) without building M06 panels yet.
+
+Deferred to M06 (Coding Panels):
+
+- Tool timeline, dedicated tool result renderer, file preview, patch/diff panels, and artifact-style file cards.
+- Rich structured transcript parts beyond what the flat `LiveSessionState` message list needs for readable chat.
+
+Acceptance:
+
+- Opening a sidebar chat with a Pi session file shows its real history in the main panel (not the `chat:milestone-01` fixture).
+- Sending a follow-up in that chat appends to the same transcript view with streamed assistant output.
+- Markdown in assistant replies renders as formatted content, not raw `#` / `` ` `` syntax.
+- New output stays in view without manual scrolling during an active run.
+- Primary dev and demo flows no longer depend on `static-transcripts.ts`.
+
+### M06: Coding Panels
 
 Goal: make agent work inspectable.
 
@@ -318,7 +361,7 @@ Acceptance:
 - File read/write/edit events can be inspected.
 - Diffs are readable before and after file edits.
 
-### M06: Settings and Auth
+### M07: Settings and Auth
 
 Goal: expose core Pi configuration in desktop UI.
 
@@ -338,7 +381,7 @@ Acceptance:
 - Auth failures explain the required next action.
 - Settings persist across restarts.
 
-### M07: Worktrees and Git UX
+### M08: Worktrees and Git UX
 
 Goal: support branch-based coding workflows.
 
@@ -358,7 +401,7 @@ Acceptance:
 - User can inspect changed files and diffs.
 - User can prepare a commit with explicit file selection.
 
-### M08: Extensibility
+### M09: Extensibility
 
 Goal: expose Pi customization through desktop surfaces.
 
@@ -376,7 +419,7 @@ Acceptance:
 - User can see discovered skills/prompts/extensions for a workspace.
 - User can enable, disable, or inspect available customization sources.
 
-### M09: Automation and Advanced Surfaces
+### M10: Automation and Advanced Surfaces
 
 Goal: explore Codex-like advanced desktop workflows after the local core is stable.
 
@@ -424,10 +467,8 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 1 should finish sidebar UX polish and avoid expanding into full project-management functionality.
+Milestone 4 is complete. The next milestone is **M05: Chat Transcript Rendering**: polish the existing live/history transcript (markdown, scroll, layout, fixture removal)—not rebuild session plumbing.
 
-Milestone 2 should focus on the chat shell and composer UX.
+Milestone 6 (**Coding Panels**) should follow M05. Panel work adds inspectable tools, files, and diffs on top of the readable transcript M05 establishes.
 
-Milestone 3.2 is complete. M04 should keep the current custom `LiveSessionState` path and not adopt `@ai-sdk/react` `useChat` for renderer chat state.
-
-Functional sidebar project and chat management belongs in Milestone 4, after the Pi Session MVP creates real session metadata to manage.
+Milestone 3.2 is complete. M04 and M05 should keep the current custom session-state path and not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.

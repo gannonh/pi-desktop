@@ -43,7 +43,7 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 	...overrides,
 });
 
-const createProject = (chats: ChatMetadata[]): ProjectWithChats => ({
+const createProject = (chats: ChatMetadata[], overrides: Partial<ProjectWithChats> = {}): ProjectWithChats => ({
 	id: "project:/tmp/pi-desktop",
 	displayName: "pi-desktop",
 	path: "/tmp/pi-desktop",
@@ -53,6 +53,7 @@ const createProject = (chats: ChatMetadata[]): ProjectWithChats => ({
 	pinned: false,
 	availability: { status: "available" },
 	chats,
+	...overrides,
 });
 
 const renderSidebar = (state: ProjectStateView) =>
@@ -80,7 +81,7 @@ describe("ProjectSidebar", () => {
 		expect(markup).not.toContain('aria-label="New quick-start chat" disabled=""');
 	});
 
-	it("renders project and standalone show-more controls as enabled buttons", () => {
+	it("renders project and standalone show-more controls as enabled toggle buttons", () => {
 		const projectChats = Array.from({ length: 6 }, (_, index) =>
 			createChat({
 				id: `chat:project-${index + 1}`,
@@ -103,10 +104,51 @@ describe("ProjectSidebar", () => {
 			selectedChat: null,
 		});
 
-		const showMoreButtons = [...markup.matchAll(/<button class="project-sidebar__show-more"([^>]*)>Show more/g)];
+		const showMoreButtons = [...markup.matchAll(/<button class="project-sidebar__show-more"([^>]*)>/g)];
 
 		expect(showMoreButtons).toHaveLength(2);
 		expect(showMoreButtons.every((match) => !match[1]?.includes("disabled"))).toBe(true);
+		expect(markup.match(/Show more/g)?.length).toBe(2);
+		expect(markup).toContain('aria-expanded="false"');
+		expect(markup).toContain("project-sidebar__chats-overflow-shell--collapsed");
+		expect(markup).toMatch(
+			/class="project-sidebar__chats-overflow-shell project-sidebar__chats-overflow-shell--collapsed"[^>]*\binert\b/,
+		);
+		expect(markup).toContain("project-sidebar__scroll");
+	});
+
+	it("renders pinned projects in a separate section before regular projects", () => {
+		const pinnedProject = createProject([], {
+			id: "project:/tmp/pinned-work",
+			displayName: "pinned-work",
+			path: "/tmp/pinned-work",
+			pinned: true,
+		});
+		const regularProject = createProject([], {
+			id: "project:/tmp/regular-work",
+			displayName: "regular-work",
+			path: "/tmp/regular-work",
+			pinned: false,
+		});
+		const markup = renderSidebar({
+			projects: [regularProject, pinnedProject],
+			standaloneChats: [],
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		});
+
+		const pinnedHeadingIndex = markup.indexOf(">Pinned<");
+		const pinnedProjectIndex = markup.indexOf(">pinned-work<");
+		const projectsHeadingIndex = markup.indexOf(">Projects<");
+		const regularProjectIndex = markup.indexOf(">regular-work<");
+
+		expect(pinnedHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(markup).toMatch(/>Pinned<.*aria-expanded="true"/s);
+		expect(pinnedHeadingIndex).toBeLessThan(pinnedProjectIndex);
+		expect(pinnedProjectIndex).toBeLessThan(projectsHeadingIndex);
+		expect(projectsHeadingIndex).toBeLessThan(regularProjectIndex);
 	});
 
 	it("keeps chat menu anchors out of chat row layout flow", () => {
@@ -114,6 +156,34 @@ describe("ProjectSidebar", () => {
 
 		expect(styles).toContain(".menu-anchor.project-sidebar__chat-menu-anchor");
 		expect(styles).toContain("position: absolute;");
+	});
+
+	it("aligns project titles with nested chat rows", () => {
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(styles).toContain("--sidebar-project-row-padding: 0.375rem 0.5rem 0.375rem 0;");
+		expect(styles).toContain("padding: var(--sidebar-project-row-padding);");
+		expect(styles).toContain("--sidebar-chat-row-padding: 0.375rem 0.5rem 0.375rem 2rem;");
+	});
+
+	it("uses inline rename fields instead of browser prompts", () => {
+		const source = readFileSync("src/renderer/components/project-sidebar.tsx", "utf8");
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(source).toContain("SidebarInlineRenameField");
+		expect(source).toContain("window.piDesktop.project.rename");
+		expect(source).toContain("window.piDesktop.chat.rename");
+		expect(source).not.toContain("window.prompt");
+		expect(styles).toContain(".project-sidebar__inline-rename");
+	});
+
+	it("allows sidebar menus to escape the scroll container while open", () => {
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(styles).toContain(".project-sidebar__panel--menu-open .project-sidebar__scroll");
+		expect(styles).toMatch(
+			/\.project-sidebar__panel--menu-open \.project-sidebar__scroll\s*\{[^}]*overflow:\s*visible;/s,
+		);
 	});
 
 	it("renders project chat menus for session-backed project chats", () => {
@@ -145,8 +215,13 @@ describe("ProjectSidebar", () => {
 		});
 
 		expect(markup).toContain('class="project-sidebar__project-disclosure"');
-		expect(markup).toContain('aria-expanded="true"');
+		expect(markup).toMatch(
+			/class="project-sidebar__project-disclosure"[^>]*aria-expanded="true"|aria-expanded="true"[^>]*class="project-sidebar__project-disclosure"/,
+		);
 		expect(markup).toContain('aria-label="Collapse pi-desktop"');
+		expect(markup).not.toMatch(
+			/class="project-sidebar__project-row"[^>]*aria-expanded=|aria-expanded=[^>]*class="project-sidebar__project-row"/,
+		);
 	});
 
 	it("declares menu semantics on sidebar disclosure buttons", () => {

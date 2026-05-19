@@ -73,6 +73,56 @@ describe("project state contracts", () => {
 		expect(sortProjects(projects).map((project) => project.displayName)).toEqual(["newer", "older"]);
 	});
 
+	it("sorts projects by latest chat activity when project lastOpenedAt is stale", () => {
+		const store = createEmptyProjectStore();
+		const activeProject = {
+			id: createProjectId("/tmp/pi-desktop"),
+			displayName: "pi-desktop",
+			path: "/tmp/pi-desktop",
+			createdAt: "2026-05-12T08:00:00.000Z",
+			updatedAt: "2026-05-12T08:00:00.000Z",
+			lastOpenedAt: "2026-05-12T08:00:00.000Z",
+			pinned: false,
+			availability: { status: "available" as const },
+		};
+		const idleProject = {
+			id: createProjectId("/tmp/skills"),
+			displayName: "skills",
+			path: "/tmp/skills",
+			createdAt: "2026-05-12T09:00:00.000Z",
+			updatedAt: "2026-05-12T09:00:00.000Z",
+			lastOpenedAt: "2026-05-12T11:00:00.000Z",
+			pinned: false,
+			availability: { status: "available" as const },
+		};
+
+		store.projects = [idleProject, activeProject];
+		store.chatsByProject = {
+			[activeProject.id]: [
+				{
+					id: "chat:active",
+					projectId: activeProject.id,
+					source: "pi-session",
+					sessionId: "pi-desktop:session",
+					sessionPath: "/tmp/pi-desktop/session.jsonl",
+					cwd: activeProject.path,
+					title: "Active work",
+					status: "running",
+					attention: false,
+					createdAt: "2026-05-12T12:00:00.000Z",
+					updatedAt: "2026-05-12T12:00:00.000Z",
+					lastOpenedAt: "2026-05-12T12:00:00.000Z",
+				},
+			],
+			[idleProject.id]: [],
+		};
+
+		expect(createProjectStateView(store).projects.map((project) => project.displayName)).toEqual([
+			"pi-desktop",
+			"skills",
+		]);
+	});
+
 	it("sorts projects with matching recency by display name for stable sidebar order", () => {
 		const projects = [
 			{

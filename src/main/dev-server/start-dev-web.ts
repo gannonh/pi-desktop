@@ -15,7 +15,7 @@ import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
 import { createProjectService } from "../projects/project-service";
 import { createProjectStore } from "../projects/project-store";
-import { createPiSessionLister } from "../sessions/pi-session-index";
+import { createPiSessionLister, readSessionInfoForPath } from "../sessions/pi-session-index";
 import { createLocalDevServer, type LocalDevServer, type LocalDevServerOptions } from "./local-dev-server";
 
 const host = "127.0.0.1";
@@ -87,6 +87,7 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 			openInFinder: unavailableNativeOperation,
 			initializeGitRepository,
 			listProjectSessions: piSessionLister.listProject,
+			readSessionInfoForPath,
 			writeSessionName,
 			forkSession: (sourcePath, targetCwd) => forkSession(sourcePath, targetCwd, env),
 			cloneSession: (sourcePath, targetCwd) => cloneSession(sourcePath, targetCwd, env),

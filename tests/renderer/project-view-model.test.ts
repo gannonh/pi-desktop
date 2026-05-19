@@ -8,6 +8,7 @@ import type {
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
+	toggleAllUnpinnedProjectClosedIds,
 } from "../../src/renderer/projects/project-view-model";
 
 const fixedNow = new Date("2026-05-12T12:00:00.000Z");
@@ -77,7 +78,7 @@ describe("project view model", () => {
 				path: "/Users/gannonhall/dev/pi",
 				selected: true,
 				availability: { status: "available" },
-				children: [{ kind: "empty", label: "No chats" }],
+				chatList: { primary: [{ kind: "empty", label: "No chats" }], overflow: [], toggle: null },
 			},
 		]);
 	});
@@ -94,17 +95,21 @@ describe("project view model", () => {
 			selectedChat: chat,
 		};
 
-		expect(createProjectSidebarRows(view, fixedNow)[0]?.children).toEqual([
-			{
-				kind: "chat",
-				chatId: chat.id,
-				label: "Project home",
-				selected: true,
-				status: "idle",
-				updatedLabel: "2h",
-				needsAttention: false,
-			},
-		]);
+		expect(createProjectSidebarRows(view, fixedNow)[0]?.chatList).toEqual({
+			primary: [
+				{
+					kind: "chat",
+					chatId: chat.id,
+					label: "Project home",
+					selected: true,
+					status: "idle",
+					updatedLabel: "2h",
+					needsAttention: false,
+				},
+			],
+			overflow: [],
+			toggle: null,
+		});
 	});
 
 	it("limits visible chats and adds sidebar metadata", () => {
@@ -126,54 +131,67 @@ describe("project view model", () => {
 			selectedChat: chats[1] ?? null,
 		};
 
-		expect(createProjectSidebarRows(view, fixedNow)[0]?.children).toEqual([
-			{
-				kind: "chat",
-				chatId: "chat:1",
-				label: "First long project chat title",
-				selected: false,
-				status: "idle",
-				updatedLabel: "15min",
-				needsAttention: false,
-			},
-			{
-				kind: "chat",
-				chatId: "chat:2",
-				label: "Second",
-				selected: true,
-				status: "running",
-				updatedLabel: "2h",
-				needsAttention: true,
-			},
-			{
-				kind: "chat",
-				chatId: "chat:3",
-				label: "Third",
-				selected: false,
-				status: "idle",
-				updatedLabel: "1d",
-				needsAttention: false,
-			},
-			{
-				kind: "chat",
-				chatId: "chat:4",
-				label: "Fourth",
-				selected: false,
-				status: "idle",
-				updatedLabel: "3d",
-				needsAttention: false,
-			},
-			{
-				kind: "chat",
-				chatId: "chat:5",
-				label: "Fifth",
-				selected: false,
-				status: "idle",
-				updatedLabel: "30min",
-				needsAttention: false,
-			},
-			{ kind: "show-more", label: "Show more", hiddenCount: 1 },
-		]);
+		expect(createProjectSidebarRows(view, fixedNow)[0]?.chatList).toEqual({
+			primary: [
+				{
+					kind: "chat",
+					chatId: "chat:1",
+					label: "First long project chat title",
+					selected: false,
+					status: "idle",
+					updatedLabel: "15min",
+					needsAttention: false,
+				},
+				{
+					kind: "chat",
+					chatId: "chat:2",
+					label: "Second",
+					selected: true,
+					status: "running",
+					updatedLabel: "2h",
+					needsAttention: true,
+				},
+				{
+					kind: "chat",
+					chatId: "chat:3",
+					label: "Third",
+					selected: false,
+					status: "idle",
+					updatedLabel: "1d",
+					needsAttention: false,
+				},
+				{
+					kind: "chat",
+					chatId: "chat:4",
+					label: "Fourth",
+					selected: false,
+					status: "idle",
+					updatedLabel: "3d",
+					needsAttention: false,
+				},
+				{
+					kind: "chat",
+					chatId: "chat:5",
+					label: "Fifth",
+					selected: false,
+					status: "idle",
+					updatedLabel: "30min",
+					needsAttention: false,
+				},
+			],
+			overflow: [
+				{
+					kind: "chat",
+					chatId: "chat:6",
+					label: "Hidden",
+					selected: false,
+					status: "idle",
+					updatedLabel: "1h",
+					needsAttention: false,
+				},
+			],
+			toggle: { label: "Show more", hiddenCount: 1 },
+		});
 	});
 
 	it("filters project chat rows by failed and attention status", () => {
@@ -190,7 +208,7 @@ describe("project view model", () => {
 			selectedChat: null,
 		};
 
-		expect(createProjectSidebarRows(view, fixedNow, { chatFilter: "attention" })[0]?.children).toEqual([
+		expect(createProjectSidebarRows(view, fixedNow, { chatFilter: "attention" })[0]?.chatList.primary).toEqual([
 			{
 				kind: "chat",
 				chatId: "chat:failed",
@@ -229,9 +247,13 @@ describe("project view model", () => {
 			selectedChat: null,
 		};
 
-		expect(
-			createProjectSidebarRows(view, fixedNow, { expandedProjectIds: new Set([project.id]) })[0]?.children,
-		).toHaveLength(6);
+		const chatList = createProjectSidebarRows(view, fixedNow, {
+			expandedProjectIds: new Set([project.id]),
+		})[0]?.chatList;
+
+		expect(chatList?.primary).toHaveLength(5);
+		expect(chatList?.overflow).toHaveLength(1);
+		expect(chatList?.toggle).toEqual({ label: "Show less", hiddenCount: 1 });
 	});
 
 	it("creates standalone chat rows directly under chats", () => {
@@ -244,17 +266,21 @@ describe("project view model", () => {
 			selectedChat: null,
 		};
 
-		expect(createStandaloneChatSidebarRows(view, fixedNow)).toEqual([
-			{
-				kind: "chat",
-				chatId: "chat:standalone",
-				label: "Would NextJS be good for this app?",
-				selected: false,
-				status: "idle",
-				updatedLabel: "51min",
-				needsAttention: false,
-			},
-		]);
+		expect(createStandaloneChatSidebarRows(view, fixedNow)).toEqual({
+			primary: [
+				{
+					kind: "chat",
+					chatId: "chat:standalone",
+					label: "Would NextJS be good for this app?",
+					selected: false,
+					status: "idle",
+					updatedLabel: "51min",
+					needsAttention: false,
+				},
+			],
+			overflow: [],
+			toggle: null,
+		});
 	});
 
 	it("adds a show-more row when standalone chats exceed the visible limit", () => {
@@ -273,8 +299,7 @@ describe("project view model", () => {
 			selectedChat: null,
 		};
 
-		expect(createStandaloneChatSidebarRows(view, fixedNow).at(-1)).toEqual({
-			kind: "show-more",
+		expect(createStandaloneChatSidebarRows(view, fixedNow).toggle).toEqual({
 			label: "Show more",
 			hiddenCount: 1,
 		});
@@ -296,6 +321,28 @@ describe("project view model", () => {
 			selectedChat: null,
 		};
 
-		expect(createStandaloneChatSidebarRows(view, fixedNow, { expandStandaloneChats: true })).toHaveLength(6);
+		const chatList = createStandaloneChatSidebarRows(view, fixedNow, { expandStandaloneChats: true });
+
+		expect(chatList.primary).toHaveLength(5);
+		expect(chatList.overflow).toHaveLength(1);
+		expect(chatList.toggle).toEqual({ label: "Show less", hiddenCount: 1 });
+	});
+});
+
+describe("toggleAllUnpinnedProjectClosedIds", () => {
+	const pinnedId = "project:pinned";
+	const unpinnedA = "project:unpinned-a";
+	const unpinnedB = "project:unpinned-b";
+
+	it("collapses only unpinned projects while preserving pinned closed state", () => {
+		const next = toggleAllUnpinnedProjectClosedIds(new Set([pinnedId]), [unpinnedA, unpinnedB]);
+
+		expect([...next].sort()).toEqual([pinnedId, unpinnedA, unpinnedB].sort());
+	});
+
+	it("expands only unpinned projects while preserving pinned closed state", () => {
+		const next = toggleAllUnpinnedProjectClosedIds(new Set([pinnedId, unpinnedA, unpinnedB]), [unpinnedA, unpinnedB]);
+
+		expect([...next]).toEqual([pinnedId]);
 	});
 });

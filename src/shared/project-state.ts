@@ -160,19 +160,42 @@ export const createEmptyProjectStore = (): ProjectStore => ({
 
 export const createProjectId = (path: string): string => `project:${path}`;
 
+const getProjectActivityAt = (project: ProjectRecord, chats: readonly Pick<ChatMetadata, "updatedAt">[]): string => {
+	const latestChatActivity = chats.reduce((latest, chat) => (chat.updatedAt > latest ? chat.updatedAt : latest), "");
+
+	return latestChatActivity > project.lastOpenedAt ? latestChatActivity : project.lastOpenedAt;
+};
+
+const compareProjectsByRecency = (
+	left: ProjectRecord,
+	right: ProjectRecord,
+	leftActivityAt: string,
+	rightActivityAt: string,
+): number => {
+	if (left.pinned !== right.pinned) {
+		return left.pinned ? -1 : 1;
+	}
+
+	const recentComparison = rightActivityAt.localeCompare(leftActivityAt);
+	if (recentComparison !== 0) {
+		return recentComparison;
+	}
+
+	return left.displayName.localeCompare(right.displayName);
+};
+
 export const sortProjects = (projects: readonly ProjectRecord[]): ProjectRecord[] =>
-	[...projects].sort((left, right) => {
-		if (left.pinned !== right.pinned) {
-			return left.pinned ? -1 : 1;
-		}
+	[...projects].sort((left, right) => compareProjectsByRecency(left, right, left.lastOpenedAt, right.lastOpenedAt));
 
-		const recentComparison = right.lastOpenedAt.localeCompare(left.lastOpenedAt);
-		if (recentComparison !== 0) {
-			return recentComparison;
-		}
-
-		return left.displayName.localeCompare(right.displayName);
-	});
+export const sortProjectsWithChats = (projects: readonly ProjectWithChats[]): ProjectWithChats[] =>
+	[...projects].sort((left, right) =>
+		compareProjectsByRecency(
+			left,
+			right,
+			getProjectActivityAt(left, left.chats),
+			getProjectActivityAt(right, right.chats),
+		),
+	);
 
 export const sortChats = (chats: readonly ChatMetadata[]): ChatMetadata[] =>
 	[...chats].sort((left, right) => {
@@ -195,10 +218,12 @@ export const sortStandaloneChats = (chats: readonly StandaloneChatMetadata[]): S
 	});
 
 export const createProjectStateView = (store: ProjectStore): ProjectStateView => {
-	const projects = sortProjects(store.projects).map((project) => ({
-		...project,
-		chats: sortChats(store.chatsByProject[project.id] ?? []),
-	}));
+	const projects = sortProjectsWithChats(
+		store.projects.map((project) => ({
+			...project,
+			chats: sortChats(store.chatsByProject[project.id] ?? []),
+		})),
+	);
 	const standaloneChats = sortStandaloneChats(store.standaloneChats);
 	const selectedProject = projects.find((project) => project.id === store.selectedProjectId) ?? null;
 	const selectedChat =

@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,6 +17,8 @@ import {
 	createPiSessionLister,
 	createStandaloneChatFromSessionInfo,
 	getChatTitleFromSessionInfo,
+	readSessionInfoForPath,
+	resolveChatTitleForSession,
 } from "../../src/main/sessions/pi-session-index";
 import { ChatMetadataSchema, createProjectId, StandaloneChatMetadataSchema } from "../../src/shared/project-state";
 
@@ -101,6 +103,47 @@ describe("pi session index", () => {
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", legacyDir);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", outsideDir);
 		expect(onProgress).toHaveBeenLastCalledWith(4, 4);
+	});
+
+	it("reads session info for an exact session path match", async () => {
+		const session = createSessionInfo({ path: "/tmp/pi-sessions/alpha.jsonl" });
+		sessionManagerMock.list.mockResolvedValueOnce([session]);
+
+		await expect(readSessionInfoForPath("/tmp/pi-sessions/alpha.jsonl")).resolves.toEqual(session);
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", dirname("/tmp/pi-sessions/alpha.jsonl"));
+	});
+
+	it("returns null when the session path is not found", async () => {
+		sessionManagerMock.list.mockResolvedValueOnce([createSessionInfo({ path: "/tmp/pi-sessions/other.jsonl" })]);
+
+		await expect(readSessionInfoForPath("/tmp/pi-sessions/missing.jsonl")).resolves.toBeNull();
+	});
+
+	it("looks up sessions by parent directory for a child session file path", async () => {
+		const sessionPath = "/tmp/pi-sessions/project/thread.jsonl";
+		const session = createSessionInfo({ path: sessionPath });
+		sessionManagerMock.list.mockResolvedValueOnce([session]);
+
+		await expect(readSessionInfoForPath(sessionPath)).resolves.toEqual(session);
+		expect(sessionManagerMock.list).toHaveBeenCalledWith("", dirname(sessionPath));
+	});
+
+	it("replaces placeholder chat titles with session-derived titles", () => {
+		expect(resolveChatTitleForSession("New chat", "Started from project")).toBe("Started from project");
+		expect(resolveChatTitleForSession("Untitled session", "First prompt summary")).toBe("First prompt summary");
+		expect(resolveChatTitleForSession("Draft plan", "Started from project")).toBe("Draft plan");
+	});
+
+	it("replaces first-message fallback titles when a generated session name arrives", () => {
+		const session = createSessionInfo({
+			name: "Generated title",
+			firstMessage: "Explain the renderer state",
+		});
+
+		expect(resolveChatTitleForSession("Explain the renderer state", "Generated title", session)).toBe(
+			"Generated title",
+		);
+		expect(resolveChatTitleForSession("Draft plan", "Generated title", session)).toBe("Draft plan");
 	});
 
 	it("uses explicit Pi session names before first message text", () => {
