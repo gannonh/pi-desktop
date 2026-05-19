@@ -26,6 +26,7 @@
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"test:smoke": "pnpm build && playwright test --config playwright.config.ts",
+		"test:smoke:headed": "PI_DESKTOP_SMOKE_HEADED=1 pnpm test:smoke",
 		"check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm test:smoke",
 		"prepare": "husky"
 	},

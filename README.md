@@ -49,6 +49,8 @@ pnpm check
 
 `pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and Electron/web smoke tests.
 
+Smoke tests run headless by default so they do not steal focus while you work. To watch them locally, use `pnpm test:smoke:headed` or set `PI_DESKTOP_SMOKE_HEADED=1`.
+
 ## Package Locally
 
 ```bash

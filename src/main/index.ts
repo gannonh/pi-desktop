@@ -18,11 +18,13 @@ let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
 
 const createWindow = () => {
+	const smokeHeadless = shouldRunSmokeHeadless();
 	const createdWindow = new BrowserWindow({
 		width: 1280,
 		height: 820,
 		minWidth: 960,
 		minHeight: 640,
+		show: !smokeHeadless,
 		frame: false,
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
@@ -75,6 +77,8 @@ const getDesktopChatsPath = () =>
 	resolveDesktopChatsPath({ env: process.env, defaultUserDataDir: app.getPath("userData") });
 
 const shouldUseSmokePiSession = () => !app.isPackaged && process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1";
+
+const shouldRunSmokeHeadless = () => process.env.PI_DESKTOP_SMOKE_HEADLESS === "1";
 
 const openInFinder = async (projectPath: string): Promise<void> => {
 	const result = await shell.openPath(projectPath);
@@ -141,6 +145,10 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 };
 
 app.whenReady().then(() => {
+	if (shouldRunSmokeHeadless() && process.platform === "darwin") {
+		app.dock?.hide();
+	}
+
 	const piSessionLister = createPiSessionLister(process.env);
 	const projectService = createProjectService({
 		store: createProjectStore(getProjectStorePath()),
