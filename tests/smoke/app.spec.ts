@@ -1,4 +1,5 @@
-import { expect, test, _electron as electron, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { launchElectronApp } from "./electron-launch";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -105,7 +106,7 @@ const expectSelectedComposerVisualTokens = async (page: Page) => {
 
 test("shows M04 project and session management controls", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -132,7 +133,7 @@ test("shows M04 project and session management controls", async () => {
 
 test("renders the Milestone 2 global chat start state", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -199,7 +200,7 @@ test("renders the selected project chat start state", async () => {
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -249,7 +250,7 @@ test("streams a Pi session response in the selected project", async () => {
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -303,7 +304,7 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -329,7 +330,7 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 	}
 });
 
-test("renders a static continued chat route with the composer anchored to the bottom", async () => {
+test("renders resumed session history with markdown in the session layout", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
 	const projectId = createProjectId(projectPath);
@@ -348,17 +349,17 @@ test("renders a static continued chat route with the composer anchored to the bo
 			},
 		],
 		selectedProjectId: projectId,
-		selectedChatId: "chat:milestone-01",
+		selectedChatId: "chat:smoke-history",
 		chatsByProject: {
 			[projectId]: [
 				{
-					id: "chat:milestone-01",
+					id: "chat:smoke-history",
 					projectId,
 					source: "draft",
 					sessionId: null,
-					sessionPath: null,
+					sessionPath: "/tmp/smoke-session.jsonl",
 					cwd: projectPath,
-					title: "Execute milestone 01: project home sidebar refinements",
+					title: "Smoke history chat",
 					status: "idle",
 					attention: false,
 					createdAt: now,
@@ -372,23 +373,26 @@ test("renders a static continued chat route with the composer anchored to the bo
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
 			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
 		},
 	});
 
 	try {
 		const window = await app.firstWindow();
 
-		await expect(
-			window.getByRole("heading", { name: "Execute milestone 01: project home sidebar refinements" }),
-		).toBeVisible();
-		await expect(window.getByText("Worked for 7m 10s")).toBeVisible();
-		await expect(window.getByText("Resolved the new open review threads.")).toBeVisible();
-		await expect(window.getByText("land the pr")).toBeVisible();
+		await expect(window.getByTestId("app-shell")).toBeVisible();
+		await expect(window.getByRole("button", { name: /^Smoke history chat/ }).first()).toBeVisible({
+			timeout: 15_000,
+		});
+		await expect(window.getByText("What files are here?")).toBeVisible({ timeout: 20_000 });
+		await expect(window.locator("#app-shell-title")).toHaveText("Smoke history chat");
+		await expect(window.getByRole("heading", { name: "Project overview" })).toBeVisible({ timeout: 15_000 });
+		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
 		await expectComposerNearBottom(window);
 	} finally {
 		await app.close();
@@ -440,7 +444,7 @@ test("renders an empty selected chat as a centered start state before streaming"
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,
@@ -511,7 +515,7 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 	};
 	await mkdir(userDataDir, { recursive: true });
 	await writeFile(path.join(userDataDir, "project-store.json"), `${JSON.stringify(store, null, 2)}\n`, "utf8");
-	const app = await electron.launch({
+	const app = await launchElectronApp({
 		args: ["."],
 		env: {
 			...process.env,

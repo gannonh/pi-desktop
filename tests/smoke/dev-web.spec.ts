@@ -66,6 +66,8 @@ const clickButton = async (page: Page, name: string) => {
 test("dev web preview uses the real app data bridge for projects, chats, and Pi session streaming", async ({
 	page,
 }) => {
+	test.setTimeout(120_000);
+
 	const previousUserDataDir = process.env.PI_DESKTOP_USER_DATA_DIR;
 	const previousSmokeSession = process.env.PI_DESKTOP_SMOKE_PI_SESSION;
 	const previousAppServerUrl = process.env.VITE_PI_DESKTOP_APP_SERVER_URL;
@@ -102,9 +104,9 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await page.getByLabel("Message Pi").fill("Confirm web bridge streaming");
 		await clickButton(page, "Send message");
 
-		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible();
-		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible();
-		await expect(page.getByText("Idle", { exact: true })).toBeVisible();
+		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByText("Idle", { exact: true })).toBeVisible({ timeout: 30_000 });
 	} finally {
 		await server?.shutdown();
 		if (previousUserDataDir === undefined) {

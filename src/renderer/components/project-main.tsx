@@ -1,13 +1,15 @@
-import { createChatShellRoute } from "../chat/chat-view-model";
+import type { ChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
-import type { ProjectStateView } from "@/shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
+import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatShell } from "./chat-shell";
 
 interface ProjectMainProps {
-	state: ProjectStateView;
+	chatShellRoute: ChatShellRoute;
 	statusMessage?: string;
 	session: LiveSessionState;
+	transcriptHydration: TranscriptHydrationState;
+	transcriptScope: { projectId: string | null; chatId: string | null };
 	onProjectState: (result: ProjectStateViewResult) => void;
 	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
@@ -22,15 +24,15 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 });
 
 export function ProjectMain({
-	state,
+	chatShellRoute: route,
 	statusMessage,
 	session,
+	transcriptHydration,
+	transcriptScope,
 	onProjectState,
 	onSubmitPrompt,
 	onAbortSession,
 }: ProjectMainProps) {
-	const route = createChatShellRoute(state);
-
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		try {
 			onProjectState(await action());
@@ -96,6 +98,8 @@ export function ProjectMain({
 				<ChatShell
 					route={route}
 					session={session}
+					hydration={transcriptHydration}
+					scope={transcriptScope}
 					onSubmitPrompt={onSubmitPrompt}
 					onAbortSession={onAbortSession}
 				/>

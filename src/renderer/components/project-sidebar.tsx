@@ -30,17 +30,18 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { type ReactNode, useId, useState } from "react";
+import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
 import {
+	type ChatFilter,
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
-	toggleAllUnpinnedProjectClosedIds,
-	type ChatFilter,
 	type SidebarChatList,
 	type SidebarConcreteChatRow,
 	type SidebarProjectRow,
+	toggleAllUnpinnedProjectClosedIds,
 } from "../projects/project-view-model";
 import {
 	MenuAnchor,
@@ -111,7 +112,7 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		chatFilter,
 		expandStandaloneChats: standaloneExpanded,
 	});
-	const chromeTitle = state.selectedChat?.title;
+	const chromeTitle = state.selectedChat?.title ? formatChatDisplayLabel(state.selectedChat.title) : undefined;
 	const menuOpen = menu !== null && !collapsed;
 
 	const toggleCollapsed = () => {

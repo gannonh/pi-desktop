@@ -2,7 +2,6 @@ import { GitBranch, GitPullRequest, Workflow } from "lucide-react";
 import type { ChatShellRoute } from "../chat/chat-view-model";
 import type { LiveSessionState } from "../session/session-state";
 import { Composer } from "./composer";
-import { LiveSessionTranscript } from "./live-session-transcript";
 
 type StartRoute = Extract<
 	ChatShellRoute,
@@ -32,7 +31,6 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 		session.status === "retrying" ||
 		session.status === "aborting";
 	const abortable = Boolean(session.sessionId) && session.status !== "starting";
-	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 
 	return (
 		<section className="chat-shell chat-shell--start" aria-labelledby="chat-shell-title">
@@ -69,7 +67,6 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 					);
 				})}
 			</section>
-			{hasLiveSession ? <LiveSessionTranscript session={session} /> : null}
 		</section>
 	);
 }

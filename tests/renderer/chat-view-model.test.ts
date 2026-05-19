@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createChatShellRoute } from "../../src/renderer/chat/chat-view-model";
-import type { getStaticTranscript } from "../../src/renderer/chat/static-transcripts";
+import { createChatShellRoute, resolveChatSessionHeader } from "../../src/renderer/chat/chat-view-model";
+import { createInitialSessionState } from "../../src/renderer/session/session-state";
 import type {
 	ChatMetadata,
 	ProjectStateView,
@@ -61,8 +61,8 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 	...overrides,
 });
 
-const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt">) =>
-	`${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
+const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt" | "cwd">) =>
+	`${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
 
 const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
 	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
@@ -71,21 +71,7 @@ const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShell
 	}
 };
 
-const assertStaticTranscriptFixturesAreReadonly = (transcript: NonNullable<ReturnType<typeof getStaticTranscript>>) => {
-	// @ts-expect-error Transcript summaries are fixture data and must stay readonly.
-	transcript.assistantSummary.push("Changed summary");
-	// @ts-expect-error Transcript card lists are fixture data and must stay readonly.
-	transcript.cards.push({ title: "Changed", subtitle: "Changed", actionLabel: "Open" });
-
-	const card = transcript.cards[0];
-	if (card) {
-		// @ts-expect-error Transcript card fields are fixture data and must stay readonly.
-		card.title = "Changed";
-	}
-};
-
 void assertRouteFixturesAreReadonly;
-void assertStaticTranscriptFixturesAreReadonly;
 
 describe("createChatShellRoute", () => {
 	it("creates a global start route when no project is selected", () => {
@@ -217,46 +203,11 @@ describe("createChatShellRoute", () => {
 		});
 	});
 
-	it("creates a continued chat route when a static transcript fixture exists", () => {
-		const chat = createChat();
-		const project = createProject({ chats: [chat] });
-		const view: ProjectStateView = {
-			projects: [project],
-			standaloneChats: [],
-			selectedProjectId: project.id,
-			selectedChatId: chat.id,
-			selectedProject: project,
-			selectedChat: chat,
-		};
-
-		const route = createChatShellRoute(view);
-
-		expect(route.kind).toBe("continued-chat");
-		if (route.kind !== "continued-chat") {
-			throw new Error("Expected a continued chat route");
-		}
-		expect(route.title).toBe("Execute milestone 01: project home sidebar refinements");
-		expect(route.projectId).toBe(project.id);
-		expect(route.chatId).toBe(chat.id);
-		expect(route.composer.projectSelectorLabel).toBe("pi-desktop");
-		expect(route.composer.branchLabel).toBeUndefined();
-		expect(route.composer.runtimeAvailable).toBe(true);
-		expect(route.composer.disabledReason).toBe("");
-		expect(route.composer.projectId).toBe(project.id);
-		expect(route.resumeLabel).toBe("Start session");
-		expect(route.metadataLabel).toBe(createMetadataLabel(chat));
-		expect(route.transcript.workedLabel).toBe("Worked for 7m 10s");
-		expect(route.transcript.cards[0]).toEqual({
-			title: "SKILL.md",
-			subtitle: "Document · MD",
-			actionLabel: "Open",
-		});
-	});
-
-	it("creates an empty chat route when selected chat metadata has no fixture", () => {
+	it("creates an empty chat route for a selected project chat", () => {
 		const chat = createChat({
 			id: "chat:no-fixture",
 			title: "Static metadata only",
+			sessionPath: "/tmp/session.jsonl",
 		});
 		const project = createProject({ chats: [chat] });
 		const view: ProjectStateView = {
@@ -287,8 +238,54 @@ describe("createChatShellRoute", () => {
 				"Unblock my most recent open PR",
 				"Connect your favorite apps to Pi",
 			],
-			resumeLabel: "Start session",
+			resumeLabel: "Resume session",
 			metadataLabel: createMetadataLabel(chat),
 		});
+	});
+});
+
+describe("resolveChatSessionHeader", () => {
+	it("returns chat title and session labels for an active session layout", () => {
+		const chat = createChat({
+			title: "Milestone transcript",
+			sessionPath: "/tmp/session.jsonl",
+			status: "running",
+		});
+		const project = createProject({ chats: [chat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		};
+		const route = createChatShellRoute(view);
+		const session = {
+			...createInitialSessionState(),
+			status: "running" as const,
+			messages: [{ id: "assistant:1", role: "assistant" as const, content: "Live response", streaming: true }],
+		};
+
+		expect(resolveChatSessionHeader(route, session)).toEqual({
+			title: "Milestone transcript",
+			resumeLabel: "Resume session",
+			metadataLabel: createMetadataLabel(chat),
+		});
+	});
+
+	it("returns null for centered start layout drafts", () => {
+		const chat = createChat({ sessionPath: null, status: "idle" });
+		const project = createProject({ chats: [chat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		};
+
+		expect(resolveChatSessionHeader(createChatShellRoute(view), createInitialSessionState())).toBeNull();
 	});
 });

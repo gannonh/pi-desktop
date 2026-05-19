@@ -1,7 +1,37 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { PiSessionHistoryPayload } from "../../shared/pi-session";
+import type { LoadPiSessionHistoryInput } from "./pi-session-history";
 import type { PiSdkSession } from "./pi-session-runtime";
 
 const assistantContent = "I can see this project. Pi session streaming is connected.";
+
+const smokeHistoryAssistantContent = `# Project overview
+
+\`\`\`ts
+const connected = true;
+\`\`\`
+
+I can see this project. Pi session streaming is connected.`;
+
+export const loadSmokePiSessionHistory = (_input: LoadPiSessionHistoryInput): PiSessionHistoryPayload => ({
+	sessionId: "smoke-session",
+	status: "idle",
+	statusLabel: "Idle",
+	messages: [
+		{
+			id: "user:smoke-1",
+			role: "user",
+			content: "What files are here?",
+			streaming: false,
+		},
+		{
+			id: "assistant:smoke-1",
+			role: "assistant",
+			content: smokeHistoryAssistantContent,
+			streaming: false,
+		},
+	],
+});
 
 export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSession }> => {
 	const listeners = new Set<(event: AgentSessionEvent) => void>();

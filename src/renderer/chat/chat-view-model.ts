@@ -1,5 +1,6 @@
+import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
-import { getStaticTranscript, type StaticTranscript } from "./static-transcripts";
+import type { LiveSessionState } from "../session/session-state";
 
 export interface ComposerContext {
 	projectSelectorLabel: string;
@@ -15,6 +16,12 @@ interface SelectedChatSessionLabels {
 	resumeLabel: "Start session" | "Resume session";
 	metadataLabel: string;
 }
+
+export type ChatSessionHeader = {
+	title: string;
+	resumeLabel?: SelectedChatSessionLabels["resumeLabel"];
+	metadataLabel?: string;
+};
 
 export type ChatSuggestion =
 	| "Review my recent commits for correctness risks and maintainability concerns"
@@ -51,14 +58,6 @@ export type ChatShellRoute =
 			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
 	  } & SelectedChatSessionLabels)
-	| ({
-			kind: "continued-chat";
-			title: string;
-			projectId: string;
-			chatId: string;
-			composer: ComposerContext;
-			transcript: StaticTranscript;
-	  } & SelectedChatSessionLabels)
 	| {
 			kind: "unavailable-project";
 			title: string;
@@ -89,9 +88,10 @@ const createSelectedChatSessionLabels = (chat: {
 	sessionPath: string | null;
 	status: ChatStatus;
 	updatedAt: string;
+	cwd: string;
 }): SelectedChatSessionLabels => ({
 	resumeLabel: chat.sessionPath ? "Resume session" : "Start session",
-	metadataLabel: `${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
+	metadataLabel: `${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
 });
 
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
@@ -102,7 +102,7 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		if (selectedChat) {
 			return {
 				kind: "standalone-start",
-				title: selectedChat.title,
+				title: formatChatDisplayLabel(selectedChat.title),
 				chatId: selectedChat.id,
 				composer: createComposerContext(selectedChat.cwd, {
 					runtimeAvailable: true,
@@ -155,28 +155,50 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		};
 	}
 
-	const transcript = getStaticTranscript(selectedChat.id);
-
-	if (!transcript) {
-		return {
-			kind: "empty-chat",
-			title: selectedChat.title,
-			startTitle: `What should we build in ${selectedProject.displayName}?`,
-			projectId: selectedProject.id,
-			chatId: selectedChat.id,
-			composer,
-			suggestions,
-			...createSelectedChatSessionLabels(selectedChat),
-		};
-	}
-
 	return {
-		kind: "continued-chat",
-		title: selectedChat.title,
+		kind: "empty-chat",
+		title: formatChatDisplayLabel(selectedChat.title),
+		startTitle: `What should we build in ${selectedProject.displayName}?`,
 		projectId: selectedProject.id,
 		chatId: selectedChat.id,
 		composer,
-		transcript,
+		suggestions,
 		...createSelectedChatSessionLabels(selectedChat),
 	};
+};
+
+export const hasLiveSession = (session: LiveSessionState) =>
+	session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
+
+export const isResumableChatRoute = (route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>): boolean =>
+	(route.kind === "empty-chat" || route.kind === "standalone-start") && route.resumeLabel === "Resume session";
+
+export const shouldUseChatStartLayout = (
+	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>,
+	session: LiveSessionState,
+): boolean =>
+	!hasLiveSession(session) &&
+	!isResumableChatRoute(route) &&
+	(route.kind === "global-start" ||
+		route.kind === "project-start" ||
+		route.kind === "standalone-start" ||
+		(route.kind === "empty-chat" && route.resumeLabel === "Start session"));
+
+export const resolveChatSessionHeader = (
+	route: ChatShellRoute,
+	session: LiveSessionState,
+): ChatSessionHeader | null => {
+	if (route.kind === "unavailable-project" || shouldUseChatStartLayout(route, session)) {
+		return null;
+	}
+
+	if (route.kind === "empty-chat" || route.kind === "standalone-start") {
+		return {
+			title: route.title,
+			resumeLabel: route.resumeLabel,
+			metadataLabel: route.metadataLabel,
+		};
+	}
+
+	return { title: route.title };
 };

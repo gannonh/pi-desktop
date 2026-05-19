@@ -7,7 +7,7 @@ import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
 import { branchSession, cloneSession, forkSession, writeSessionName } from "./pi-session/pi-session-file-actions";
-import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
+import { createSmokePiAgentSession, loadSmokePiSessionHistory } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
@@ -18,11 +18,13 @@ let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
 
 const createWindow = () => {
+	const smokeHeadless = shouldRunSmokeHeadless();
 	const createdWindow = new BrowserWindow({
 		width: 1280,
 		height: 820,
 		minWidth: 960,
 		minHeight: 640,
+		show: !smokeHeadless,
 		frame: false,
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
@@ -76,6 +78,8 @@ const getDesktopChatsPath = () =>
 
 const shouldUseSmokePiSession = () => !app.isPackaged && process.env.PI_DESKTOP_SMOKE_PI_SESSION === "1";
 
+const shouldRunSmokeHeadless = () => process.env.PI_DESKTOP_SMOKE_HEADLESS === "1";
+
 const openInFinder = async (projectPath: string): Promise<void> => {
 	const result = await shell.openPath(projectPath);
 	if (result) {
@@ -93,6 +97,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		now: () => new Date().toISOString(),
 		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
+		loadSessionHistory: shouldUseSmokePiSession() ? loadSmokePiSessionHistory : undefined,
 	});
 	appBackend = backend;
 
@@ -140,6 +145,10 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 };
 
 app.whenReady().then(() => {
+	if (shouldRunSmokeHeadless() && process.platform === "darwin") {
+		app.dock?.hide();
+	}
+
 	const piSessionLister = createPiSessionLister(process.env);
 	const projectService = createProjectService({
 		store: createProjectStore(getProjectStorePath()),
