@@ -544,6 +544,7 @@ function ProjectSidebarChatList({
 							.filter(Boolean)
 							.join(" ")}
 						aria-hidden={!expanded}
+						inert={!expanded || inertWhenHidden ? true : undefined}
 					>
 						<div className="project-sidebar__chats-overflow">
 							{chatList.overflow

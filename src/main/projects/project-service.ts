@@ -208,7 +208,7 @@ const refreshSessionChats = async (
 						id: ui.chatId,
 						title:
 							ui.sessionId && activeSessionIds.has(ui.sessionId)
-								? resolveChatTitleForSession(existingUiChat?.title, base.title)
+								? resolveChatTitleForSession(existingUiChat?.title, base.title, session)
 								: base.title,
 					}
 				: base;
@@ -261,7 +261,7 @@ const refreshSessionChats = async (
 					id: ui.chatId,
 					title:
 						ui.sessionId && activeSessionIds.has(ui.sessionId)
-							? resolveChatTitleForSession(existingUiChat?.title, base.title)
+							? resolveChatTitleForSession(existingUiChat?.title, base.title, session)
 							: base.title,
 				}
 			: base;
@@ -414,7 +414,7 @@ const syncChatTitleForSession = async (
 					return chat;
 				}
 
-				const title = resolveChatTitleForSession(chat.title, sessionTitle);
+				const title = resolveChatTitleForSession(chat.title, sessionTitle, session);
 				if (title === chat.title) {
 					return chat;
 				}
@@ -430,7 +430,7 @@ const syncChatTitleForSession = async (
 				return chat;
 			}
 
-			const title = resolveChatTitleForSession(chat.title, sessionTitle);
+			const title = resolveChatTitleForSession(chat.title, sessionTitle, session);
 			if (title === chat.title) {
 				return chat;
 			}

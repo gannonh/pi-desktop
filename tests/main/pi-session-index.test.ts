@@ -110,6 +110,18 @@ describe("pi session index", () => {
 		expect(resolveChatTitleForSession("Draft plan", "Started from project")).toBe("Draft plan");
 	});
 
+	it("replaces first-message fallback titles when a generated session name arrives", () => {
+		const session = createSessionInfo({
+			name: "Generated title",
+			firstMessage: "Explain the renderer state",
+		});
+
+		expect(resolveChatTitleForSession("Explain the renderer state", "Generated title", session)).toBe(
+			"Generated title",
+		);
+		expect(resolveChatTitleForSession("Draft plan", "Generated title", session)).toBe("Draft plan");
+	});
+
 	it("uses explicit Pi session names before first message text", () => {
 		const session = createSessionInfo({
 			name: "  Renderer state plan  ",

@@ -87,10 +87,21 @@ export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister 
 	listProject: (cwd, onProgress) => listSessionsMatchingCwd(resolvePiSessionFilesRoot(env), cwd, onProgress),
 });
 
-export const resolveChatTitleForSession = (existingTitle: string | undefined, sessionTitle: string): string => {
+export const resolveChatTitleForSession = (
+	existingTitle: string | undefined,
+	sessionTitle: string,
+	session?: Pick<SessionInfo, "name" | "firstMessage" | "messageCount" | "allMessagesText">,
+): string => {
 	const trimmed = existingTitle?.trim();
 	if (!trimmed || placeholderChatTitles.has(trimmed)) {
 		return sessionTitle;
+	}
+
+	if (session?.name?.trim()) {
+		const firstMessageFallbackTitle = getChatTitleFromSessionInfo({ ...session, name: undefined } as SessionInfo);
+		if (trimmed === firstMessageFallbackTitle && sessionTitle !== firstMessageFallbackTitle) {
+			return sessionTitle;
+		}
 	}
 
 	return trimmed;

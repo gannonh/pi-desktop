@@ -111,6 +111,9 @@ describe("ProjectSidebar", () => {
 		expect(markup.match(/Show more/g)?.length).toBe(2);
 		expect(markup).toContain('aria-expanded="false"');
 		expect(markup).toContain("project-sidebar__chats-overflow-shell--collapsed");
+		expect(markup).toMatch(
+			/class="project-sidebar__chats-overflow-shell project-sidebar__chats-overflow-shell--collapsed"[^>]*\binert\b/,
+		);
 		expect(markup).toContain("project-sidebar__scroll");
 	});
 
