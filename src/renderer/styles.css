@@ -377,12 +377,22 @@ button {
 }
 
 .chat-shell__scroll {
-	display: flex;
 	min-height: 0;
 	flex: 1;
-	justify-content: center;
 	overflow: auto;
-	padding: 1.5rem 1rem;
+	padding: 1.5rem 1rem 0;
+}
+
+.chat-shell__scroll-inner {
+	display: flex;
+	width: 100%;
+	min-height: 100%;
+	box-sizing: border-box;
+	justify-content: center;
+}
+
+.chat-shell--session .chat-shell__scroll-inner {
+	padding-bottom: 2.25rem;
 }
 
 .chat-shell__jump-to-latest {
@@ -1789,6 +1799,10 @@ button {
 
 	.chat-shell__scroll {
 		padding-inline: 0;
+	}
+
+	.chat-shell--session .chat-shell__scroll-inner {
+		padding-bottom: 2.25rem;
 	}
 
 	.chat-shell__bottom-composer {

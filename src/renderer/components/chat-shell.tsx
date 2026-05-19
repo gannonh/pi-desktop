@@ -77,7 +77,9 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 			</header>
 			<div className="chat-shell__scroll-wrap">
 				<div className="chat-shell__scroll" ref={scrollRef} onScroll={onScroll}>
-					<TranscriptPanel session={session} hydration={hydration} scope={scope} expectHistory={expectHistory} />
+					<div className="chat-shell__scroll-inner">
+						<TranscriptPanel session={session} hydration={hydration} scope={scope} expectHistory={expectHistory} />
+					</div>
 				</div>
 				{showJumpToLatest ? (
 					<button className="chat-shell__jump-to-latest" type="button" onClick={scrollToBottom}>
