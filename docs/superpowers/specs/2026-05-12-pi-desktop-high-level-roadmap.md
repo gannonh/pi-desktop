@@ -326,9 +326,9 @@ Deliverables:
 - Loading and empty states while history hydrates (avoid flashing “No messages yet” on resumed chats).
 - Readability pass: typography, spacing, message grouping, and calmer status/error placement.
 - Retire the Milestone 2 static transcript fixture from product paths (`static-transcripts.ts` / `continued-chat` mock), keeping smoke coverage on real history where practical.
-- Light inline treatment for tool and bash rows (collapsible or monospace blocks) without building M06 panels yet.
+- Light inline treatment for tool and bash rows (collapsible or monospace blocks) without building M07 panels yet.
 
-Deferred to M06 (Coding Panels):
+Deferred to M07 (Coding Panels):
 
 - Tool timeline, dedicated tool result renderer, file preview, patch/diff panels, and artifact-style file cards.
 - Rich structured transcript parts beyond what the flat `LiveSessionState` message list needs for readable chat.
@@ -341,7 +341,29 @@ Acceptance:
 - New output stays in view without manual scrolling during an active run.
 - Primary dev and demo flows no longer depend on `static-transcripts.ts`.
 
-### M06: Coding Panels
+### M06: Composer
+
+Goal: wire the chat composer from visual shell to full session input control.
+
+Deliverables:
+
+- Functional project/workspace selector in the composer.
+- Model and thinking/mode controls backed by the Pi runtime.
+- Reliable prompt submission from start state and session transcript layouts.
+- Abort control during active runs with correct enabled/disabled transitions.
+- Follow-up and steering message paths where the Pi SDK exposes them.
+- Runtime-unavailable and auth-blocked disabled states with visible reasons.
+- Coherent composer placement between centered start state and bottom session bar.
+
+Acceptance:
+
+- User can change project context from the composer without leaving the chat.
+- User can select model and thinking level and see it reflected in the active session.
+- User can send prompts and follow-ups from the same composer in resumed chats.
+- User can abort an active run from the composer.
+- Composer explains why send is disabled when runtime or auth blocks submission.
+
+### M07: Coding Panels
 
 Goal: make agent work inspectable.
 
@@ -361,7 +383,7 @@ Acceptance:
 - File read/write/edit events can be inspected.
 - Diffs are readable before and after file edits.
 
-### M07: Settings and Auth
+### M08: Settings and Auth
 
 Goal: expose core Pi configuration in desktop UI.
 
@@ -381,7 +403,7 @@ Acceptance:
 - Auth failures explain the required next action.
 - Settings persist across restarts.
 
-### M08: Worktrees and Git UX
+### M09: Worktrees and Git UX
 
 Goal: support branch-based coding workflows.
 
@@ -401,7 +423,7 @@ Acceptance:
 - User can inspect changed files and diffs.
 - User can prepare a commit with explicit file selection.
 
-### M09: Extensibility
+### M10: Extensibility
 
 Goal: expose Pi customization through desktop surfaces.
 
@@ -419,7 +441,7 @@ Acceptance:
 - User can see discovered skills/prompts/extensions for a workspace.
 - User can enable, disable, or inspect available customization sources.
 
-### M10: Automation and Advanced Surfaces
+### M11: Automation and Advanced Surfaces
 
 Goal: explore Codex-like advanced desktop workflows after the local core is stable.
 
@@ -467,8 +489,8 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 5 is complete. The next milestone is **M06: Coding Panels**: tool timeline, file preview, diff panels, and structured tool output on top of the readable transcript M05 established.
+Milestone 5 is complete. The next milestone is **M06: Composer**: wire project, model, and session input controls from the Milestone 2 shell through the Pi runtime for real prompts, follow-ups, abort, and disabled-state handling.
 
-Milestone 4 and M05 keep the custom `LiveSessionState` path. Panel work adds inspectable tools, files, and diffs on top of the readable transcript M05 establishes.
+After M06, **M07: Coding Panels** adds tool timeline, file preview, diff panels, and structured tool output on top of the readable transcript M05 established.
 
-Milestone 3.2 is complete. M04 and M05 should keep the current custom session-state path and not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.
+Milestone 3.2 is complete. M04 through M07 keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.
