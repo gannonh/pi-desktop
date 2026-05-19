@@ -11,9 +11,9 @@ describe("formatChatDisplayLabel", () => {
 	});
 
 	it("formats truncated skill invocation titles", () => {
-		expect(formatChatDisplayLabel('‹skill name="kata-progress" location="/Users/gannonhall/.agents/skills/kata-p')).toBe(
-			"Skill: kata-progress",
-		);
+		expect(
+			formatChatDisplayLabel('‹skill name="kata-progress" location="/Users/gannonhall/.agents/skills/kata-p'),
+		).toBe("Skill: kata-progress");
 	});
 
 	it("formats compact skill labels", () => {
