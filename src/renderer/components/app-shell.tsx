@@ -2,6 +2,7 @@ import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import { useState } from "react";
 import type { LiveSessionState } from "../session/session-state";
+import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { Badge } from "./ui/badge";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
@@ -10,6 +11,8 @@ interface AppShellProps {
 	state: ProjectStateView;
 	statusMessage?: string;
 	session: LiveSessionState;
+	transcriptHydration: TranscriptHydrationState;
+	transcriptScope: { projectId: string | null; chatId: string | null };
 	onProjectState: (result: ProjectStateViewResult) => void;
 	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
@@ -19,6 +22,8 @@ export function AppShell({
 	state,
 	statusMessage,
 	session,
+	transcriptHydration,
+	transcriptScope,
 	onProjectState,
 	onSubmitPrompt,
 	onAbortSession,
@@ -56,6 +61,8 @@ export function AppShell({
 					state={state}
 					statusMessage={statusMessage}
 					session={session}
+					transcriptHydration={transcriptHydration}
+					transcriptScope={transcriptScope}
 					onProjectState={onProjectState}
 					onSubmitPrompt={onSubmitPrompt}
 					onAbortSession={onAbortSession}

@@ -2,12 +2,15 @@ import { createChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
+import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatShell } from "./chat-shell";
 
 interface ProjectMainProps {
 	state: ProjectStateView;
 	statusMessage?: string;
 	session: LiveSessionState;
+	transcriptHydration: TranscriptHydrationState;
+	transcriptScope: { projectId: string | null; chatId: string | null };
 	onProjectState: (result: ProjectStateViewResult) => void;
 	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
 	onAbortSession: () => void;
@@ -25,6 +28,8 @@ export function ProjectMain({
 	state,
 	statusMessage,
 	session,
+	transcriptHydration,
+	transcriptScope,
 	onProjectState,
 	onSubmitPrompt,
 	onAbortSession,
@@ -96,6 +101,8 @@ export function ProjectMain({
 				<ChatShell
 					route={route}
 					session={session}
+					hydration={transcriptHydration}
+					scope={transcriptScope}
 					onSubmitPrompt={onSubmitPrompt}
 					onAbortSession={onAbortSession}
 				/>

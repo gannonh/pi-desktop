@@ -1,5 +1,4 @@
 import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
-import { getStaticTranscript, type StaticTranscript } from "./static-transcripts";
 
 export interface ComposerContext {
 	projectSelectorLabel: string;
@@ -50,14 +49,6 @@ export type ChatShellRoute =
 			chatId: string;
 			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
-	  } & SelectedChatSessionLabels)
-	| ({
-			kind: "continued-chat";
-			title: string;
-			projectId: string;
-			chatId: string;
-			composer: ComposerContext;
-			transcript: StaticTranscript;
 	  } & SelectedChatSessionLabels)
 	| {
 			kind: "unavailable-project";
@@ -155,28 +146,14 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		};
 	}
 
-	const transcript = getStaticTranscript(selectedChat.id);
-
-	if (!transcript) {
-		return {
-			kind: "empty-chat",
-			title: selectedChat.title,
-			startTitle: `What should we build in ${selectedProject.displayName}?`,
-			projectId: selectedProject.id,
-			chatId: selectedChat.id,
-			composer,
-			suggestions,
-			...createSelectedChatSessionLabels(selectedChat),
-		};
-	}
-
 	return {
-		kind: "continued-chat",
+		kind: "empty-chat",
 		title: selectedChat.title,
+		startTitle: `What should we build in ${selectedProject.displayName}?`,
 		projectId: selectedProject.id,
 		chatId: selectedChat.id,
 		composer,
-		transcript,
+		suggestions,
 		...createSelectedChatSessionLabels(selectedChat),
 	};
 };

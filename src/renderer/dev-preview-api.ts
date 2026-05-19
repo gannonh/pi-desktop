@@ -100,12 +100,12 @@ const store: ProjectStore = {
 	selectedChatId: null,
 	chatsByProject: {
 		[piDesktop.id]: [
-			chat(
-				piDesktop.id,
-				"chat:milestone-01",
-				"Execute milestone 01: project home sidebar refinements",
-				hoursAgo(15),
-			),
+			{
+				...chat(piDesktop.id, "chat:resumed-preview", "Resumed session preview", hoursAgo(15)),
+				source: "pi-session",
+				sessionId: "preview-session:resumed",
+				sessionPath: "/tmp/pi-desktop-preview/resumed-session.jsonl",
+			},
 			chat(piDesktop.id, "chat:project-home", "Plan project home milestone", hoursAgo(18)),
 			chat(piDesktop.id, "chat:subagent", "Subagent-driven-development planning notes", minutesAgo(18 * 60 + 5)),
 			chat(piDesktop.id, "chat:license", "Add MIT license", minutesAgo(18 * 60 + 15)),
@@ -506,7 +506,20 @@ export const installDevPreviewApi = () => {
 						sessionId,
 						status: "idle",
 						statusLabel: "Idle",
-						messages: [],
+						messages: [
+							{
+								id: "user:preview-1",
+								role: "user",
+								content: "Summarize this workspace.",
+								streaming: false,
+							},
+							{
+								id: "assistant:preview-1",
+								role: "assistant",
+								content: "# Workspace summary\n\nPreview history is loaded with markdown rendering.",
+								streaming: false,
+							},
+						],
 					},
 				};
 			},

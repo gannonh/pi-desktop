@@ -298,7 +298,7 @@ Acceptance:
 - Sidebar management actions fail visibly when filesystem or runtime state blocks them.
 - Status: implemented with Pi `SessionManager` metadata as the source of persisted sessions, desktop JSON metadata for UI state, and custom `LiveSessionState` retained for live streaming.
 
-### M05: Chat Transcript Rendering
+✅ ### M05: Chat Transcript Rendering
 
 Goal: bring the main chat transcript to production quality for real Pi sessions. The plumbing is largely in place; this milestone is mostly fit, finish, and readable output—not greenfield transcript infrastructure.
 
@@ -316,7 +316,7 @@ Goal: bring the main chat transcript to production quality for real Pi sessions.
 - The transcript does not auto-scroll to the latest message during streaming or after history load.
 - Layout is inconsistent: resumed chats use the session shell, but first prompts from a draft can still use the centered start layout with the transcript below suggestions.
 - Tool/bash/compaction content is flattened to strings in the adapter; rows are readable but not structured for later panel work.
-- `static-transcripts.ts` remains only for the `chat:milestone-01` smoke fixture, not real sidebar chats.
+- ~~`static-transcripts.ts` remains only for the `chat:milestone-01` smoke fixture~~ (removed in M05).
 
 Deliverables:
 
@@ -467,8 +467,8 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 4 is complete. The next milestone is **M05: Chat Transcript Rendering**: polish the existing live/history transcript (markdown, scroll, layout, fixture removal)—not rebuild session plumbing.
+Milestone 5 is complete. The next milestone is **M06: Coding Panels**: tool timeline, file preview, diff panels, and structured tool output on top of the readable transcript M05 established.
 
-Milestone 6 (**Coding Panels**) should follow M05. Panel work adds inspectable tools, files, and diffs on top of the readable transcript M05 establishes.
+Milestone 4 and M05 keep the custom `LiveSessionState` path. Panel work adds inspectable tools, files, and diffs on top of the readable transcript M05 establishes.
 
 Milestone 3.2 is complete. M04 and M05 should keep the current custom session-state path and not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.

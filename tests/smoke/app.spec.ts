@@ -329,7 +329,7 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 	}
 });
 
-test("renders a static continued chat route with the composer anchored to the bottom", async () => {
+test("renders resumed session history with markdown in the session layout", async () => {
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-existing-project-"));
 	const projectId = createProjectId(projectPath);
@@ -348,17 +348,17 @@ test("renders a static continued chat route with the composer anchored to the bo
 			},
 		],
 		selectedProjectId: projectId,
-		selectedChatId: "chat:milestone-01",
+		selectedChatId: "chat:smoke-history",
 		chatsByProject: {
 			[projectId]: [
 				{
-					id: "chat:milestone-01",
+					id: "chat:smoke-history",
 					projectId,
 					source: "draft",
 					sessionId: null,
-					sessionPath: null,
+					sessionPath: "/tmp/smoke-session.jsonl",
 					cwd: projectPath,
-					title: "Execute milestone 01: project home sidebar refinements",
+					title: "Smoke history chat",
 					status: "idle",
 					attention: false,
 					createdAt: now,
@@ -377,18 +377,21 @@ test("renders a static continued chat route with the composer anchored to the bo
 		env: {
 			...process.env,
 			PI_DESKTOP_USER_DATA_DIR: userDataDir,
+			PI_DESKTOP_SMOKE_PI_SESSION: "1",
 		},
 	});
 
 	try {
 		const window = await app.firstWindow();
 
-		await expect(
-			window.getByRole("heading", { name: "Execute milestone 01: project home sidebar refinements" }),
-		).toBeVisible();
-		await expect(window.getByText("Worked for 7m 10s")).toBeVisible();
-		await expect(window.getByText("Resolved the new open review threads.")).toBeVisible();
-		await expect(window.getByText("land the pr")).toBeVisible();
+		await expect(window.getByTestId("app-shell")).toBeVisible();
+		await expect(window.getByRole("button", { name: /^Smoke history chat/ }).first()).toBeVisible({
+			timeout: 15_000,
+		});
+		await expect(window.getByText("What files are here?")).toBeVisible({ timeout: 20_000 });
+		await expect(window.locator("#chat-shell-title")).toHaveText("Smoke history chat");
+		await expect(window.getByRole("heading", { name: "Project overview" })).toBeVisible({ timeout: 15_000 });
+		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
 		await expectComposerNearBottom(window);
 	} finally {
 		await app.close();

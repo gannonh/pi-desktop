@@ -20,6 +20,13 @@ import {
 	reduceSessionEvent,
 	type LiveSessionState,
 } from "./session/session-state";
+import {
+	createErrorTranscriptHydration,
+	createIdleTranscriptHydration,
+	createLoadedTranscriptHydration,
+	createLoadingTranscriptHydration,
+	type TranscriptHydrationState,
+} from "./session/transcript-hydration";
 
 type StatusMessage = {
 	source: "project" | "startup";
@@ -116,6 +123,9 @@ const toSessionStatusLabel = (status: LiveSessionState["status"]): string => {
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
+	const [transcriptHydration, setTranscriptHydration] = useState<TranscriptHydrationState>(() =>
+		createIdleTranscriptHydration(),
+	);
 	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
 	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
@@ -413,8 +423,10 @@ export function App() {
 	useEffect(() => {
 		const selectedChat = projectState.selectedChat;
 		if (!selectedChat?.sessionPath || !selectedChatId) {
+			setTranscriptHydration(createIdleTranscriptHydration());
 			return;
 		}
+
 		const selectedScope = { projectId: selectedProjectId, chatId: selectedChatId };
 		if (pendingStartRequestRef.current && isSessionScopeSelected(pendingStartRequestRef.current, selectedScope)) {
 			return;
@@ -423,11 +435,13 @@ export function App() {
 			isSessionScopeSelected({ projectId: activeSessionProjectId, chatId: activeSessionChatId }, selectedScope) &&
 			acceptedSessionIdRef.current
 		) {
+			setTranscriptHydration(createLoadedTranscriptHydration(selectedScope));
 			return;
 		}
 
 		const requestId = nextHistoryRequestIdRef.current + 1;
 		nextHistoryRequestIdRef.current = requestId;
+		setTranscriptHydration(createLoadingTranscriptHydration(selectedScope));
 		let cancelled = false;
 
 		const loadHistory = async () => {
@@ -445,6 +459,7 @@ export function App() {
 			}
 
 			if (!result.ok) {
+				setTranscriptHydration(createErrorTranscriptHydration(selectedScope, result.error.message));
 				setStatusMessage({ source: "project", message: result.error.message });
 				return;
 			}
@@ -457,6 +472,7 @@ export function App() {
 			setActiveSessionProjectId(selectedProjectId);
 			setActiveSessionChatId(selectedChatId);
 			setSessionState(applySessionHistoryResult(result.data));
+			setTranscriptHydration(createLoadedTranscriptHydration(selectedScope));
 		};
 
 		void loadHistory();
@@ -546,6 +562,8 @@ export function App() {
 					? sessionState
 					: createInitialSessionState()
 			}
+			transcriptHydration={transcriptHydration}
+			transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
 			onProjectState={applyProjectStateViewResult}
 			onSubmitPrompt={submitPrompt}
 			onAbortSession={abortSession}

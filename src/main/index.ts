@@ -7,7 +7,7 @@ import { err } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
 import { branchSession, cloneSession, forkSession, writeSessionName } from "./pi-session/pi-session-file-actions";
-import { createSmokePiAgentSession } from "./pi-session/smoke-pi-session";
+import { createSmokePiAgentSession, loadSmokePiSessionHistory } from "./pi-session/smoke-pi-session";
 import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
@@ -93,6 +93,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		now: () => new Date().toISOString(),
 		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
+		loadSessionHistory: shouldUseSmokePiSession() ? loadSmokePiSessionHistory : undefined,
 	});
 	appBackend = backend;
 
