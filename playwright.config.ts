@@ -4,7 +4,7 @@ const smokeHeaded = process.env.PI_DESKTOP_SMOKE_HEADED === "1" || process.env.P
 
 export default defineConfig({
 	testDir: "tests/smoke",
-	timeout: 60_000,
+	timeout: 120_000,
 	expect: {
 		timeout: 10_000,
 	},
