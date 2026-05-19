@@ -212,10 +212,12 @@ describe("ProjectSidebar", () => {
 		});
 
 		expect(markup).toContain('class="project-sidebar__project-disclosure"');
-		expect(markup).toContain('aria-expanded="true"');
-		expect(markup).toContain('aria-label="Collapse pi-desktop"');
 		expect(markup).toMatch(
-			/class="project-sidebar__project-row"[^>]*aria-expanded="true"|aria-expanded="true"[^>]*class="project-sidebar__project-row"/,
+			/class="project-sidebar__project-disclosure"[^>]*aria-expanded="true"|aria-expanded="true"[^>]*class="project-sidebar__project-disclosure"/,
+		);
+		expect(markup).toContain('aria-label="Collapse pi-desktop"');
+		expect(markup).not.toMatch(
+			/class="project-sidebar__project-row"[^>]*aria-expanded=|aria-expanded=[^>]*class="project-sidebar__project-row"/,
 		);
 	});
 

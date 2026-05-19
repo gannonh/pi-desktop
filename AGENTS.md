@@ -53,3 +53,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 - For docs-only changes, run a targeted review for broken links, stale claims, and duplicated README-style setup details.
 - For code changes, add or run the smallest deterministic checks that prove the changed behavior.
 - Once project scripts exist, prefer the repo `check` command for final verification.
+
+## Git
+
+- Never use `git push --no-verify` or other hook-skipping flags unless the user explicitly requests it. If a pre-push hook fails, fix the underlying issue and push again.

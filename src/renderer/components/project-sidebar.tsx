@@ -676,10 +676,7 @@ function ProjectSidebarProject({
 							.join(" ")}
 						type="button"
 						title={row.path}
-						aria-expanded={!closed}
 						onClick={() => {
-							onToggleOpen(row.projectId);
-
 							void runProjectAction(() =>
 								window.piDesktop.project.select({
 									projectId: row.projectId,
