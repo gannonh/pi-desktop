@@ -50,6 +50,7 @@ import {
 	MenuSeparator,
 	MenuSurface,
 } from "./menu";
+import { SidebarInlineRenameField } from "./sidebar-inline-rename";
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;
@@ -585,6 +586,7 @@ function ProjectSidebarProject({
 	runProjectAction,
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
+	const [isRenaming, setIsRenaming] = useState(false);
 	const unavailable = row.availability.status !== "available";
 
 	const removeProject = () => {
@@ -600,13 +602,17 @@ function ProjectSidebarProject({
 		);
 	};
 
-	const renameProject = () => {
-		const displayName = window.prompt("Rename project", row.label)?.trim();
-		if (!displayName) {
-			setMenu(null);
-			return;
-		}
+	const startRenameProject = () => {
+		setMenu(null);
+		setIsRenaming(true);
+	};
 
+	const cancelRenameProject = () => {
+		setIsRenaming(false);
+	};
+
+	const commitRenameProject = (displayName: string) => {
+		setIsRenaming(false);
 		void runProjectAction(() =>
 			window.piDesktop.project.rename({
 				projectId: row.projectId,
@@ -639,22 +645,49 @@ function ProjectSidebarProject({
 						<FolderOpen className="project-sidebar__icon" />
 					)}
 				</button>
-				<button
-					className={["project-sidebar__project-row", unavailable ? "project-sidebar__project-row--warning" : ""]
-						.filter(Boolean)
-						.join(" ")}
-					type="button"
-					title={row.path}
-					onClick={() => {
-						void runProjectAction(() =>
-							window.piDesktop.project.select({
-								projectId: row.projectId,
-							}),
-						);
-					}}
-				>
-					<span className="project-sidebar__project-name">{row.label}</span>
-				</button>
+				{isRenaming ? (
+					<div
+						className={[
+							"project-sidebar__project-row",
+							"project-sidebar__project-row--renaming",
+							unavailable ? "project-sidebar__project-row--warning" : "",
+						]
+							.filter(Boolean)
+							.join(" ")}
+						title={row.path}
+					>
+						<SidebarInlineRenameField
+							className="project-sidebar__inline-rename"
+							value={row.label}
+							label={`Rename ${row.label}`}
+							onCancel={cancelRenameProject}
+							onCommit={commitRenameProject}
+						/>
+					</div>
+				) : (
+					<button
+						className={[
+							"project-sidebar__project-row",
+							unavailable ? "project-sidebar__project-row--warning" : "",
+						]
+							.filter(Boolean)
+							.join(" ")}
+						type="button"
+						title={row.path}
+						aria-expanded={!closed}
+						onClick={() => {
+							onToggleOpen(row.projectId);
+
+							void runProjectAction(() =>
+								window.piDesktop.project.select({
+									projectId: row.projectId,
+								}),
+							);
+						}}
+					>
+						<span className="project-sidebar__project-name">{row.label}</span>
+					</button>
+				)}
 				<button
 					className="project-sidebar__project-menu-button"
 					type="button"
@@ -708,7 +741,7 @@ function ProjectSidebarProject({
 									}),
 								)
 							}
-							onRename={renameProject}
+							onRename={startRenameProject}
 							onRemove={removeProject}
 						/>
 					) : null}
@@ -764,17 +797,22 @@ function ProjectChatRow({
 	runProjectAction,
 }: ProjectChatRowProps) {
 	const chatMenuId = useId();
+	const [isRenaming, setIsRenaming] = useState(false);
 	const chatMenuOpen = menu?.kind === "chat" && menu.projectId === projectId && menu.chatId === child.chatId;
 	const sessionActionsDisabled = sessionPath === null;
 	const sessionActionTitle = sessionActionsDisabled ? "Chat does not have a Pi session file yet" : undefined;
 
-	const renameChat = () => {
-		const title = window.prompt("Rename chat", child.label)?.trim();
-		if (!title) {
-			setMenu(null);
-			return;
-		}
+	const startRenameChat = () => {
+		setMenu(null);
+		setIsRenaming(true);
+	};
 
+	const cancelRenameChat = () => {
+		setIsRenaming(false);
+	};
+
+	const commitRenameChat = (title: string) => {
+		setIsRenaming(false);
 		void runProjectAction(() =>
 			window.piDesktop.chat.rename({
 				projectId,
@@ -786,38 +824,59 @@ function ProjectChatRow({
 
 	return (
 		<div className="project-sidebar__chat-row-wrap">
-			<button
-				className={[
-					"project-sidebar__chat-row",
-					"project-sidebar__chat-row--with-menu",
-					child.selected ? "project-sidebar__chat-row--selected" : "",
-					child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
-				]
-					.filter(Boolean)
-					.join(" ")}
-				type="button"
-				tabIndex={closed ? -1 : undefined}
-				onClick={() =>
-					void runProjectAction(() =>
-						window.piDesktop.chat.select({
-							projectId,
-							chatId: child.chatId,
-						}),
-					)
-				}
-			>
-				<span className="project-sidebar__chat-label">{child.label}</span>
-				{child.needsAttention ? (
-					<span className="project-sidebar__attention-dot" />
-				) : child.status === "failed" ? (
-					<X className="project-sidebar__chat-failed-icon" />
-				) : (
-					<span className="project-sidebar__chat-trailing">
-						<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
-						<Archive className="project-sidebar__chat-archive-icon" aria-hidden="true" />
-					</span>
-				)}
-			</button>
+			{isRenaming ? (
+				<div
+					className={[
+						"project-sidebar__chat-row",
+						"project-sidebar__chat-row--renaming",
+						child.selected ? "project-sidebar__chat-row--selected" : "",
+						child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+					]
+						.filter(Boolean)
+						.join(" ")}
+				>
+					<SidebarInlineRenameField
+						className="project-sidebar__inline-rename"
+						value={child.label}
+						label={`Rename ${child.label}`}
+						onCancel={cancelRenameChat}
+						onCommit={commitRenameChat}
+					/>
+				</div>
+			) : (
+				<button
+					className={[
+						"project-sidebar__chat-row",
+						"project-sidebar__chat-row--with-menu",
+						child.selected ? "project-sidebar__chat-row--selected" : "",
+						child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+					]
+						.filter(Boolean)
+						.join(" ")}
+					type="button"
+					tabIndex={closed ? -1 : undefined}
+					onClick={() =>
+						void runProjectAction(() =>
+							window.piDesktop.chat.select({
+								projectId,
+								chatId: child.chatId,
+							}),
+						)
+					}
+				>
+					<span className="project-sidebar__chat-label">{child.label}</span>
+					{child.needsAttention ? (
+						<span className="project-sidebar__attention-dot" />
+					) : child.status === "failed" ? (
+						<X className="project-sidebar__chat-failed-icon" />
+					) : (
+						<span className="project-sidebar__chat-trailing">
+							<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+							<Archive className="project-sidebar__chat-archive-icon" aria-hidden="true" />
+						</span>
+					)}
+				</button>
+			)}
 			<MenuAnchor className="project-sidebar__chat-menu-anchor">
 				<button
 					className="project-sidebar__chat-menu-button"
@@ -842,7 +901,7 @@ function ProjectChatRow({
 						id={chatMenuId}
 						sessionActionsDisabled={sessionActionsDisabled}
 						disabledTitle={sessionActionTitle}
-						onRename={renameChat}
+						onRename={startRenameChat}
 						onFork={() =>
 							runProjectAction(() =>
 								window.piDesktop.chat.fork({

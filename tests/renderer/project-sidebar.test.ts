@@ -155,6 +155,34 @@ describe("ProjectSidebar", () => {
 		expect(styles).toContain("position: absolute;");
 	});
 
+	it("aligns project titles with nested chat rows", () => {
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(styles).toContain("--sidebar-project-row-padding: 0.375rem 0.5rem 0.375rem 0;");
+		expect(styles).toContain("padding: var(--sidebar-project-row-padding);");
+		expect(styles).toContain("--sidebar-chat-row-padding: 0.375rem 0.5rem 0.375rem 2rem;");
+	});
+
+	it("uses inline rename fields instead of browser prompts", () => {
+		const source = readFileSync("src/renderer/components/project-sidebar.tsx", "utf8");
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(source).toContain("SidebarInlineRenameField");
+		expect(source).toContain("window.piDesktop.project.rename");
+		expect(source).toContain("window.piDesktop.chat.rename");
+		expect(source).not.toContain("window.prompt");
+		expect(styles).toContain(".project-sidebar__inline-rename");
+	});
+
+	it("allows sidebar menus to escape the scroll container while open", () => {
+		const styles = readFileSync("src/renderer/styles.css", "utf8");
+
+		expect(styles).toContain(".project-sidebar__panel--menu-open .project-sidebar__scroll");
+		expect(styles).toMatch(
+			/\.project-sidebar__panel--menu-open \.project-sidebar__scroll\s*\{[^}]*overflow:\s*visible;/s,
+		);
+	});
+
 	it("renders project chat menus for session-backed project chats", () => {
 		const chat = createChat();
 		const project = createProject([chat]);
@@ -186,6 +214,9 @@ describe("ProjectSidebar", () => {
 		expect(markup).toContain('class="project-sidebar__project-disclosure"');
 		expect(markup).toContain('aria-expanded="true"');
 		expect(markup).toContain('aria-label="Collapse pi-desktop"');
+		expect(markup).toMatch(
+			/class="project-sidebar__project-row"[^>]*aria-expanded="true"|aria-expanded="true"[^>]*class="project-sidebar__project-row"/,
+		);
 	});
 
 	it("declares menu semantics on sidebar disclosure buttons", () => {

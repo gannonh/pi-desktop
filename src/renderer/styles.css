@@ -102,6 +102,7 @@
 	--sidebar-top-action-gap: 0.25rem;
 	--sidebar-projects-padding: 0 0.5rem 0.75rem;
 	--sidebar-row-padding: 0.375rem 0.5rem;
+	--sidebar-project-row-padding: 0.375rem 0.5rem 0.375rem 0;
 	--sidebar-chat-row-padding: 0.375rem 0.5rem 0.375rem 2rem;
 	--sidebar-chat-list-padding: 0.125rem 0 0.25rem;
 	--sidebar-row-gap: 0.5rem;
@@ -962,6 +963,10 @@ button {
 	overflow: visible;
 }
 
+.project-sidebar__panel--menu-open .project-sidebar__scroll {
+	overflow: visible;
+}
+
 .project-sidebar__scroll {
 	flex: 1;
 	min-height: 0;
@@ -1207,8 +1212,36 @@ button {
 	min-width: 0;
 	gap: var(--sidebar-row-gap);
 	border-radius: var(--radius-control);
-	padding: var(--sidebar-row-padding);
+	padding: var(--sidebar-project-row-padding);
 	font-size: var(--type-body);
+}
+
+.project-sidebar__project-row--renaming,
+.project-sidebar__chat-row--renaming {
+	cursor: text;
+}
+
+.project-sidebar__project-row--renaming:hover,
+.project-sidebar__chat-row--renaming:hover {
+	background: transparent;
+	color: inherit;
+}
+
+.project-sidebar__inline-rename {
+	width: 100%;
+	min-width: 0;
+	border: 1px solid var(--color-ring);
+	border-radius: calc(var(--radius-control) - 0.125rem);
+	background: var(--color-background);
+	padding: 0.125rem 0.25rem;
+	color: inherit;
+	font: inherit;
+	line-height: 1.2;
+}
+
+.project-sidebar__inline-rename:focus {
+	outline: 1px solid var(--color-ring);
+	outline-offset: 1px;
 }
 
 .project-sidebar__chat-row--selected {
