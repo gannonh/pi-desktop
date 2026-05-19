@@ -36,6 +36,7 @@ import type { ProjectStateView } from "../../shared/project-state";
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
+	toggleAllUnpinnedProjectClosedIds,
 	type ChatFilter,
 	type SidebarChatList,
 	type SidebarConcreteChatRow,
@@ -143,11 +144,12 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 	const toggleAllProjectsOpen = () => {
 		setMenu(null);
 		setProjectsCollapsed(false);
-		setClosedProjectIds((current) => {
-			const projectIds = unpinnedRows.map((row) => row.projectId);
-			const hasOpenProject = projectIds.some((projectId) => !current.has(projectId));
-			return hasOpenProject ? new Set(projectIds) : new Set();
-		});
+		setClosedProjectIds((current) =>
+			toggleAllUnpinnedProjectClosedIds(
+				current,
+				unpinnedRows.map((row) => row.projectId),
+			),
+		);
 	};
 
 	const hasOpenProject = unpinnedRows.some((row) => !closedProjectIds.has(row.projectId));

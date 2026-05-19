@@ -172,3 +172,23 @@ export const createStandaloneChatSidebarRows = (
 
 	return createChatList(chats, selectedChatId, now, options.expandStandaloneChats ?? false);
 };
+
+export const toggleAllUnpinnedProjectClosedIds = (
+	closedProjectIds: ReadonlySet<string>,
+	unpinnedProjectIds: readonly string[],
+): Set<string> => {
+	const hasOpenUnpinnedProject = unpinnedProjectIds.some((projectId) => !closedProjectIds.has(projectId));
+	const next = new Set(closedProjectIds);
+
+	if (hasOpenUnpinnedProject) {
+		for (const projectId of unpinnedProjectIds) {
+			next.add(projectId);
+		}
+		return next;
+	}
+
+	for (const projectId of unpinnedProjectIds) {
+		next.delete(projectId);
+	}
+	return next;
+};

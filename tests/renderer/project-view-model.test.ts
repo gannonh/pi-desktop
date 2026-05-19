@@ -8,6 +8,7 @@ import type {
 import {
 	createProjectSidebarRows,
 	createStandaloneChatSidebarRows,
+	toggleAllUnpinnedProjectClosedIds,
 } from "../../src/renderer/projects/project-view-model";
 
 const fixedNow = new Date("2026-05-12T12:00:00.000Z");
@@ -325,5 +326,26 @@ describe("project view model", () => {
 		expect(chatList.primary).toHaveLength(5);
 		expect(chatList.overflow).toHaveLength(1);
 		expect(chatList.toggle).toEqual({ label: "Show less", hiddenCount: 1 });
+	});
+});
+
+describe("toggleAllUnpinnedProjectClosedIds", () => {
+	const pinnedId = "project:pinned";
+	const unpinnedA = "project:unpinned-a";
+	const unpinnedB = "project:unpinned-b";
+
+	it("collapses only unpinned projects while preserving pinned closed state", () => {
+		const next = toggleAllUnpinnedProjectClosedIds(new Set([pinnedId]), [unpinnedA, unpinnedB]);
+
+		expect([...next].sort()).toEqual([pinnedId, unpinnedA, unpinnedB].sort());
+	});
+
+	it("expands only unpinned projects while preserving pinned closed state", () => {
+		const next = toggleAllUnpinnedProjectClosedIds(
+			new Set([pinnedId, unpinnedA, unpinnedB]),
+			[unpinnedA, unpinnedB],
+		);
+
+		expect([...next]).toEqual([pinnedId]);
 	});
 });
