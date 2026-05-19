@@ -43,7 +43,7 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 	...overrides,
 });
 
-const createProject = (chats: ChatMetadata[]): ProjectWithChats => ({
+const createProject = (chats: ChatMetadata[], overrides: Partial<ProjectWithChats> = {}): ProjectWithChats => ({
 	id: "project:/tmp/pi-desktop",
 	displayName: "pi-desktop",
 	path: "/tmp/pi-desktop",
@@ -53,6 +53,7 @@ const createProject = (chats: ChatMetadata[]): ProjectWithChats => ({
 	pinned: false,
 	availability: { status: "available" },
 	chats,
+	...overrides,
 });
 
 const renderSidebar = (state: ProjectStateView) =>
@@ -111,6 +112,40 @@ describe("ProjectSidebar", () => {
 		expect(markup).toContain('aria-expanded="false"');
 		expect(markup).toContain("project-sidebar__chats-overflow-shell--collapsed");
 		expect(markup).toContain("project-sidebar__scroll");
+	});
+
+	it("renders pinned projects in a separate section before regular projects", () => {
+		const pinnedProject = createProject([], {
+			id: "project:/tmp/pinned-work",
+			displayName: "pinned-work",
+			path: "/tmp/pinned-work",
+			pinned: true,
+		});
+		const regularProject = createProject([], {
+			id: "project:/tmp/regular-work",
+			displayName: "regular-work",
+			path: "/tmp/regular-work",
+			pinned: false,
+		});
+		const markup = renderSidebar({
+			projects: [regularProject, pinnedProject],
+			standaloneChats: [],
+			selectedProjectId: null,
+			selectedChatId: null,
+			selectedProject: null,
+			selectedChat: null,
+		});
+
+		const pinnedHeadingIndex = markup.indexOf(">Pinned<");
+		const pinnedProjectIndex = markup.indexOf(">pinned-work<");
+		const projectsHeadingIndex = markup.indexOf(">Projects<");
+		const regularProjectIndex = markup.indexOf(">regular-work<");
+
+		expect(pinnedHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(markup).toMatch(/>Pinned<.*aria-expanded="true"/s);
+		expect(pinnedHeadingIndex).toBeLessThan(pinnedProjectIndex);
+		expect(pinnedProjectIndex).toBeLessThan(projectsHeadingIndex);
+		expect(projectsHeadingIndex).toBeLessThan(regularProjectIndex);
 	});
 
 	it("keeps chat menu anchors out of chat row layout flow", () => {
