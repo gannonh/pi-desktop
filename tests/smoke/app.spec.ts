@@ -354,7 +354,7 @@ test("renders resumed session history with markdown in the session layout", asyn
 				{
 					id: "chat:smoke-history",
 					projectId,
-					source: "draft",
+					source: "pi-session",
 					sessionId: null,
 					sessionPath: "/tmp/smoke-session.jsonl",
 					cwd: projectPath,

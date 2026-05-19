@@ -17,6 +17,18 @@ describe("MessageContent", () => {
 		expect(markup).not.toContain("# Project overview");
 	});
 
+	it("strips event handlers and javascript URLs from assistant markdown in SSR", () => {
+		const markup = renderToStaticMarkup(
+			createElement(MessageContent, {
+				role: "assistant",
+				content: '<img src=x onerror="alert(1)"><a href="javascript:alert(1)">link</a>',
+			}),
+		);
+
+		expect(markup).not.toContain("onerror");
+		expect(markup).not.toContain("javascript:");
+	});
+
 	it("strips unsafe script tags from assistant markdown", () => {
 		const markup = renderToStaticMarkup(
 			createElement(MessageContent, {

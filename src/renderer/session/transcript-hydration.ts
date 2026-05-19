@@ -5,16 +5,15 @@ export type TranscriptHydrationScope = {
 
 export type TranscriptHydrationStatus = "idle" | "loading" | "loaded" | "error";
 
-export type TranscriptHydrationState = {
-	scope: TranscriptHydrationScope;
-	status: TranscriptHydrationStatus;
-	errorMessage: string;
-};
+export type TranscriptHydrationState =
+	| { status: "idle"; scope: { projectId: null; chatId: null } }
+	| { status: "loading"; scope: TranscriptHydrationScope }
+	| { status: "loaded"; scope: TranscriptHydrationScope }
+	| { status: "error"; scope: TranscriptHydrationScope; errorMessage: string };
 
 export const createIdleTranscriptHydration = (): TranscriptHydrationState => ({
 	scope: { projectId: null, chatId: null },
 	status: "idle",
-	errorMessage: "",
 });
 
 export const isTranscriptHydrationForScope = (
@@ -25,13 +24,11 @@ export const isTranscriptHydrationForScope = (
 export const createLoadingTranscriptHydration = (scope: TranscriptHydrationScope): TranscriptHydrationState => ({
 	scope,
 	status: "loading",
-	errorMessage: "",
 });
 
 export const createLoadedTranscriptHydration = (scope: TranscriptHydrationScope): TranscriptHydrationState => ({
 	scope,
 	status: "loaded",
-	errorMessage: "",
 });
 
 export const createErrorTranscriptHydration = (

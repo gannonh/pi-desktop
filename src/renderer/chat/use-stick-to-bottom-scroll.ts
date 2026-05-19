@@ -12,6 +12,7 @@ export const isNearScrollBottom = (
 export type StickToBottomScrollTrigger = {
 	messageCount: number;
 	streamingMessageCount: number;
+	lastMessageKey: string;
 	sessionStatus: string;
 	hydrationStatus: string;
 };
@@ -43,7 +44,7 @@ export const useStickToBottomScroll = (trigger: StickToBottomScrollTrigger) => {
 		setShowJumpToLatest(!pinned);
 	}, []);
 
-	const scrollTriggerKey = `${trigger.messageCount}:${trigger.streamingMessageCount}:${trigger.sessionStatus}:${trigger.hydrationStatus}`;
+	const scrollTriggerKey = `${trigger.messageCount}:${trigger.streamingMessageCount}:${trigger.lastMessageKey}:${trigger.sessionStatus}:${trigger.hydrationStatus}`;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scrollTriggerKey encodes transcript changes that should re-pin scroll.
 	useLayoutEffect(() => {

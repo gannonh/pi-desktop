@@ -1,4 +1,4 @@
-const skillInvocationPattern = /[<‹]skill\s+name="([^"]+)"/i;
+const skillInvocationPattern = /^\s*[<‹]skill\s+name="([^"]+)"/i;
 const skillCompactPattern = /^\[skill\]\s*([^\s:\]]+)/i;
 
 export const formatChatDisplayLabel = (title: string): string => {

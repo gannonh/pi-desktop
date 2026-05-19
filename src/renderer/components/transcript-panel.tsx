@@ -1,4 +1,5 @@
 import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { hasLiveSession } from "../chat/chat-view-model";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { isTranscriptHydrationForScope } from "../session/transcript-hydration";
 import type { LiveSessionState } from "../session/session-state";
@@ -13,6 +14,11 @@ interface TranscriptPanelProps {
 
 export function TranscriptPanel({ session, hydration, scope, expectHistory }: TranscriptPanelProps) {
 	const hydrationForScope = isTranscriptHydrationForScope(hydration, scope);
+	const liveSessionActive = hasLiveSession(session);
+
+	if (liveSessionActive) {
+		return <LiveSessionTranscript session={session} />;
+	}
 
 	if (expectHistory && hydrationForScope && hydration.status === "loading") {
 		return (
@@ -32,12 +38,6 @@ export function TranscriptPanel({ session, hydration, scope, expectHistory }: Tr
 				</p>
 			</section>
 		);
-	}
-
-	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
-
-	if (hasLiveSession) {
-		return <LiveSessionTranscript session={session} />;
 	}
 
 	return (

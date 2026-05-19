@@ -29,6 +29,7 @@ describe("useStickToBottomScroll", () => {
 			initialProps: {
 				messageCount: 1,
 				streamingMessageCount: 0,
+				lastMessageKey: "msg:1:0:5",
 				sessionStatus: "running",
 				hydrationStatus: "loaded",
 			},
@@ -39,6 +40,44 @@ describe("useStickToBottomScroll", () => {
 			rerender({
 				messageCount: 2,
 				streamingMessageCount: 1,
+				lastMessageKey: "msg:2:1:12",
+				sessionStatus: "running",
+				hydrationStatus: "loaded",
+			});
+		});
+
+		expect(scrollTop).toBe(400);
+	});
+
+	it("scrolls to the bottom when the last message content grows during streaming", () => {
+		const element = document.createElement("div");
+		Object.defineProperty(element, "scrollHeight", { value: 400, configurable: true });
+		Object.defineProperty(element, "clientHeight", { value: 200, configurable: true });
+		let scrollTop = 0;
+		Object.defineProperty(element, "scrollTop", {
+			get: () => scrollTop,
+			set: (value: number) => {
+				scrollTop = value;
+			},
+			configurable: true,
+		});
+
+		const { result, rerender } = renderHook((props) => useStickToBottomScroll(props), {
+			initialProps: {
+				messageCount: 1,
+				streamingMessageCount: 1,
+				lastMessageKey: "assistant:1:1:3",
+				sessionStatus: "running",
+				hydrationStatus: "loaded",
+			},
+		});
+
+		result.current.scrollRef.current = element;
+		act(() => {
+			rerender({
+				messageCount: 1,
+				streamingMessageCount: 1,
+				lastMessageKey: "assistant:1:1:24",
 				sessionStatus: "running",
 				hydrationStatus: "loaded",
 			});
@@ -61,6 +100,7 @@ describe("useStickToBottomScroll", () => {
 			useStickToBottomScroll({
 				messageCount: 1,
 				streamingMessageCount: 0,
+				lastMessageKey: "msg:1:0:5",
 				sessionStatus: "idle",
 				hydrationStatus: "loaded",
 			}),

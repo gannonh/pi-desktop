@@ -24,10 +24,15 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 	const abortable = Boolean(session.sessionId) && session.status !== "starting";
 	const expectHistory = isResumableChatRoute(route);
 	const streamingMessageCount = session.messages.filter((message) => message.streaming).length;
+	const lastMessage = session.messages.at(-1);
+	const lastMessageKey = lastMessage
+		? `${lastMessage.id}:${lastMessage.streaming ? 1 : 0}:${lastMessage.content.length}`
+		: "none";
 
 	const { scrollRef, showJumpToLatest, scrollToBottom, onScroll } = useStickToBottomScroll({
 		messageCount: session.messages.length,
 		streamingMessageCount,
+		lastMessageKey,
 		sessionStatus: session.status,
 		hydrationStatus: hydration.status,
 	});

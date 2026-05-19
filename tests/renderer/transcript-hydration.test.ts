@@ -22,6 +22,10 @@ describe("transcript hydration", () => {
 	it("creates idle and error states", () => {
 		const scope = { projectId: null, chatId: null };
 		expect(createIdleTranscriptHydration().status).toBe("idle");
-		expect(createErrorTranscriptHydration(scope, "Failed").errorMessage).toBe("Failed");
+		const error = createErrorTranscriptHydration(scope, "Failed");
+		expect(error.status).toBe("error");
+		if (error.status === "error") {
+			expect(error.errorMessage).toBe("Failed");
+		}
 	});
 });

@@ -167,7 +167,7 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 	};
 };
 
-const hasLiveSession = (session: LiveSessionState) =>
+export const hasLiveSession = (session: LiveSessionState) =>
 	session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 
 export const isResumableChatRoute = (route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>): boolean =>

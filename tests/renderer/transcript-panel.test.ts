@@ -12,6 +12,24 @@ import {
 const scope = { projectId: "project:one", chatId: "chat:one" };
 
 describe("TranscriptPanel", () => {
+	it("renders the live transcript while history hydrates when the session already has output", () => {
+		const markup = renderToStaticMarkup(
+			createElement(TranscriptPanel, {
+				session: {
+					...createInitialSessionState(),
+					status: "running",
+					messages: [{ id: "assistant:1", role: "assistant", content: "Working…", streaming: true }],
+				},
+				hydration: createLoadingTranscriptHydration(scope),
+				scope,
+				expectHistory: true,
+			}),
+		);
+
+		expect(markup).toContain("Pi session transcript");
+		expect(markup).not.toContain("Loading conversation");
+	});
+
 	it("renders a loading placeholder while history hydrates", () => {
 		const markup = renderToStaticMarkup(
 			createElement(TranscriptPanel, {

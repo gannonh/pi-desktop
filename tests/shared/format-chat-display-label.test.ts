@@ -24,6 +24,12 @@ describe("formatChatDisplayLabel", () => {
 		expect(formatChatDisplayLabel("Plan project home milestone")).toBe("Plan project home milestone");
 	});
 
+	it("does not relabel titles that only mention a skill tag later in the string", () => {
+		expect(formatChatDisplayLabel('Notes about <skill name="kata-progress"> work')).toBe(
+			'Notes about <skill name="kata-progress"> work',
+		);
+	});
+
 	it("does not double-format skill labels", () => {
 		expect(formatChatDisplayLabel("Skill: kata-progress")).toBe("Skill: kata-progress");
 	});

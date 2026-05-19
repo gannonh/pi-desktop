@@ -75,7 +75,7 @@ export function AppShell({
 				</header>
 
 				<ProjectMain
-					state={state}
+					chatShellRoute={route}
 					statusMessage={statusMessage}
 					session={session}
 					transcriptHydration={transcriptHydration}

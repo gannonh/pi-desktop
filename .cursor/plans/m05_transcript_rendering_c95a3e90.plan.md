@@ -9,7 +9,7 @@ todos:
     content: Route sessionPath and active chats through chat-shell--session; simplify ChatStartState
     status: completed
   - id: markdown
-    content: Add react-markdown + GFM + sanitize; MessageContent component + styles
+    content: Add marked + DOMPurify; MessageContent component + styles
     status: completed
   - id: autoscroll
     content: Implement useStickToBottomScroll on chat-shell__scroll with jump-to-latest
@@ -111,7 +111,7 @@ flowchart LR
 
 **Approach:**
 
-1. Add dependencies: `react-markdown`, `remark-gfm`, `rehype-sanitize` (no markdown lib in [`package.json`](package.json) today; `pi-web-ui` uses Lit `markdown-block`—not reusable in React renderer).
+1. Add dependencies: `marked`, `dompurify` (no markdown lib in [`package.json`](package.json) today; `pi-web-ui` uses Lit `markdown-block`—not reusable in React renderer).
 2. New component: `src/renderer/components/message-content.tsx` (or `markdown-message-content.tsx`):
    - Props: `content`, `streaming`, `variant: 'assistant' | 'user' | 'tool' | 'system'`
    - **Assistant:** full GFM markdown + sanitize; preserve streaming cursor after rendered block.
