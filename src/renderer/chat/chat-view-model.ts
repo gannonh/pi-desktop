@@ -1,4 +1,5 @@
 import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
+import type { LiveSessionState } from "../session/session-state";
 
 export interface ComposerContext {
 	projectSelectorLabel: string;
@@ -14,6 +15,12 @@ interface SelectedChatSessionLabels {
 	resumeLabel: "Start session" | "Resume session";
 	metadataLabel: string;
 }
+
+export type ChatSessionHeader = {
+	title: string;
+	resumeLabel?: SelectedChatSessionLabels["resumeLabel"];
+	metadataLabel?: string;
+};
 
 export type ChatSuggestion =
 	| "Review my recent commits for correctness risks and maintainability concerns"
@@ -156,4 +163,40 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		suggestions,
 		...createSelectedChatSessionLabels(selectedChat),
 	};
+};
+
+const hasLiveSession = (session: LiveSessionState) =>
+	session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
+
+export const isResumableChatRoute = (route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>): boolean =>
+	(route.kind === "empty-chat" || route.kind === "standalone-start") && route.resumeLabel === "Resume session";
+
+export const shouldUseChatStartLayout = (
+	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>,
+	session: LiveSessionState,
+): boolean =>
+	!hasLiveSession(session) &&
+	!isResumableChatRoute(route) &&
+	(route.kind === "global-start" ||
+		route.kind === "project-start" ||
+		route.kind === "standalone-start" ||
+		(route.kind === "empty-chat" && route.resumeLabel === "Start session"));
+
+export const resolveChatSessionHeader = (
+	route: ChatShellRoute,
+	session: LiveSessionState,
+): ChatSessionHeader | null => {
+	if (route.kind === "unavailable-project" || shouldUseChatStartLayout(route, session)) {
+		return null;
+	}
+
+	if (route.kind === "empty-chat" || route.kind === "standalone-start") {
+		return {
+			title: route.title,
+			resumeLabel: route.resumeLabel,
+			metadataLabel: route.metadataLabel,
+		};
+	}
+
+	return { title: route.title };
 };

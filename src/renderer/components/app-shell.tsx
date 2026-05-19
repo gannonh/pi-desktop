@@ -1,11 +1,12 @@
+import { useState } from "react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
-import { useState } from "react";
+import { createChatShellRoute, resolveChatSessionHeader } from "../chat/chat-view-model";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
-import { Badge } from "./ui/badge";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
+import { Badge } from "./ui/badge";
 
 interface AppShellProps {
 	state: ProjectStateView;
@@ -29,7 +30,10 @@ export function AppShell({
 	onAbortSession,
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const showHeaderMeta = Boolean(state.selectedChat) && !sidebarCollapsed;
+	const route = createChatShellRoute(state);
+	const sessionHeader = resolveChatSessionHeader(route, session);
+	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed;
+	const showMainHeader = showPathBadge || sessionHeader !== null;
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 
 	return (
@@ -46,11 +50,24 @@ export function AppShell({
 
 			<div className="app-shell__main">
 				<header
-					className={["app-shell__main-header", showHeaderMeta ? "" : "app-shell__main-header--empty"]
+					className={["app-shell__main-header", showMainHeader ? "" : "app-shell__main-header--empty"]
 						.filter(Boolean)
 						.join(" ")}
 				>
-					{showHeaderMeta ? (
+					{sessionHeader ? (
+						<div className="app-shell__main-header-copy">
+							<h1 id="app-shell-title" className="app-shell__chat-title">
+								{sessionHeader.title}
+							</h1>
+							{sessionHeader.resumeLabel && sessionHeader.metadataLabel ? (
+								<section className="app-shell__session-labels" aria-label="Session metadata">
+									<span className="app-shell__resume-label">{sessionHeader.resumeLabel}</span>
+									<span className="app-shell__metadata-label">{sessionHeader.metadataLabel}</span>
+								</section>
+							) : null}
+						</div>
+					) : null}
+					{showPathBadge ? (
 						<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
 							{selectedProjectPath}
 						</Badge>

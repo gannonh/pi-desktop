@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createChatShellRoute } from "../../src/renderer/chat/chat-view-model";
+import { createChatShellRoute, resolveChatSessionHeader } from "../../src/renderer/chat/chat-view-model";
+import { createInitialSessionState } from "../../src/renderer/session/session-state";
 import type {
 	ChatMetadata,
 	ProjectStateView,
@@ -240,5 +241,51 @@ describe("createChatShellRoute", () => {
 			resumeLabel: "Resume session",
 			metadataLabel: createMetadataLabel(chat),
 		});
+	});
+});
+
+describe("resolveChatSessionHeader", () => {
+	it("returns chat title and session labels for an active session layout", () => {
+		const chat = createChat({
+			title: "Milestone transcript",
+			sessionPath: "/tmp/session.jsonl",
+			status: "running",
+		});
+		const project = createProject({ chats: [chat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		};
+		const route = createChatShellRoute(view);
+		const session = {
+			...createInitialSessionState(),
+			status: "running" as const,
+			messages: [{ id: "assistant:1", role: "assistant" as const, content: "Live response", streaming: true }],
+		};
+
+		expect(resolveChatSessionHeader(route, session)).toEqual({
+			title: "Milestone transcript",
+			resumeLabel: "Resume session",
+			metadataLabel: createMetadataLabel(chat),
+		});
+	});
+
+	it("returns null for centered start layout drafts", () => {
+		const chat = createChat({ sessionPath: null, status: "idle" });
+		const project = createProject({ chats: [chat] });
+		const view: ProjectStateView = {
+			projects: [project],
+			standaloneChats: [],
+			selectedProjectId: project.id,
+			selectedChatId: chat.id,
+			selectedProject: project,
+			selectedChat: chat,
+		};
+
+		expect(resolveChatSessionHeader(createChatShellRoute(view), createInitialSessionState())).toBeNull();
 	});
 });

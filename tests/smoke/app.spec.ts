@@ -389,7 +389,7 @@ test("renders resumed session history with markdown in the session layout", asyn
 			timeout: 15_000,
 		});
 		await expect(window.getByText("What files are here?")).toBeVisible({ timeout: 20_000 });
-		await expect(window.locator("#chat-shell-title")).toHaveText("Smoke history chat");
+		await expect(window.locator("#app-shell-title")).toHaveText("Smoke history chat");
 		await expect(window.getByRole("heading", { name: "Project overview" })).toBeVisible({ timeout: 15_000 });
 		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
 		await expectComposerNearBottom(window);

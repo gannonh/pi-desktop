@@ -1,7 +1,7 @@
-import type { ChatShellRoute } from "../chat/chat-view-model";
+import { type ChatShellRoute, isResumableChatRoute, shouldUseChatStartLayout } from "../chat/chat-view-model";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
-import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import type { LiveSessionState } from "../session/session-state";
+import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
 import { Composer } from "./composer";
 import { TranscriptPanel } from "./transcript-panel";
@@ -15,14 +15,6 @@ interface ChatShellProps {
 	onAbortSession: () => void;
 }
 
-const hasSelectedChatLabels = (
-	route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>,
-): route is Extract<ChatShellRoute, { kind: "standalone-start" | "empty-chat" }> =>
-	"resumeLabel" in route && "metadataLabel" in route;
-
-const isResumableChatRoute = (route: Exclude<ChatShellRoute, { kind: "unavailable-project" }>) =>
-	(route.kind === "empty-chat" || route.kind === "standalone-start") && route.resumeLabel === "Resume session";
-
 export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, onAbortSession }: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
@@ -30,7 +22,6 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 		session.status === "retrying" ||
 		session.status === "aborting";
 	const abortable = Boolean(session.sessionId) && session.status !== "starting";
-	const hasLiveSession = session.status !== "idle" || session.messages.length > 0 || Boolean(session.errorMessage);
 	const expectHistory = isResumableChatRoute(route);
 	const streamingMessageCount = session.messages.filter((message) => message.streaming).length;
 
@@ -41,15 +32,7 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 		hydrationStatus: hydration.status,
 	});
 
-	const useStartLayout =
-		!hasLiveSession &&
-		!isResumableChatRoute(route) &&
-		(route.kind === "global-start" ||
-			route.kind === "project-start" ||
-			route.kind === "standalone-start" ||
-			(route.kind === "empty-chat" && route.resumeLabel === "Start session"));
-
-	if (useStartLayout) {
+	if (shouldUseChatStartLayout(route, session)) {
 		return (
 			<ChatStartState
 				route={route}
@@ -61,24 +44,16 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 	}
 
 	return (
-		<section className="chat-shell chat-shell--session" aria-labelledby="chat-shell-title">
-			<header className="chat-shell__metadata">
-				<div className="chat-shell__metadata-copy">
-					<h1 id="chat-shell-title" className="chat-shell__session-title">
-						{route.title}
-					</h1>
-					{hasSelectedChatLabels(route) ? (
-						<section className="chat-shell__session-labels" aria-label="Session metadata">
-							<span className="chat-shell__resume-label">{route.resumeLabel}</span>
-							<span className="chat-shell__metadata-label">{route.metadataLabel}</span>
-						</section>
-					) : null}
-				</div>
-			</header>
+		<section className="chat-shell chat-shell--session" aria-label={route.title}>
 			<div className="chat-shell__scroll-wrap">
 				<div className="chat-shell__scroll" ref={scrollRef} onScroll={onScroll}>
 					<div className="chat-shell__scroll-inner">
-						<TranscriptPanel session={session} hydration={hydration} scope={scope} expectHistory={expectHistory} />
+						<TranscriptPanel
+							session={session}
+							hydration={hydration}
+							scope={scope}
+							expectHistory={expectHistory}
+						/>
 					</div>
 				</div>
 				{showJumpToLatest ? (

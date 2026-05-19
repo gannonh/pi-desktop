@@ -62,7 +62,7 @@ describe("ChatShell", () => {
 		expect(markup).toContain("Pi session transcript");
 	});
 
-	it("renders session labels near the selected chat title", () => {
+	it("does not render session metadata in the chat shell body", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "empty-chat",
 			title: "Milestone transcript",
@@ -77,13 +77,12 @@ describe("ChatShell", () => {
 
 		const markup = renderChatShell(route, createInitialSessionState());
 
-		expect(markup).toContain("Milestone transcript");
-		expect(markup).toContain("Resume session");
-		expect(markup).toContain("running · updated 5/12/2026, 10:00:00 AM");
-		expect(markup).toContain("chat-shell__session-labels");
+		expect(markup).not.toContain("chat-shell__metadata");
+		expect(markup).not.toContain("Resume session");
+		expect(markup).not.toContain("running · updated 5/12/2026, 10:00:00 AM");
 	});
 
-	it("renders session labels for a selected standalone start route", () => {
+	it("renders resumable standalone chats in the session layout without an in-shell header", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "standalone-start",
 			title: "Standalone",
@@ -103,9 +102,8 @@ describe("ChatShell", () => {
 		const markup = renderChatShell(route, createInitialSessionState());
 
 		expect(markup).toContain("chat-shell--session");
-		expect(markup).toContain("Standalone");
-		expect(markup).toContain("Resume session");
-		expect(markup).toContain("idle · updated 5/12/2026, 10:00:00 AM");
+		expect(markup).not.toContain("chat-shell__metadata");
+		expect(markup).not.toContain("Resume session");
 	});
 
 	it("renders an active project start session in the session layout", () => {
