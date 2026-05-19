@@ -27,7 +27,9 @@
 	--app-main-min-width: 22.5rem;
 	--app-min-height: 40rem;
 	--app-header-height: 3.5rem;
+	--app-header-padding-block: 1rem;
 	--app-header-padding-x: 1.25rem;
+	--app-header-padding-inline-start: 2.25rem;
 	--app-content-padding: 1.25rem;
 	--app-gap: 1rem;
 	--sidebar-transition-duration: 220ms;
@@ -159,15 +161,18 @@ button {
 
 .app-shell__main-header {
 	display: flex;
-	min-height: var(--app-header-height);
-	align-items: center;
+	align-items: flex-start;
 	border-bottom: 1px solid var(--color-border);
 	justify-content: space-between;
 	gap: 1rem;
-	padding: 0.5rem var(--app-header-padding-x);
+	padding: var(--app-header-padding-block) var(--app-header-padding-x) var(--app-header-padding-block)
+		var(--app-header-padding-inline-start);
 }
 
 .app-shell__main-header--empty {
+	min-height: var(--app-header-height);
+	align-items: center;
+	padding-block: 0;
 	border-bottom-color: transparent;
 }
 
@@ -211,6 +216,7 @@ button {
 .app-shell__path-badge {
 	max-width: min(30rem, 60vw);
 	flex-shrink: 0;
+	align-self: center;
 	justify-content: flex-start;
 	text-overflow: ellipsis;
 }
@@ -1806,6 +1812,10 @@ button {
 
 	.project-main {
 		padding: 0.75rem;
+	}
+
+	.app-shell__main-header {
+		padding: var(--app-header-padding-block) 0.75rem;
 	}
 
 	.chat-shell--start {
