@@ -32,7 +32,7 @@ export function AppShell({
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const route = createChatShellRoute(state);
 	const sessionHeader = resolveChatSessionHeader(route, session);
-	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed;
+	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed && !sessionHeader?.metadataLabel;
 	const showMainHeader = showPathBadge || sessionHeader !== null;
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 

@@ -1,3 +1,4 @@
+import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
 
@@ -87,9 +88,10 @@ const createSelectedChatSessionLabels = (chat: {
 	sessionPath: string | null;
 	status: ChatStatus;
 	updatedAt: string;
+	cwd: string;
 }): SelectedChatSessionLabels => ({
 	resumeLabel: chat.sessionPath ? "Resume session" : "Start session",
-	metadataLabel: `${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
+	metadataLabel: `${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
 });
 
 export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
@@ -100,7 +102,7 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		if (selectedChat) {
 			return {
 				kind: "standalone-start",
-				title: selectedChat.title,
+				title: formatChatDisplayLabel(selectedChat.title),
 				chatId: selectedChat.id,
 				composer: createComposerContext(selectedChat.cwd, {
 					runtimeAvailable: true,
@@ -155,7 +157,7 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 
 	return {
 		kind: "empty-chat",
-		title: selectedChat.title,
+		title: formatChatDisplayLabel(selectedChat.title),
 		startTitle: `What should we build in ${selectedProject.displayName}?`,
 		projectId: selectedProject.id,
 		chatId: selectedChat.id,

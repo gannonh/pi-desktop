@@ -1,3 +1,4 @@
+import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type {
 	ChatMetadata,
 	ProjectAvailability,
@@ -94,7 +95,7 @@ const createChatSidebarRow = (
 ): SidebarChatRow => ({
 	kind: "chat",
 	chatId: chat.id,
-	label: chat.title,
+	label: formatChatDisplayLabel(chat.title),
 	selected: chat.id === selectedChatId,
 	status: chat.status,
 	updatedLabel: formatUpdatedLabel(chat.updatedAt, now),

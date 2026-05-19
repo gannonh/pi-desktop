@@ -61,8 +61,8 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 	...overrides,
 });
 
-const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt">) =>
-	`${chat.status} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
+const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt" | "cwd">) =>
+	`${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
 
 const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
 	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
