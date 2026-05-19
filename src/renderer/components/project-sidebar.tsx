@@ -590,6 +590,7 @@ function ProjectSidebarProject({
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
 	const [isRenaming, setIsRenaming] = useState(false);
+	const sessionPathByChatId = new Map(row.project.chats.map((chat) => [chat.id, chat.sessionPath]));
 	const unavailable = row.availability.status !== "available";
 
 	const removeProject = () => {
@@ -766,7 +767,7 @@ function ProjectSidebarProject({
 							closed={closed}
 							menu={menu}
 							projectId={row.projectId}
-							sessionPath={row.project.chats.find((chat) => chat.id === child.chatId)?.sessionPath ?? null}
+							sessionPath={sessionPathByChatId.get(child.chatId) ?? null}
 							setMenu={setMenu}
 							runProjectAction={runProjectAction}
 						/>

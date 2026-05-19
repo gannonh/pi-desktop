@@ -20,8 +20,6 @@ export function SidebarInlineRenameField({
 	const finishedRef = useRef(false);
 
 	useEffect(() => {
-		setDraft(value);
-		finishedRef.current = false;
 		const input = inputRef.current;
 		if (!input) {
 			return;
@@ -29,7 +27,7 @@ export function SidebarInlineRenameField({
 
 		input.focus();
 		input.select();
-	}, [value]);
+	}, []);
 
 	const finish = (nextValue?: string) => {
 		if (finishedRef.current) {

@@ -150,7 +150,15 @@ export function App() {
 
 		projectTitleRefreshTimeoutRef.current = setTimeout(() => {
 			projectTitleRefreshTimeoutRef.current = null;
-			void window.piDesktop.project.getState().then(applyProjectStateViewResult);
+			void window.piDesktop.project
+				.getState()
+				.then(applyProjectStateViewResult)
+				.catch((error) => {
+					setStatusMessage({
+						source: "project",
+						message: error instanceof Error ? error.message : "Unable to refresh project state.",
+					});
+				});
 		}, 100);
 	}, [applyProjectStateViewResult]);
 

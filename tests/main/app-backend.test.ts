@@ -591,6 +591,83 @@ describe("app backend", () => {
 		await backend.dispose();
 	});
 
+	it("syncs chat title when a Pi session becomes idle", async () => {
+		const projectService = createProjectService();
+		const session = createSession([{ type: "agent_end", messages: [] } as AgentSessionEvent]);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+		await waitForScheduledPrompt(events);
+		unsubscribe();
+
+		expect(projectService.syncSessionChatTitle).toHaveBeenCalledWith({
+			sessionId: "project:one:sdk-session:one",
+			status: "idle",
+			attention: false,
+			updatedAt: "2026-05-15T12:00:00.000Z",
+		});
+	});
+
+	it("syncs chat title when a Pi message ends", async () => {
+		const projectService = createProjectService();
+		const session = createSession([
+			{
+				type: "message_end",
+				message: {
+					role: "assistant",
+					content: [{ type: "text", text: "Done" }],
+					api: "anthropic-messages",
+					provider: "anthropic",
+					model: "claude-test",
+					usage: {
+						input: 1,
+						output: 1,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 2,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "stop",
+					timestamp: 3,
+				},
+			} as AgentSessionEvent,
+		]);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+		await waitForScheduledPrompt(events);
+		unsubscribe();
+
+		expect(projectService.syncSessionChatTitle).toHaveBeenCalledWith({
+			sessionId: "project:one:sdk-session:one",
+			status: "running",
+			attention: false,
+			updatedAt: "2026-05-15T12:00:00.000Z",
+		});
+	});
+
 	it("isolates Pi session event listener failures from later listeners", async () => {
 		const projectService = createProjectService();
 		const session = createSession();
