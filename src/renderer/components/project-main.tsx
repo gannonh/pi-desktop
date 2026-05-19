@@ -33,7 +33,6 @@ export function ProjectMain({
 	onSubmitPrompt,
 	onAbortSession,
 }: ProjectMainProps) {
-
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		try {
 			onProjectState(await action());

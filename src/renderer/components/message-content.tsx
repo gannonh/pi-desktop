@@ -17,14 +17,8 @@ const stripUnsafeHtml = (html: string) => {
 	let sanitized = html.replace(/<script[\s\S]*?<\/script>/gi, "");
 	sanitized = sanitized.replace(/<(iframe|object|embed|form)[\s\S]*?<\/\1>/gi, "");
 	sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-	sanitized = sanitized.replace(
-		/\s+(href|src|xlink:href)\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi,
-		"",
-	);
-	sanitized = sanitized.replace(
-		/\s+(href|src|srcset)\s*=\s*(["']?)\s*data:text\/html[^"'>\s]*/gi,
-		"",
-	);
+	sanitized = sanitized.replace(/\s+(href|src|xlink:href)\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi, "");
+	sanitized = sanitized.replace(/\s+(href|src|srcset)\s*=\s*(["']?)\s*data:text\/html[^"'>\s]*/gi, "");
 	return sanitized;
 };
 
