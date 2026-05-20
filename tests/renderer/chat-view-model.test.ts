@@ -7,6 +7,7 @@ import type {
 	ProjectWithChats,
 	StandaloneChatMetadata,
 } from "../../src/shared/project-state";
+import { createComposerContext, idleSession, previewComposerSettings } from "./composer-fixtures";
 
 const emptyView: ProjectStateView = {
 	projects: [],
@@ -64,6 +65,20 @@ const createStandaloneChat = (overrides: Partial<StandaloneChatMetadata> = {}): 
 const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "status" | "updatedAt" | "cwd">) =>
 	`${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`;
 
+const settingsComposer = createComposerContext({
+	modelLabel: previewComposerSettings.modelLabel,
+	thinkingLabel: "High",
+	modelOptions: previewComposerSettings.availableModels.map((model) => ({
+		provider: model.provider,
+		id: model.id,
+		label: model.label,
+	})),
+	thinkingOptions: previewComposerSettings.availableThinkingLevels.map((level) => ({
+		level,
+		label: level === "off" ? "Off" : level.charAt(0).toUpperCase() + level.slice(1),
+	})),
+});
+
 const assertRouteFixturesAreReadonly = (route: ReturnType<typeof createChatShellRoute>) => {
 	if (route.kind === "global-start" || route.kind === "project-start" || route.kind === "standalone-start") {
 		// @ts-expect-error Suggestions are shared fixture data and must stay readonly.
@@ -75,16 +90,15 @@ void assertRouteFixturesAreReadonly;
 
 describe("createChatShellRoute", () => {
 	it("creates a global start route when no project is selected", () => {
-		expect(createChatShellRoute(emptyView)).toEqual({
+		expect(createChatShellRoute(emptyView, idleSession, null)).toEqual({
 			kind: "global-start",
 			title: "What should we work on?",
-			composer: {
+			composer: createComposerContext({
 				projectSelectorLabel: "Work in a project",
-				modeLabel: "Work locally",
-				modelLabel: "5.5 High",
 				runtimeAvailable: false,
 				disabledReason: "Select an available project to start a Pi session.",
-			},
+				showProjectMenu: true,
+			}),
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
 				"Unblock my most recent open PR",
@@ -107,17 +121,15 @@ describe("createChatShellRoute", () => {
 			selectedChat: chat,
 		};
 
-		expect(createChatShellRoute(view)).toEqual({
+		expect(createChatShellRoute(view, idleSession, previewComposerSettings)).toEqual({
 			kind: "standalone-start",
 			title: "Standalone",
 			chatId: chat.id,
-			composer: {
+			composer: createComposerContext({
+				...settingsComposer,
 				projectSelectorLabel: "/tmp/outside",
-				modeLabel: "Work locally",
-				modelLabel: "5.5 High",
-				runtimeAvailable: true,
-				disabledReason: "",
-			},
+				showProjectMenu: true,
+			}),
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
 				"Unblock my most recent open PR",
@@ -139,18 +151,17 @@ describe("createChatShellRoute", () => {
 			selectedChat: null,
 		};
 
-		expect(createChatShellRoute(view)).toEqual({
+		expect(createChatShellRoute(view, idleSession, previewComposerSettings)).toEqual({
 			kind: "project-start",
 			title: "What should we build in pi-desktop?",
 			projectId: project.id,
-			composer: {
+			composer: createComposerContext({
+				...settingsComposer,
 				projectSelectorLabel: "pi-desktop",
-				modeLabel: "Work locally",
-				modelLabel: "5.5 High",
-				runtimeAvailable: true,
-				disabledReason: "",
 				projectId: project.id,
-			},
+				showProjectMenu: true,
+				projectOptions: [{ projectId: project.id, label: "pi-desktop" }],
+			}),
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
 				"Unblock my most recent open PR",
@@ -172,7 +183,7 @@ describe("createChatShellRoute", () => {
 			selectedChat: null,
 		};
 
-		expect(createChatShellRoute(view)).toEqual({
+		expect(createChatShellRoute(view, idleSession, null)).toEqual({
 			kind: "unavailable-project",
 			title: "pi-desktop is unavailable",
 			body: "Permission denied",
@@ -194,7 +205,7 @@ describe("createChatShellRoute", () => {
 			selectedChat: null,
 		};
 
-		expect(createChatShellRoute(view)).toEqual({
+		expect(createChatShellRoute(view, idleSession, null)).toEqual({
 			kind: "unavailable-project",
 			title: "pi-desktop is unavailable",
 			body: "Locate the project folder or remove it from the sidebar.",
@@ -219,20 +230,19 @@ describe("createChatShellRoute", () => {
 			selectedChat: chat,
 		};
 
-		expect(createChatShellRoute(view)).toEqual({
+		expect(createChatShellRoute(view, idleSession, previewComposerSettings)).toEqual({
 			kind: "empty-chat",
 			title: "Static metadata only",
 			startTitle: "What should we build in pi-desktop?",
 			projectId: project.id,
 			chatId: chat.id,
-			composer: {
+			composer: createComposerContext({
+				...settingsComposer,
 				projectSelectorLabel: "pi-desktop",
-				modeLabel: "Work locally",
-				modelLabel: "5.5 High",
-				runtimeAvailable: true,
-				disabledReason: "",
 				projectId: project.id,
-			},
+				showProjectMenu: false,
+				projectOptions: [{ projectId: project.id, label: "pi-desktop" }],
+			}),
 			suggestions: [
 				"Review my recent commits for correctness risks and maintainability concerns",
 				"Unblock my most recent open PR",
@@ -260,7 +270,7 @@ describe("resolveChatSessionHeader", () => {
 			selectedProject: project,
 			selectedChat: chat,
 		};
-		const route = createChatShellRoute(view);
+		const route = createChatShellRoute(view, idleSession, previewComposerSettings);
 		const session = {
 			...createInitialSessionState(),
 			status: "running" as const,
@@ -286,6 +296,8 @@ describe("resolveChatSessionHeader", () => {
 			selectedChat: chat,
 		};
 
-		expect(resolveChatSessionHeader(createChatShellRoute(view), createInitialSessionState())).toBeNull();
+		expect(
+			resolveChatSessionHeader(createChatShellRoute(view, idleSession, null), createInitialSessionState()),
+		).toBeNull();
 	});
 });

@@ -89,6 +89,14 @@ describe("IPC contracts", () => {
 			piSessionAbort: "pi-session:abort",
 			piSessionHistory: "pi-session:history",
 			piSessionDispose: "pi-session:dispose",
+			piSessionGetSettings: "pi-session:getSettings",
+			piSessionGetDefaultSettings: "pi-session:getDefaultSettings",
+			piSessionSetModel: "pi-session:setModel",
+			piSessionSetThinkingLevel: "pi-session:setThinkingLevel",
+			piSessionSetDefaultModel: "pi-session:setDefaultModel",
+			piSessionSetDefaultThinkingLevel: "pi-session:setDefaultThinkingLevel",
+			piSessionUpdateQueuedMessage: "pi-session:updateQueuedMessage",
+			piSessionRemoveQueuedMessage: "pi-session:removeQueuedMessage",
 			piSessionEvent: "pi-session:event",
 		});
 	});

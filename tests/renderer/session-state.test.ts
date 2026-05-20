@@ -24,6 +24,8 @@ describe("session history result", () => {
 			messages: [{ id: "user:one", role: "user", content: "what time is it?", streaming: false }],
 			errorMessage: "",
 			retryMessage: "",
+			settings: null,
+			queuedMessages: [],
 		});
 	});
 });
@@ -334,5 +336,34 @@ describe("session state reducer", () => {
 		});
 
 		expect(state.messages).toEqual([]);
+	});
+
+	it("stores session settings snapshots", () => {
+		const state = reduceSessionEvent(createInitialSessionState(), {
+			type: "session_settings",
+			sessionId: "pi-session:one",
+			settings: {
+				modelLabel: "5.5 High",
+				modelProvider: "openai",
+				modelId: "gpt-5.5",
+				thinkingLevel: "high",
+				availableModels: [{ provider: "openai", id: "gpt-5.5", label: "5.5 High" }],
+				availableThinkingLevels: ["off", "high"],
+			},
+			receivedAt,
+		});
+
+		expect(state.settings?.modelLabel).toBe("5.5 High");
+	});
+
+	it("stores queued message updates", () => {
+		const state = reduceSessionEvent(createInitialSessionState(), {
+			type: "queue_update",
+			sessionId: "pi-session:one",
+			messages: [{ id: { queue: "steer", index: 0 }, text: "Check tests", delivery: "steer" }],
+			receivedAt,
+		});
+
+		expect(state.queuedMessages).toHaveLength(1);
 	});
 });

@@ -1,5 +1,6 @@
 import { type ChatShellRoute, isResumableChatRoute, shouldUseChatStartLayout } from "../chat/chat-view-model";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
+import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
@@ -11,11 +12,11 @@ interface ChatShellProps {
 	session: LiveSessionState;
 	hydration: TranscriptHydrationState;
 	scope: { projectId: string | null; chatId: string | null };
-	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 }
 
-export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, onAbortSession }: ChatShellProps) {
+export function ChatShell({ route, session, hydration, scope, composerHost, onAbortSession }: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
 		session.status === "running" ||
@@ -39,12 +40,7 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 
 	if (shouldUseChatStartLayout(route, session)) {
 		return (
-			<ChatStartState
-				route={route}
-				session={session}
-				onSubmitPrompt={onSubmitPrompt}
-				onAbortSession={onAbortSession}
-			/>
+			<ChatStartState route={route} session={session} composerHost={composerHost} onAbortSession={onAbortSession} />
 		);
 	}
 
@@ -73,8 +69,18 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 					layout="bottom"
 					running={running}
 					abortable={abortable}
-					onSubmit={onSubmitPrompt}
+					queuedMessages={session.queuedMessages}
+					pendingDelivery={composerHost.pendingComposerDelivery}
+					draftText={composerHost.composerDraft}
+					onDraftApplied={composerHost.onComposerDraftApplied}
+					onSubmit={composerHost.onSubmitPrompt}
 					onAbort={onAbortSession}
+					onSelectProject={composerHost.onSelectProject}
+					onSelectModel={composerHost.onSelectModel}
+					onSelectThinkingLevel={composerHost.onSelectThinkingLevel}
+					onToggleQueuedDelivery={composerHost.onToggleQueuedDelivery}
+					onRemoveQueuedMessage={composerHost.onRemoveQueuedMessage}
+					onEditQueuedMessage={composerHost.onEditQueuedMessage}
 				/>
 			</div>
 		</section>

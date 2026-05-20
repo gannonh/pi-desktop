@@ -12,16 +12,26 @@ import type {
 	PiSessionActionResult,
 	PiSessionDisposeInput,
 	PiSessionEvent,
+	PiSessionGetSettingsInput,
 	PiSessionHistoryInput,
 	PiSessionHistoryResult,
+	PiSessionQueueResult,
+	PiSessionRemoveQueuedMessageInput,
+	PiSessionSetDefaultModelInput,
+	PiSessionSetDefaultThinkingLevelInput,
+	PiSessionSetModelInput,
+	PiSessionSetThinkingLevelInput,
+	PiSessionSettingsResult,
 	PiSessionStartInput,
 	PiSessionStartResult,
 	PiSessionSubmitInput,
+	PiSessionUpdateQueuedMessageInput,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
 	ProjectStateViewResult,
 } from "./ipc";
+import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
 export interface PiDesktopApi {
 	app: {
@@ -55,6 +65,14 @@ export interface PiDesktopApi {
 		abort: (input: PiSessionAbortInput) => Promise<PiSessionActionResult>;
 		history: (input: PiSessionHistoryInput) => Promise<PiSessionHistoryResult>;
 		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
+		getSettings: (input: PiSessionGetSettingsInput) => Promise<PiSessionSettingsResult>;
+		getDefaultSettings: (input?: PiSessionGetDefaultSettingsInput) => Promise<PiSessionSettingsResult>;
+		setModel: (input: PiSessionSetModelInput) => Promise<PiSessionSettingsResult>;
+		setThinkingLevel: (input: PiSessionSetThinkingLevelInput) => Promise<PiSessionSettingsResult>;
+		setDefaultModel: (input: PiSessionSetDefaultModelInput) => Promise<PiSessionSettingsResult>;
+		setDefaultThinkingLevel: (input: PiSessionSetDefaultThinkingLevelInput) => Promise<PiSessionSettingsResult>;
+		updateQueuedMessage: (input: PiSessionUpdateQueuedMessageInput) => Promise<PiSessionQueueResult>;
+		removeQueuedMessage: (input: PiSessionRemoveQueuedMessageInput) => Promise<PiSessionQueueResult>;
 		onEvent: (listener: (event: PiSessionEvent) => void) => () => void;
 	};
 }

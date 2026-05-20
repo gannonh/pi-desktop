@@ -13,11 +13,21 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
+	PiSessionGetDefaultSettingsInputSchema,
+	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionHistoryResultSchema,
+	PiSessionQueueResultSchema,
+	PiSessionRemoveQueuedMessageInputSchema,
+	PiSessionSetDefaultModelInputSchema,
+	PiSessionSetDefaultThinkingLevelInputSchema,
+	PiSessionSetModelInputSchema,
+	PiSessionSetThinkingLevelInputSchema,
+	PiSessionSettingsResultSchema,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
 	PiSessionSubmitInputSchema,
+	PiSessionUpdateQueuedMessageInputSchema,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -49,6 +59,26 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	z.strictObject({ operation: z.literal("piSession.abort"), input: PiSessionAbortInputSchema }),
 	z.strictObject({ operation: z.literal("piSession.history"), input: PiSessionHistoryInputSchema }),
 	z.strictObject({ operation: z.literal("piSession.dispose"), input: PiSessionDisposeInputSchema }),
+	z.strictObject({ operation: z.literal("piSession.getSettings"), input: PiSessionGetSettingsInputSchema }),
+	z.strictObject({
+		operation: z.literal("piSession.getDefaultSettings"),
+		input: PiSessionGetDefaultSettingsInputSchema,
+	}),
+	z.strictObject({ operation: z.literal("piSession.setModel"), input: PiSessionSetModelInputSchema }),
+	z.strictObject({ operation: z.literal("piSession.setThinkingLevel"), input: PiSessionSetThinkingLevelInputSchema }),
+	z.strictObject({ operation: z.literal("piSession.setDefaultModel"), input: PiSessionSetDefaultModelInputSchema }),
+	z.strictObject({
+		operation: z.literal("piSession.setDefaultThinkingLevel"),
+		input: PiSessionSetDefaultThinkingLevelInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("piSession.updateQueuedMessage"),
+		input: PiSessionUpdateQueuedMessageInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("piSession.removeQueuedMessage"),
+		input: PiSessionRemoveQueuedMessageInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -79,6 +109,14 @@ export const AppRpcResponseSchemas = {
 	"piSession.abort": PiSessionActionResultSchema,
 	"piSession.history": PiSessionHistoryResultSchema,
 	"piSession.dispose": PiSessionActionResultSchema,
+	"piSession.getSettings": PiSessionSettingsResultSchema,
+	"piSession.getDefaultSettings": PiSessionSettingsResultSchema,
+	"piSession.setModel": PiSessionSettingsResultSchema,
+	"piSession.setThinkingLevel": PiSessionSettingsResultSchema,
+	"piSession.setDefaultModel": PiSessionSettingsResultSchema,
+	"piSession.setDefaultThinkingLevel": PiSessionSettingsResultSchema,
+	"piSession.updateQueuedMessage": PiSessionQueueResultSchema,
+	"piSession.removeQueuedMessage": PiSessionQueueResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

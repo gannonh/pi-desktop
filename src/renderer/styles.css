@@ -783,9 +783,117 @@ button {
 
 .composer__local-menu-item {
 	display: block;
+	width: 100%;
+	border: 0;
 	border-radius: var(--radius-control);
+	background: transparent;
 	padding: 0.375rem 0.5rem;
+	color: inherit;
+	font: inherit;
 	font-size: var(--type-label);
+	text-align: left;
+}
+
+.composer__local-menu-item:hover {
+	background: var(--color-accent);
+	color: var(--color-accent-foreground);
+}
+
+.composer__local-menu-header {
+	display: block;
+	padding: 0.25rem 0.5rem;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.composer-stack {
+	display: grid;
+	width: min(100%, var(--composer-width));
+	gap: 0.5rem;
+}
+
+.composer__queue {
+	display: grid;
+	gap: 0.375rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.composer__queue-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	border-radius: var(--radius-control);
+	background: var(--composer-control-surface);
+	padding: 0.375rem 0.5rem;
+	font-size: var(--type-caption);
+}
+
+.composer__queue-preview {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--color-muted-foreground);
+}
+
+.composer__queue-toggle,
+.composer__queue-delete,
+.composer__queue-overflow {
+	border: 0;
+	background: transparent;
+	color: var(--color-muted-foreground);
+	font: inherit;
+	font-size: var(--type-caption);
+}
+
+.composer__queue-toggle:hover,
+.composer__queue-delete:hover,
+.composer__queue-overflow:hover {
+	color: var(--color-foreground);
+}
+
+.composer__queue-actions {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.composer__queue-menu {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + 0.25rem);
+	z-index: 6;
+	min-width: 6rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-panel);
+	background: var(--menu-popover-background);
+	padding: 0.25rem;
+}
+
+.composer__queue-menu-item {
+	display: block;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	padding: 0.375rem 0.5rem;
+	color: inherit;
+	font: inherit;
+	font-size: var(--type-caption);
+	text-align: left;
+}
+
+.composer__queue-status,
+.composer__helper-copy {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.composer__send-button--secondary {
+	margin-left: 0.25rem;
 }
 
 .live-session {

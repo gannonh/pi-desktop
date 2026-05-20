@@ -38,11 +38,22 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 	let pendingPrompt: ReturnType<typeof setTimeout> | null = null;
 	let pendingPromptResolve: (() => void) | null = null;
 	let nextMessageTimestamp = 1;
+	let streaming = false;
+	const steeringMessages: string[] = [];
+	const followUpMessages: string[] = [];
 
 	const emit = (event: AgentSessionEvent) => {
 		for (const listener of listeners) {
 			listener(event);
 		}
+	};
+
+	const emitQueueUpdate = () => {
+		emit({
+			type: "queue_update",
+			steering: [...steeringMessages],
+			followUp: [...followUpMessages],
+		});
 	};
 
 	const clearPendingPrompt = () => {
@@ -52,6 +63,59 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 		}
 		pendingPromptResolve?.();
 		pendingPromptResolve = null;
+		streaming = false;
+	};
+
+	const runPrompt = (prompt: string, resolve: () => void) => {
+		pendingPrompt = setTimeout(() => {
+			pendingPrompt = null;
+			pendingPromptResolve = null;
+			const userTimestamp = nextMessageTimestamp;
+			const assistantTimestamp = nextMessageTimestamp + 1;
+			nextMessageTimestamp += 2;
+			const userMessage = {
+				role: "user",
+				content: [{ type: "text", text: prompt }],
+				timestamp: userTimestamp,
+			};
+			const assistantMessage = {
+				role: "assistant",
+				content: [{ type: "text", text: assistantContent }],
+				timestamp: assistantTimestamp,
+			};
+			const assistantStart = {
+				...assistantMessage,
+				content: [],
+			};
+
+			emit({ type: "agent_start" });
+			emit({ type: "message_start", message: userMessage } as AgentSessionEvent);
+			emit({ type: "message_start", message: assistantStart } as AgentSessionEvent);
+			emit({
+				type: "message_update",
+				message: assistantStart,
+				assistantMessageEvent: {
+					type: "text_delta",
+					contentIndex: 0,
+					delta: "I can see this project. ",
+					partial: assistantStart,
+				},
+			} as unknown as AgentSessionEvent);
+			emit({
+				type: "message_update",
+				message: assistantStart,
+				assistantMessageEvent: {
+					type: "text_delta",
+					contentIndex: 0,
+					delta: "Pi session streaming is connected.",
+					partial: assistantMessage,
+				},
+			} as unknown as AgentSessionEvent);
+			emit({ type: "message_end", message: assistantMessage } as AgentSessionEvent);
+			emit({ type: "agent_end", messages: [] });
+			streaming = false;
+			resolve();
+		}, 0);
 	};
 
 	const session: PiSdkSession = {
@@ -63,64 +127,45 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 			};
 		},
 		bindExtensions: async () => {},
-		prompt: (prompt) =>
+		isStreaming: () => streaming,
+		getSteeringMessages: () => steeringMessages,
+		getFollowUpMessages: () => followUpMessages,
+		clearQueue: () => {
+			const steering = [...steeringMessages];
+			const followUp = [...followUpMessages];
+			steeringMessages.length = 0;
+			followUpMessages.length = 0;
+			emitQueueUpdate();
+			return { steering, followUp };
+		},
+		prompt: (prompt, options) =>
 			new Promise((resolve) => {
-				clearPendingPrompt();
-				pendingPromptResolve = resolve;
-				pendingPrompt = setTimeout(() => {
-					pendingPrompt = null;
-					pendingPromptResolve = null;
-					const userTimestamp = nextMessageTimestamp;
-					const assistantTimestamp = nextMessageTimestamp + 1;
-					nextMessageTimestamp += 2;
-					const userMessage = {
-						role: "user",
-						content: [{ type: "text", text: prompt }],
-						timestamp: userTimestamp,
-					};
-					const assistantMessage = {
-						role: "assistant",
-						content: [{ type: "text", text: assistantContent }],
-						timestamp: assistantTimestamp,
-					};
-					const assistantStart = {
-						...assistantMessage,
-						content: [],
-					};
-
-					emit({ type: "agent_start" });
-					emit({ type: "message_start", message: userMessage } as AgentSessionEvent);
-					emit({ type: "message_start", message: assistantStart } as AgentSessionEvent);
-					emit({
-						type: "message_update",
-						message: assistantStart,
-						assistantMessageEvent: {
-							type: "text_delta",
-							contentIndex: 0,
-							delta: "I can see this project. ",
-							partial: assistantStart,
-						},
-					} as unknown as AgentSessionEvent);
-					emit({
-						type: "message_update",
-						message: assistantStart,
-						assistantMessageEvent: {
-							type: "text_delta",
-							contentIndex: 0,
-							delta: "Pi session streaming is connected.",
-							partial: assistantMessage,
-						},
-					} as unknown as AgentSessionEvent);
-					emit({ type: "message_end", message: assistantMessage } as AgentSessionEvent);
-					emit({ type: "agent_end", messages: [] });
+				if (streaming && options?.streamingBehavior) {
+					if (options.streamingBehavior === "followUp") {
+						followUpMessages.push(prompt);
+					} else {
+						steeringMessages.push(prompt);
+					}
+					emitQueueUpdate();
 					resolve();
-				}, 0);
+					return;
+				}
+
+				clearPendingPrompt();
+				streaming = true;
+				pendingPromptResolve = resolve;
+				runPrompt(prompt, resolve);
 			}),
 		abort: async () => {
 			clearPendingPrompt();
+			steeringMessages.length = 0;
+			followUpMessages.length = 0;
+			emitQueueUpdate();
 		},
 		dispose: () => {
 			clearPendingPrompt();
+			steeringMessages.length = 0;
+			followUpMessages.length = 0;
 			listeners.clear();
 		},
 	};

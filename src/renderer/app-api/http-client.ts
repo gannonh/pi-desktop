@@ -177,6 +177,14 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			abort: (input) => callRpc("piSession.abort", input),
 			history: (input) => callRpc("piSession.history", input),
 			dispose: (input) => callRpc("piSession.dispose", input),
+			getSettings: (input) => callRpc("piSession.getSettings", input),
+			getDefaultSettings: (input) => callRpc("piSession.getDefaultSettings", input ?? {}),
+			setModel: (input) => callRpc("piSession.setModel", input),
+			setThinkingLevel: (input) => callRpc("piSession.setThinkingLevel", input),
+			setDefaultModel: (input) => callRpc("piSession.setDefaultModel", input),
+			setDefaultThinkingLevel: (input) => callRpc("piSession.setDefaultThinkingLevel", input),
+			updateQueuedMessage: (input) => callRpc("piSession.updateQueuedMessage", input),
+			removeQueuedMessage: (input) => callRpc("piSession.removeQueuedMessage", input),
 			onEvent: (listener) => {
 				eventListeners.add(listener);
 				openEventsSocket();

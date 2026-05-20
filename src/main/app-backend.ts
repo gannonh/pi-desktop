@@ -10,10 +10,18 @@ import {
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
+	PiSessionGetDefaultSettingsInputSchema,
+	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
+	PiSessionRemoveQueuedMessageInputSchema,
+	PiSessionSetDefaultModelInputSchema,
+	PiSessionSetDefaultThinkingLevelInputSchema,
+	PiSessionSetModelInputSchema,
+	PiSessionSetThinkingLevelInputSchema,
 	PiSessionStartInputSchema,
 	PiSessionSubmitInputSchema,
+	PiSessionUpdateQueuedMessageInputSchema,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -23,6 +31,8 @@ import type {
 	PiSessionActionPayload,
 	PiSessionEvent,
 	PiSessionHistoryPayload,
+	PiSessionQueuePayload,
+	PiSessionSettingsPayload,
 	PiSessionStartPayload,
 	PiSessionStatus,
 } from "../shared/pi-session";
@@ -48,7 +58,13 @@ export type AppBackendDeps = {
 };
 
 export type AppBackendResult = IpcResult<
-	AppVersion | ProjectStateView | PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload
+	| AppVersion
+	| ProjectStateView
+	| PiSessionStartPayload
+	| PiSessionActionPayload
+	| PiSessionHistoryPayload
+	| PiSessionSettingsPayload
+	| PiSessionQueuePayload
 >;
 
 export type AppBackend = {
@@ -143,7 +159,13 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 	};
 
 	const handlePiSessionOperation = async (
-		operation: () => Promise<PiSessionStartPayload | PiSessionActionPayload | PiSessionHistoryPayload>,
+		operation: () => Promise<
+			| PiSessionStartPayload
+			| PiSessionActionPayload
+			| PiSessionHistoryPayload
+			| PiSessionSettingsPayload
+			| PiSessionQueuePayload
+		>,
 	): Promise<AppBackendResult> => {
 		try {
 			return ok(await operation());
@@ -236,6 +258,9 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 							workspacePath: target.workspacePath,
 							sessionPath: target.sessionPath,
 							prompt: parsed.prompt,
+							modelProvider: parsed.modelProvider,
+							modelId: parsed.modelId,
+							thinkingLevel: parsed.thinkingLevel,
 						});
 						try {
 							const recorded = await deps.projectService.recordSessionStarted({
@@ -289,6 +314,41 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						});
 						return disposed;
 					});
+				case "piSession.getSettings":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.getSettings(PiSessionGetSettingsInputSchema.parse(request.input)),
+					);
+				case "piSession.getDefaultSettings":
+					return handlePiSessionOperation(() => {
+						const parsed = PiSessionGetDefaultSettingsInputSchema.parse(request.input);
+						return piSessionRuntime.getDefaultSettings(parsed.workspacePath);
+					});
+				case "piSession.setModel":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.setModel(PiSessionSetModelInputSchema.parse(request.input)),
+					);
+				case "piSession.setThinkingLevel":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.setThinkingLevel(PiSessionSetThinkingLevelInputSchema.parse(request.input)),
+					);
+				case "piSession.setDefaultModel":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.setDefaultModel(PiSessionSetDefaultModelInputSchema.parse(request.input)),
+					);
+				case "piSession.setDefaultThinkingLevel":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.setDefaultThinkingLevel(
+							PiSessionSetDefaultThinkingLevelInputSchema.parse(request.input),
+						),
+					);
+				case "piSession.updateQueuedMessage":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.updateQueuedMessage(PiSessionUpdateQueuedMessageInputSchema.parse(request.input)),
+					);
+				case "piSession.removeQueuedMessage":
+					return handlePiSessionOperation(() =>
+						piSessionRuntime.removeQueuedMessage(PiSessionRemoveQueuedMessageInputSchema.parse(request.input)),
+					);
 				default:
 					return assertNever(request);
 			}

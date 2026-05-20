@@ -15,6 +15,8 @@ const session: LiveSessionState = {
 	],
 	errorMessage: "",
 	retryMessage: "Retrying after rate limit",
+	settings: null,
+	queuedMessages: [],
 };
 
 describe("LiveSessionTranscript", () => {

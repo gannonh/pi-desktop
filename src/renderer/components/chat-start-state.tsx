@@ -1,5 +1,6 @@
 import { GitBranch, GitPullRequest, Workflow } from "lucide-react";
 import type { ChatShellRoute } from "../chat/chat-view-model";
+import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import { Composer } from "./composer";
 
@@ -13,7 +14,7 @@ const suggestionIcons = [GitPullRequest, GitBranch, Workflow] as const;
 interface ChatStartStateProps {
 	route: StartRoute;
 	session: LiveSessionState;
-	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 }
 
@@ -24,7 +25,7 @@ const hasSelectedChatLabels = (
 
 const getStartTitle = (route: StartRoute) => (route.kind === "empty-chat" ? route.startTitle : route.title);
 
-export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession }: ChatStartStateProps) {
+export function ChatStartState({ route, session, composerHost, onAbortSession }: ChatStartStateProps) {
 	const running =
 		session.status === "starting" ||
 		session.status === "running" ||
@@ -53,8 +54,18 @@ export function ChatStartState({ route, session, onSubmitPrompt, onAbortSession 
 				layout="center"
 				running={running}
 				abortable={abortable}
-				onSubmit={onSubmitPrompt}
+				queuedMessages={session.queuedMessages}
+				pendingDelivery={composerHost.pendingComposerDelivery}
+				draftText={composerHost.composerDraft}
+				onDraftApplied={composerHost.onComposerDraftApplied}
+				onSubmit={composerHost.onSubmitPrompt}
 				onAbort={onAbortSession}
+				onSelectProject={composerHost.onSelectProject}
+				onSelectModel={composerHost.onSelectModel}
+				onSelectThinkingLevel={composerHost.onSelectThinkingLevel}
+				onToggleQueuedDelivery={composerHost.onToggleQueuedDelivery}
+				onRemoveQueuedMessage={composerHost.onRemoveQueuedMessage}
+				onEditQueuedMessage={composerHost.onEditQueuedMessage}
 			/>
 			<section className="chat-shell__suggestions" aria-label="Suggested prompts">
 				{route.suggestions.map((suggestion, index) => {

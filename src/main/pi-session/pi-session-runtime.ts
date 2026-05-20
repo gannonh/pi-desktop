@@ -1,32 +1,59 @@
 import {
-	createAgentSession as createPiAgentSession,
+	createAgentSessionFromServices,
+	createAgentSessionServices,
 	SessionManager,
+	type AgentSession,
 	type AgentSessionEvent,
 	type SessionManager as PiSessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type {
 	PiSessionAbortInput,
 	PiSessionActionPayload,
+	PiSessionDelivery,
 	PiSessionDisposeInput,
 	PiSessionEvent,
+	PiSessionGetSettingsInput,
+	PiSessionRemoveQueuedMessageInput,
+	PiSessionSetDefaultModelInput,
+	PiSessionSetDefaultThinkingLevelInput,
+	PiSessionSetModelInput,
+	PiSessionSetThinkingLevelInput,
 	PiSessionStartPayload,
 	PiSessionStatus,
 	PiSessionSubmitInput,
+	PiSessionUpdateQueuedMessageInput,
 } from "../../shared/pi-session";
 import { resolvePiAgentDir, resolvePiSessionFilesDirForCwd } from "../app-paths";
 import { createRuntimeErrorEvent, normalizePiSessionEvent } from "./pi-session-event-normalizer";
+import {
+	buildDefaultSettings,
+	buildQueuedMessages,
+	buildSettingsFromAgentSession,
+	setDefaultModel,
+	setDefaultThinkingLevel,
+} from "./pi-session-settings";
 
 export type PiSdkSession = {
 	sessionId: string;
 	subscribe: (listener: (event: AgentSessionEvent) => void) => () => void;
 	bindExtensions: (bindings: Record<string, never>) => Promise<void>;
-	prompt: (prompt: string) => Promise<void>;
+	prompt: (prompt: string, options?: { streamingBehavior?: "steer" | "followUp" }) => Promise<void>;
 	abort: () => Promise<void>;
 	dispose: () => void;
+	isStreaming?: () => boolean;
+	getSteeringMessages?: () => readonly string[];
+	getFollowUpMessages?: () => readonly string[];
+	clearQueue?: () => { steering: string[]; followUp: string[] };
+	setModel?: (provider: string, modelId: string) => Promise<void>;
+	setThinkingLevel?: (level: string) => void;
+	modelRegistry?: AgentSession["modelRegistry"];
+	model?: AgentSession["model"];
+	thinkingLevel?: AgentSession["thinkingLevel"];
 };
 
 type CreateAgentSessionResult = {
 	session: PiSdkSession;
+	agentSession?: AgentSession;
 };
 
 type RuntimeStartInput = {
@@ -35,6 +62,9 @@ type RuntimeStartInput = {
 	workspacePath: string;
 	sessionPath?: string | null;
 	prompt: string;
+	modelProvider?: string;
+	modelId?: string;
+	thinkingLevel?: string;
 };
 
 type RuntimeSessionManager = Pick<PiSessionManager, "getSessionFile" | "getSessionId">;
@@ -51,11 +81,16 @@ type RuntimeDeps = {
 	createAgentSession?: (options: {
 		cwd: string;
 		sessionManager: RuntimeSessionManager;
+		modelProvider?: string;
+		modelId?: string;
+		thinkingLevel?: string;
 	}) => Promise<CreateAgentSessionResult>;
 };
 
 type RuntimeEntry = {
 	session: PiSdkSession;
+	agentSession: AgentSession | null;
+	workspacePath: string;
 	status: PiSessionStatus;
 	unsubscribe: () => void;
 	idle: Promise<void>;
@@ -72,19 +107,37 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	const createSessionManager =
 		deps.createSessionManager ??
 		((options: { cwd: string; sessionPath?: string | null; env?: NodeJS.ProcessEnv }) => {
-			const sessionDir = resolvePiSessionFilesDirForCwd({ cwd: options.cwd, env: options.env });
+			const sessionDir = resolvePiSessionFilesDirForCwd({ cwd: options.cwd, env: deps.env });
 			return options.sessionPath
 				? SessionManager.open(options.sessionPath, sessionDir, options.cwd)
 				: SessionManager.create(options.cwd, sessionDir);
 		});
 	const createAgentSession =
 		deps.createAgentSession ??
-		((options: { cwd: string; sessionManager: RuntimeSessionManager }) =>
-			createPiAgentSession({
-				cwd: options.cwd,
-				agentDir: resolvePiAgentDir(deps.env),
+		(async (options: {
+			cwd: string;
+			sessionManager: RuntimeSessionManager;
+			modelProvider?: string;
+			modelId?: string;
+			thinkingLevel?: string;
+		}) => {
+			const agentDir = resolvePiAgentDir(deps.env);
+			const services = await createAgentSessionServices({ cwd: options.cwd, agentDir });
+			const model =
+				options.modelProvider && options.modelId
+					? services.modelRegistry.find(options.modelProvider, options.modelId)
+					: undefined;
+			const created = await createAgentSessionFromServices({
+				services,
 				sessionManager: options.sessionManager as PiSessionManager,
-			}));
+				model: model ?? undefined,
+				thinkingLevel: options.thinkingLevel as AgentSession["thinkingLevel"] | undefined,
+			});
+			return {
+				session: created.session as unknown as PiSdkSession,
+				agentSession: created.session,
+			};
+		});
 	const sessions = new Map<string, RuntimeEntry>();
 	const busyStatuses = new Set<PiSessionStatus>(["running", "retrying", "aborting"]);
 
@@ -100,10 +153,31 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return entry;
 	};
 
-	const assertNotBusy = (entry: RuntimeEntry) => {
-		if (entry.activePromptToken || busyStatuses.has(entry.status)) {
-			throw new Error("Pi session is already running.");
+	const isActivelyPrompting = (entry: RuntimeEntry) => entry.activePromptToken !== null;
+
+	const shouldQueueDelivery = (entry: RuntimeEntry) => isActivelyPrompting(entry) || busyStatuses.has(entry.status);
+
+	const emitSessionSettings = async (sessionId: string, entry: RuntimeEntry) => {
+		if (!entry.agentSession) {
+			return;
 		}
+		deps.emit({
+			type: "session_settings",
+			sessionId,
+			settings: await buildSettingsFromAgentSession(entry.agentSession),
+			receivedAt: deps.now(),
+		});
+	};
+
+	const emitQueueUpdate = (sessionId: string, entry: RuntimeEntry) => {
+		const steering = entry.session.getSteeringMessages?.() ?? [];
+		const followUp = entry.session.getFollowUpMessages?.() ?? [];
+		deps.emit({
+			type: "queue_update",
+			sessionId,
+			messages: buildQueuedMessages(steering, followUp),
+			receivedAt: deps.now(),
+		});
 	};
 
 	const clearScheduledPrompt = (entry: RuntimeEntry): boolean => {
@@ -131,8 +205,19 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return { sessionId, status: "idle" };
 	};
 
-	const runPrompt = (sessionId: string, prompt: string): Promise<void> => {
+	const runPrompt = (sessionId: string, prompt: string, delivery: PiSessionDelivery = "prompt"): Promise<void> => {
 		const entry = getEntry(sessionId);
+		const streamingBehavior = delivery === "followUp" ? "followUp" : delivery === "steer" ? "steer" : undefined;
+		if (isActivelyPrompting(entry) && !streamingBehavior) {
+			throw new Error("Pi session is already running.");
+		}
+
+		if (shouldQueueDelivery(entry) && streamingBehavior) {
+			const queuePromise = entry.session.prompt(prompt, { streamingBehavior });
+			emitQueueUpdate(sessionId, entry);
+			return queuePromise;
+		}
+
 		const promptToken = Symbol("pi-session-prompt");
 		entry.activePromptToken = promptToken;
 		entry.status = "running";
@@ -175,7 +260,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return idle;
 	};
 
-	const schedulePrompt = (sessionId: string, prompt: string): void => {
+	const schedulePrompt = (sessionId: string, prompt: string) => {
 		const entry = getEntry(sessionId);
 		entry.status = "running";
 		entry.idle = new Promise<void>((resolve) => {
@@ -192,6 +277,24 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		});
 	};
 
+	const rebuildQueue = async (entry: RuntimeEntry, steering: string[], followUp: string[]) => {
+		if (!entry.agentSession) {
+			throw new Error("Queue management is unavailable for this session.");
+		}
+		entry.agentSession.clearQueue();
+		for (const text of steering) {
+			await entry.agentSession.prompt(text, { streamingBehavior: "steer" });
+		}
+		for (const text of followUp) {
+			await entry.agentSession.prompt(text, { streamingBehavior: "followUp" });
+		}
+	};
+
+	const readQueues = (entry: RuntimeEntry) => ({
+		steering: [...(entry.session.getSteeringMessages?.() ?? [])],
+		followUp: [...(entry.session.getFollowUpMessages?.() ?? [])],
+	});
+
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
 			let created: CreateAgentSessionResult | undefined;
@@ -202,7 +305,13 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					sessionPath: input.sessionPath ?? undefined,
 					env: deps.env,
 				});
-				created = await createAgentSession({ cwd: input.workspacePath, sessionManager });
+				created = await createAgentSession({
+					cwd: input.workspacePath,
+					sessionManager,
+					modelProvider: input.modelProvider,
+					modelId: input.modelId,
+					thinkingLevel: input.thinkingLevel,
+				});
 				await created.session.bindExtensions({});
 			} catch (error) {
 				created?.session.dispose();
@@ -212,6 +321,23 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 			const sessionId = createDesktopSessionId(input.projectId, created.session.sessionId);
 			const unsubscribe = created.session.subscribe((event) => {
+				if (event.type === "queue_update") {
+					const entry = sessions.get(sessionId);
+					if (!entry || entry.disposed) {
+						return;
+					}
+					emitQueueUpdate(sessionId, entry);
+					return;
+				}
+				if (event.type === "thinking_level_changed") {
+					const entry = sessions.get(sessionId);
+					if (!entry || entry.disposed) {
+						return;
+					}
+					void emitSessionSettings(sessionId, entry);
+					return;
+				}
+
 				for (const normalized of normalizePiSessionEvent({ sessionId, event, now: deps.now })) {
 					const entry = sessions.get(sessionId);
 					if (!entry || entry.disposed) {
@@ -227,6 +353,8 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			});
 			const entry: RuntimeEntry = {
 				session: created.session,
+				agentSession: created.agentSession ?? null,
+				workspacePath: input.workspacePath,
 				status: "running",
 				unsubscribe,
 				idle: Promise.resolve(),
@@ -237,6 +365,8 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			};
 			sessions.set(sessionId, entry);
 			schedulePrompt(sessionId, input.prompt);
+			await emitSessionSettings(sessionId, entry);
+			emitQueueUpdate(sessionId, entry);
 
 			return {
 				sessionId,
@@ -251,14 +381,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			assertNotBusy(entry);
-			runPrompt(input.sessionId, input.prompt);
+			const delivery = input.delivery ?? (shouldQueueDelivery(entry) ? "steer" : "prompt");
+			runPrompt(input.sessionId, input.prompt, delivery);
 			return { sessionId: input.sessionId, status: "running" };
 		},
 
 		async abort(input: PiSessionAbortInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			if (!entry.activePromptToken && !busyStatuses.has(entry.status)) {
+			if (!shouldQueueDelivery(entry)) {
 				return { sessionId: input.sessionId, status: entry.status };
 			}
 			clearScheduledPrompt(entry);
@@ -284,12 +414,101 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			}
 			entry.status = "idle";
 			emitStatus(input.sessionId, "idle", "Idle");
+			emitQueueUpdate(input.sessionId, entry);
 			return { sessionId: input.sessionId, status: "idle" };
 		},
 
 		async dispose(input: PiSessionDisposeInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
 			return disposeEntry(input.sessionId, entry);
+		},
+
+		async getSettings(input: PiSessionGetSettingsInput) {
+			const entry = getEntry(input.sessionId);
+			if (!entry.agentSession) {
+				return buildDefaultSettings({ workspacePath: entry.workspacePath, env: deps.env });
+			}
+			return buildSettingsFromAgentSession(entry.agentSession);
+		},
+
+		async getDefaultSettings(workspacePath?: string) {
+			return buildDefaultSettings({ workspacePath, env: deps.env });
+		},
+
+		async setModel(input: PiSessionSetModelInput) {
+			const entry = getEntry(input.sessionId);
+			if (!entry.agentSession) {
+				throw new Error("Model selection is unavailable for this session.");
+			}
+			const model = entry.agentSession.modelRegistry.find(input.provider, input.modelId);
+			if (!model) {
+				throw new Error(`Model not found: ${input.provider}/${input.modelId}`);
+			}
+			await entry.agentSession.setModel(model);
+			await emitSessionSettings(input.sessionId, entry);
+			return buildSettingsFromAgentSession(entry.agentSession);
+		},
+
+		async setThinkingLevel(input: PiSessionSetThinkingLevelInput) {
+			const entry = getEntry(input.sessionId);
+			if (!entry.agentSession) {
+				throw new Error("Thinking level selection is unavailable for this session.");
+			}
+			entry.agentSession.setThinkingLevel(input.level);
+			await emitSessionSettings(input.sessionId, entry);
+			return buildSettingsFromAgentSession(entry.agentSession);
+		},
+
+		setDefaultModel(input: PiSessionSetDefaultModelInput) {
+			return setDefaultModel({ ...input, env: deps.env });
+		},
+
+		setDefaultThinkingLevel(input: PiSessionSetDefaultThinkingLevelInput) {
+			return setDefaultThinkingLevel({ ...input, env: deps.env });
+		},
+
+		async updateQueuedMessage(input: PiSessionUpdateQueuedMessageInput) {
+			const entry = getEntry(input.sessionId);
+			const { steering, followUp } = readQueues(entry);
+			const source =
+				input.messageId.queue === "steer"
+					? { list: steering, other: followUp }
+					: { list: followUp, other: steering };
+			if (input.messageId.index >= source.list.length) {
+				throw new Error("Queued message not found.");
+			}
+			const text = source.list[input.messageId.index];
+			if (input.messageId.index < 0) {
+				throw new Error("Queued message not found.");
+			}
+			source.list.splice(input.messageId.index, 1);
+			if (input.delivery === "steer") {
+				steering.push(text);
+			} else {
+				followUp.push(text);
+			}
+			await rebuildQueue(entry, steering, followUp);
+			emitQueueUpdate(input.sessionId, entry);
+			return {
+				sessionId: input.sessionId,
+				messages: buildQueuedMessages(steering, followUp),
+			};
+		},
+
+		async removeQueuedMessage(input: PiSessionRemoveQueuedMessageInput) {
+			const entry = getEntry(input.sessionId);
+			const { steering, followUp } = readQueues(entry);
+			const list = input.messageId.queue === "steer" ? steering : followUp;
+			if (input.messageId.index < 0 || input.messageId.index >= list.length) {
+				throw new Error("Queued message not found.");
+			}
+			list.splice(input.messageId.index, 1);
+			await rebuildQueue(entry, steering, followUp);
+			emitQueueUpdate(input.sessionId, entry);
+			return {
+				sessionId: input.sessionId,
+				messages: buildQueuedMessages(steering, followUp),
+			};
 		},
 
 		async disposeAll(): Promise<void> {
