@@ -1,5 +1,6 @@
 import { GitBranch, GitPullRequest, Workflow } from "lucide-react";
 import type { ChatShellRoute } from "../chat/chat-view-model";
+import { formatComposerFocusKey } from "../chat/composer-focus-key";
 import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import { Composer } from "./composer";
@@ -14,6 +15,7 @@ const suggestionIcons = [GitPullRequest, GitBranch, Workflow] as const;
 interface ChatStartStateProps {
 	route: StartRoute;
 	session: LiveSessionState;
+	scope: { projectId: string | null; chatId: string | null };
 	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 }
@@ -25,7 +27,8 @@ const hasSelectedChatLabels = (
 
 const getStartTitle = (route: StartRoute) => (route.kind === "empty-chat" ? route.startTitle : route.title);
 
-export function ChatStartState({ route, session, composerHost, onAbortSession }: ChatStartStateProps) {
+export function ChatStartState({ route, session, scope, composerHost, onAbortSession }: ChatStartStateProps) {
+	const composerFocusKey = formatComposerFocusKey(scope);
 	const running =
 		session.status === "starting" ||
 		session.status === "running" ||
@@ -52,6 +55,7 @@ export function ChatStartState({ route, session, composerHost, onAbortSession }:
 			<Composer
 				context={route.composer}
 				layout="center"
+				focusKey={composerFocusKey}
 				running={running}
 				abortable={abortable}
 				queuedMessages={session.queuedMessages}

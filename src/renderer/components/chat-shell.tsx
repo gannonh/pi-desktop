@@ -1,4 +1,5 @@
 import { type ChatShellRoute, isResumableChatRoute, shouldUseChatStartLayout } from "../chat/chat-view-model";
+import { formatComposerFocusKey } from "../chat/composer-focus-key";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
 import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
@@ -30,6 +31,7 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 		? `${lastMessage.id}:${lastMessage.streaming ? 1 : 0}:${lastMessage.content.length}`
 		: "none";
 
+	const composerFocusKey = formatComposerFocusKey(scope);
 	const { scrollRef, showJumpToLatest, scrollToBottom, onScroll } = useStickToBottomScroll({
 		messageCount: session.messages.length,
 		streamingMessageCount,
@@ -40,7 +42,13 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 
 	if (shouldUseChatStartLayout(route, session)) {
 		return (
-			<ChatStartState route={route} session={session} composerHost={composerHost} onAbortSession={onAbortSession} />
+			<ChatStartState
+				route={route}
+				session={session}
+				scope={scope}
+				composerHost={composerHost}
+				onAbortSession={onAbortSession}
+			/>
 		);
 	}
 
@@ -67,6 +75,7 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 				<Composer
 					context={route.composer}
 					layout="bottom"
+					focusKey={composerFocusKey}
 					running={running}
 					abortable={abortable}
 					queuedMessages={session.queuedMessages}

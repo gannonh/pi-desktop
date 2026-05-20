@@ -2,6 +2,7 @@ import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, MoreHorizontal, Paperclip
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
+import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
 import { formatQueueStatusLabel } from "../chat/composer-view-model";
 import type { PiSessionDelivery, PiSessionQueuedMessage, PiSessionQueuedMessageId } from "../../shared/pi-session";
@@ -23,6 +24,7 @@ interface ComposerProps {
 	onEditQueuedMessage?: (message: PiSessionQueuedMessage) => void;
 	draftText?: string;
 	onDraftApplied?: () => void;
+	focusKey?: string;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
@@ -50,6 +52,7 @@ export function Composer({
 	onEditQueuedMessage,
 	draftText = "",
 	onDraftApplied,
+	focusKey,
 }: ComposerProps) {
 	const statusId = useId();
 	const formRef = useRef<HTMLFormElement>(null);
@@ -72,12 +75,24 @@ export function Composer({
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
 	const visibleQueuedMessages = queuedMessages.slice(0, 3);
 
+	const focusTextarea = () => {
+		textareaRef.current?.focus({ preventScroll: true });
+	};
+
+	useEffect(() => {
+		if (!focusKey) {
+			return;
+		}
+		focusTextarea();
+	}, [focusKey]);
+
 	useEffect(() => {
 		if (!draftText) {
 			return;
 		}
 		setText(draftText);
 		onDraftApplied?.();
+		focusTextarea();
 	}, [draftText, onDraftApplied]);
 
 	useEffect(() => {
@@ -99,6 +114,7 @@ export function Composer({
 		const submitted = await onSubmit?.(prompt, delivery);
 		if (submitted) {
 			setText("");
+			focusTextarea();
 		}
 	};
 
@@ -196,10 +212,27 @@ export function Composer({
 							value={text}
 							onChange={(event) => setText(event.target.value)}
 							onKeyDown={(event) => {
-								if (event.key === "Enter" && event.altKey && running) {
-									event.preventDefault();
-									void submitPrompt("followUp");
+								const action = resolveComposerEnterAction({
+									key: event.key,
+									shiftKey: event.shiftKey,
+									altKey: event.altKey,
+									running,
+									showSendWhileRunning: state.showSendWhileRunning,
+									sendDisabled: state.sendDisabled,
+								});
+								if (action === "none" || action === "newline") {
+									return;
 								}
+								event.preventDefault();
+								if (action === "followUp") {
+									void submitPrompt("followUp");
+									return;
+								}
+								if (state.showSendWhileRunning) {
+									void submitPrompt(pendingDelivery === "followUp" ? "followUp" : "steer");
+									return;
+								}
+								void submitPrompt("prompt");
 							}}
 							placeholder={placeholder}
 							rows={1}

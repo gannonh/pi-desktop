@@ -650,12 +650,6 @@ button {
 	color: color-mix(in oklch, var(--color-muted-foreground) 78%, transparent);
 }
 
-.composer__textarea:focus-visible {
-	border-radius: var(--radius-control);
-	outline: 2px solid var(--color-ring);
-	outline-offset: 0.25rem;
-}
-
 .composer__icon-button,
 .composer__send-button {
 	display: inline-flex;

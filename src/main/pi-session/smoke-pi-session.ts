@@ -66,6 +66,8 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 		streaming = false;
 	};
 
+	const streamDelayMs = Number(process.env.PI_DESKTOP_SMOKE_STREAM_DELAY_MS ?? "0");
+
 	const runPrompt = (prompt: string, resolve: () => void) => {
 		pendingPrompt = setTimeout(() => {
 			pendingPrompt = null;
@@ -115,7 +117,7 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 			emit({ type: "agent_end", messages: [] });
 			streaming = false;
 			resolve();
-		}, 0);
+		}, streamDelayMs);
 	};
 
 	const session: PiSdkSession = {
