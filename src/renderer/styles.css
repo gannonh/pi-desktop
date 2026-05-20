@@ -632,10 +632,10 @@ button {
 }
 
 .composer__textarea {
-	align-self: center;
 	width: 100%;
 	min-width: 0;
-	max-height: 8rem;
+	max-height: 260px;
+	overflow-y: auto;
 	resize: none;
 	border: 0;
 	background: transparent;

@@ -2,6 +2,7 @@ import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, MoreHorizontal, Paperclip
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
+import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
 import { formatQueueStatusLabel } from "../chat/composer-view-model";
 import type { PiSessionDelivery, PiSessionQueuedMessage, PiSessionQueuedMessageId } from "../../shared/pi-session";
 
@@ -53,6 +54,7 @@ export function Composer({
 	const statusId = useId();
 	const formRef = useRef<HTMLFormElement>(null);
 	const [text, setText] = useState("");
+	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
 	const state = createComposerState({
@@ -188,6 +190,7 @@ export function Composer({
 				<div className="composer__input-panel">
 					<div className="composer__message-row">
 						<textarea
+							ref={textareaRef}
 							className="composer__textarea"
 							aria-label="Message Pi"
 							value={text}
