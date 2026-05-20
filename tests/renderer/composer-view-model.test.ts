@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+	formatModelProviderLabel,
 	formatQueuedMessageDeliveryLabel,
 	formatQueuedMessageSwitchLabel,
 	formatQueueStatusLabel,
+	groupModelOptionsByProvider,
 	mapComposerBlockedReason,
 } from "../../src/renderer/chat/composer-view-model";
 import { createInitialSessionState } from "../../src/renderer/session/session-state";
@@ -26,6 +28,31 @@ describe("composer view model helpers", () => {
 				routeKind: "project-start",
 			}),
 		).toBe("No API key for openai/gpt-5.5");
+	});
+
+	it("groups model options by provider for two-level model menus", () => {
+		expect(formatModelProviderLabel("openai")).toBe("OpenAI");
+		expect(
+			groupModelOptionsByProvider([
+				{ provider: "anthropic", id: "claude-opus", label: "Opus" },
+				{ provider: "openai", id: "gpt-5.5", label: "5.5 High" },
+				{ provider: "openai", id: "gpt-5-mini", label: "5 Mini" },
+			]),
+		).toEqual([
+			{
+				provider: "anthropic",
+				label: "Anthropic",
+				models: [{ provider: "anthropic", id: "claude-opus", label: "Opus" }],
+			},
+			{
+				provider: "openai",
+				label: "OpenAI",
+				models: [
+					{ provider: "openai", id: "gpt-5-mini", label: "5 Mini" },
+					{ provider: "openai", id: "gpt-5.5", label: "5.5 High" },
+				],
+			},
+		]);
 	});
 
 	it("labels queued delivery and switch actions separately", () => {

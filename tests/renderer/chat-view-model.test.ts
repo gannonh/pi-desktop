@@ -67,6 +67,8 @@ const createMetadataLabel = (chat: Pick<ChatMetadata | StandaloneChatMetadata, "
 
 const settingsComposer = createComposerContext({
 	modelLabel: previewComposerSettings.modelLabel,
+	selectedModelProvider: previewComposerSettings.modelProvider,
+	selectedModelId: previewComposerSettings.modelId,
 	thinkingLabel: "High",
 	modelOptions: previewComposerSettings.availableModels.map((model) => ({
 		provider: model.provider,

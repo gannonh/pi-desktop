@@ -1,4 +1,5 @@
 import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, MoreHorizontal, Paperclip, Sparkles, X } from "lucide-react";
+import { ComposerModelSelector } from "./composer-model-selector";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
@@ -251,16 +252,14 @@ export function Composer({
 							<Paperclip className="composer__icon" />
 						</button>
 						<span className="composer__action-spacer" />
-						<ComposerControl
+						<ComposerModelSelector
 							label={context.modelLabel}
-							menu="model"
-							openMenu={openMenu}
-							onToggle={setOpenMenu}
-							items={context.modelOptions.map((option) => ({
-								key: `${option.provider}:${option.id}`,
-								label: option.label,
-								onSelect: () => onSelectModel?.(option.provider, option.id),
-							}))}
+							open={openMenu === "model"}
+							modelOptions={context.modelOptions}
+							selectedModelProvider={context.selectedModelProvider}
+							selectedModelId={context.selectedModelId}
+							onToggle={(nextOpen) => setOpenMenu(nextOpen ? "model" : null)}
+							onSelectModel={onSelectModel}
 						/>
 						<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
 							<Mic className="composer__icon" />

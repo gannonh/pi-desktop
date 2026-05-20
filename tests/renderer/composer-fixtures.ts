@@ -17,6 +17,8 @@ export const createComposerContext = (overrides: Partial<ComposerContext> = {}):
 	projectSelectorLabel: "Work in a project",
 	modeLabel: "Work locally",
 	modelLabel: "No model",
+	selectedModelProvider: null,
+	selectedModelId: null,
 	thinkingLabel: "Off",
 	runtimeAvailable: true,
 	disabledReason: "",

@@ -28,6 +28,8 @@ export interface ComposerContext {
 	modeLabel: "Work locally";
 	branchLabel?: string;
 	modelLabel: string;
+	selectedModelProvider: string | null;
+	selectedModelId: string | null;
 	thinkingLabel: string;
 	runtimeAvailable: boolean;
 	disabledReason: string;
@@ -37,6 +39,44 @@ export interface ComposerContext {
 	modelOptions: ComposerModelOption[];
 	thinkingOptions: ComposerThinkingOption[];
 }
+
+export type ComposerModelProviderGroup = {
+	provider: string;
+	label: string;
+	models: ComposerModelOption[];
+};
+
+const providerDisplayNames: Record<string, string> = {
+	anthropic: "Anthropic",
+	openai: "OpenAI",
+	google: "Google",
+	gemini: "Google",
+};
+
+export const formatModelProviderLabel = (provider: string): string =>
+	providerDisplayNames[provider] ??
+	provider
+		.split(/[-_]/)
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(" ");
+
+export const groupModelOptionsByProvider = (options: ComposerModelOption[]): ComposerModelProviderGroup[] => {
+	const byProvider = new Map<string, ComposerModelOption[]>();
+	for (const option of options) {
+		const models = byProvider.get(option.provider) ?? [];
+		models.push(option);
+		byProvider.set(option.provider, models);
+	}
+
+	return [...byProvider.entries()]
+		.sort(([left], [right]) => left.localeCompare(right))
+		.map(([provider, models]) => ({
+			provider,
+			label: formatModelProviderLabel(provider),
+			models: [...models].sort((left, right) => left.label.localeCompare(right.label)),
+		}));
+};
 
 const formatThinkingLabel = (level: PiSessionThinkingLevel): string =>
 	level === "off" ? "Off" : level.charAt(0).toUpperCase() + level.slice(1);
@@ -110,6 +150,8 @@ export const buildComposerContext = (
 		projectSelectorLabel,
 		modeLabel: "Work locally",
 		modelLabel,
+		selectedModelProvider: effectiveSettings?.modelProvider ?? null,
+		selectedModelId: effectiveSettings?.modelId ?? null,
 		thinkingLabel,
 		runtimeAvailable,
 		disabledReason,
