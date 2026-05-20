@@ -4,7 +4,11 @@ import type { ComposerContext } from "../chat/chat-view-model";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
-import { formatQueueStatusLabel } from "../chat/composer-view-model";
+import {
+	formatQueuedMessageDeliveryLabel,
+	formatQueuedMessageSwitchLabel,
+	formatQueueStatusLabel,
+} from "../chat/composer-view-model";
 import type { PiSessionDelivery, PiSessionQueuedMessage, PiSessionQueuedMessageId } from "../../shared/pi-session";
 
 interface ComposerProps {
@@ -55,6 +59,7 @@ export function Composer({
 	focusKey,
 }: ComposerProps) {
 	const statusId = useId();
+	const composerStackRef = useRef<HTMLDivElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
 	const [text, setText] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
@@ -97,7 +102,7 @@ export function Composer({
 
 	useEffect(() => {
 		const handlePointerDown = (event: MouseEvent) => {
-			if (!formRef.current?.contains(event.target as Node)) {
+			if (!composerStackRef.current?.contains(event.target as Node)) {
 				setOpenMenu(null);
 				setOpenQueueMenuId(null);
 			}
@@ -121,21 +126,24 @@ export function Composer({
 	const showAbortOnly = running && abortable && !state.showSendWhileRunning;
 
 	return (
-		<div className="composer-stack">
+		<div className="composer-stack" ref={composerStackRef}>
 			{visibleQueuedMessages.length > 0 ? (
 				<ul className="composer__queue" aria-label="Queued messages">
 					{visibleQueuedMessages.map((message) => {
 						const queueKey = `${message.id.queue}:${message.id.index}`;
-						const toggleLabel = message.delivery === "steer" ? "Follow-up" : "Steer";
+						const deliveryLabel = formatQueuedMessageDeliveryLabel(message.delivery);
+						const switchLabel = formatQueuedMessageSwitchLabel(message.delivery);
 						return (
 							<li key={queueKey} className="composer__queue-row">
+								<span className="composer__queue-delivery">{deliveryLabel}</span>
 								<span className="composer__queue-preview">{previewText(message.text)}</span>
 								<button
 									className="composer__queue-toggle"
 									type="button"
+									aria-label={switchLabel}
 									onClick={() => onToggleQueuedDelivery?.(message.id)}
 								>
-									{toggleLabel}
+									{switchLabel}
 								</button>
 								<div className="composer__queue-actions">
 									<button

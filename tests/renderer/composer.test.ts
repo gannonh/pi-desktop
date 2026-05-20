@@ -23,6 +23,23 @@ describe("Composer", () => {
 		expect(markup).toContain("disabled");
 	});
 
+	it("shows queued delivery type and switch action on queue rows", () => {
+		const markup = renderToStaticMarkup(
+			createElement(Composer, {
+				context,
+				running: true,
+				queuedMessages: [
+					{ id: { queue: "followUp", index: 0 }, text: "Follow up after steer", delivery: "followUp" },
+				],
+			}),
+		);
+
+		expect(markup).toContain('class="composer__queue-delivery"');
+		expect(markup).toContain("Follow-up");
+		expect(markup).toContain('aria-label="Switch to steering"');
+		expect(markup).not.toMatch(/composer__queue-toggle[^>]*>Steer</);
+	});
+
 	it("declares menu semantics on composer disclosure controls", () => {
 		const markup = renderToStaticMarkup(createElement(Composer, { context }));
 		const labels = [context.projectSelectorLabel, context.thinkingLabel, context.modelLabel];

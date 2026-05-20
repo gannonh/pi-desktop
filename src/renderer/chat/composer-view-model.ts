@@ -121,6 +121,12 @@ export const buildComposerContext = (
 	};
 };
 
+export const formatQueuedMessageDeliveryLabel = (delivery: "steer" | "followUp"): string =>
+	delivery === "steer" ? "Steering" : "Follow-up";
+
+export const formatQueuedMessageSwitchLabel = (delivery: "steer" | "followUp"): string =>
+	delivery === "steer" ? "Switch to follow-up" : "Switch to steering";
+
 export const formatQueueStatusLabel = (messages: LiveSessionState["queuedMessages"]): string => {
 	const steeringCount = messages.filter((message) => message.delivery === "steer").length;
 	const followUpCount = messages.filter((message) => message.delivery === "followUp").length;
