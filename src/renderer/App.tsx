@@ -3,6 +3,7 @@ import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type {
 	PiSessionDelivery,
+	PiSessionImageContent,
 	PiSessionQueuedMessage,
 	PiSessionQueuedMessageId,
 	PiSessionSettingsPayload,
@@ -446,7 +447,7 @@ export function App() {
 	);
 
 	const submitPrompt = useCallback(
-		async (prompt: string, delivery?: PiSessionDelivery) => {
+		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
 			nextHistoryRequestIdRef.current += 1;
 			const startSelection = resolvePromptSessionStartSelection(projectState);
 			if (!startSelection.ok) {
@@ -503,11 +504,13 @@ export function App() {
 						sessionId: reusableSessionId,
 						prompt,
 						delivery: effectiveDelivery === "prompt" ? undefined : effectiveDelivery,
+						images,
 					})
 				: await window.piDesktop.piSession.start({
 						projectId: requestProjectId,
 						chatId: requestChatId,
 						prompt,
+						images,
 						modelProvider: settingsForStart?.modelProvider ?? undefined,
 						modelId: settingsForStart?.modelId ?? undefined,
 						thinkingLevel: settingsForStart?.thinkingLevel,

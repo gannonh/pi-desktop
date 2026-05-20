@@ -1,7 +1,22 @@
-import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, MoreHorizontal, Paperclip, Sparkles, X } from "lucide-react";
+import {
+	ArrowUp,
+	ChevronDown,
+	GitBranch,
+	Laptop,
+	LoaderCircle,
+	Mic,
+	MoreHorizontal,
+	Paperclip,
+	Sparkles,
+	X,
+} from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import type { Attachment } from "../attachments/attachment-types";
+import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
+import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
+import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
@@ -10,7 +25,13 @@ import {
 	formatQueuedMessageSwitchLabel,
 	formatQueueStatusLabel,
 } from "../chat/composer-view-model";
-import type { PiSessionDelivery, PiSessionQueuedMessage, PiSessionQueuedMessageId } from "../../shared/pi-session";
+import type {
+	PiSessionDelivery,
+	PiSessionImageContent,
+	PiSessionQueuedMessage,
+	PiSessionQueuedMessageId,
+} from "../../shared/pi-session";
+import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
 
 interface ComposerProps {
 	context: ComposerContext;
@@ -19,7 +40,11 @@ interface ComposerProps {
 	abortable?: boolean;
 	queuedMessages?: PiSessionQueuedMessage[];
 	pendingDelivery?: PiSessionDelivery;
-	onSubmit?: (prompt: string, delivery?: PiSessionDelivery) => Promise<boolean> | boolean;
+	onSubmit?: (
+		prompt: string,
+		delivery?: PiSessionDelivery,
+		images?: PiSessionImageContent[],
+	) => Promise<boolean> | boolean;
 	onAbort?: () => void;
 	onSelectProject?: (projectId: string) => void;
 	onSelectModel?: (provider: string, modelId: string) => void;
@@ -62,12 +87,18 @@ export function Composer({
 	const statusId = useId();
 	const composerStackRef = useRef<HTMLDivElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [text, setText] = useState("");
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const [processingFiles, setProcessingFiles] = useState(false);
+	const [isDragging, setIsDragging] = useState(false);
+	const [attachmentError, setAttachmentError] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
 	const state = createComposerState({
 		text,
+		attachmentCount: attachments.length,
 		runtimeAvailable: context.runtimeAvailable,
 		disabledReason: context.disabledReason,
 		running,
@@ -81,16 +112,16 @@ export function Composer({
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
 	const visibleQueuedMessages = queuedMessages.slice(0, 3);
 
-	const focusTextarea = () => {
+	const focusTextarea = useCallback(() => {
 		textareaRef.current?.focus({ preventScroll: true });
-	};
+	}, [textareaRef]);
 
 	useEffect(() => {
 		if (!focusKey) {
 			return;
 		}
 		focusTextarea();
-	}, [focusKey]);
+	}, [focusKey, focusTextarea]);
 
 	useEffect(() => {
 		if (!draftText) {
@@ -99,7 +130,7 @@ export function Composer({
 		setText(draftText);
 		onDraftApplied?.();
 		focusTextarea();
-	}, [draftText, onDraftApplied]);
+	}, [draftText, onDraftApplied, focusTextarea]);
 
 	useEffect(() => {
 		const handlePointerDown = (event: MouseEvent) => {
@@ -112,14 +143,34 @@ export function Composer({
 		return () => document.removeEventListener("pointerdown", handlePointerDown);
 	}, []);
 
-	const submitPrompt = async (delivery?: PiSessionDelivery) => {
-		const prompt = text.trim();
-		if (!prompt || state.sendDisabled) {
+	const addFiles = async (files: File[]) => {
+		if (files.length === 0 || processingFiles) {
 			return;
 		}
-		const submitted = await onSubmit?.(prompt, delivery);
+		setAttachmentError("");
+		setProcessingFiles(true);
+		const result = await processFilesForComposer(files, attachments);
+		setProcessingFiles(false);
+		if (result.error) {
+			setAttachmentError(result.error);
+			return;
+		}
+		setAttachments(result.attachments);
+	};
+
+	const submitPrompt = async (delivery?: PiSessionDelivery) => {
+		if (state.sendDisabled || processingFiles) {
+			return;
+		}
+		const { prompt, images } = await buildPromptFromAttachments(text, attachments);
+		if (!prompt && !images?.length) {
+			return;
+		}
+		const submitted = await onSubmit?.(prompt, delivery, images);
 		if (submitted) {
 			setText("");
+			setAttachments([]);
+			setAttachmentError("");
 			focusTextarea();
 		}
 	};
@@ -201,6 +252,23 @@ export function Composer({
 				className={["composer", `composer--${layout}`].join(" ")}
 				aria-label="Pi composer"
 				aria-describedby={state.statusLabel ? statusId : undefined}
+				onDragOver={(event) => {
+					event.preventDefault();
+					setIsDragging(true);
+				}}
+				onDragLeave={(event) => {
+					event.preventDefault();
+					const rect = event.currentTarget.getBoundingClientRect();
+					const { clientX, clientY } = event;
+					if (clientX <= rect.left || clientX >= rect.right || clientY <= rect.top || clientY >= rect.bottom) {
+						setIsDragging(false);
+					}
+				}}
+				onDrop={(event) => {
+					event.preventDefault();
+					setIsDragging(false);
+					void addFiles(Array.from(event.dataTransfer?.files ?? []));
+				}}
 				onSubmit={async (event) => {
 					event.preventDefault();
 					if (state.showSendWhileRunning) {
@@ -212,7 +280,16 @@ export function Composer({
 					}
 				}}
 			>
-				<div className="composer__input-panel">
+				<div
+					className={["composer__input-panel", isDragging ? "composer__input-panel--dragging" : ""]
+						.filter(Boolean)
+						.join(" ")}
+				>
+					{isDragging ? <div className="composer__drop-overlay">Drop files here</div> : null}
+					<ComposerAttachmentTiles
+						attachments={attachments}
+						onRemove={(id) => setAttachments((current) => removeAttachment(current, id))}
+					/>
 					<div className="composer__message-row">
 						<textarea
 							ref={textareaRef}
@@ -220,6 +297,26 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => setText(event.target.value)}
+							onPaste={(event) => {
+								const items = event.clipboardData?.items;
+								if (!items) {
+									return;
+								}
+								const imageFiles: File[] = [];
+								for (const item of items) {
+									if (item.type.startsWith("image/")) {
+										const file = item.getAsFile();
+										if (file) {
+											imageFiles.push(file);
+										}
+									}
+								}
+								if (imageFiles.length === 0) {
+									return;
+								}
+								event.preventDefault();
+								void addFiles(imageFiles);
+							}}
 							onKeyDown={(event) => {
 								const action = resolveComposerEnterAction({
 									key: event.key,
@@ -247,9 +344,30 @@ export function Composer({
 							rows={1}
 						/>
 					</div>
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept={COMPOSER_ACCEPTED_FILE_TYPES}
+						multiple
+						className="composer__file-input"
+						onChange={(event) => {
+							void addFiles(Array.from(event.target.files ?? []));
+							event.target.value = "";
+						}}
+					/>
 					<div className="composer__action-row">
-						<button className="composer__icon-button" type="button" aria-label="Add context" disabled>
-							<Paperclip className="composer__icon" />
+						<button
+							className="composer__icon-button"
+							type="button"
+							aria-label="Add attachments"
+							disabled={processingFiles || !context.runtimeAvailable}
+							onClick={() => fileInputRef.current?.click()}
+						>
+							{processingFiles ? (
+								<LoaderCircle className="composer__icon composer__icon--spin" />
+							) : (
+								<Paperclip className="composer__icon" />
+							)}
 						</button>
 						<span className="composer__action-spacer" />
 						<ComposerModelSelector
@@ -332,6 +450,11 @@ export function Composer({
 					{queueStatusLabel ? <span className="composer__queue-status">{queueStatusLabel}</span> : null}
 					{running ? (
 						<span className="composer__helper-copy">Option+Enter queues a follow-up while Pi is running.</span>
+					) : null}
+					{attachmentError ? (
+						<span className="composer__disabled-reason" role="alert">
+							{attachmentError}
+						</span>
 					) : null}
 					{state.statusLabel ? (
 						<span id={statusId} className="composer__disabled-reason">

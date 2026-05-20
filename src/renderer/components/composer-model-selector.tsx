@@ -24,9 +24,7 @@ export function ComposerModelSelector({
 	const menuId = useId();
 	const [activeProvider, setActiveProvider] = useState<string | null>(null);
 	const providerGroups = groupModelOptionsByProvider(modelOptions);
-	const activeGroup = activeProvider
-		? providerGroups.find((group) => group.provider === activeProvider)
-		: null;
+	const activeGroup = activeProvider ? providerGroups.find((group) => group.provider === activeProvider) : null;
 
 	useEffect(() => {
 		if (!open) {
@@ -66,8 +64,7 @@ export function ComposerModelSelector({
 							</button>
 							<span className="composer__local-menu-header">{activeGroup.label}</span>
 							{activeGroup.models.map((model) => {
-								const selected =
-									selectedModelProvider === model.provider && selectedModelId === model.id;
+								const selected = selectedModelProvider === model.provider && selectedModelId === model.id;
 								return (
 									<button
 										key={`${model.provider}:${model.id}`}

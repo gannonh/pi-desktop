@@ -133,6 +133,11 @@ body,
 
 button {
 	font: inherit;
+	cursor: pointer;
+}
+
+button:disabled {
+	cursor: default;
 }
 
 .app-shell {
@@ -612,6 +617,147 @@ button {
 	background: var(--composer-surface);
 	padding: var(--composer-padding) var(--composer-padding) 0.25rem;
 	box-shadow: 0 0.875rem 1.375rem -0.875rem rgb(0 0 0 / 30%);
+}
+
+.composer__input-panel--dragging {
+	outline: 2px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
+}
+
+.composer__file-input {
+	display: none;
+}
+
+.composer__drop-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: inherit;
+	background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+	color: var(--color-primary);
+	font-size: var(--type-ui-sm);
+	font-weight: 500;
+	pointer-events: none;
+}
+
+.composer__attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.composer__attachment-tile-wrap {
+	position: relative;
+}
+
+.composer__attachment-tile {
+	display: flex;
+	width: 4rem;
+	height: 4rem;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border: 1px solid var(--color-border);
+	border-radius: 0.75rem;
+	background: var(--color-muted);
+	color: var(--color-muted-foreground);
+	cursor: pointer;
+}
+
+.composer__attachment-tile img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.composer__attachment-tile--icon {
+	padding: 0.35rem;
+	gap: 0.2rem;
+}
+
+.composer__attachment-name {
+	max-width: 100%;
+	overflow: hidden;
+	font-size: 0.625rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.composer__attachment-badge {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	padding: 0.1rem 0.2rem;
+	background: color-mix(in oklch, var(--color-background) 88%, transparent);
+	font-size: 0.5625rem;
+	text-align: center;
+}
+
+.composer__attachment-remove {
+	position: absolute;
+	top: -0.35rem;
+	right: -0.35rem;
+	display: inline-flex;
+	width: 1.25rem;
+	height: 1.25rem;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	background: var(--color-background);
+	color: var(--color-muted-foreground);
+}
+
+.composer__attachment-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgb(0 0 0 / 55%);
+	padding: 1.5rem;
+}
+
+.composer__attachment-overlay-panel {
+	max-width: min(90vw, 48rem);
+	max-height: 85vh;
+	overflow: auto;
+	border-radius: 0.75rem;
+	background: var(--color-background);
+	padding: 1rem;
+}
+
+.composer__attachment-overlay-panel img {
+	max-width: 100%;
+	height: auto;
+}
+
+.composer__attachment-overlay-title {
+	margin: 0 0 0.75rem;
+	font-size: var(--type-ui-sm);
+	font-weight: 600;
+}
+
+.composer__attachment-overlay-copy {
+	margin: 0;
+	white-space: pre-wrap;
+	font-size: var(--type-ui-sm);
+	color: var(--color-muted-foreground);
+}
+
+.composer__icon--spin {
+	animation: composer-spin 1s linear infinite;
+}
+
+@keyframes composer-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .composer__message-row,

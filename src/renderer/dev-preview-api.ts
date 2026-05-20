@@ -443,7 +443,7 @@ export const installDevPreviewApi = () => {
 			branch: async (input) => duplicateChat(input, " branch"),
 		},
 		piSession: {
-			start: async ({ projectId, chatId, prompt }) => {
+			start: async ({ projectId, chatId, prompt, images: _images }) => {
 				if (projectId === null) {
 					const chat = standaloneChats.find((candidate) => candidate.id === chatId);
 					if (!chat) {
@@ -483,7 +483,7 @@ export const installDevPreviewApi = () => {
 					},
 				};
 			},
-			submit: async ({ sessionId, prompt }) => {
+			submit: async ({ sessionId, prompt, images: _images }) => {
 				schedulePreviewStream(sessionId, prompt);
 				return { ok: true, data: { sessionId, status: "running" } };
 			},

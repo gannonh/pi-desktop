@@ -140,7 +140,7 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 			emitQueueUpdate();
 			return { steering, followUp };
 		},
-		prompt: (prompt, options) =>
+		prompt: (prompt, options?: { streamingBehavior?: "steer" | "followUp"; images?: unknown[] }) =>
 			new Promise((resolve) => {
 				if (streaming && options?.streamingBehavior) {
 					if (options.streamingBehavior === "followUp") {

@@ -258,6 +258,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 							workspacePath: target.workspacePath,
 							sessionPath: target.sessionPath,
 							prompt: parsed.prompt,
+							images: parsed.images,
 							modelProvider: parsed.modelProvider,
 							modelId: parsed.modelId,
 							thinkingLevel: parsed.thinkingLevel,

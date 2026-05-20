@@ -7,20 +7,35 @@ export const PiSessionDeliverySchema = z.enum(["prompt", "steer", "followUp"]);
 
 export const PiSessionThinkingLevelSchema = z.enum(["off", "minimal", "low", "medium", "high", "xhigh"]);
 
-export const PiSessionStartInputSchema = z.strictObject({
-	projectId: z.string().min(1).nullable(),
-	chatId: z.string().min(1).nullable().optional(),
-	prompt: z.string().trim().min(1),
-	modelProvider: z.string().min(1).optional(),
-	modelId: z.string().min(1).optional(),
-	thinkingLevel: PiSessionThinkingLevelSchema.optional(),
+export const PiSessionImageContentSchema = z.strictObject({
+	type: z.literal("image"),
+	data: z.string().min(1),
+	mimeType: z.string().min(1),
 });
 
-export const PiSessionSubmitInputSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	prompt: z.string().trim().min(1),
-	delivery: PiSessionDeliverySchema.optional(),
-});
+const hasPromptOrImages = (value: { prompt: string; images?: { type: "image"; data: string; mimeType: string }[] }) =>
+	value.prompt.trim().length > 0 || (value.images?.length ?? 0) > 0;
+
+export const PiSessionStartInputSchema = z
+	.strictObject({
+		projectId: z.string().min(1).nullable(),
+		chatId: z.string().min(1).nullable().optional(),
+		prompt: z.string(),
+		modelProvider: z.string().min(1).optional(),
+		modelId: z.string().min(1).optional(),
+		thinkingLevel: PiSessionThinkingLevelSchema.optional(),
+		images: z.array(PiSessionImageContentSchema).max(10).optional(),
+	})
+	.refine(hasPromptOrImages, { message: "Prompt or at least one image is required" });
+
+export const PiSessionSubmitInputSchema = z
+	.strictObject({
+		sessionId: z.string().min(1),
+		prompt: z.string(),
+		delivery: PiSessionDeliverySchema.optional(),
+		images: z.array(PiSessionImageContentSchema).max(10).optional(),
+	})
+	.refine(hasPromptOrImages, { message: "Prompt or at least one image is required" });
 
 export const PiSessionAbortInputSchema = z.strictObject({
 	sessionId: z.string().min(1),
@@ -208,6 +223,7 @@ export const PiSessionQueueResultSchema = createResultSchema(PiSessionQueuePaylo
 export type PiSessionStatus = z.infer<typeof PiSessionStatusSchema>;
 export type PiSessionDelivery = z.infer<typeof PiSessionDeliverySchema>;
 export type PiSessionThinkingLevel = z.infer<typeof PiSessionThinkingLevelSchema>;
+export type PiSessionImageContent = z.infer<typeof PiSessionImageContentSchema>;
 export type PiSessionStartInput = z.infer<typeof PiSessionStartInputSchema>;
 export type PiSessionSubmitInput = z.infer<typeof PiSessionSubmitInputSchema>;
 export type PiSessionAbortInput = z.infer<typeof PiSessionAbortInputSchema>;

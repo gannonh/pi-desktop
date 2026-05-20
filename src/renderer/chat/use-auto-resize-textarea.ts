@@ -20,6 +20,7 @@ export function useAutoResizeTextarea(value: string) {
 		element.style.height = `${nextHeight}px`;
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: value changes must trigger height sync
 	useLayoutEffect(() => {
 		syncHeight();
 	}, [value, syncHeight]);

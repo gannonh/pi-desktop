@@ -60,4 +60,35 @@ describe("createComposerState", () => {
 			statusLabel: "",
 		});
 	});
+
+	it("enables send when attachments exist without text", () => {
+		expect(
+			createComposerState({
+				text: "",
+				attachmentCount: 1,
+				runtimeAvailable: true,
+				disabledReason: "",
+			}),
+		).toEqual({
+			sendDisabled: false,
+			showSendWhileRunning: false,
+			statusLabel: "",
+		});
+	});
+
+	it("enables send while running when only attachments are present", () => {
+		expect(
+			createComposerState({
+				text: "",
+				attachmentCount: 2,
+				runtimeAvailable: true,
+				disabledReason: "",
+				running: true,
+			}),
+		).toEqual({
+			sendDisabled: false,
+			showSendWhileRunning: true,
+			statusLabel: "",
+		});
+	});
 });

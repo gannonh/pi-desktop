@@ -24,6 +24,10 @@ _Avoid_: Project thinking default, app thinking default
 A user-authored message submitted to start or continue agent work in the current chat session.
 _Avoid_: Message (when referring only to user input), command
 
+**Attachment**:
+A file the user adds in the composer before Send: images (vision input) or documents whose extracted text is merged into the prompt. Attachments appear as removable tiles above the composer input; they are processed in the renderer and submitted with the prompt.
+_Avoid_: Upload, file picker (as product noun)
+
 **Session-backed chat**:
 A chat whose Pi session can be resumed or loaded as transcript history.
 _Avoid_: Real chat, saved chat

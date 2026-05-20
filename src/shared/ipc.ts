@@ -23,7 +23,6 @@ import {
 	type PiSessionActionResult,
 	type PiSessionDisposeInput,
 	type PiSessionEvent,
-	type PiSessionGetDefaultSettingsInput,
 	type PiSessionGetSettingsInput,
 	type PiSessionHistoryInput,
 	type PiSessionHistoryResult,

@@ -29,7 +29,6 @@ import {
 	createStandaloneChatFromSessionInfo,
 	defaultChatTitle,
 	getChatTitleFromSessionInfo,
-	readSessionInfoForPath,
 	resolveChatTitleForSession,
 } from "../sessions/pi-session-index";
 import { getNextScratchProjectPath } from "./project-paths";

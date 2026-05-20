@@ -97,7 +97,7 @@ describe("createPiSessionRuntime", () => {
 		expect(result.status).toBe("running");
 		await runtime.whenIdle(result.sessionId);
 		expect(session.bindExtensions).toHaveBeenCalledWith({});
-		expect(session.prompt).toHaveBeenCalledWith("Hello");
+		expect(session.prompt).toHaveBeenCalledWith("Hello", { images: undefined });
 		expect(events.map((event) => event.type)).toEqual([
 			"queue_update",
 			"status",
@@ -105,6 +105,34 @@ describe("createPiSessionRuntime", () => {
 			"assistant_delta",
 			"status",
 		]);
+	});
+
+	it("forwards images into prompt options on start and submit", async () => {
+		const { session } = createFakeSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: () => {},
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const images = [{ type: "image" as const, data: "aGVsbG8=", mimeType: "image/png" }];
+
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "",
+			images,
+		});
+		await runtime.whenIdle(started.sessionId);
+		expect(session.prompt).toHaveBeenCalledWith("", { images });
+
+		await runtime.submit({
+			sessionId: started.sessionId,
+			prompt: "Follow up",
+			images,
+		});
+		await runtime.whenIdle(started.sessionId);
+		expect(session.prompt).toHaveBeenLastCalledWith("Follow up", { images });
 	});
 
 	it("starts from an existing session manager when resuming a session path", async () => {

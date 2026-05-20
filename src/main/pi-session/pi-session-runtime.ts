@@ -13,6 +13,7 @@ import type {
 	PiSessionDisposeInput,
 	PiSessionEvent,
 	PiSessionGetSettingsInput,
+	PiSessionImageContent,
 	PiSessionRemoveQueuedMessageInput,
 	PiSessionSetDefaultModelInput,
 	PiSessionSetDefaultThinkingLevelInput,
@@ -37,7 +38,10 @@ export type PiSdkSession = {
 	sessionId: string;
 	subscribe: (listener: (event: AgentSessionEvent) => void) => () => void;
 	bindExtensions: (bindings: Record<string, never>) => Promise<void>;
-	prompt: (prompt: string, options?: { streamingBehavior?: "steer" | "followUp" }) => Promise<void>;
+	prompt: (
+		prompt: string,
+		options?: { streamingBehavior?: "steer" | "followUp"; images?: PiSessionImageContent[] },
+	) => Promise<void>;
 	abort: () => Promise<void>;
 	dispose: () => void;
 	isStreaming?: () => boolean;
@@ -62,10 +66,14 @@ type RuntimeStartInput = {
 	workspacePath: string;
 	sessionPath?: string | null;
 	prompt: string;
+	images?: PiSessionImageContent[];
 	modelProvider?: string;
 	modelId?: string;
 	thinkingLevel?: string;
 };
+
+const toPromptImages = (images: PiSessionImageContent[] | undefined) =>
+	images && images.length > 0 ? images : undefined;
 
 type RuntimeSessionManager = Pick<PiSessionManager, "getSessionFile" | "getSessionId">;
 
@@ -205,15 +213,21 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return { sessionId, status: "idle" };
 	};
 
-	const runPrompt = (sessionId: string, prompt: string, delivery: PiSessionDelivery = "prompt"): Promise<void> => {
+	const runPrompt = (
+		sessionId: string,
+		prompt: string,
+		delivery: PiSessionDelivery = "prompt",
+		images?: PiSessionImageContent[],
+	): Promise<void> => {
 		const entry = getEntry(sessionId);
 		const streamingBehavior = delivery === "followUp" ? "followUp" : delivery === "steer" ? "steer" : undefined;
+		const imageContent = toPromptImages(images);
 		if (isActivelyPrompting(entry) && !streamingBehavior) {
 			throw new Error("Pi session is already running.");
 		}
 
 		if (shouldQueueDelivery(entry) && streamingBehavior) {
-			const queuePromise = entry.session.prompt(prompt, { streamingBehavior });
+			const queuePromise = entry.session.prompt(prompt, { streamingBehavior, images: imageContent });
 			emitQueueUpdate(sessionId, entry);
 			return queuePromise;
 		}
@@ -224,7 +238,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		emitStatus(sessionId, "running", "Running");
 
 		const idle = entry.session
-			.prompt(prompt)
+			.prompt(prompt, { images: imageContent })
 			.then(() => {
 				const currentEntry = sessions.get(sessionId);
 				if (currentEntry === entry && !entry.disposed && entry.activePromptToken === promptToken) {
@@ -260,7 +274,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		return idle;
 	};
 
-	const schedulePrompt = (sessionId: string, prompt: string) => {
+	const schedulePrompt = (sessionId: string, prompt: string, images?: PiSessionImageContent[]) => {
 		const entry = getEntry(sessionId);
 		entry.status = "running";
 		entry.idle = new Promise<void>((resolve) => {
@@ -271,7 +285,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					return;
 				}
 				entry.scheduledPrompt = null;
-				void runPrompt(sessionId, prompt).then(resolve, resolve);
+				void runPrompt(sessionId, prompt, "prompt", images).then(resolve, resolve);
 			}, 0);
 			entry.scheduledPrompt = { timeout, resolve };
 		});
@@ -364,7 +378,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				disposed: false,
 			};
 			sessions.set(sessionId, entry);
-			schedulePrompt(sessionId, input.prompt);
+			schedulePrompt(sessionId, input.prompt, input.images);
 			await emitSessionSettings(sessionId, entry);
 			emitQueueUpdate(sessionId, entry);
 
@@ -382,7 +396,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
 			const delivery = input.delivery ?? (shouldQueueDelivery(entry) ? "steer" : "prompt");
-			runPrompt(input.sessionId, input.prompt, delivery);
+			runPrompt(input.sessionId, input.prompt, delivery, input.images);
 			return { sessionId: input.sessionId, status: "running" };
 		},
 

@@ -1,7 +1,16 @@
-import type { PiSessionDelivery, PiSessionQueuedMessage, PiSessionQueuedMessageId } from "../../shared/pi-session";
+import type {
+	PiSessionDelivery,
+	PiSessionImageContent,
+	PiSessionQueuedMessage,
+	PiSessionQueuedMessageId,
+} from "../../shared/pi-session";
 
 export type ComposerHostProps = {
-	onSubmitPrompt: (prompt: string, delivery?: PiSessionDelivery) => Promise<boolean> | boolean;
+	onSubmitPrompt: (
+		prompt: string,
+		delivery?: PiSessionDelivery,
+		images?: PiSessionImageContent[],
+	) => Promise<boolean> | boolean;
 	onSelectProject: (projectId: string) => void;
 	onSelectModel: (provider: string, modelId: string) => void;
 	onSelectThinkingLevel: (level: string) => void;
