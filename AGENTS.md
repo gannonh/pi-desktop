@@ -56,4 +56,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 
 ## Git
 
+- Commit after each coherent change set or turn.
+- Keep commits atomic: stage only files changed for the current change set and do not mix unrelated work.
+- Use Conventional Commits syntax: `<type>(<scope>): <imperative summary>`.
 - Never use `git push --no-verify` or other hook-skipping flags unless the user explicitly requests it. If a pre-push hook fails, fix the underlying issue and push again.
