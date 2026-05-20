@@ -189,6 +189,31 @@ describe("local dev server", () => {
 		}
 	});
 
+	it.each([
+		"http://127.0.0.1:5174",
+		"http://localhost:5178",
+	])("accepts HTTP requests from loopback Vite origin %s", async (origin) => {
+		const { backend } = createBackend();
+		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
+
+		try {
+			const response = await fetch(`${server.url}/api/rpc`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin },
+				body: JSON.stringify({ operation: "app.getVersion" }),
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+			expect(await response.json()).toEqual({
+				ok: true,
+				data: { name: "pi-desktop dev server", version: "dev" },
+			});
+		} finally {
+			await server.close();
+		}
+	});
+
 	it("rejects HTTP requests with unexpected origins", async () => {
 		const { backend } = createBackend();
 		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
@@ -264,6 +289,25 @@ describe("local dev server", () => {
 			if (!closed) {
 				await server.close();
 			}
+		}
+	});
+
+	it("accepts websocket clients from loopback Vite origins", async () => {
+		const { backend } = createBackend();
+		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
+
+		try {
+			const socket = new WebSocket(server.wsUrl, { headers: { Origin: "http://localhost:5178" } });
+			await new Promise<void>((resolve, reject) => {
+				socket.once("open", resolve);
+				socket.once("unexpected-response", () => reject(new Error("unexpected websocket rejection")));
+				socket.once("error", reject);
+			});
+
+			socket.close();
+			await new Promise<void>((resolve) => socket.once("close", resolve));
+		} finally {
+			await server.close();
 		}
 	});
 

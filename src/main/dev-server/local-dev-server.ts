@@ -5,8 +5,9 @@ import { AppRpcRequestSchema, PiSessionEventEnvelopeSchema } from "../../shared/
 import { err, type IpcResult } from "../../shared/result";
 import type { AppBackend } from "../app-backend";
 
-const allowedOrigin = "http://127.0.0.1:5173";
+const defaultAllowedOrigin = "http://127.0.0.1:5173";
 const maxJsonBodyBytes = 1024 * 1024;
+const allowedDevOriginHosts = new Set(["127.0.0.1", "localhost"]);
 
 export type LocalDevServerOptions = {
 	backend: AppBackend;
@@ -20,25 +21,35 @@ export type LocalDevServer = {
 	close: () => Promise<void>;
 };
 
-const corsHeaders = {
-	"access-control-allow-origin": allowedOrigin,
+const corsHeaders = (origin: string | undefined) => ({
+	"access-control-allow-origin": origin === undefined || origin === "" ? defaultAllowedOrigin : origin,
 	"access-control-allow-methods": "POST, OPTIONS",
 	"access-control-allow-headers": "content-type",
-};
+});
 
 class BodyTooLargeError extends Error {}
 
-const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<unknown>) => {
+const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<unknown>, origin?: string) => {
 	const serializedBody = JSON.stringify(body);
 	response.writeHead(statusCode, {
-		...corsHeaders,
+		...corsHeaders(origin),
 		"content-type": "application/json",
 	});
 	response.end(serializedBody);
 };
 
-const isAllowedOrigin = (origin: string | undefined) =>
-	origin === undefined || origin === "" || origin === allowedOrigin;
+const isAllowedOrigin = (origin: string | undefined) => {
+	if (origin === undefined || origin === "") {
+		return true;
+	}
+
+	try {
+		const url = new URL(origin);
+		return url.protocol === "http:" && url.port !== "" && allowedDevOriginHosts.has(url.hostname);
+	} catch {
+		return false;
+	}
+};
 
 const rejectOrigin = (response: ServerResponse) => {
 	sendJson(response, 403, err("dev_server.forbidden_origin", "Origin is not allowed."));
@@ -108,14 +119,14 @@ const handleHttpRequest = async (
 	}
 
 	if (request.method === "OPTIONS") {
-		response.writeHead(204, corsHeaders);
+		response.writeHead(204, corsHeaders(request.headers.origin));
 		response.end();
 		return;
 	}
 
 	const url = new URL(request.url ?? "/", `http://${host}`);
 	if (request.method !== "POST" || url.pathname !== "/api/rpc") {
-		sendJson(response, 404, err("dev_server.not_found", "Route not found."));
+		sendJson(response, 404, err("dev_server.not_found", "Route not found."), request.headers.origin);
 		return;
 	}
 
@@ -124,20 +135,25 @@ const handleHttpRequest = async (
 		body = await readJsonBody(request);
 	} catch (error) {
 		if (error instanceof BodyTooLargeError) {
-			sendJson(response, 413, err("dev_server.body_too_large", "Request body is too large."));
+			sendJson(
+				response,
+				413,
+				err("dev_server.body_too_large", "Request body is too large."),
+				request.headers.origin,
+			);
 			return;
 		}
-		sendJson(response, 400, err("dev_server.invalid_json", "Request body must be JSON."));
+		sendJson(response, 400, err("dev_server.invalid_json", "Request body must be JSON."), request.headers.origin);
 		return;
 	}
 
 	const parsed = AppRpcRequestSchema.safeParse(body);
 	if (!parsed.success) {
-		sendJson(response, 400, err("dev_server.invalid_request", "Invalid app RPC request."));
+		sendJson(response, 400, err("dev_server.invalid_request", "Invalid app RPC request."), request.headers.origin);
 		return;
 	}
 
-	sendJson(response, 200, await backend.handle(parsed.data));
+	sendJson(response, 200, await backend.handle(parsed.data), request.headers.origin);
 };
 
 export const createLocalDevServer = async (options: LocalDevServerOptions): Promise<LocalDevServer> => {
@@ -148,7 +164,7 @@ export const createLocalDevServer = async (options: LocalDevServerOptions): Prom
 				response.destroy(error instanceof Error ? error : undefined);
 				return;
 			}
-			sendJson(response, 500, err("dev_server.request_failed", "Request failed."));
+			sendJson(response, 500, err("dev_server.request_failed", "Request failed."), request.headers.origin);
 		});
 	});
 

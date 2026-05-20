@@ -5,8 +5,8 @@ import type { AppBackend } from "../../src/main/app-backend";
 import type { LocalDevServer, LocalDevServerOptions } from "../../src/main/dev-server/local-dev-server";
 import {
 	resolveDevWebUserDataDir,
-	startDevWebServer,
 	type StartDevWebServerDeps,
+	startDevWebServer,
 } from "../../src/main/dev-server/start-dev-web";
 import { err, ok } from "../../src/shared/result";
 
@@ -102,7 +102,7 @@ describe("startDevWebServer", () => {
 		});
 		expect(fixture.deps.createViteServer).toHaveBeenCalledWith({
 			configFile: "vite.renderer.config.ts",
-			server: { host: "127.0.0.1", port: 5173, strictPort: true },
+			server: { host: "127.0.0.1", port: 5173, strictPort: false },
 		});
 		expect(fixture.vite.listen).toHaveBeenCalledOnce();
 		expect(fixture.vite.printUrls).toHaveBeenCalledOnce();
