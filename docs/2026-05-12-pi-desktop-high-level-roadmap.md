@@ -382,9 +382,30 @@ Acceptance:
 - Bash or terminal-style output can be expanded and read without leaving the chat surface.
 - Tool event failures remain visible and do not get flattened into assistant text only.
 
+### M07A.2: Right Panel Tab Shell
+
+Goal: turn the coding panel foundation into a UI-first right-side tab workspace that can host arbitrary agent-adjacent surfaces.
+
+Deliverables:
+
+- Three-column app layout: projects/sessions on the left, chat in the middle, tabbed workspace on the right.
+- Right panel tab strip with mock tabs for Terminal, Browser, Markdown/File, and Diffs/PR.
+- Add/open-tab affordance with a menu of supported panel kinds.
+- Mock-data renderers for each panel kind, focused on visual behavior and navigation rather than live integrations.
+- Current raw tool-call panel removed from the default right-side experience.
+- Responsive behavior for hiding, showing, resizing, or stacking the right panel.
+- Browser-preview mock state for selecting and adding right-side tabs.
+
+Acceptance:
+
+- The right side reads as a tabbed workspace, not a duplicate list of chat tool calls.
+- User can switch between mock Terminal, Browser, Markdown/File, and Diffs/PR tabs.
+- User can add a mock tab from the right-side tab menu.
+- Chat remains the primary conversational flow while the right panel preserves selected tab state.
+
 ### M07B: File Activity and Preview
 
-Goal: make file-oriented agent work inspectable from the coding panel foundation.
+Goal: wire file-oriented agent work into the right-panel tab shell.
 
 Deliverables:
 
@@ -524,8 +545,8 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 6 is complete. The next planning target is **M07A: Tool Timeline MVP**: normalize tool execution events, add the coding panel shell, and render tool calls with status, input summaries, result summaries, expandable raw output, and bash/terminal output.
+Milestone 6 is complete. **M07A: Tool Timeline MVP** has built the tool execution event foundation. The next planning target is **M07A.2: Right Panel Tab Shell**: reshape that foundation into a UI-first right-side tab workspace with mock Terminal, Browser, Markdown/File, and Diffs/PR panels.
 
-After M07A, **M07B: File Activity and Preview** adds file-oriented inspection on the coding panel foundation. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
+After M07A.2, **M07B: File Activity and Preview** wires real file-oriented agent work into the right-panel tab shell. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
 
 Milestone 3.2 is complete. M04 through M07C keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.

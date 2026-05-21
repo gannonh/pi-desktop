@@ -1,6 +1,6 @@
 # M07A Tool Timeline MVP Spec
 ## Status
-Implemented
+Verified
 ## Goal
 Make live Pi tool execution inspectable in Pi Desktop through a transcript-adjacent coding panel that shows tool status, tool input summaries, result summaries, expandable raw details, and bash-style output.
 ## Background
