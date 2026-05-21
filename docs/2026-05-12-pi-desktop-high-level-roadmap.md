@@ -337,11 +337,11 @@ Acceptance:
 
 - Opening a sidebar chat with a Pi session file shows its real history in the main panel (not the `chat:milestone-01` fixture).
 - Sending a follow-up in that chat appends to the same transcript view with streamed assistant output.
-- Markdown in assistant replies renders as formatted content, not raw `#` / `` ` `` syntax.
+- Markdown in assistant replies renders as formatted content, not raw `#` / ``` syntax.
 - New output stays in view without manual scrolling during an active run.
 - Primary dev and demo flows no longer depend on `static-transcripts.ts`.
 
-### M06: Composer
+### ✅  M06: Composer
 
 Goal: wire the chat composer from visual shell to full session input control.
 
