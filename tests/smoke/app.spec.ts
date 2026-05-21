@@ -34,23 +34,23 @@ const expectComposerNearBottom = async (page: Page) => {
 const expectComposerControlPlacement = async (page: Page) => {
 	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
 	const messageBox = await page.getByLabel("Message Pi").boundingBox();
-	const addContextBox = await page.getByLabel("Add context").boundingBox();
-	const modelBox = await page.getByRole("button", { name: "5.5 High" }).boundingBox();
+	const addAttachmentsBox = await page.getByLabel("Add attachments").boundingBox();
+	const modelBox = await page.locator(".composer__action-row .composer__control").boundingBox();
 	const voiceBox = await page.getByLabel("Voice input").boundingBox();
 	const sendBox = await page.getByLabel("Send message").boundingBox();
 	const projectBox = await page.getByRole("button", { name: "Work in a project" }).boundingBox();
-	const modeBox = await page.getByRole("button", { name: "Work locally" }).boundingBox();
+	const modeBox = await page.locator(".composer__control-row .composer__control").last().boundingBox();
 
 	expect(inputPanelBox).not.toBeNull();
 	expect(messageBox).not.toBeNull();
-	expect(addContextBox).not.toBeNull();
+	expect(addAttachmentsBox).not.toBeNull();
 	expect(modelBox).not.toBeNull();
 	expect(voiceBox).not.toBeNull();
 	expect(sendBox).not.toBeNull();
 	expect(projectBox).not.toBeNull();
 	expect(modeBox).not.toBeNull();
 
-	const actionRowY = addContextBox?.y ?? 0;
+	const actionRowY = addAttachmentsBox?.y ?? 0;
 	expect(actionRowY).toBeGreaterThan((messageBox?.y ?? 0) + (messageBox?.height ?? 0) - 2);
 	expect(Math.abs(actionRowY - (modelBox?.y ?? 0))).toBeLessThanOrEqual(3);
 	expect(Math.abs(actionRowY - (voiceBox?.y ?? 0))).toBeLessThanOrEqual(3);
@@ -58,7 +58,7 @@ const expectComposerControlPlacement = async (page: Page) => {
 	expect(
 		(inputPanelBox?.y ?? 0) + (inputPanelBox?.height ?? 0) - ((sendBox?.y ?? 0) + (sendBox?.height ?? 0)),
 	).toBeLessThanOrEqual(8);
-	expect(projectBox?.y ?? 0).toBeGreaterThan(actionRowY + (addContextBox?.height ?? 0));
+	expect(projectBox?.y ?? 0).toBeGreaterThan(actionRowY + (addAttachmentsBox?.height ?? 0));
 	expect(Math.abs((projectBox?.y ?? 0) - (modeBox?.y ?? 0))).toBeLessThanOrEqual(2);
 };
 
@@ -161,9 +161,9 @@ test("renders the Milestone 2 global chat start state", async () => {
 			"placeholder",
 			"Ask Pi anything. @ to use skills or mention files",
 		);
-		await expect(window.getByText("Work in a project")).toBeVisible();
-		await expect(window.getByText("Work locally")).toBeVisible();
-		await expect(window.getByText("5.5 High")).toBeVisible();
+		await expect(window.getByRole("button", { name: "Work in a project" })).toBeVisible();
+		await expect(window.locator(".composer__action-row .composer__control")).toBeVisible();
+		await expect(window.locator(".composer__control-row .composer__control")).toHaveCount(2);
 		await expect(window.getByText("Full access")).toHaveCount(0);
 		await expectComposerControlPlacement(window);
 	} finally {

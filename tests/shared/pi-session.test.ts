@@ -85,6 +85,20 @@ describe("Pi session contracts", () => {
 		expect(() => PiSessionSubmitInputSchema.parse({ sessionId: "pi-session:one", prompt: "\t\n" })).toThrow();
 	});
 
+	it("accepts image-only submit payloads", () => {
+		expect(
+			PiSessionSubmitInputSchema.parse({
+				sessionId: "pi-session:one",
+				prompt: "",
+				images: [{ type: "image", data: "aGVsbG8=", mimeType: "image/png" }],
+			}),
+		).toEqual({
+			sessionId: "pi-session:one",
+			prompt: "",
+			images: [{ type: "image", data: "aGVsbG8=", mimeType: "image/png" }],
+		});
+	});
+
 	it("validates session start results", () => {
 		const result = PiSessionStartResultSchema.parse({
 			ok: true,

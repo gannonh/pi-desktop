@@ -1,3 +1,4 @@
+import type { ComposerHostProps } from "../chat/composer-host";
 import type { ChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { LiveSessionState } from "../session/session-state";
@@ -11,7 +12,7 @@ interface ProjectMainProps {
 	transcriptHydration: TranscriptHydrationState;
 	transcriptScope: { projectId: string | null; chatId: string | null };
 	onProjectState: (result: ProjectStateViewResult) => void;
-	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 }
 
@@ -30,7 +31,7 @@ export function ProjectMain({
 	transcriptHydration,
 	transcriptScope,
 	onProjectState,
-	onSubmitPrompt,
+	composerHost,
 	onAbortSession,
 }: ProjectMainProps) {
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
@@ -100,7 +101,7 @@ export function ProjectMain({
 					session={session}
 					hydration={transcriptHydration}
 					scope={transcriptScope}
-					onSubmitPrompt={onSubmitPrompt}
+					composerHost={composerHost}
 					onAbortSession={onAbortSession}
 				/>
 			)}

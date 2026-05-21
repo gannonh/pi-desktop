@@ -1,16 +1,10 @@
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
+import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { ChatStatus, ProjectStateView } from "../../shared/project-state";
+import { buildComposerContext, type ComposerContext } from "./composer-view-model";
 import type { LiveSessionState } from "../session/session-state";
 
-export interface ComposerContext {
-	projectSelectorLabel: string;
-	modeLabel: "Work locally";
-	branchLabel?: string;
-	modelLabel: "5.5 High";
-	runtimeAvailable: boolean;
-	disabledReason: string;
-	projectId?: string;
-}
+export type { ComposerContext } from "./composer-view-model";
 
 interface SelectedChatSessionLabels {
 	resumeLabel: "Start session" | "Resume session";
@@ -28,25 +22,22 @@ export type ChatSuggestion =
 	| "Unblock my most recent open PR"
 	| "Connect your favorite apps to Pi";
 
-export type ChatShellRoute =
+type ComposerRouteBase =
 	| {
 			kind: "global-start";
 			title: "What should we work on?";
-			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
 	  }
 	| {
 			kind: "project-start";
 			title: string;
 			projectId: string;
-			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
 	  }
 	| ({
 			kind: "standalone-start";
 			title: string;
 			chatId: string;
-			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
 	  } & SelectedChatSessionLabels)
 	| ({
@@ -55,9 +46,11 @@ export type ChatShellRoute =
 			startTitle: string;
 			projectId: string;
 			chatId: string;
-			composer: ComposerContext;
 			suggestions: readonly ChatSuggestion[];
-	  } & SelectedChatSessionLabels)
+	  } & SelectedChatSessionLabels);
+
+export type ChatShellRoute =
+	| (ComposerRouteBase & { composer: ComposerContext })
 	| {
 			kind: "unavailable-project";
 			title: string;
@@ -72,18 +65,6 @@ const suggestions = [
 	"Connect your favorite apps to Pi",
 ] as const satisfies readonly ChatSuggestion[];
 
-const createComposerContext = (
-	projectSelectorLabel: string,
-	options: { runtimeAvailable: boolean; disabledReason: string; projectId?: string },
-): ComposerContext => ({
-	projectSelectorLabel,
-	modeLabel: "Work locally",
-	modelLabel: "5.5 High",
-	runtimeAvailable: options.runtimeAvailable,
-	disabledReason: options.disabledReason,
-	projectId: options.projectId,
-});
-
 const createSelectedChatSessionLabels = (chat: {
 	sessionPath: string | null;
 	status: ChatStatus;
@@ -94,34 +75,50 @@ const createSelectedChatSessionLabels = (chat: {
 	metadataLabel: `${chat.status} · ${chat.cwd} · updated ${new Date(chat.updatedAt).toLocaleString()}`,
 });
 
-export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => {
+const withComposer = (
+	base: ComposerRouteBase,
+	view: ProjectStateView,
+	session: LiveSessionState,
+	settings: PiSessionSettingsPayload | null,
+): ComposerRouteBase & { composer: ComposerContext } => ({
+	...base,
+	composer: buildComposerContext(base, view, session, settings),
+});
+
+export const createChatShellRoute = (
+	view: ProjectStateView,
+	session: LiveSessionState,
+	settings: PiSessionSettingsPayload | null,
+): ChatShellRoute => {
 	const selectedProject = view.selectedProject;
 	const selectedChat = view.selectedChat;
 
 	if (!selectedProject) {
 		if (selectedChat) {
-			return {
-				kind: "standalone-start",
-				title: formatChatDisplayLabel(selectedChat.title),
-				chatId: selectedChat.id,
-				composer: createComposerContext(selectedChat.cwd, {
-					runtimeAvailable: true,
-					disabledReason: "",
-				}),
-				suggestions,
-				...createSelectedChatSessionLabels(selectedChat),
-			};
+			return withComposer(
+				{
+					kind: "standalone-start",
+					title: formatChatDisplayLabel(selectedChat.title),
+					chatId: selectedChat.id,
+					suggestions,
+					...createSelectedChatSessionLabels(selectedChat),
+				},
+				view,
+				session,
+				settings,
+			);
 		}
 
-		return {
-			kind: "global-start",
-			title: "What should we work on?",
-			composer: createComposerContext("Work in a project", {
-				runtimeAvailable: false,
-				disabledReason: "Select an available project to start a Pi session.",
-			}),
-			suggestions,
-		};
+		return withComposer(
+			{
+				kind: "global-start",
+				title: "What should we work on?",
+				suggestions,
+			},
+			view,
+			session,
+			settings,
+		);
 	}
 
 	const projectSelectorLabel = selectedProject.displayName;
@@ -139,32 +136,34 @@ export const createChatShellRoute = (view: ProjectStateView): ChatShellRoute => 
 		};
 	}
 
-	const composer = createComposerContext(projectSelectorLabel, {
-		runtimeAvailable: true,
-		disabledReason: "",
-		projectId: selectedProject.id,
-	});
-
 	if (!selectedChat) {
-		return {
-			kind: "project-start",
-			title: `What should we build in ${selectedProject.displayName}?`,
-			projectId: selectedProject.id,
-			composer,
-			suggestions,
-		};
+		return withComposer(
+			{
+				kind: "project-start",
+				title: `What should we build in ${selectedProject.displayName}?`,
+				projectId: selectedProject.id,
+				suggestions,
+			},
+			view,
+			session,
+			settings,
+		);
 	}
 
-	return {
-		kind: "empty-chat",
-		title: formatChatDisplayLabel(selectedChat.title),
-		startTitle: `What should we build in ${selectedProject.displayName}?`,
-		projectId: selectedProject.id,
-		chatId: selectedChat.id,
-		composer,
-		suggestions,
-		...createSelectedChatSessionLabels(selectedChat),
-	};
+	return withComposer(
+		{
+			kind: "empty-chat",
+			title: formatChatDisplayLabel(selectedChat.title),
+			startTitle: `What should we build in ${selectedProject.displayName}?`,
+			projectId: selectedProject.id,
+			chatId: selectedChat.id,
+			suggestions,
+			...createSelectedChatSessionLabels(selectedChat),
+		},
+		view,
+		session,
+		settings,
+	);
 };
 
 export const hasLiveSession = (session: LiveSessionState) =>

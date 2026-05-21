@@ -5,13 +5,17 @@ import { AppRpcRequestSchema, PiSessionEventEnvelopeSchema } from "../../shared/
 import { err, type IpcResult } from "../../shared/result";
 import type { AppBackend } from "../app-backend";
 
-const allowedOrigin = "http://127.0.0.1:5173";
+const defaultAllowedOrigin = "http://127.0.0.1:5173";
 const maxJsonBodyBytes = 1024 * 1024;
+const allowedDevOriginHosts = new Set(["127.0.0.1", "localhost"]);
+const defaultVitePortMin = 5173;
+const defaultVitePortMax = 5190;
 
 export type LocalDevServerOptions = {
 	backend: AppBackend;
 	host: string;
 	port: number;
+	allowedVitePorts?: readonly number[];
 };
 
 export type LocalDevServer = {
@@ -20,25 +24,47 @@ export type LocalDevServer = {
 	close: () => Promise<void>;
 };
 
-const corsHeaders = {
-	"access-control-allow-origin": allowedOrigin,
+const corsHeaders = (origin: string | undefined) => ({
+	"access-control-allow-origin": origin === undefined || origin === "" ? defaultAllowedOrigin : origin,
 	"access-control-allow-methods": "POST, OPTIONS",
 	"access-control-allow-headers": "content-type",
-};
+});
 
 class BodyTooLargeError extends Error {}
 
-const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<unknown>) => {
+const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<unknown>, origin?: string) => {
 	const serializedBody = JSON.stringify(body);
 	response.writeHead(statusCode, {
-		...corsHeaders,
+		...corsHeaders(origin),
 		"content-type": "application/json",
 	});
 	response.end(serializedBody);
 };
 
-const isAllowedOrigin = (origin: string | undefined) =>
-	origin === undefined || origin === "" || origin === allowedOrigin;
+const buildAllowedVitePorts = (ports: readonly number[] | undefined) =>
+	new Set(
+		ports ??
+			Array.from({ length: defaultVitePortMax - defaultVitePortMin + 1 }, (_, index) => defaultVitePortMin + index),
+	);
+
+const isAllowedOrigin = (origin: string | undefined, allowedVitePorts: ReadonlySet<number>) => {
+	if (origin === undefined || origin === "") {
+		return true;
+	}
+
+	try {
+		const url = new URL(origin);
+		const port = Number(url.port);
+		return (
+			url.protocol === "http:" &&
+			Number.isInteger(port) &&
+			allowedVitePorts.has(port) &&
+			allowedDevOriginHosts.has(url.hostname)
+		);
+	} catch {
+		return false;
+	}
+};
 
 const rejectOrigin = (response: ServerResponse) => {
 	sendJson(response, 403, err("dev_server.forbidden_origin", "Origin is not allowed."));
@@ -101,21 +127,22 @@ const handleHttpRequest = async (
 	response: ServerResponse,
 	backend: AppBackend,
 	host: string,
+	allowedVitePorts: ReadonlySet<number>,
 ) => {
-	if (!isAllowedOrigin(request.headers.origin)) {
+	if (!isAllowedOrigin(request.headers.origin, allowedVitePorts)) {
 		rejectOrigin(response);
 		return;
 	}
 
 	if (request.method === "OPTIONS") {
-		response.writeHead(204, corsHeaders);
+		response.writeHead(204, corsHeaders(request.headers.origin));
 		response.end();
 		return;
 	}
 
 	const url = new URL(request.url ?? "/", `http://${host}`);
 	if (request.method !== "POST" || url.pathname !== "/api/rpc") {
-		sendJson(response, 404, err("dev_server.not_found", "Route not found."));
+		sendJson(response, 404, err("dev_server.not_found", "Route not found."), request.headers.origin);
 		return;
 	}
 
@@ -124,31 +151,37 @@ const handleHttpRequest = async (
 		body = await readJsonBody(request);
 	} catch (error) {
 		if (error instanceof BodyTooLargeError) {
-			sendJson(response, 413, err("dev_server.body_too_large", "Request body is too large."));
+			sendJson(
+				response,
+				413,
+				err("dev_server.body_too_large", "Request body is too large."),
+				request.headers.origin,
+			);
 			return;
 		}
-		sendJson(response, 400, err("dev_server.invalid_json", "Request body must be JSON."));
+		sendJson(response, 400, err("dev_server.invalid_json", "Request body must be JSON."), request.headers.origin);
 		return;
 	}
 
 	const parsed = AppRpcRequestSchema.safeParse(body);
 	if (!parsed.success) {
-		sendJson(response, 400, err("dev_server.invalid_request", "Invalid app RPC request."));
+		sendJson(response, 400, err("dev_server.invalid_request", "Invalid app RPC request."), request.headers.origin);
 		return;
 	}
 
-	sendJson(response, 200, await backend.handle(parsed.data));
+	sendJson(response, 200, await backend.handle(parsed.data), request.headers.origin);
 };
 
 export const createLocalDevServer = async (options: LocalDevServerOptions): Promise<LocalDevServer> => {
+	const allowedVitePorts = buildAllowedVitePorts(options.allowedVitePorts);
 	const httpServer = createServer((request, response) => {
-		handleHttpRequest(request, response, options.backend, options.host).catch((error) => {
+		handleHttpRequest(request, response, options.backend, options.host, allowedVitePorts).catch((error) => {
 			console.error("Local dev server request failed.", error);
 			if (response.headersSent) {
 				response.destroy(error instanceof Error ? error : undefined);
 				return;
 			}
-			sendJson(response, 500, err("dev_server.request_failed", "Request failed."));
+			sendJson(response, 500, err("dev_server.request_failed", "Request failed."), request.headers.origin);
 		});
 	});
 
@@ -161,7 +194,7 @@ export const createLocalDevServer = async (options: LocalDevServerOptions): Prom
 			return;
 		}
 
-		if (!isAllowedOrigin(request.headers.origin)) {
+		if (!isAllowedOrigin(request.headers.origin, allowedVitePorts)) {
 			socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
 			socket.destroy();
 			return;

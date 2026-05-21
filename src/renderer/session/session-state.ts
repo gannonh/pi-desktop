@@ -2,6 +2,8 @@ import type {
 	PiSessionEvent,
 	PiSessionHistoryPayload,
 	PiSessionMessageRole,
+	PiSessionQueuedMessage,
+	PiSessionSettingsPayload,
 	PiSessionStatus,
 } from "../../shared/pi-session";
 
@@ -19,6 +21,8 @@ export type LiveSessionState = {
 	messages: LiveSessionMessage[];
 	errorMessage: string;
 	retryMessage: string;
+	settings: PiSessionSettingsPayload | null;
+	queuedMessages: PiSessionQueuedMessage[];
 };
 
 export const createInitialSessionState = (): LiveSessionState => ({
@@ -28,6 +32,8 @@ export const createInitialSessionState = (): LiveSessionState => ({
 	messages: [],
 	errorMessage: "",
 	retryMessage: "",
+	settings: null,
+	queuedMessages: [],
 });
 
 const findMessage = (messages: readonly LiveSessionMessage[], messageId: string) =>
@@ -38,13 +44,18 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 		? messages.map((message) => (message.id === next.id ? next : message))
 		: [...messages, next];
 
-export const applySessionHistoryResult = (result: PiSessionHistoryPayload): LiveSessionState => ({
+export const applySessionHistoryResult = (
+	result: PiSessionHistoryPayload,
+	settings: PiSessionSettingsPayload | null = null,
+): LiveSessionState => ({
 	sessionId: result.sessionId,
 	status: result.status,
 	statusLabel: result.statusLabel,
 	messages: result.messages,
 	errorMessage: "",
 	retryMessage: "",
+	settings,
+	queuedMessages: [],
 });
 
 export const applySessionStartResult = (
@@ -147,6 +158,22 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			status: "retrying",
 			statusLabel: "Retrying",
 			retryMessage: `Retry ${event.attempt}${max}: ${event.message}`,
+		};
+	}
+
+	if (event.type === "session_settings") {
+		return {
+			...state,
+			sessionId: event.sessionId ?? state.sessionId,
+			settings: event.settings,
+		};
+	}
+
+	if (event.type === "queue_update") {
+		return {
+			...state,
+			sessionId: event.sessionId,
+			queuedMessages: event.messages,
 		};
 	}
 

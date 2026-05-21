@@ -69,6 +69,31 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
+	it("notes image attachments in user message content", () => {
+		expect(
+			normalizeAndParse({
+				type: "message_start",
+				message: {
+					role: "user",
+					content: [
+						{ type: "text", text: "See this" },
+						{ type: "image", data: "abc", mimeType: "image/png" },
+					],
+					timestamp: 2,
+				},
+			}),
+		).toEqual([
+			{
+				type: "message_start",
+				sessionId: "pi-session:one",
+				messageId: "user:2",
+				role: "user",
+				content: "See this\n[Image attached]",
+				receivedAt,
+			},
+		]);
+	});
+
 	it("normalizes assistant text deltas", () => {
 		expect(
 			normalizeAndParse({

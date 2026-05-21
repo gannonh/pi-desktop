@@ -6,6 +6,8 @@ import {
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
 	PiSessionHistoryResultSchema,
+	PiSessionQueueResultSchema,
+	PiSessionSettingsResultSchema,
 	PiSessionStartResultSchema,
 	ProjectStateViewResultSchema,
 } from "../shared/ipc";
@@ -70,6 +72,21 @@ const api: PiDesktopApi = {
 		abort: async (input) => safeInvokeParse(IpcChannels.piSessionAbort, PiSessionActionResultSchema, input),
 		history: async (input) => safeInvokeParse(IpcChannels.piSessionHistory, PiSessionHistoryResultSchema, input),
 		dispose: async (input) => safeInvokeParse(IpcChannels.piSessionDispose, PiSessionActionResultSchema, input),
+		getSettings: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionGetSettings, PiSessionSettingsResultSchema, input),
+		getDefaultSettings: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionGetDefaultSettings, PiSessionSettingsResultSchema, input),
+		setModel: async (input) => safeInvokeParse(IpcChannels.piSessionSetModel, PiSessionSettingsResultSchema, input),
+		setThinkingLevel: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionSetThinkingLevel, PiSessionSettingsResultSchema, input),
+		setDefaultModel: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionSetDefaultModel, PiSessionSettingsResultSchema, input),
+		setDefaultThinkingLevel: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionSetDefaultThinkingLevel, PiSessionSettingsResultSchema, input),
+		updateQueuedMessage: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionUpdateQueuedMessage, PiSessionQueueResultSchema, input),
+		removeQueuedMessage: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionRemoveQueuedMessage, PiSessionQueueResultSchema, input),
 		onEvent: (listener) => {
 			const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
 				const parsed = PiSessionEventSchema.safeParse(payload);

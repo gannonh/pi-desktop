@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
-import type { PiSessionStartPayload } from "../shared/pi-session";
+import type {
+	PiSessionDelivery,
+	PiSessionImageContent,
+	PiSessionQueuedMessage,
+	PiSessionQueuedMessageId,
+	PiSessionSettingsPayload,
+	PiSessionStartPayload,
+} from "../shared/pi-session";
+import type { ComposerHostProps } from "./chat/composer-host";
 import { AppShell } from "./components/app-shell";
 import {
 	type SessionScope,
@@ -129,6 +137,9 @@ export function App() {
 	const [activeSessionProjectId, setActiveSessionProjectId] = useState<string | null>(null);
 	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
+	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
+	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
+	const [composerDraft, setComposerDraft] = useState("");
 	const selectedProjectId = projectState.selectedProjectId;
 	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
@@ -279,8 +290,179 @@ export function App() {
 		});
 	}, [scheduleProjectTitleRefresh]);
 
+	const resolveWorkspacePath = useCallback(
+		() => projectState.selectedProject?.path ?? projectState.selectedChat?.cwd,
+		[projectState.selectedChat?.cwd, projectState.selectedProject?.path],
+	);
+
+	useEffect(() => {
+		let cancelled = false;
+		const workspacePath = resolveWorkspacePath();
+		void window.piDesktop.piSession.getDefaultSettings(workspacePath ? { workspacePath } : {}).then((result) => {
+			if (cancelled) {
+				return;
+			}
+			if (result.ok) {
+				setDefaultComposerSettings(result.data);
+				return;
+			}
+			setDefaultComposerSettings(null);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [resolveWorkspacePath]);
+
+	const applyComposerSettingsResult = useCallback((settings: PiSessionSettingsPayload) => {
+		setSessionState((current) => ({ ...current, settings }));
+		setDefaultComposerSettings(settings);
+	}, []);
+
+	const selectComposerProject = useCallback(
+		async (projectId: string) => {
+			applyProjectStateViewResult(await window.piDesktop.project.select({ projectId }));
+		},
+		[applyProjectStateViewResult],
+	);
+
+	const selectComposerModel = useCallback(
+		async (provider: string, modelId: string) => {
+			const sessionId = acceptedSessionIdRef.current;
+			if (sessionId) {
+				const result = await window.piDesktop.piSession.setModel({ sessionId, provider, modelId });
+				if (result.ok) {
+					applyComposerSettingsResult(result.data);
+					return;
+				}
+				setSessionState((current) => ({
+					...current,
+					status: "failed",
+					statusLabel: "Failed",
+					errorMessage: result.error.message,
+					retryMessage: "",
+				}));
+				return;
+			}
+
+			const workspacePath = resolveWorkspacePath();
+			const result = await window.piDesktop.piSession.setDefaultModel({
+				workspacePath,
+				provider,
+				modelId,
+			});
+			if (result.ok) {
+				setDefaultComposerSettings(result.data);
+				return;
+			}
+			setSessionState((current) => ({
+				...current,
+				status: "failed",
+				statusLabel: "Failed",
+				errorMessage: result.error.message,
+				retryMessage: "",
+			}));
+		},
+		[applyComposerSettingsResult, resolveWorkspacePath],
+	);
+
+	const selectComposerThinkingLevel = useCallback(
+		async (level: string) => {
+			const sessionId = acceptedSessionIdRef.current;
+			if (sessionId) {
+				const result = await window.piDesktop.piSession.setThinkingLevel({
+					sessionId,
+					level: level as PiSessionSettingsPayload["thinkingLevel"],
+				});
+				if (result.ok) {
+					applyComposerSettingsResult(result.data);
+					return;
+				}
+				setSessionState((current) => ({
+					...current,
+					status: "failed",
+					statusLabel: "Failed",
+					errorMessage: result.error.message,
+					retryMessage: "",
+				}));
+				return;
+			}
+
+			const workspacePath = resolveWorkspacePath();
+			const result = await window.piDesktop.piSession.setDefaultThinkingLevel({
+				workspacePath,
+				level: level as PiSessionSettingsPayload["thinkingLevel"],
+			});
+			if (result.ok) {
+				setDefaultComposerSettings(result.data);
+				return;
+			}
+			setSessionState((current) => ({
+				...current,
+				status: "failed",
+				statusLabel: "Failed",
+				errorMessage: result.error.message,
+				retryMessage: "",
+			}));
+		},
+		[applyComposerSettingsResult, resolveWorkspacePath],
+	);
+
+	const toggleQueuedDelivery = useCallback(
+		async (messageId: PiSessionQueuedMessageId) => {
+			const sessionId = acceptedSessionIdRef.current;
+			if (!sessionId) {
+				return;
+			}
+			const current = sessionState.queuedMessages.find(
+				(message) => message.id.queue === messageId.queue && message.id.index === messageId.index,
+			);
+			if (!current) {
+				return;
+			}
+			const result = await window.piDesktop.piSession.updateQueuedMessage({
+				sessionId,
+				messageId,
+				delivery: current.delivery === "steer" ? "followUp" : "steer",
+			});
+			if (result.ok) {
+				setSessionState((state) => ({ ...state, queuedMessages: result.data.messages }));
+				return;
+			}
+			setSessionState((current) => ({
+				...current,
+				errorMessage: result.error.message,
+			}));
+		},
+		[sessionState.queuedMessages],
+	);
+
+	const removeQueuedMessage = useCallback(async (messageId: PiSessionQueuedMessageId) => {
+		const sessionId = acceptedSessionIdRef.current;
+		if (!sessionId) {
+			return;
+		}
+		const result = await window.piDesktop.piSession.removeQueuedMessage({ sessionId, messageId });
+		if (result.ok) {
+			setSessionState((state) => ({ ...state, queuedMessages: result.data.messages }));
+			return;
+		}
+		setSessionState((current) => ({
+			...current,
+			errorMessage: result.error.message,
+		}));
+	}, []);
+
+	const editQueuedMessage = useCallback(
+		async (message: PiSessionQueuedMessage) => {
+			setPendingComposerDelivery(message.delivery);
+			setComposerDraft(message.text);
+			await removeQueuedMessage(message.id);
+		},
+		[removeQueuedMessage],
+	);
+
 	const submitPrompt = useCallback(
-		async (prompt: string) => {
+		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
 			nextHistoryRequestIdRef.current += 1;
 			const startSelection = resolvePromptSessionStartSelection(projectState);
 			if (!startSelection.ok) {
@@ -325,12 +507,28 @@ export function App() {
 				retryMessage: "",
 			}));
 
+			const settingsForStart = sessionState.settings ?? defaultComposerSettings;
+			const sessionIsRunning =
+				Boolean(reusableSessionId) &&
+				(sessionState.status === "running" ||
+					sessionState.status === "retrying" ||
+					sessionState.status === "aborting");
+			const effectiveDelivery = delivery ?? (sessionIsRunning ? "steer" : "prompt");
 			const result = reusableSessionId
-				? await window.piDesktop.piSession.submit({ sessionId: reusableSessionId, prompt })
+				? await window.piDesktop.piSession.submit({
+						sessionId: reusableSessionId,
+						prompt,
+						delivery: effectiveDelivery === "prompt" ? undefined : effectiveDelivery,
+						images,
+					})
 				: await window.piDesktop.piSession.start({
 						projectId: requestProjectId,
 						chatId: requestChatId,
 						prompt,
+						images,
+						modelProvider: settingsForStart?.modelProvider ?? undefined,
+						modelId: settingsForStart?.modelId ?? undefined,
+						thinkingLevel: settingsForStart?.thinkingLevel,
 					});
 
 			const requestIsCurrent =
@@ -417,8 +615,41 @@ export function App() {
 
 			return true;
 		},
-		[activeSessionChatId, activeSessionProjectId, applyProjectStateViewResult, projectState],
+		[
+			activeSessionChatId,
+			activeSessionProjectId,
+			applyProjectStateViewResult,
+			defaultComposerSettings,
+			projectState,
+			sessionState.settings,
+			sessionState.status,
+		],
 	);
+
+	const composerHost: ComposerHostProps = {
+		onSubmitPrompt: submitPrompt,
+		onSelectProject: (projectId) => {
+			void selectComposerProject(projectId);
+		},
+		onSelectModel: (provider, modelId) => {
+			void selectComposerModel(provider, modelId);
+		},
+		onSelectThinkingLevel: (level) => {
+			void selectComposerThinkingLevel(level);
+		},
+		onToggleQueuedDelivery: (messageId) => {
+			void toggleQueuedDelivery(messageId);
+		},
+		onRemoveQueuedMessage: (messageId) => {
+			void removeQueuedMessage(messageId);
+		},
+		onEditQueuedMessage: (message) => {
+			void editQueuedMessage(message);
+		},
+		pendingComposerDelivery,
+		composerDraft,
+		onComposerDraftApplied: () => setComposerDraft(""),
+	};
 
 	useEffect(() => {
 		const selectedChat = projectState.selectedChat;
@@ -565,7 +796,8 @@ export function App() {
 			transcriptHydration={transcriptHydration}
 			transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
 			onProjectState={applyProjectStateViewResult}
-			onSubmitPrompt={submitPrompt}
+			composerHost={composerHost}
+			defaultComposerSettings={defaultComposerSettings}
 			onAbortSession={abortSession}
 		/>
 	);

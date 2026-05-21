@@ -5,15 +5,16 @@ import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
 import { createIdleTranscriptHydration } from "../../src/renderer/session/transcript-hydration";
+import { createComposerContext, createComposerHost } from "./composer-fixtures";
 
-const composer = {
+const composer = createComposerContext({
 	projectSelectorLabel: "pi-desktop",
-	modeLabel: "Work locally" as const,
-	modelLabel: "5.5 High" as const,
-	runtimeAvailable: true,
-	disabledReason: "",
+	modelLabel: "5.5 High",
+	thinkingLabel: "High",
 	projectId: "project:/tmp/pi-desktop",
-};
+});
+
+const composerHost = createComposerHost();
 
 const scope = { projectId: "project:/tmp/pi-desktop", chatId: "chat:session:one" };
 
@@ -24,6 +25,8 @@ const liveSession: LiveSessionState = {
 	messages: [{ id: "assistant:1", role: "assistant", content: "Live response", streaming: true }],
 	errorMessage: "",
 	retryMessage: "",
+	settings: null,
+	queuedMessages: [],
 };
 
 const renderChatShell = (
@@ -37,7 +40,7 @@ const renderChatShell = (
 			session,
 			hydration,
 			scope,
-			onSubmitPrompt: vi.fn(),
+			composerHost,
 			onAbortSession: vi.fn(),
 		}),
 	);
@@ -87,13 +90,11 @@ describe("ChatShell", () => {
 			kind: "standalone-start",
 			title: "Standalone",
 			chatId: "chat:standalone",
-			composer: {
+			composer: createComposerContext({
 				projectSelectorLabel: "/tmp/outside",
-				modeLabel: "Work locally",
 				modelLabel: "5.5 High",
-				runtimeAvailable: true,
-				disabledReason: "",
-			},
+				thinkingLabel: "High",
+			}),
 			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
 			resumeLabel: "Resume session",
 			metadataLabel: "idle · updated 5/12/2026, 10:00:00 AM",

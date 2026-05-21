@@ -1,128 +1,485 @@
-import { ArrowUp, ChevronDown, GitBranch, Laptop, Mic, Paperclip, Sparkles } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import {
+	ArrowUp,
+	ChevronDown,
+	GitBranch,
+	Laptop,
+	LoaderCircle,
+	Mic,
+	MoreHorizontal,
+	Paperclip,
+	Sparkles,
+	X,
+} from "lucide-react";
+import { ComposerModelSelector } from "./composer-model-selector";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import type { Attachment } from "../attachments/attachment-types";
+import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
+import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
+import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
 import { createComposerState } from "../chat/composer-state";
+import { resolveComposerEnterAction } from "../chat/composer-enter-key";
+import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
+import {
+	formatQueuedMessageDeliveryLabel,
+	formatQueuedMessageSwitchLabel,
+	formatQueueStatusLabel,
+} from "../chat/composer-view-model";
+import type {
+	PiSessionDelivery,
+	PiSessionImageContent,
+	PiSessionQueuedMessage,
+	PiSessionQueuedMessageId,
+} from "../../shared/pi-session";
+import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
 
 interface ComposerProps {
 	context: ComposerContext;
 	layout?: "center" | "bottom";
 	running?: boolean;
 	abortable?: boolean;
-	onSubmit?: (prompt: string) => Promise<boolean> | boolean;
+	queuedMessages?: PiSessionQueuedMessage[];
+	pendingDelivery?: PiSessionDelivery;
+	onSubmit?: (
+		prompt: string,
+		delivery?: PiSessionDelivery,
+		images?: PiSessionImageContent[],
+	) => Promise<boolean> | boolean;
 	onAbort?: () => void;
+	onSelectProject?: (projectId: string) => void;
+	onSelectModel?: (provider: string, modelId: string) => void;
+	onSelectThinkingLevel?: (level: string) => void;
+	onToggleQueuedDelivery?: (messageId: PiSessionQueuedMessageId) => void;
+	onRemoveQueuedMessage?: (messageId: PiSessionQueuedMessageId) => void;
+	onEditQueuedMessage?: (message: PiSessionQueuedMessage) => void;
+	draftText?: string;
+	onDraftApplied?: () => void;
+	focusKey?: string;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
 
-const inputHint = "Ask Pi anything. @ to use skills or mention files";
+const defaultInputHint = "Ask Pi anything. @ to use skills or mention files";
+const runningSteerHint = "Steering message — queued at the next turn";
+const runningFollowUpHint = "Follow-up message — Option+Enter to queue as follow-up";
+
+const previewText = (text: string) => (text.length > 72 ? `${text.slice(0, 72)}…` : text);
 
 export function Composer({
 	context,
 	layout = "center",
 	running = false,
 	abortable = running,
+	queuedMessages = [],
+	pendingDelivery = "steer",
 	onSubmit,
 	onAbort,
+	onSelectProject,
+	onSelectModel,
+	onSelectThinkingLevel,
+	onToggleQueuedDelivery,
+	onRemoveQueuedMessage,
+	onEditQueuedMessage,
+	draftText = "",
+	onDraftApplied,
+	focusKey,
 }: ComposerProps) {
 	const statusId = useId();
+	const composerStackRef = useRef<HTMLDivElement>(null);
+	const formRef = useRef<HTMLFormElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [text, setText] = useState("");
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const [processingFiles, setProcessingFiles] = useState(false);
+	const [isDragging, setIsDragging] = useState(false);
+	const [attachmentError, setAttachmentError] = useState("");
+	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
+	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
 	const state = createComposerState({
 		text,
+		attachmentCount: attachments.length,
 		runtimeAvailable: context.runtimeAvailable,
 		disabledReason: context.disabledReason,
+		running,
 	});
 
-	const toggleMenu = (menu: Exclude<ComposerMenu, null>) => {
-		setOpenMenu((current) => (current === menu ? null : menu));
+	const placeholder = running
+		? pendingDelivery === "followUp"
+			? runningFollowUpHint
+			: runningSteerHint
+		: defaultInputHint;
+	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
+	const visibleQueuedMessages = queuedMessages.slice(0, 3);
+
+	const focusTextarea = useCallback(() => {
+		textareaRef.current?.focus({ preventScroll: true });
+	}, [textareaRef]);
+
+	useEffect(() => {
+		if (!focusKey) {
+			return;
+		}
+		focusTextarea();
+	}, [focusKey, focusTextarea]);
+
+	useEffect(() => {
+		if (!draftText) {
+			return;
+		}
+		setText(draftText);
+		onDraftApplied?.();
+		focusTextarea();
+	}, [draftText, onDraftApplied, focusTextarea]);
+
+	useEffect(() => {
+		const handlePointerDown = (event: MouseEvent) => {
+			if (!composerStackRef.current?.contains(event.target as Node)) {
+				setOpenMenu(null);
+				setOpenQueueMenuId(null);
+			}
+		};
+		document.addEventListener("pointerdown", handlePointerDown);
+		return () => document.removeEventListener("pointerdown", handlePointerDown);
+	}, []);
+
+	const addFiles = async (files: File[]) => {
+		if (files.length === 0 || processingFiles) {
+			return;
+		}
+		setAttachmentError("");
+		setProcessingFiles(true);
+		try {
+			const result = await processFilesForComposer(files, attachments);
+			if (result.error) {
+				setAttachmentError(result.error);
+				return;
+			}
+			setAttachments(result.attachments);
+		} catch (error) {
+			setAttachmentError(error instanceof Error ? error.message : "Failed to process attachments.");
+		} finally {
+			setProcessingFiles(false);
+		}
 	};
 
+	const submitPrompt = async (delivery?: PiSessionDelivery) => {
+		if (state.sendDisabled || processingFiles) {
+			return;
+		}
+		try {
+			const { prompt, images } = await buildPromptFromAttachments(text, attachments);
+			if (!prompt && !images?.length) {
+				return;
+			}
+			const submitted = await onSubmit?.(prompt, delivery, images);
+			if (submitted) {
+				setText("");
+				setAttachments([]);
+				setAttachmentError("");
+				focusTextarea();
+			}
+		} catch (error) {
+			setAttachmentError(error instanceof Error ? error.message : "Failed to send message.");
+		}
+	};
+
+	const showAbortOnly = running && abortable && !state.showSendWhileRunning;
+
 	return (
-		<form
-			className={["composer", `composer--${layout}`].join(" ")}
-			aria-label="Pi composer"
-			aria-describedby={state.statusLabel ? statusId : undefined}
-			onSubmit={async (event) => {
-				event.preventDefault();
-				const prompt = text.trim();
-				if (!running && !state.sendDisabled && prompt) {
-					const submitted = await onSubmit?.(prompt);
-					if (submitted) {
-						setText("");
+		<div className="composer-stack" ref={composerStackRef}>
+			{visibleQueuedMessages.length > 0 ? (
+				<ul className="composer__queue" aria-label="Queued messages">
+					{visibleQueuedMessages.map((message) => {
+						const queueKey = `${message.id.queue}:${message.id.index}`;
+						const deliveryLabel = formatQueuedMessageDeliveryLabel(message.delivery);
+						const switchLabel = formatQueuedMessageSwitchLabel(message.delivery);
+						return (
+							<li key={queueKey} className="composer__queue-row">
+								<span className="composer__queue-delivery">{deliveryLabel}</span>
+								<span className="composer__queue-preview">{previewText(message.text)}</span>
+								<button
+									className="composer__queue-toggle"
+									type="button"
+									aria-label={switchLabel}
+									onClick={() => onToggleQueuedDelivery?.(message.id)}
+								>
+									{switchLabel}
+								</button>
+								<div className="composer__queue-actions">
+									<button
+										className="composer__queue-overflow"
+										type="button"
+										aria-label="Queued message actions"
+										aria-expanded={openQueueMenuId === queueKey}
+										onClick={() => setOpenQueueMenuId((current) => (current === queueKey ? null : queueKey))}
+									>
+										<MoreHorizontal className="composer__icon" />
+									</button>
+									{openQueueMenuId === queueKey ? (
+										<span className="composer__queue-menu" role="menu">
+											<button
+												type="button"
+												role="menuitem"
+												className="composer__queue-menu-item"
+												onClick={() => {
+													onEditQueuedMessage?.(message);
+													setOpenQueueMenuId(null);
+												}}
+											>
+												Edit
+											</button>
+											<button
+												type="button"
+												role="menuitem"
+												className="composer__queue-menu-item"
+												onClick={() => {
+													onRemoveQueuedMessage?.(message.id);
+													setOpenQueueMenuId(null);
+												}}
+											>
+												Delete
+											</button>
+										</span>
+									) : null}
+									<button
+										className="composer__queue-delete"
+										type="button"
+										aria-label="Delete queued message"
+										onClick={() => onRemoveQueuedMessage?.(message.id)}
+									>
+										<X className="composer__icon" />
+									</button>
+								</div>
+							</li>
+						);
+					})}
+				</ul>
+			) : null}
+			<form
+				ref={formRef}
+				className={["composer", `composer--${layout}`].join(" ")}
+				aria-label="Pi composer"
+				aria-describedby={state.statusLabel ? statusId : undefined}
+				onDragOver={(event) => {
+					event.preventDefault();
+					setIsDragging(true);
+				}}
+				onDragLeave={(event) => {
+					event.preventDefault();
+					const rect = event.currentTarget.getBoundingClientRect();
+					const { clientX, clientY } = event;
+					if (clientX <= rect.left || clientX >= rect.right || clientY <= rect.top || clientY >= rect.bottom) {
+						setIsDragging(false);
 					}
-				}
-			}}
-		>
-			<div className="composer__input-panel">
-				<div className="composer__message-row">
-					<textarea
-						className="composer__textarea"
-						aria-label="Message Pi"
-						value={text}
-						onChange={(event) => setText(event.target.value)}
-						placeholder={inputHint}
-						rows={1}
+				}}
+				onDrop={(event) => {
+					event.preventDefault();
+					setIsDragging(false);
+					void addFiles(Array.from(event.dataTransfer?.files ?? []));
+				}}
+				onSubmit={async (event) => {
+					event.preventDefault();
+					if (state.showSendWhileRunning) {
+						await submitPrompt(pendingDelivery === "followUp" ? "followUp" : "steer");
+						return;
+					}
+					if (!running && !state.sendDisabled) {
+						await submitPrompt("prompt");
+					}
+				}}
+			>
+				<div
+					className={["composer__input-panel", isDragging ? "composer__input-panel--dragging" : ""]
+						.filter(Boolean)
+						.join(" ")}
+				>
+					{isDragging ? <div className="composer__drop-overlay">Drop files here</div> : null}
+					<ComposerAttachmentTiles
+						attachments={attachments}
+						onRemove={(id) => setAttachments((current) => removeAttachment(current, id))}
 					/>
-				</div>
-				<div className="composer__action-row">
-					<button className="composer__icon-button" type="button" aria-label="Add context" disabled>
-						<Paperclip className="composer__icon" />
-					</button>
-					<span className="composer__action-spacer" />
-					<ComposerControl label={context.modelLabel} menu="model" openMenu={openMenu} onToggle={toggleMenu} />
-					<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
-						<Mic className="composer__icon" />
-					</button>
-					{running && abortable ? (
+					<div className="composer__message-row">
+						<textarea
+							ref={textareaRef}
+							className="composer__textarea"
+							aria-label="Message Pi"
+							value={text}
+							onChange={(event) => setText(event.target.value)}
+							onPaste={(event) => {
+								const items = event.clipboardData?.items;
+								if (!items) {
+									return;
+								}
+								const imageFiles: File[] = [];
+								for (const item of items) {
+									if (item.type.startsWith("image/")) {
+										const file = item.getAsFile();
+										if (file) {
+											imageFiles.push(file);
+										}
+									}
+								}
+								if (imageFiles.length === 0) {
+									return;
+								}
+								event.preventDefault();
+								void addFiles(imageFiles);
+							}}
+							onKeyDown={(event) => {
+								const action = resolveComposerEnterAction({
+									key: event.key,
+									shiftKey: event.shiftKey,
+									altKey: event.altKey,
+									running,
+									showSendWhileRunning: state.showSendWhileRunning,
+									sendDisabled: state.sendDisabled,
+								});
+								if (action === "none" || action === "newline") {
+									return;
+								}
+								event.preventDefault();
+								if (action === "followUp") {
+									void submitPrompt("followUp");
+									return;
+								}
+								if (state.showSendWhileRunning) {
+									void submitPrompt(pendingDelivery === "followUp" ? "followUp" : "steer");
+									return;
+								}
+								void submitPrompt("prompt");
+							}}
+							placeholder={placeholder}
+							rows={1}
+						/>
+					</div>
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept={COMPOSER_ACCEPTED_FILE_TYPES}
+						multiple
+						className="composer__file-input"
+						onChange={(event) => {
+							void addFiles(Array.from(event.target.files ?? []));
+							event.target.value = "";
+						}}
+					/>
+					<div className="composer__action-row">
 						<button
-							className="composer__send-button composer__send-button--abort"
+							className="composer__icon-button"
 							type="button"
-							aria-label="Abort run"
-							onClick={onAbort}
+							aria-label="Add attachments"
+							disabled={processingFiles || !context.runtimeAvailable}
+							onClick={() => fileInputRef.current?.click()}
 						>
-							<span className="composer__abort-mark" />
+							{processingFiles ? (
+								<LoaderCircle className="composer__icon composer__icon--spin" />
+							) : (
+								<Paperclip className="composer__icon" />
+							)}
 						</button>
-					) : (
-						<button
-							className="composer__send-button"
-							type="submit"
-							disabled={state.sendDisabled || running}
-							aria-label="Send message"
-						>
-							<ArrowUp className="composer__icon" />
+						<span className="composer__action-spacer" />
+						<ComposerModelSelector
+							label={context.modelLabel}
+							open={openMenu === "model"}
+							modelOptions={context.modelOptions}
+							selectedModelProvider={context.selectedModelProvider}
+							selectedModelId={context.selectedModelId}
+							onToggle={(nextOpen) => setOpenMenu(nextOpen ? "model" : null)}
+							onSelectModel={onSelectModel}
+						/>
+						<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
+							<Mic className="composer__icon" />
 						</button>
-					)}
+						{showAbortOnly ? (
+							<button
+								className="composer__send-button composer__send-button--abort"
+								type="button"
+								aria-label="Abort run"
+								onClick={onAbort}
+							>
+								<span className="composer__abort-mark" />
+							</button>
+						) : (
+							<button
+								className="composer__send-button"
+								type="submit"
+								disabled={state.sendDisabled && !state.showSendWhileRunning}
+								aria-label="Send message"
+							>
+								<ArrowUp className="composer__icon" />
+							</button>
+						)}
+						{running && abortable && state.showSendWhileRunning ? (
+							<button
+								className="composer__send-button composer__send-button--abort composer__send-button--secondary"
+								type="button"
+								aria-label="Abort run"
+								onClick={onAbort}
+							>
+								<span className="composer__abort-mark" />
+							</button>
+						) : null}
+					</div>
 				</div>
-			</div>
-			<div className="composer__control-row">
-				<ComposerControl
-					label={context.projectSelectorLabel}
-					menu="project"
-					openMenu={openMenu}
-					icon={<Sparkles className="composer__control-icon" />}
-					onToggle={toggleMenu}
-				/>
-				<ComposerControl
-					label={context.modeLabel}
-					menu="mode"
-					openMenu={openMenu}
-					icon={<Laptop className="composer__control-icon" />}
-					onToggle={toggleMenu}
-				/>
-				{context.branchLabel ? (
-					<span className="composer__branch-label">
-						<GitBranch className="composer__control-icon" />
-						{context.branchLabel}
-					</span>
-				) : null}
-				{state.statusLabel ? (
-					<span id={statusId} className="composer__disabled-reason">
-						{state.statusLabel}
-					</span>
-				) : null}
-			</div>
-		</form>
+				<div className="composer__control-row">
+					{context.showProjectMenu ? (
+						<ComposerControl
+							label={context.projectSelectorLabel}
+							menu="project"
+							openMenu={openMenu}
+							icon={<Sparkles className="composer__control-icon" />}
+							onToggle={setOpenMenu}
+							items={context.projectOptions.map((option) => ({
+								key: option.projectId,
+								label: option.label,
+								onSelect: () => onSelectProject?.(option.projectId),
+							}))}
+						/>
+					) : null}
+					<ComposerControl
+						label={context.thinkingLabel}
+						menu="mode"
+						openMenu={openMenu}
+						icon={<Laptop className="composer__control-icon" />}
+						onToggle={setOpenMenu}
+						headerLabel="Work locally"
+						items={context.thinkingOptions.map((option) => ({
+							key: option.level,
+							label: option.label,
+							onSelect: () => onSelectThinkingLevel?.(option.level),
+						}))}
+					/>
+					{context.branchLabel ? (
+						<span className="composer__branch-label">
+							<GitBranch className="composer__control-icon" />
+							{context.branchLabel}
+						</span>
+					) : null}
+					{queueStatusLabel ? <span className="composer__queue-status">{queueStatusLabel}</span> : null}
+					{running ? (
+						<span className="composer__helper-copy">Option+Enter queues a follow-up while Pi is running.</span>
+					) : null}
+					{attachmentError ? (
+						<span className="composer__disabled-reason" role="alert">
+							{attachmentError}
+						</span>
+					) : null}
+					{state.statusLabel ? (
+						<span id={statusId} className="composer__disabled-reason">
+							{state.statusLabel}
+						</span>
+					) : null}
+				</div>
+			</form>
+		</div>
 	);
+}
+
+interface ComposerControlItem {
+	key: string;
+	label: string;
+	onSelect: () => void;
 }
 
 interface ComposerControlProps {
@@ -130,10 +487,12 @@ interface ComposerControlProps {
 	menu: Exclude<ComposerMenu, null>;
 	openMenu: ComposerMenu;
 	icon?: ReactNode;
-	onToggle: (menu: Exclude<ComposerMenu, null>) => void;
+	headerLabel?: string;
+	items: ComposerControlItem[];
+	onToggle: (menu: ComposerMenu) => void;
 }
 
-function ComposerControl({ label, menu, openMenu, icon, onToggle }: ComposerControlProps) {
+function ComposerControl({ label, menu, openMenu, icon, headerLabel, items, onToggle }: ComposerControlProps) {
 	const menuId = useId();
 	const open = openMenu === menu;
 
@@ -145,15 +504,29 @@ function ComposerControl({ label, menu, openMenu, icon, onToggle }: ComposerCont
 				aria-controls={menuId}
 				aria-expanded={open}
 				aria-haspopup="menu"
-				onClick={() => onToggle(menu)}
+				onClick={() => onToggle(open ? null : menu)}
 			>
 				{icon}
 				<span className="composer__control-label">{label}</span>
 				<ChevronDown className="composer__control-icon" />
 			</button>
 			{open ? (
-				<span className="composer__local-menu" id={menuId}>
-					<span className="composer__local-menu-item">{label}</span>
+				<span className="composer__local-menu" id={menuId} role="menu">
+					{headerLabel ? <span className="composer__local-menu-header">{headerLabel}</span> : null}
+					{items.map((item) => (
+						<button
+							key={item.key}
+							type="button"
+							role="menuitem"
+							className="composer__local-menu-item"
+							onClick={() => {
+								item.onSelect();
+								onToggle(null);
+							}}
+						>
+							{item.label}
+						</button>
+					))}
 				</span>
 			) : null}
 		</span>

@@ -46,6 +46,9 @@ const createFakeSession = () => {
 		}),
 		abort: vi.fn(async () => undefined),
 		dispose: vi.fn(() => undefined),
+		getSteeringMessages: vi.fn(() => []),
+		getFollowUpMessages: vi.fn(() => []),
+		clearQueue: vi.fn(() => ({ steering: [], followUp: [] })),
 	};
 
 	return { session };
@@ -63,7 +66,10 @@ const createControlledSession = () => {
 			};
 		}),
 		bindExtensions: vi.fn(async () => undefined),
-		prompt: vi.fn(() => promptResult.promise),
+		prompt: vi.fn((_prompt: string, _options?: { streamingBehavior?: "steer" | "followUp" }) => promptResult.promise),
+		getSteeringMessages: vi.fn(() => []),
+		getFollowUpMessages: vi.fn(() => []),
+		clearQueue: vi.fn(() => ({ steering: [], followUp: [] })),
 		abort: vi.fn(async () => undefined),
 		dispose: vi.fn(() => undefined),
 	};
@@ -91,8 +97,42 @@ describe("createPiSessionRuntime", () => {
 		expect(result.status).toBe("running");
 		await runtime.whenIdle(result.sessionId);
 		expect(session.bindExtensions).toHaveBeenCalledWith({});
-		expect(session.prompt).toHaveBeenCalledWith("Hello");
-		expect(events.map((event) => event.type)).toEqual(["status", "message_start", "assistant_delta", "status"]);
+		expect(session.prompt).toHaveBeenCalledWith("Hello", { images: undefined });
+		expect(events.map((event) => event.type)).toEqual([
+			"queue_update",
+			"status",
+			"message_start",
+			"assistant_delta",
+			"status",
+		]);
+	});
+
+	it("forwards images into prompt options on start and submit", async () => {
+		const { session } = createFakeSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: () => {},
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const images = [{ type: "image" as const, data: "aGVsbG8=", mimeType: "image/png" }];
+
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "",
+			images,
+		});
+		await runtime.whenIdle(started.sessionId);
+		expect(session.prompt).toHaveBeenCalledWith("", { images });
+
+		await runtime.submit({
+			sessionId: started.sessionId,
+			prompt: "Follow up",
+			images,
+		});
+		await runtime.whenIdle(started.sessionId);
+		expect(session.prompt).toHaveBeenLastCalledWith("Follow up", { images });
 	});
 
 	it("starts from an existing session manager when resuming a session path", async () => {
@@ -154,9 +194,15 @@ describe("createPiSessionRuntime", () => {
 		});
 
 		expect(result.status).toBe("running");
-		expect(events).toEqual([]);
+		expect(events.map((event) => event.type)).toEqual(["queue_update"]);
 		await runtime.whenIdle(result.sessionId);
-		expect(events.map((event) => event.type)).toEqual(["status", "message_start", "assistant_delta", "status"]);
+		expect(events.map((event) => event.type)).toEqual([
+			"queue_update",
+			"status",
+			"message_start",
+			"assistant_delta",
+			"status",
+		]);
 	});
 
 	it("aborts an active session", async () => {
@@ -353,7 +399,7 @@ describe("createPiSessionRuntime", () => {
 		});
 	});
 
-	it("rejects overlapping submits without replacing the in-flight prompt", async () => {
+	it("queues steer delivery for overlapping submits without replacing the in-flight prompt", async () => {
 		const events: PiSessionEvent[] = [];
 		const { promptResult, session } = createControlledSession();
 		const runtime = createPiSessionRuntime({
@@ -370,11 +416,10 @@ describe("createPiSessionRuntime", () => {
 		});
 		const idle = runtime.whenIdle(result.sessionId);
 
-		await expect(runtime.submit({ sessionId: result.sessionId, prompt: "Second" })).rejects.toThrow(
-			"Pi session is already running.",
-		);
 		await waitForScheduledPrompt();
-		expect(session.prompt).toHaveBeenCalledTimes(1);
+		await runtime.submit({ sessionId: result.sessionId, prompt: "Second", delivery: "steer" });
+		expect(session.prompt).toHaveBeenCalledTimes(2);
+		expect(session.prompt).toHaveBeenLastCalledWith("Second", { streamingBehavior: "steer" });
 
 		promptResult.resolve();
 		await idle;
@@ -412,12 +457,12 @@ describe("createPiSessionRuntime", () => {
 			label: "Idle",
 			receivedAt: "2026-05-14T12:00:00.000Z",
 		});
-		await expect(runtime.submit({ sessionId: result.sessionId, prompt: "Second" })).rejects.toThrow(
-			"Pi session is already running.",
-		);
+		await waitForScheduledPrompt();
+		await runtime.submit({ sessionId: result.sessionId, prompt: "Second", delivery: "steer" });
 		await Promise.resolve();
 		expect(idleSettled).toBe(false);
-		expect(session.prompt).toHaveBeenCalledTimes(1);
+		expect(session.prompt).toHaveBeenCalledTimes(2);
+		expect(session.prompt).toHaveBeenLastCalledWith("Second", { streamingBehavior: "steer" });
 
 		promptResult.resolve();
 		await idle;

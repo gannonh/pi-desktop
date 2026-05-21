@@ -1,5 +1,7 @@
 import { type ChatShellRoute, isResumableChatRoute, shouldUseChatStartLayout } from "../chat/chat-view-model";
+import { formatComposerFocusKey } from "../chat/composer-focus-key";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
+import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
@@ -11,11 +13,11 @@ interface ChatShellProps {
 	session: LiveSessionState;
 	hydration: TranscriptHydrationState;
 	scope: { projectId: string | null; chatId: string | null };
-	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 }
 
-export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, onAbortSession }: ChatShellProps) {
+export function ChatShell({ route, session, hydration, scope, composerHost, onAbortSession }: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
 		session.status === "running" ||
@@ -29,6 +31,7 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 		? `${lastMessage.id}:${lastMessage.streaming ? 1 : 0}:${lastMessage.content.length}`
 		: "none";
 
+	const composerFocusKey = formatComposerFocusKey(scope);
 	const { scrollRef, showJumpToLatest, scrollToBottom, onScroll } = useStickToBottomScroll({
 		messageCount: session.messages.length,
 		streamingMessageCount,
@@ -42,7 +45,8 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 			<ChatStartState
 				route={route}
 				session={session}
-				onSubmitPrompt={onSubmitPrompt}
+				scope={scope}
+				composerHost={composerHost}
 				onAbortSession={onAbortSession}
 			/>
 		);
@@ -71,10 +75,21 @@ export function ChatShell({ route, session, hydration, scope, onSubmitPrompt, on
 				<Composer
 					context={route.composer}
 					layout="bottom"
+					focusKey={composerFocusKey}
 					running={running}
 					abortable={abortable}
-					onSubmit={onSubmitPrompt}
+					queuedMessages={session.queuedMessages}
+					pendingDelivery={composerHost.pendingComposerDelivery}
+					draftText={composerHost.composerDraft}
+					onDraftApplied={composerHost.onComposerDraftApplied}
+					onSubmit={composerHost.onSubmitPrompt}
 					onAbort={onAbortSession}
+					onSelectProject={composerHost.onSelectProject}
+					onSelectModel={composerHost.onSelectModel}
+					onSelectThinkingLevel={composerHost.onSelectThinkingLevel}
+					onToggleQueuedDelivery={composerHost.onToggleQueuedDelivery}
+					onRemoveQueuedMessage={composerHost.onRemoveQueuedMessage}
+					onEditQueuedMessage={composerHost.onEditQueuedMessage}
 				/>
 			</div>
 		</section>

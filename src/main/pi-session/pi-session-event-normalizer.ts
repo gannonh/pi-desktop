@@ -115,11 +115,22 @@ const createMessageEndEvent = (
 	};
 };
 
+const hasImageContent = (content: unknown): boolean => {
+	if (!Array.isArray(content)) {
+		return false;
+	}
+	return content.some((part) => isRecord(part) && part.type === "image");
+};
+
 const contentFor = (message: AgentMessage): string => {
 	if (!hasContent(message)) {
 		return "";
 	}
-	return textFromContent(message.content);
+	const text = textFromContent(message.content);
+	if (isRecord(message) && message.role === "user" && hasImageContent(message.content)) {
+		return text.length > 0 ? `${text}\n[Image attached]` : "[Image attached]";
+	}
+	return text;
 };
 
 const roleFor = (role: unknown): PiSessionMessageRole => {

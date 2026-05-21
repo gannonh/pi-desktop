@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type InlineConfig } from "vite";
+import { type AppBackend, createAppBackend } from "../app-backend";
 import {
 	resolveDesktopChatsPath,
 	resolveElectronDevUserDataDir,
@@ -9,7 +10,6 @@ import {
 	resolvePiSessionFilesRoot,
 	resolveProjectStorePath,
 } from "../app-paths";
-import { createAppBackend, type AppBackend } from "../app-backend";
 import { branchSession, cloneSession, forkSession, writeSessionName } from "../pi-session/pi-session-file-actions";
 import { createSmokePiAgentSession } from "../pi-session/smoke-pi-session";
 import { initializeGitRepository } from "../projects/git";
@@ -156,7 +156,7 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 
 		resources.vite = await createVite({
 			configFile: "vite.renderer.config.ts",
-			server: { host, port: vitePort, strictPort: true },
+			server: { host, port: vitePort, strictPort: false },
 		});
 
 		await resources.vite.listen();

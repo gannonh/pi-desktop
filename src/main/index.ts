@@ -142,6 +142,26 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));
 	ipcMain.handle(IpcChannels.piSessionHistory, (_event, input) => invokeBackend("piSession.history", input));
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
+	ipcMain.handle(IpcChannels.piSessionGetSettings, (_event, input) => invokeBackend("piSession.getSettings", input));
+	ipcMain.handle(IpcChannels.piSessionGetDefaultSettings, (_event, input) =>
+		invokeBackend("piSession.getDefaultSettings", input),
+	);
+	ipcMain.handle(IpcChannels.piSessionSetModel, (_event, input) => invokeBackend("piSession.setModel", input));
+	ipcMain.handle(IpcChannels.piSessionSetThinkingLevel, (_event, input) =>
+		invokeBackend("piSession.setThinkingLevel", input),
+	);
+	ipcMain.handle(IpcChannels.piSessionSetDefaultModel, (_event, input) =>
+		invokeBackend("piSession.setDefaultModel", input),
+	);
+	ipcMain.handle(IpcChannels.piSessionSetDefaultThinkingLevel, (_event, input) =>
+		invokeBackend("piSession.setDefaultThinkingLevel", input),
+	);
+	ipcMain.handle(IpcChannels.piSessionUpdateQueuedMessage, (_event, input) =>
+		invokeBackend("piSession.updateQueuedMessage", input),
+	);
+	ipcMain.handle(IpcChannels.piSessionRemoveQueuedMessage, (_event, input) =>
+		invokeBackend("piSession.removeQueuedMessage", input),
+	);
 };
 
 app.whenReady().then(() => {

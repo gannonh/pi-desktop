@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
+import type { ComposerHostProps } from "../chat/composer-host";
 import { createChatShellRoute, resolveChatSessionHeader } from "../chat/chat-view-model";
+import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ProjectMain } from "./project-main";
@@ -15,7 +17,8 @@ interface AppShellProps {
 	transcriptHydration: TranscriptHydrationState;
 	transcriptScope: { projectId: string | null; chatId: string | null };
 	onProjectState: (result: ProjectStateViewResult) => void;
-	onSubmitPrompt: (prompt: string) => Promise<boolean> | boolean;
+	composerHost: ComposerHostProps;
+	defaultComposerSettings: PiSessionSettingsPayload | null;
 	onAbortSession: () => void;
 }
 
@@ -26,11 +29,12 @@ export function AppShell({
 	transcriptHydration,
 	transcriptScope,
 	onProjectState,
-	onSubmitPrompt,
+	composerHost,
+	defaultComposerSettings,
 	onAbortSession,
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-	const route = createChatShellRoute(state);
+	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
 	const sessionHeader = resolveChatSessionHeader(route, session);
 	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed && !sessionHeader?.metadataLabel;
 	const showMainHeader = showPathBadge || sessionHeader !== null;
@@ -81,7 +85,7 @@ export function AppShell({
 					transcriptHydration={transcriptHydration}
 					transcriptScope={transcriptScope}
 					onProjectState={onProjectState}
-					onSubmitPrompt={onSubmitPrompt}
+					composerHost={composerHost}
 					onAbortSession={onAbortSession}
 				/>
 			</div>

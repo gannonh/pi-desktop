@@ -1,19 +1,18 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ComposerContext } from "../../src/renderer/chat/chat-view-model";
 import { Composer } from "../../src/renderer/components/composer";
+import { createComposerContext } from "./composer-fixtures";
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const context: ComposerContext = {
+const context = createComposerContext({
 	projectSelectorLabel: "pi-desktop",
-	modeLabel: "Work locally",
 	modelLabel: "5.5 High",
-	runtimeAvailable: true,
-	disabledReason: "",
+	thinkingLabel: "High",
 	projectId: "project:/tmp/pi-desktop",
-};
+	showProjectMenu: true,
+});
 
 describe("Composer", () => {
 	it("keeps startup busy without rendering an inert abort control", () => {
@@ -24,9 +23,26 @@ describe("Composer", () => {
 		expect(markup).toContain("disabled");
 	});
 
+	it("shows queued delivery type and switch action on queue rows", () => {
+		const markup = renderToStaticMarkup(
+			createElement(Composer, {
+				context,
+				running: true,
+				queuedMessages: [
+					{ id: { queue: "followUp", index: 0 }, text: "Follow up after steer", delivery: "followUp" },
+				],
+			}),
+		);
+
+		expect(markup).toContain('class="composer__queue-delivery"');
+		expect(markup).toContain("Follow-up");
+		expect(markup).toContain('aria-label="Switch to steering"');
+		expect(markup).not.toMatch(/composer__queue-toggle[^>]*>Steer</);
+	});
+
 	it("declares menu semantics on composer disclosure controls", () => {
 		const markup = renderToStaticMarkup(createElement(Composer, { context }));
-		const labels = [context.projectSelectorLabel, context.modeLabel, context.modelLabel];
+		const labels = [context.projectSelectorLabel, context.thinkingLabel, context.modelLabel];
 
 		for (const label of labels) {
 			const pattern = new RegExp(

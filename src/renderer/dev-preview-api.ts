@@ -1,6 +1,6 @@
 import type { PiDesktopApi } from "../shared/preload-api";
 import type { ProjectStateViewResult } from "../shared/ipc";
-import type { PiSessionEvent } from "../shared/pi-session";
+import type { PiSessionEvent, PiSessionSettingsPayload } from "../shared/pi-session";
 import {
 	createProjectId,
 	createProjectStateView,
@@ -78,6 +78,15 @@ const previewSessionReceivedAtBase = Date.parse("2026-05-12T18:00:00.000Z");
 
 const previewSessionReceivedAt = (streamIndex: number, eventIndex: number) =>
 	new Date(previewSessionReceivedAtBase + streamIndex * 1_000 + eventIndex).toISOString();
+
+const previewComposerSettings: PiSessionSettingsPayload = {
+	modelLabel: "5.5 High",
+	modelProvider: "openai",
+	modelId: "gpt-5.5",
+	thinkingLevel: "high",
+	availableModels: [{ provider: "openai", id: "gpt-5.5", label: "5.5 High" }],
+	availableThinkingLevels: ["off", "low", "medium", "high"],
+};
 
 const piDesktop = project(`${previewRoot}/pi-desktop`, {
 	displayName: "pi-desktop",
@@ -434,7 +443,7 @@ export const installDevPreviewApi = () => {
 			branch: async (input) => duplicateChat(input, " branch"),
 		},
 		piSession: {
-			start: async ({ projectId, chatId, prompt }) => {
+			start: async ({ projectId, chatId, prompt, images: _images }) => {
 				if (projectId === null) {
 					const chat = standaloneChats.find((candidate) => candidate.id === chatId);
 					if (!chat) {
@@ -474,7 +483,7 @@ export const installDevPreviewApi = () => {
 					},
 				};
 			},
-			submit: async ({ sessionId, prompt }) => {
+			submit: async ({ sessionId, prompt, images: _images }) => {
 				schedulePreviewStream(sessionId, prompt);
 				return { ok: true, data: { sessionId, status: "running" } };
 			},
@@ -533,6 +542,38 @@ export const installDevPreviewApi = () => {
 					},
 				};
 			},
+			getSettings: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			getDefaultSettings: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			setModel: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			setThinkingLevel: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			setDefaultModel: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			setDefaultThinkingLevel: async () => ({
+				ok: true,
+				data: previewComposerSettings,
+			}),
+			updateQueuedMessage: async ({ sessionId }) => ({
+				ok: true,
+				data: { sessionId, messages: [] },
+			}),
+			removeQueuedMessage: async ({ sessionId }) => ({
+				ok: true,
+				data: { sessionId, messages: [] },
+			}),
 			onEvent: (listener) => {
 				sessionListeners.add(listener);
 				return () => {
