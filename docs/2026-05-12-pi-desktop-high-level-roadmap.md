@@ -363,25 +363,60 @@ Acceptance:
 - User can abort an active run from the composer.
 - Composer explains why send is disabled when runtime or auth blocks submission.
 
-### M07: Coding Panels
+### M07A: Tool Timeline MVP
 
-Goal: make agent work inspectable.
+Goal: make agent tool execution inspectable in a PR-sized first coding-panels slice.
 
 Deliverables:
 
-- Tool call timeline.
-- Tool result renderer.
-- Terminal/output panel.
-- File preview panel.
-- Patch/diff panel.
-- Active panel navigation.
-- Collapsed/expanded tool output state.
+- Desktop-safe normalization for Pi tool execution start, update, and end events.
+- Coding panel shell that can sit alongside the transcript without changing session ownership.
+- Tool call timeline with status, tool name, input summary, result summary, and timestamps where available.
+- Expandable raw tool input and output state.
+- Terminal/bash output as the first specialized tool result renderer.
+- Browser-preview smoke data for active, completed, and failed tool calls.
 
 Acceptance:
 
-- Tool calls render with status, input summary, and result summary.
-- File read/write/edit events can be inspected.
+- Tool calls render with status, input summary, and result summary during a live session.
+- Bash or terminal-style output can be expanded and read without leaving the chat surface.
+- Tool event failures remain visible and do not get flattened into assistant text only.
+
+### M07B: File Activity and Preview
+
+Goal: make file-oriented agent work inspectable from the coding panel foundation.
+
+Deliverables:
+
+- File activity extraction for read, write, and edit-style tool results.
+- File activity list linked to the relevant tool call where possible.
+- Read-only file preview panel for inspected file events.
+- Empty, missing, and unavailable-file states.
+- Active panel navigation between transcript-adjacent timeline and file preview views.
+
+Acceptance:
+
+- File read/write/edit events can be inspected from the coding panels.
+- Selecting a file activity shows a readable preview or a visible reason the preview is unavailable.
+- File activity rows preserve their related tool status and summary context.
+
+### M07C: Diff and Patch Review
+
+Goal: make agent file changes reviewable before the user commits.
+
+Deliverables:
+
+- Diff or patch extraction for edit/write events where Pi exposes structured data.
+- Git-backed diff lookup for changed workspace files when structured patch data is unavailable.
+- Patch/diff panel with readable before/after changes.
+- Navigation from file activity and tool timeline rows into the relevant diff view.
+- Collapsed/expanded diff context state.
+
+Acceptance:
+
 - Diffs are readable before and after file edits.
+- File change events link to the relevant diff when one exists.
+- Missing or unavailable diffs show a visible explanation.
 
 ### M08: Settings and Auth
 
@@ -489,8 +524,8 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 5 is complete. The next milestone is **M06: Composer**: wire project, model, and session input controls from the Milestone 2 shell through the Pi runtime for real prompts, follow-ups, abort, and disabled-state handling.
+Milestone 6 is complete. The next planning target is **M07A: Tool Timeline MVP**: normalize tool execution events, add the coding panel shell, and render tool calls with status, input summaries, result summaries, expandable raw output, and bash/terminal output.
 
-After M06, **M07: Coding Panels** adds tool timeline, file preview, diff panels, and structured tool output on top of the readable transcript M05 established.
+After M07A, **M07B: File Activity and Preview** adds file-oriented inspection on the coding panel foundation. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
 
-Milestone 3.2 is complete. M04 through M07 keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.
+Milestone 3.2 is complete. M04 through M07C keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.
