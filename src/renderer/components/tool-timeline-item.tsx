@@ -27,8 +27,13 @@ export function ToolTimelineItem({ execution }: ToolTimelineItemProps) {
 	const resultSummary = summarizeToolResult(execution.toolName, resultSource, execution.isError);
 	const showTerminal =
 		expanded && isTerminalTool(execution.toolName, execution.args, execution.result ?? execution.partialResult);
-	const terminalText = showTerminal ? getTerminalOutputText(execution.args, execution.result ?? execution.partialResult) : "";
-	const rawOutput = expanded && !showTerminal ? getToolOutputText(execution.toolName, execution.result ?? execution.partialResult) : "";
+	const terminalText = showTerminal
+		? getTerminalOutputText(execution.args, execution.result ?? execution.partialResult)
+		: "";
+	const rawOutput =
+		expanded && !showTerminal
+			? getToolOutputText(execution.toolName, execution.result ?? execution.partialResult)
+			: "";
 
 	return (
 		<article className={`tool-timeline-item tool-timeline-item--${execution.status}`}>

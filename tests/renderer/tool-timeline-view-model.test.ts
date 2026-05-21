@@ -30,10 +30,7 @@ describe("tool timeline view model", () => {
 
 	it("formats terminal output with command and stdout", () => {
 		expect(
-			getTerminalOutputText(
-				{ command: "echo hi" },
-				{ content: [{ type: "text", text: "hi\n" }], details: {} },
-			),
+			getTerminalOutputText({ command: "echo hi" }, { content: [{ type: "text", text: "hi\n" }], details: {} }),
 		).toBe("$ echo hi\nhi");
 	});
 

@@ -75,7 +75,10 @@ const upsertToolExecution = (
 	return toolExecutions.map((execution) => (execution.id === next.id ? next : execution));
 };
 
-const markRunningToolsFailed = (toolExecutions: readonly LiveToolExecution[], receivedAt: string): LiveToolExecution[] =>
+const markRunningToolsFailed = (
+	toolExecutions: readonly LiveToolExecution[],
+	receivedAt: string,
+): LiveToolExecution[] =>
 	toolExecutions.map((execution) =>
 		execution.status === "running"
 			? {
