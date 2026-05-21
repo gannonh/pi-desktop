@@ -5,8 +5,8 @@ import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
-import { CodingPanel } from "./coding-panel";
 import { Composer } from "./composer";
+import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { TranscriptPanel } from "./transcript-panel";
 
 interface ChatShellProps {
@@ -73,7 +73,7 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 						</button>
 					) : null}
 				</div>
-				<CodingPanel toolExecutions={session.toolExecutions} />
+				<RightPanelWorkspace />
 			</div>
 			<div className="chat-shell__bottom-composer">
 				<Composer

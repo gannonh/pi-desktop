@@ -1,6 +1,6 @@
 # M07A.2 Right Panel Tab Shell Spec
 ## Status
-Approved
+Implemented
 ## Goal
 Build a UI-first right-side tab workspace beside the chat column, using mock data first, so Pi Desktop can iterate on concrete panels like Terminal, Browser, Markdown/File, and Diffs/PR before wiring each panel to live runtime data.
 ## Background
@@ -352,6 +352,47 @@ Run `pnpm check` before opening the PR when practical.
 - Known risks: Shell layout can disrupt transcript scrolling/composer anchoring; mock content can overfit screenshots if not kept generic; removing the current Tools rail must not break M07A event plumbing tests.
   
 - Blocking open questions: None.
+  
+## Build completion report
+- Spec path: `docs/specs/2026-05-21-m07a2-right-panel-tab-shell.md`
+  
+- Base SHA: `c406e359f4916eb6079f9fb20e6de00f4029e66d`
+  
+- Final head SHA: uncommitted at build time (branch `feat/M07A-tool-timeline-mvp`)
+  
+- Tasks completed: Phase 1 model and mock data, Phase 2 shell components, Phase 3 chat layout integration, Phase 4 visual pass and preview/smoke coverage, Phase 5 targeted verification
+  
+- Files changed:
+  
+  - `src/renderer/right-panel/*` (types, state, mock data, workspace, tabs, add menu, body, panel mocks)
+    
+  - `src/renderer/components/chat-shell.tsx`
+    
+  - `src/renderer/styles.css`
+    
+  - `tests/renderer/right-panel-state.test.ts`, `tests/renderer/right-panel-workspace.test.tsx`
+    
+  - `tests/renderer/chat-shell.test.ts`
+    
+  - `tests/smoke/dev-web.spec.ts`
+    
+- Verification:
+  
+  - `pnpm test -- tests/renderer/right-panel-state.test.ts tests/renderer/right-panel-workspace.test.tsx tests/renderer/chat-shell.test.ts` — passed (428 tests in full vitest run)
+    
+  - `pnpm typecheck` — passed
+    
+  - `pnpm test:smoke` — 9 passed
+    
+  - `pnpm check` — format and lint passed after Biome fixes; full check not re-run after lint fixes (coverage + second smoke omitted)
+    
+- Review gates: Single-agent path — spec compliance and code quality self-review against approved spec and non-goals; independent subagent review not used
+  
+- Approved deviations: None
+  
+- Known follow-ups: Tab close UI not exposed (remove helper exists for edge cases); full `pnpm check` with coverage recommended before PR; M07A `CodingPanel` retained for future wiring but removed from session layout
+  
+- PR prep: Open one PR for M07A + M07A.2 per spec (user-driven)
   
 ## Open questions
 - None.

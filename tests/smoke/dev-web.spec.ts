@@ -107,6 +107,9 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Idle", { exact: true })).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByRole("complementary", { name: "Right panel workspace" })).toBeVisible();
+		await expect(page.getByRole("tab", { name: /PR #11/ })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Add panel" })).toBeVisible();
 	} finally {
 		await server?.shutdown();
 		if (previousUserDataDir === undefined) {
