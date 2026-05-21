@@ -149,29 +149,38 @@ export function Composer({
 		}
 		setAttachmentError("");
 		setProcessingFiles(true);
-		const result = await processFilesForComposer(files, attachments);
-		setProcessingFiles(false);
-		if (result.error) {
-			setAttachmentError(result.error);
-			return;
+		try {
+			const result = await processFilesForComposer(files, attachments);
+			if (result.error) {
+				setAttachmentError(result.error);
+				return;
+			}
+			setAttachments(result.attachments);
+		} catch (error) {
+			setAttachmentError(error instanceof Error ? error.message : "Failed to process attachments.");
+		} finally {
+			setProcessingFiles(false);
 		}
-		setAttachments(result.attachments);
 	};
 
 	const submitPrompt = async (delivery?: PiSessionDelivery) => {
 		if (state.sendDisabled || processingFiles) {
 			return;
 		}
-		const { prompt, images } = await buildPromptFromAttachments(text, attachments);
-		if (!prompt && !images?.length) {
-			return;
-		}
-		const submitted = await onSubmit?.(prompt, delivery, images);
-		if (submitted) {
-			setText("");
-			setAttachments([]);
-			setAttachmentError("");
-			focusTextarea();
+		try {
+			const { prompt, images } = await buildPromptFromAttachments(text, attachments);
+			if (!prompt && !images?.length) {
+				return;
+			}
+			const submitted = await onSubmit?.(prompt, delivery, images);
+			if (submitted) {
+				setText("");
+				setAttachments([]);
+				setAttachmentError("");
+				focusTextarea();
+			}
+		} catch (error) {
+			setAttachmentError(error instanceof Error ? error.message : "Failed to send message.");
 		}
 	};
 

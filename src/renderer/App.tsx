@@ -299,9 +299,14 @@ export function App() {
 		let cancelled = false;
 		const workspacePath = resolveWorkspacePath();
 		void window.piDesktop.piSession.getDefaultSettings(workspacePath ? { workspacePath } : {}).then((result) => {
-			if (!cancelled && result.ok) {
-				setDefaultComposerSettings(result.data);
+			if (cancelled) {
+				return;
 			}
+			if (result.ok) {
+				setDefaultComposerSettings(result.data);
+				return;
+			}
+			setDefaultComposerSettings(null);
 		});
 		return () => {
 			cancelled = true;
@@ -421,7 +426,12 @@ export function App() {
 			});
 			if (result.ok) {
 				setSessionState((state) => ({ ...state, queuedMessages: result.data.messages }));
+				return;
 			}
+			setSessionState((current) => ({
+				...current,
+				errorMessage: result.error.message,
+			}));
 		},
 		[sessionState.queuedMessages],
 	);
@@ -434,7 +444,12 @@ export function App() {
 		const result = await window.piDesktop.piSession.removeQueuedMessage({ sessionId, messageId });
 		if (result.ok) {
 			setSessionState((state) => ({ ...state, queuedMessages: result.data.messages }));
+			return;
 		}
+		setSessionState((current) => ({
+			...current,
+			errorMessage: result.error.message,
+		}));
 	}, []);
 
 	const editQueuedMessage = useCallback(

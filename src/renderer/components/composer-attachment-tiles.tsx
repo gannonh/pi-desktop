@@ -1,5 +1,5 @@
 import { FileSpreadsheet, FileText, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 
 interface ComposerAttachmentTilesProps {
@@ -17,6 +17,19 @@ const previewSrc = (attachment: Attachment) => {
 
 export function ComposerAttachmentTiles({ attachments, onRemove }: ComposerAttachmentTilesProps) {
 	const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+
+	useEffect(() => {
+		if (!previewAttachment) {
+			return;
+		}
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setPreviewAttachment(null);
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [previewAttachment]);
 
 	if (attachments.length === 0) {
 		return null;
@@ -82,8 +95,23 @@ export function ComposerAttachmentTiles({ attachments, onRemove }: ComposerAttac
 					onClick={() => setPreviewAttachment(null)}
 				>
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: prevent overlay backdrop close */}
-					<div className="composer__attachment-overlay-panel" onMouseDown={(event) => event.stopPropagation()}>
-						<p className="composer__attachment-overlay-title">{previewAttachment.fileName}</p>
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: panel clicks must not dismiss the dialog */}
+					<div
+						className="composer__attachment-overlay-panel"
+						onMouseDown={(event) => event.stopPropagation()}
+						onClick={(event) => event.stopPropagation()}
+					>
+						<div className="composer__attachment-overlay-header">
+							<p className="composer__attachment-overlay-title">{previewAttachment.fileName}</p>
+							<button
+								type="button"
+								className="composer__attachment-overlay-close"
+								aria-label="Close preview"
+								onClick={() => setPreviewAttachment(null)}
+							>
+								<X className="composer__icon" />
+							</button>
+						</div>
 						{previewSrc(previewAttachment) ? (
 							<img src={previewSrc(previewAttachment) ?? ""} alt={previewAttachment.fileName} />
 						) : (

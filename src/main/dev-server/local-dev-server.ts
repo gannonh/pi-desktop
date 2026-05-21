@@ -8,11 +8,14 @@ import type { AppBackend } from "../app-backend";
 const defaultAllowedOrigin = "http://127.0.0.1:5173";
 const maxJsonBodyBytes = 1024 * 1024;
 const allowedDevOriginHosts = new Set(["127.0.0.1", "localhost"]);
+const defaultVitePortMin = 5173;
+const defaultVitePortMax = 5190;
 
 export type LocalDevServerOptions = {
 	backend: AppBackend;
 	host: string;
 	port: number;
+	allowedVitePorts?: readonly number[];
 };
 
 export type LocalDevServer = {
@@ -38,14 +41,26 @@ const sendJson = (response: ServerResponse, statusCode: number, body: IpcResult<
 	response.end(serializedBody);
 };
 
-const isAllowedOrigin = (origin: string | undefined) => {
+const buildAllowedVitePorts = (ports: readonly number[] | undefined) =>
+	new Set(
+		ports ??
+			Array.from({ length: defaultVitePortMax - defaultVitePortMin + 1 }, (_, index) => defaultVitePortMin + index),
+	);
+
+const isAllowedOrigin = (origin: string | undefined, allowedVitePorts: ReadonlySet<number>) => {
 	if (origin === undefined || origin === "") {
 		return true;
 	}
 
 	try {
 		const url = new URL(origin);
-		return url.protocol === "http:" && url.port !== "" && allowedDevOriginHosts.has(url.hostname);
+		const port = Number(url.port);
+		return (
+			url.protocol === "http:" &&
+			Number.isInteger(port) &&
+			allowedVitePorts.has(port) &&
+			allowedDevOriginHosts.has(url.hostname)
+		);
 	} catch {
 		return false;
 	}
@@ -112,8 +127,9 @@ const handleHttpRequest = async (
 	response: ServerResponse,
 	backend: AppBackend,
 	host: string,
+	allowedVitePorts: ReadonlySet<number>,
 ) => {
-	if (!isAllowedOrigin(request.headers.origin)) {
+	if (!isAllowedOrigin(request.headers.origin, allowedVitePorts)) {
 		rejectOrigin(response);
 		return;
 	}
@@ -157,8 +173,9 @@ const handleHttpRequest = async (
 };
 
 export const createLocalDevServer = async (options: LocalDevServerOptions): Promise<LocalDevServer> => {
+	const allowedVitePorts = buildAllowedVitePorts(options.allowedVitePorts);
 	const httpServer = createServer((request, response) => {
-		handleHttpRequest(request, response, options.backend, options.host).catch((error) => {
+		handleHttpRequest(request, response, options.backend, options.host, allowedVitePorts).catch((error) => {
 			console.error("Local dev server request failed.", error);
 			if (response.headersSent) {
 				response.destroy(error instanceof Error ? error : undefined);
@@ -177,7 +194,7 @@ export const createLocalDevServer = async (options: LocalDevServerOptions): Prom
 			return;
 		}
 
-		if (!isAllowedOrigin(request.headers.origin)) {
+		if (!isAllowedOrigin(request.headers.origin, allowedVitePorts)) {
 			socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
 			socket.destroy();
 			return;

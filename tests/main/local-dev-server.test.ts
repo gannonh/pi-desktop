@@ -214,6 +214,23 @@ describe("local dev server", () => {
 		}
 	});
 
+	it("rejects HTTP requests from loopback origins outside the Vite port range", async () => {
+		const { backend } = createBackend();
+		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });
+
+		try {
+			const response = await fetch(`${server.url}/api/rpc`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+				body: JSON.stringify({ operation: "app.getVersion" }),
+			});
+
+			expect(response.status).toBe(403);
+		} finally {
+			await server.close();
+		}
+	});
+
 	it("rejects HTTP requests with unexpected origins", async () => {
 		const { backend } = createBackend();
 		const server = await createLocalDevServer({ backend, host: "127.0.0.1", port: 0 });

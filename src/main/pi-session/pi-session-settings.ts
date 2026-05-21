@@ -118,7 +118,7 @@ export const buildDefaultSettings = async (input?: {
 	return buildSettingsPayload({
 		model,
 		thinkingLevel,
-		getAvailableThinkingLevels: () => (model ? ["off", "low", "medium", "high"] : ["off"]),
+		getAvailableThinkingLevels: () => [...thinkingLevels],
 		modelRegistry,
 	});
 };
@@ -157,7 +157,7 @@ export const setDefaultThinkingLevel = async (input: {
 	return buildSettingsPayload({
 		model,
 		thinkingLevel: input.level,
-		getAvailableThinkingLevels: () => (model ? ["off", "low", "medium", "high"] : ["off"]),
+		getAvailableThinkingLevels: () => [...thinkingLevels],
 		modelRegistry,
 	});
 };

@@ -36,4 +36,15 @@ describe("resolveComposerEnterAction", () => {
 			}),
 		).toBe("submit");
 	});
+
+	it("does nothing on Enter while running when send is disabled", () => {
+		expect(
+			resolveComposerEnterAction({
+				...base,
+				running: true,
+				showSendWhileRunning: true,
+				sendDisabled: true,
+			}),
+		).toBe("none");
+	});
 });

@@ -26,7 +26,7 @@ export function resolveComposerEnterAction({
 	if (altKey && running) {
 		return "followUp";
 	}
-	if (showSendWhileRunning) {
+	if (showSendWhileRunning && !sendDisabled) {
 		return "submit";
 	}
 	if (!running && !sendDisabled) {

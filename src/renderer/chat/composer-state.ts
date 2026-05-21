@@ -25,7 +25,7 @@ export const createComposerState = ({
 	const blockedByRuntime = !runtimeAvailable;
 
 	return {
-		sendDisabled: blockedByRuntime || (!running && !hasContent),
+		sendDisabled: blockedByRuntime || !hasContent,
 		showSendWhileRunning: running && hasContent && !blockedByRuntime,
 		statusLabel: blockedByRuntime ? disabledReason : disabledReason,
 	};

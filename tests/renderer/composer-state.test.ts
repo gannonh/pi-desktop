@@ -39,6 +39,21 @@ describe("createComposerState", () => {
 		});
 	});
 
+	it("disables send while running when content is empty", () => {
+		expect(
+			createComposerState({
+				text: "",
+				runtimeAvailable: true,
+				disabledReason: "",
+				running: true,
+			}),
+		).toEqual({
+			sendDisabled: true,
+			showSendWhileRunning: false,
+			statusLabel: "",
+		});
+	});
+
 	it("disables send and exposes the runtime reason when runtime is unavailable", () => {
 		expect(
 			createComposerState({

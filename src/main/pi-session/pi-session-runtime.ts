@@ -105,6 +105,7 @@ type RuntimeEntry = {
 	activePromptToken: symbol | null;
 	abortedPromptToken: symbol | null;
 	scheduledPrompt: { timeout: ReturnType<typeof setTimeout>; resolve: () => void } | null;
+	suppressQueueUpdates: boolean;
 	disposed: boolean;
 };
 
@@ -227,9 +228,16 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		}
 
 		if (shouldQueueDelivery(entry) && streamingBehavior) {
-			const queuePromise = entry.session.prompt(prompt, { streamingBehavior, images: imageContent });
 			emitQueueUpdate(sessionId, entry);
-			return queuePromise;
+			return entry.session.prompt(prompt, { streamingBehavior, images: imageContent }).catch((error) => {
+				const currentEntry = sessions.get(sessionId);
+				if (currentEntry !== entry || entry.disposed) {
+					return;
+				}
+				entry.status = "failed";
+				deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
+				emitStatus(sessionId, "failed", "Failed");
+			});
 		}
 
 		const promptToken = Symbol("pi-session-prompt");
@@ -295,12 +303,17 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		if (!entry.agentSession) {
 			throw new Error("Queue management is unavailable for this session.");
 		}
-		entry.agentSession.clearQueue();
-		for (const text of steering) {
-			await entry.agentSession.prompt(text, { streamingBehavior: "steer" });
-		}
-		for (const text of followUp) {
-			await entry.agentSession.prompt(text, { streamingBehavior: "followUp" });
+		entry.suppressQueueUpdates = true;
+		try {
+			entry.agentSession.clearQueue();
+			for (const text of steering) {
+				await entry.agentSession.prompt(text, { streamingBehavior: "steer" });
+			}
+			for (const text of followUp) {
+				await entry.agentSession.prompt(text, { streamingBehavior: "followUp" });
+			}
+		} finally {
+			entry.suppressQueueUpdates = false;
 		}
 	};
 
@@ -337,7 +350,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			const unsubscribe = created.session.subscribe((event) => {
 				if (event.type === "queue_update") {
 					const entry = sessions.get(sessionId);
-					if (!entry || entry.disposed) {
+					if (!entry || entry.disposed || entry.suppressQueueUpdates) {
 						return;
 					}
 					emitQueueUpdate(sessionId, entry);
@@ -375,6 +388,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				activePromptToken: null,
 				abortedPromptToken: null,
 				scheduledPrompt: null,
+				suppressQueueUpdates: false,
 				disposed: false,
 			};
 			sessions.set(sessionId, entry);
@@ -488,13 +502,10 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				input.messageId.queue === "steer"
 					? { list: steering, other: followUp }
 					: { list: followUp, other: steering };
-			if (input.messageId.index >= source.list.length) {
+			if (input.messageId.index < 0 || input.messageId.index >= source.list.length) {
 				throw new Error("Queued message not found.");
 			}
 			const text = source.list[input.messageId.index];
-			if (input.messageId.index < 0) {
-				throw new Error("Queued message not found.");
-			}
 			source.list.splice(input.messageId.index, 1);
 			if (input.delivery === "steer") {
 				steering.push(text);

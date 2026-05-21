@@ -33,6 +33,8 @@ const arrayBufferToBase64 = (arrayBuffer: ArrayBuffer): string => {
 	return btoa(binary);
 };
 
+const maxAttachmentBytes = 15 * 1024 * 1024;
+
 export async function loadAttachment(
 	source: string | File | Blob | ArrayBuffer,
 	fileName?: string,
@@ -68,6 +70,10 @@ export async function loadAttachment(
 		size = source.byteLength;
 	} else {
 		throw new Error("Invalid source type");
+	}
+
+	if (size > maxAttachmentBytes) {
+		throw new Error(`Attachment exceeds ${Math.floor(maxAttachmentBytes / (1024 * 1024))}MB limit.`);
 	}
 
 	const base64Content = arrayBufferToBase64(arrayBuffer);

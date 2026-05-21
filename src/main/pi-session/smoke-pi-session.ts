@@ -130,8 +130,8 @@ export const createSmokePiAgentSession = async (): Promise<{ session: PiSdkSessi
 		},
 		bindExtensions: async () => {},
 		isStreaming: () => streaming,
-		getSteeringMessages: () => steeringMessages,
-		getFollowUpMessages: () => followUpMessages,
+		getSteeringMessages: () => [...steeringMessages],
+		getFollowUpMessages: () => [...followUpMessages],
 		clearQueue: () => {
 			const steering = [...steeringMessages];
 			const followUp = [...followUpMessages];

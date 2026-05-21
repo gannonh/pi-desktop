@@ -40,7 +40,13 @@ export default defineConfig({
 						'"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,',
 						'get "@mariozechner/pi-coding-agent"() { return _bundledPiCodingAgent; },',
 					);
-				return transformed === code ? null : { code: transformed, map: null };
+				if (transformed === code) {
+					this.warn(
+						"Pi extension loader transform did not match compiled SDK output; packaged extension loading may fail.",
+					);
+					return null;
+				}
+				return { code: transformed, map: null };
 			},
 		},
 		{
