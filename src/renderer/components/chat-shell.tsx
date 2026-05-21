@@ -5,6 +5,7 @@ import type { ComposerHostProps } from "../chat/composer-host";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
+import { CodingPanel } from "./coding-panel";
 import { Composer } from "./composer";
 import { TranscriptPanel } from "./transcript-panel";
 
@@ -54,22 +55,25 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 
 	return (
 		<section className="chat-shell chat-shell--session" aria-label={route.title}>
-			<div className="chat-shell__scroll-wrap">
-				<div className="chat-shell__scroll" ref={scrollRef} onScroll={onScroll}>
-					<div className="chat-shell__scroll-inner">
-						<TranscriptPanel
-							session={session}
-							hydration={hydration}
-							scope={scope}
-							expectHistory={expectHistory}
-						/>
+			<div className="chat-shell__session-body">
+				<div className="chat-shell__scroll-wrap">
+					<div className="chat-shell__scroll" ref={scrollRef} onScroll={onScroll}>
+						<div className="chat-shell__scroll-inner">
+							<TranscriptPanel
+								session={session}
+								hydration={hydration}
+								scope={scope}
+								expectHistory={expectHistory}
+							/>
+						</div>
 					</div>
+					{showJumpToLatest ? (
+						<button className="chat-shell__jump-to-latest" type="button" onClick={scrollToBottom}>
+							Jump to latest
+						</button>
+					) : null}
 				</div>
-				{showJumpToLatest ? (
-					<button className="chat-shell__jump-to-latest" type="button" onClick={scrollToBottom}>
-						Jump to latest
-					</button>
-				) : null}
+				<CodingPanel toolExecutions={session.toolExecutions} />
 			</div>
 			<div className="chat-shell__bottom-composer">
 				<Composer

@@ -1,6 +1,6 @@
 # M07A Tool Timeline MVP Spec
 ## Status
-Approved
+Implemented
 ## Goal
 Make live Pi tool execution inspectable in Pi Desktop through a transcript-adjacent coding panel that shows tool status, tool input summaries, result summaries, expandable raw details, and bash-style output.
 ## Background
@@ -521,3 +521,42 @@ Verification commands:
   
 ## Open questions
 - None.
+  
+## Build completion report
+- Spec path: `docs/specs/2026-05-21-m07a-tool-timeline-mvp.md`
+  
+- Branch: `feat/M07A-tool-timeline-mvp`
+  
+- Tasks completed: Phases 1–5 (shared events, normalizer, session state, view model, coding panel UI, dev preview fixtures)
+  
+- Files changed:
+  
+  - `src/shared/pi-session.ts`
+    
+  - `src/main/pi-session/pi-session-event-normalizer.ts`
+    
+  - `src/renderer/session/session-state.ts`
+    
+  - `src/renderer/tools/tool-timeline-view-model.ts`
+    
+  - `src/renderer/components/coding-panel.tsx`, `tool-timeline.tsx`, `tool-timeline-item.tsx`
+    
+  - `src/renderer/components/chat-shell.tsx`
+    
+  - `src/renderer/dev-preview-api.ts`
+    
+  - `src/renderer/styles.css`
+    
+  - Tests under `tests/shared`, `tests/main`, `tests/renderer`
+    
+- Verification:
+  
+  - `pnpm test -- tests/shared/pi-session.test.ts tests/main/pi-session-event-normalizer.test.ts tests/renderer/session-state.test.ts tests/renderer/tool-timeline-view-model.test.ts tests/renderer/coding-panel.test.ts tests/renderer/chat-shell.test.ts tests/renderer/dev-preview-api.test.ts` — 416 tests passed (full vitest run)
+    
+  - `pnpm typecheck` — passed
+    
+- Review gates: Single-agent path; spec compliance and code quality checked inline during implementation. Independent subagent review was not used.
+  
+- Approved deviations: None.
+  
+- Known follow-ups: Full `pnpm check` (including smoke) not run in this session; structured tool timeline hydration for saved sessions remains out of scope per spec.

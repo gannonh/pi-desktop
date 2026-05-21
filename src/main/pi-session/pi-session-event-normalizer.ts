@@ -168,6 +168,42 @@ const errorMessageFor = (error: unknown): string => (error instanceof Error ? er
 export const sanitizeRuntimeErrorMessage = (error: unknown): string =>
 	sanitizeMessage(errorMessageFor(error), "Pi runtime error.");
 
+export const serializePiSessionPayload = (value: unknown): unknown => {
+	if (value === undefined) {
+		return null;
+	}
+
+	if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+		return value;
+	}
+
+	if (value instanceof Error) {
+		return { name: value.name, message: value.message };
+	}
+
+	if (typeof value === "symbol") {
+		return value.toString();
+	}
+
+	if (typeof value === "function") {
+		return "[Function]";
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => serializePiSessionPayload(entry));
+	}
+
+	if (isRecord(value)) {
+		const serialized: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(value)) {
+			serialized[key] = serializePiSessionPayload(entry);
+		}
+		return serialized;
+	}
+
+	return String(value);
+};
+
 export const createRuntimeErrorEvent = ({ sessionId, code, error, now }: RuntimeErrorInput): PiSessionEvent => ({
 	type: "runtime_error",
 	sessionId,
@@ -268,6 +304,47 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 				sessionId,
 				code: "pi.retry_failed",
 				message: sanitizeMessage(event.finalError ?? "", "Retry failed."),
+				receivedAt,
+			},
+		];
+	}
+
+	if (event.type === "tool_execution_start") {
+		return [
+			{
+				type: "tool_execution_start",
+				sessionId,
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				args: serializePiSessionPayload(event.args),
+				receivedAt,
+			},
+		];
+	}
+
+	if (event.type === "tool_execution_update") {
+		return [
+			{
+				type: "tool_execution_update",
+				sessionId,
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				args: serializePiSessionPayload(event.args),
+				partialResult: serializePiSessionPayload(event.partialResult),
+				receivedAt,
+			},
+		];
+	}
+
+	if (event.type === "tool_execution_end") {
+		return [
+			{
+				type: "tool_execution_end",
+				sessionId,
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				result: serializePiSessionPayload(event.result),
+				isError: event.isError,
 				receivedAt,
 			},
 		];

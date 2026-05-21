@@ -23,6 +23,7 @@ const liveSession: LiveSessionState = {
 	status: "running",
 	statusLabel: "Running",
 	messages: [{ id: "assistant:1", role: "assistant", content: "Live response", streaming: true }],
+	toolExecutions: [],
 	errorMessage: "",
 	retryMessage: "",
 	settings: null,
@@ -164,6 +165,43 @@ describe("ChatShell", () => {
 		expect(markup).toContain("Loading conversation");
 		expect(markup).not.toContain("No messages yet.");
 		expect(markup).not.toContain("What should we build in pi-desktop?");
+	});
+
+	it("renders the coding panel when tool executions are present", () => {
+		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
+			kind: "empty-chat",
+			title: "Milestone transcript",
+			startTitle: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:session:one",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+			resumeLabel: "Resume session",
+			metadataLabel: "running · updated 5/12/2026, 10:00:00 AM",
+		};
+
+		const markup = renderChatShell(route, {
+			...liveSession,
+			toolExecutions: [
+				{
+					id: "call_1",
+					toolName: "bash",
+					status: "running",
+					args: { command: "pnpm test" },
+					partialResult: null,
+					result: null,
+					isError: false,
+					startedAt: "2026-05-14T12:00:00.000Z",
+					updatedAt: "2026-05-14T12:00:00.000Z",
+					endedAt: null,
+				},
+			],
+		});
+
+		expect(markup).toContain("chat-shell__session-body");
+		expect(markup).toContain('aria-label="Tool timeline"');
+		expect(markup).toContain("Running");
+		expect(markup).toContain("pnpm test");
 	});
 
 	it("renders an empty selected draft chat as the centered project start state before the first message", () => {

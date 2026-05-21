@@ -22,6 +22,7 @@ describe("session history result", () => {
 			status: "idle",
 			statusLabel: "Idle",
 			messages: [{ id: "user:one", role: "user", content: "what time is it?", streaming: false }],
+			toolExecutions: [],
 			errorMessage: "",
 			retryMessage: "",
 			settings: null,
@@ -365,5 +366,92 @@ describe("session state reducer", () => {
 		});
 
 		expect(state.queuedMessages).toHaveLength(1);
+	});
+
+	it("tracks tool execution lifecycle events by tool call id", () => {
+		let state = createInitialSessionState();
+		state = reduceSessionEvent(state, {
+			type: "tool_execution_start",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "ls" },
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "tool_execution_update",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "ls" },
+			partialResult: { content: [{ type: "text", text: "partial" }] },
+			receivedAt: "2026-05-14T12:00:01.000Z",
+		});
+		state = reduceSessionEvent(state, {
+			type: "tool_execution_end",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			result: { content: [{ type: "text", text: "done" }] },
+			isError: false,
+			receivedAt: "2026-05-14T12:00:02.000Z",
+		});
+
+		expect(state.toolExecutions).toEqual([
+			{
+				id: "call_1",
+				toolName: "bash",
+				status: "completed",
+				args: { command: "ls" },
+				partialResult: { content: [{ type: "text", text: "partial" }] },
+				result: { content: [{ type: "text", text: "done" }] },
+				isError: false,
+				startedAt: receivedAt,
+				updatedAt: "2026-05-14T12:00:02.000Z",
+				endedAt: "2026-05-14T12:00:02.000Z",
+			},
+		]);
+	});
+
+	it("creates running rows from out-of-order tool updates", () => {
+		const state = reduceSessionEvent(createInitialSessionState(), {
+			type: "tool_execution_update",
+			sessionId: "pi-session:one",
+			toolCallId: "call_late",
+			toolName: "bash",
+			args: { command: "pwd" },
+			partialResult: { content: [{ type: "text", text: "out" }] },
+			receivedAt,
+		});
+
+		expect(state.toolExecutions[0]).toMatchObject({
+			id: "call_late",
+			status: "running",
+			args: { command: "pwd" },
+		});
+	});
+
+	it("marks running tools failed when a runtime error arrives", () => {
+		let state = reduceSessionEvent(createInitialSessionState(), {
+			type: "tool_execution_start",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "ls" },
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "runtime_error",
+			sessionId: "pi-session:one",
+			code: "pi.prompt_failed",
+			message: "provider failed",
+			receivedAt: "2026-05-14T12:00:03.000Z",
+		});
+
+		expect(state.toolExecutions[0]).toMatchObject({
+			status: "failed",
+			isError: true,
+			endedAt: "2026-05-14T12:00:03.000Z",
+		});
 	});
 });

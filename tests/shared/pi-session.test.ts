@@ -258,4 +258,43 @@ describe("Pi session contracts", () => {
 			}),
 		).toThrow();
 	});
+
+	it("validates tool execution lifecycle events", () => {
+		const receivedAt = "2026-05-14T12:00:00.000Z";
+
+		expect(
+			PiSessionEventSchema.parse({
+				type: "tool_execution_start",
+				sessionId: "pi-session:one",
+				toolCallId: "call_1",
+				toolName: "bash",
+				args: { command: "ls" },
+				receivedAt,
+			}),
+		).toMatchObject({ type: "tool_execution_start", toolName: "bash" });
+
+		expect(
+			PiSessionEventSchema.parse({
+				type: "tool_execution_update",
+				sessionId: "pi-session:one",
+				toolCallId: "call_1",
+				toolName: "bash",
+				args: { command: "ls" },
+				partialResult: { content: [{ type: "text", text: "out" }] },
+				receivedAt,
+			}),
+		).toMatchObject({ type: "tool_execution_update" });
+
+		expect(
+			PiSessionEventSchema.parse({
+				type: "tool_execution_end",
+				sessionId: "pi-session:one",
+				toolCallId: "call_1",
+				toolName: "bash",
+				result: { content: [{ type: "text", text: "done" }], details: {} },
+				isError: false,
+				receivedAt,
+			}),
+		).toMatchObject({ type: "tool_execution_end", isError: false });
+	});
 });

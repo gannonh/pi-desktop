@@ -5,6 +5,7 @@ import type {
 	PiSessionQueuedMessage,
 	PiSessionSettingsPayload,
 	PiSessionStatus,
+	PiSessionToolExecutionStatus,
 } from "../../shared/pi-session";
 
 export type LiveSessionMessage = {
@@ -14,11 +15,25 @@ export type LiveSessionMessage = {
 	streaming: boolean;
 };
 
+export type LiveToolExecution = {
+	id: string;
+	toolName: string;
+	status: PiSessionToolExecutionStatus;
+	args: unknown;
+	partialResult: unknown;
+	result: unknown;
+	isError: boolean;
+	startedAt: string;
+	updatedAt: string;
+	endedAt: string | null;
+};
+
 export type LiveSessionState = {
 	sessionId: string | null;
 	status: PiSessionStatus;
 	statusLabel: string;
 	messages: LiveSessionMessage[];
+	toolExecutions: LiveToolExecution[];
 	errorMessage: string;
 	retryMessage: string;
 	settings: PiSessionSettingsPayload | null;
@@ -30,6 +45,7 @@ export const createInitialSessionState = (): LiveSessionState => ({
 	status: "idle",
 	statusLabel: "Idle",
 	messages: [],
+	toolExecutions: [],
 	errorMessage: "",
 	retryMessage: "",
 	settings: null,
@@ -44,6 +60,34 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 		? messages.map((message) => (message.id === next.id ? next : message))
 		: [...messages, next];
 
+const findToolExecution = (toolExecutions: readonly LiveToolExecution[], toolCallId: string) =>
+	toolExecutions.find((execution) => execution.id === toolCallId);
+
+const upsertToolExecution = (
+	toolExecutions: readonly LiveToolExecution[],
+	next: LiveToolExecution,
+): LiveToolExecution[] => {
+	const existing = findToolExecution(toolExecutions, next.id);
+	if (!existing) {
+		return [...toolExecutions, next];
+	}
+
+	return toolExecutions.map((execution) => (execution.id === next.id ? next : execution));
+};
+
+const markRunningToolsFailed = (toolExecutions: readonly LiveToolExecution[], receivedAt: string): LiveToolExecution[] =>
+	toolExecutions.map((execution) =>
+		execution.status === "running"
+			? {
+					...execution,
+					status: "failed",
+					isError: true,
+					updatedAt: receivedAt,
+					endedAt: receivedAt,
+				}
+			: execution,
+	);
+
 export const applySessionHistoryResult = (
 	result: PiSessionHistoryPayload,
 	settings: PiSessionSettingsPayload | null = null,
@@ -52,6 +96,7 @@ export const applySessionHistoryResult = (
 	status: result.status,
 	statusLabel: result.statusLabel,
 	messages: result.messages,
+	toolExecutions: [],
 	errorMessage: "",
 	retryMessage: "",
 	settings,
@@ -138,6 +183,66 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 		};
 	}
 
+	if (event.type === "tool_execution_start") {
+		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		return {
+			...state,
+			sessionId: event.sessionId,
+			toolExecutions: upsertToolExecution(state.toolExecutions, {
+				id: event.toolCallId,
+				toolName: event.toolName,
+				status: "running",
+				args: event.args,
+				partialResult: existing?.partialResult ?? null,
+				result: existing?.result ?? null,
+				isError: false,
+				startedAt: existing?.startedAt ?? event.receivedAt,
+				updatedAt: event.receivedAt,
+				endedAt: null,
+			}),
+		};
+	}
+
+	if (event.type === "tool_execution_update") {
+		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		return {
+			...state,
+			sessionId: event.sessionId,
+			toolExecutions: upsertToolExecution(state.toolExecutions, {
+				id: event.toolCallId,
+				toolName: event.toolName,
+				status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "running",
+				args: existing?.args ?? event.args,
+				partialResult: event.partialResult,
+				result: existing?.result ?? null,
+				isError: existing?.isError ?? false,
+				startedAt: existing?.startedAt ?? event.receivedAt,
+				updatedAt: event.receivedAt,
+				endedAt: existing?.endedAt ?? null,
+			}),
+		};
+	}
+
+	if (event.type === "tool_execution_end") {
+		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		return {
+			...state,
+			sessionId: event.sessionId,
+			toolExecutions: upsertToolExecution(state.toolExecutions, {
+				id: event.toolCallId,
+				toolName: event.toolName,
+				status: event.isError ? "failed" : "completed",
+				args: existing?.args ?? event.args ?? null,
+				partialResult: existing?.partialResult ?? null,
+				result: event.result,
+				isError: event.isError,
+				startedAt: existing?.startedAt ?? event.receivedAt,
+				updatedAt: event.receivedAt,
+				endedAt: event.receivedAt,
+			}),
+		};
+	}
+
 	if (event.type === "runtime_error") {
 		return {
 			...state,
@@ -145,6 +250,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			status: "failed",
 			statusLabel: "Failed",
 			messages: state.messages.map((message) => ({ ...message, streaming: false })),
+			toolExecutions: markRunningToolsFailed(state.toolExecutions, event.receivedAt),
 			errorMessage: event.message,
 			retryMessage: "",
 		};
