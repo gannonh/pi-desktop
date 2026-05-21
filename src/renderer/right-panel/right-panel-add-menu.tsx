@@ -1,51 +1,94 @@
+import { useEffect, useId, useRef, useState } from "react";
+import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
+import { useRightPanel } from "./right-panel-context";
 import type { RightPanelKind } from "./right-panel-types";
 
 export type RightPanelAddMenuItem = {
+	id: string;
 	kind: RightPanelKind;
 	label: string;
 };
 
 export const rightPanelAddMenuItems: RightPanelAddMenuItem[] = [
-	{ kind: "diffs", label: "Changes" },
-	{ kind: "terminal", label: "Terminal" },
-	{ kind: "browser", label: "Browser" },
-	{ kind: "markdown", label: "File" },
-	{ kind: "markdown", label: "Markdown" },
+	{ id: "diffs", kind: "diffs", label: "Changes" },
+	{ id: "terminal", kind: "terminal", label: "Terminal" },
+	{ id: "browser", kind: "browser", label: "Browser" },
+	{ id: "markdown-file", kind: "markdown", label: "File" },
+	{ id: "markdown-doc", kind: "markdown", label: "Markdown" },
 ];
 
 interface RightPanelAddMenuProps {
-	open: boolean;
-	onToggle: () => void;
-	onAdd: (kind: RightPanelKind) => void;
+	onAdd: (item: RightPanelAddMenuItem) => void;
 }
 
-export function RightPanelAddMenu({ open, onToggle, onAdd }: RightPanelAddMenuProps) {
+export function RightPanelAddMenu({ onAdd }: RightPanelAddMenuProps) {
+	const { isNarrowLayout } = useRightPanel();
+	const [open, setOpen] = useState(false);
+	const menuId = useId();
+	const anchorRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		const handlePointerDown = (event: PointerEvent) => {
+			if (!anchorRef.current?.contains(event.target as Node)) {
+				setOpen(false);
+			}
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setOpen(false);
+			}
+		};
+
+		document.addEventListener("pointerdown", handlePointerDown);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", handlePointerDown);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open]);
+
 	return (
-		<div className="right-panel__add-menu">
+		<MenuAnchor ref={anchorRef} className="workspace-add-menu">
 			<button
 				type="button"
-				className="right-panel__add-button"
+				className="workspace-add-menu__button"
 				aria-expanded={open}
 				aria-haspopup="menu"
-				onClick={onToggle}
+				aria-controls={menuId}
+				aria-label="Add panel"
+				onClick={() => setOpen((current) => !current)}
 			>
-				Add panel
+				+
 			</button>
 			{open ? (
-				<div className="right-panel__add-menu-list" role="menu" aria-label="Add panel">
+				<MenuSurface
+					id={menuId}
+					className={[
+						"workspace-add-menu__surface",
+						isNarrowLayout ? "workspace-add-menu__surface--above" : "",
+					]
+						.filter(Boolean)
+						.join(" ")}
+					aria-label="Add panel"
+				>
 					{rightPanelAddMenuItems.map((item) => (
-						<button
-							key={`${item.kind}:${item.label}`}
-							type="button"
-							className="right-panel__add-menu-item"
-							role="menuitem"
-							onClick={() => onAdd(item.kind)}
+						<MenuItem
+							key={item.id}
+							onClick={() => {
+								onAdd(item);
+								setOpen(false);
+							}}
 						>
 							{item.label}
-						</button>
+						</MenuItem>
 					))}
-				</div>
+				</MenuSurface>
 			) : null}
-		</div>
+		</MenuAnchor>
 	);
 }

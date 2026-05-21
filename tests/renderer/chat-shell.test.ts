@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
+import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
 import { createIdleTranscriptHydration } from "../../src/renderer/session/transcript-hydration";
 import { createComposerContext, createComposerHost } from "./composer-fixtures";
@@ -36,13 +37,15 @@ const renderChatShell = (
 	hydration = createIdleTranscriptHydration(),
 ) =>
 	renderToStaticMarkup(
-		createElement(ChatShell, {
-			route,
-			session,
-			hydration,
-			scope,
-			composerHost,
-			onAbortSession: vi.fn(),
+		createElement(RightPanelProvider, {
+			children: createElement(ChatShell, {
+				route,
+				session,
+				hydration,
+				scope,
+				composerHost,
+				onAbortSession: vi.fn(),
+			}),
 		}),
 	);
 
@@ -199,9 +202,9 @@ describe("ChatShell", () => {
 		});
 
 		expect(markup).toContain("chat-shell__session-body");
-		expect(markup).toContain('aria-label="Right panel workspace"');
-		expect(markup).toContain("PR #11");
-		expect(markup).toContain("Terminal");
+		expect(markup).toContain('aria-label="Workspace panel"');
+		expect(markup).toContain("M07A.2 right panel tab shell");
+		expect(markup).not.toContain("workspace-tab-strip");
 		expect(markup).not.toContain('aria-label="Tool timeline"');
 		expect(markup).not.toContain("pnpm test");
 	});

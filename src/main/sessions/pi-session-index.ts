@@ -62,30 +62,72 @@ const readSessionDirs = async (root: string): Promise<string[]> => {
 	}
 };
 
-const listSessionsMatchingCwd = async (
-	root: string,
-	cwd: string,
-	onProgress?: PiSessionListProgress,
-): Promise<SessionInfo[]> => {
+type SessionCatalogEntry = {
+	session: SessionInfo;
+	dir: string;
+};
+
+const sessionCatalogCache = new Map<string, Promise<SessionCatalogEntry[]>>();
+
+export const resetPiSessionCatalogCacheForTests = () => {
+	sessionCatalogCache.clear();
+};
+
+const buildSessionCatalog = async (root: string, onProgress?: PiSessionListProgress): Promise<SessionCatalogEntry[]> => {
 	const dirs = [root, ...(await readSessionDirs(root))];
-	const targetCwd = normalizeCwd(cwd);
-	const sessions: SessionInfo[] = [];
+	const catalog: SessionCatalogEntry[] = [];
 	let loadedDirs = 0;
 
 	for (const dir of dirs) {
 		const dirSessions = await SessionManager.list("", dir);
 		loadedDirs += 1;
 		onProgress?.(loadedDirs, dirs.length);
-		sessions.push(...dirSessions.filter((session) => sessionMatchesCwd(session, dir, cwd, targetCwd)));
+		for (const session of dirSessions) {
+			catalog.push({ session, dir });
+		}
 	}
+
+	return catalog;
+};
+
+const loadSessionCatalog = (root: string, onProgress?: PiSessionListProgress): Promise<SessionCatalogEntry[]> => {
+	const cached = sessionCatalogCache.get(root);
+	if (cached) {
+		return cached;
+	}
+
+	const catalogPromise = buildSessionCatalog(root, onProgress);
+	sessionCatalogCache.set(root, catalogPromise);
+	catalogPromise.catch(() => {
+		if (sessionCatalogCache.get(root) === catalogPromise) {
+			sessionCatalogCache.delete(root);
+		}
+	});
+	return catalogPromise;
+};
+
+const listSessionsMatchingCwd = async (
+	root: string,
+	cwd: string,
+	onProgress?: PiSessionListProgress,
+): Promise<SessionInfo[]> => {
+	const catalog = await loadSessionCatalog(root, onProgress);
+	const targetCwd = normalizeCwd(cwd);
+	const sessions = catalog
+		.filter(({ session, dir }) => sessionMatchesCwd(session, dir, cwd, targetCwd))
+		.map(({ session }) => session);
 
 	sessions.sort((a, b) => b.modified.getTime() - a.modified.getTime());
 	return sessions;
 };
 
-export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => ({
-	listProject: (cwd, onProgress) => listSessionsMatchingCwd(resolvePiSessionFilesRoot(env), cwd, onProgress),
-});
+export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => {
+	const root = resolvePiSessionFilesRoot(env);
+
+	return {
+		listProject: (cwd, onProgress) => listSessionsMatchingCwd(root, cwd, onProgress),
+	};
+};
 
 export const resolveChatTitleForSession = (
 	existingTitle: string | undefined,

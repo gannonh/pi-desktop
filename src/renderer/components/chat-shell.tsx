@@ -16,9 +16,18 @@ interface ChatShellProps {
 	scope: { projectId: string | null; chatId: string | null };
 	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
+	workspaceColumnDetached?: boolean;
 }
 
-export function ChatShell({ route, session, hydration, scope, composerHost, onAbortSession }: ChatShellProps) {
+export function ChatShell({
+	route,
+	session,
+	hydration,
+	scope,
+	composerHost,
+	onAbortSession,
+	workspaceColumnDetached = false,
+}: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
 		session.status === "running" ||
@@ -73,7 +82,7 @@ export function ChatShell({ route, session, hydration, scope, composerHost, onAb
 						</button>
 					) : null}
 				</div>
-				<RightPanelWorkspace />
+				{workspaceColumnDetached ? null : <RightPanelWorkspace />}
 			</div>
 			<div className="chat-shell__bottom-composer">
 				<Composer

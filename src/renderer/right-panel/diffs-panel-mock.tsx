@@ -6,7 +6,7 @@ interface DiffsPanelMockProps {
 
 export function DiffsPanelMock({ data }: DiffsPanelMockProps) {
 	return (
-		<div className="right-panel-mock right-panel-mock--diffs">
+		<div className="right-panel-mock right-panel-mock--diffs" data-testid="workspace-panel-diffs">
 			<header className="right-panel-mock__pr-header">
 				<h2 className="right-panel-mock__pr-title">{data.prTitle}</h2>
 				<p className="right-panel-mock__pr-status">{data.status}</p>

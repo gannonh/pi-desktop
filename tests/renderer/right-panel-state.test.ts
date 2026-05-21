@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { rightPanelAddMenuItems } from "../../src/renderer/right-panel/right-panel-add-menu";
 import {
+	addOrActivateRightPanelTab,
 	addRightPanelTab,
 	createDefaultRightPanelState,
 	removeRightPanelTab,
@@ -27,6 +29,37 @@ describe("right panel state", () => {
 		const next = selectRightPanelTab(state, nextTabId);
 
 		expect(next.activeTabId).toBe(nextTabId);
+		expect(next.collapsed).toBe(false);
+	});
+
+	it("activates an existing tab instead of duplicating single-kind panels", () => {
+		const state = createDefaultRightPanelState();
+		const terminalItem = rightPanelAddMenuItems.find((item) => item.id === "terminal");
+		expect(terminalItem).toBeTruthy();
+		if (!terminalItem) {
+			return;
+		}
+
+		const next = addOrActivateRightPanelTab(state, terminalItem);
+
+		expect(next.tabs).toHaveLength(state.tabs.length);
+		expect(next.activeTabId).toBe(state.tabs.find((tab) => tab.kind === "terminal")?.id);
+	});
+
+	it("adds markdown file and markdown doc tabs separately", () => {
+		const fileItem = rightPanelAddMenuItems.find((item) => item.id === "markdown-file");
+		const docItem = rightPanelAddMenuItems.find((item) => item.id === "markdown-doc");
+		expect(fileItem && docItem).toBeTruthy();
+		if (!fileItem || !docItem) {
+			return;
+		}
+
+		const withFile = addOrActivateRightPanelTab(createDefaultRightPanelState(), fileItem);
+		const withDoc = addOrActivateRightPanelTab(withFile, docItem);
+
+		expect(withDoc.tabs.at(-2)?.title).toBe("New file");
+		expect(withDoc.tabs.at(-1)?.title).toBe("New note");
+		expect(withDoc.activeTabId).toBe(withDoc.tabs.at(-1)?.id);
 	});
 
 	it("adds a tab by kind and activates it", () => {

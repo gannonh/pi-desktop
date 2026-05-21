@@ -184,13 +184,13 @@ describe("HTTP PiDesktop API client", () => {
 		const api = createHttpPiDesktopApi({ baseUrl: "http://127.0.0.1:49321" });
 
 		const result = api.project.getState();
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(30_000);
 
 		await expect(result).resolves.toEqual({
 			ok: false,
 			error: {
 				code: "dev_bridge.unavailable",
-				message: "Dev data bridge unavailable: request timed out",
+				message: expect.stringContaining("request timed out"),
 			},
 		});
 	});

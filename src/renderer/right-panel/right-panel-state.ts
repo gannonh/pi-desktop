@@ -1,4 +1,5 @@
 import { createDefaultMockTabs, createMockTab } from "./right-panel-mock-data";
+import type { RightPanelAddMenuItem } from "./right-panel-add-menu";
 import type { RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
 
 export const createDefaultRightPanelState = (): RightPanelState => {
@@ -16,7 +17,7 @@ export const selectRightPanelTab = (state: RightPanelState, tabId: string): Righ
 	if (!state.tabs.some((tab) => tab.id === tabId)) {
 		return state;
 	}
-	return { ...state, activeTabId: tabId };
+	return { ...state, activeTabId: tabId, collapsed: false };
 };
 
 const titleForAddedTab = (
@@ -35,14 +36,49 @@ const titleForAddedTab = (
 	};
 };
 
-export const addRightPanelTab = (state: RightPanelState, kind: RightPanelKind): RightPanelState => {
-	const tab = createMockTab(kind, titleForAddedTab(kind, state.tabs));
+const menuItemTabOverrides = (
+	item: RightPanelAddMenuItem,
+	tabs: readonly RightPanelTab[],
+): Partial<Pick<RightPanelTab, "title" | "subtitle">> => {
+	if (item.id === "markdown-file") {
+		return { title: "New file", subtitle: "untitled.md" };
+	}
+	if (item.id === "markdown-doc") {
+		return { title: "New note", subtitle: "notes/draft.md" };
+	}
+	return titleForAddedTab(item.kind, tabs);
+};
+
+const findTabForMenuItem = (tabs: readonly RightPanelTab[], item: RightPanelAddMenuItem): RightPanelTab | null => {
+	if (item.kind === "markdown") {
+		return null;
+	}
+	return tabs.find((tab) => tab.kind === item.kind) ?? null;
+};
+
+export const addRightPanelTab = (
+	state: RightPanelState,
+	kind: RightPanelKind,
+	overrides: Partial<Pick<RightPanelTab, "title" | "subtitle">> = {},
+): RightPanelState => {
+	const tab = createMockTab(kind, { ...titleForAddedTab(kind, state.tabs), ...overrides });
 	return {
 		...state,
 		tabs: [...state.tabs, tab],
 		activeTabId: tab.id,
 		collapsed: false,
 	};
+};
+
+export const addOrActivateRightPanelTab = (state: RightPanelState, item: RightPanelAddMenuItem): RightPanelState => {
+	const existing = findTabForMenuItem(state.tabs, item);
+	if (existing) {
+		return selectRightPanelTab(state, existing.id);
+	}
+
+	const overrides =
+		item.kind === "markdown" ? menuItemTabOverrides(item, state.tabs) : titleForAddedTab(item.kind, state.tabs);
+	return addRightPanelTab(state, item.kind, overrides);
 };
 
 const nearestTabId = (tabs: readonly RightPanelTab[], removedIndex: number): string | null => {

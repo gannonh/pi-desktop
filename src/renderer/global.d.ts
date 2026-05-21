@@ -7,6 +7,7 @@ declare global {
 
 	interface ImportMetaEnv {
 		readonly VITE_PI_DESKTOP_APP_SERVER_URL?: string;
+		readonly VITE_PI_DESKTOP_USE_SAME_ORIGIN_BRIDGE?: string;
 	}
 
 	interface ImportMeta {

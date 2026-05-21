@@ -6,7 +6,7 @@ interface BrowserPanelMockProps {
 
 export function BrowserPanelMock({ data }: BrowserPanelMockProps) {
 	return (
-		<div className="right-panel-mock right-panel-mock--browser">
+		<div className="right-panel-mock right-panel-mock--browser" data-testid="workspace-panel-browser">
 			<div className="right-panel-mock__toolbar" role="toolbar" aria-label="Browser controls">
 				<button type="button" className="right-panel-mock__toolbar-button" disabled>
 					Back

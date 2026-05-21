@@ -15,7 +15,7 @@ type AppRpcInputArgs<TOperation extends AppRpcOperation> =
 
 type PiSessionEventListener = (event: PiSessionEvent) => void;
 
-const RPC_TIMEOUT_MS = 10_000;
+const RPC_TIMEOUT_MS = 30_000;
 const EVENT_SOCKET_RECONNECT_INITIAL_MS = 250;
 const EVENT_SOCKET_RECONNECT_MAX_MS = 2_000;
 
@@ -23,7 +23,7 @@ const toErrorMessage = (error: unknown) => (error instanceof Error ? error.messa
 
 const toRpcErrorMessage = (error: unknown) => {
 	if (error instanceof DOMException && error.name === "AbortError") {
-		return "request timed out";
+		return `request timed out after ${RPC_TIMEOUT_MS / 1000}s. Keep \`pnpm dev:web\` running; the first project load can be slow while Pi sessions are indexed.`;
 	}
 	return toErrorMessage(error);
 };
@@ -37,8 +37,19 @@ const parseEventMessage = (data: MessageEvent["data"]) => {
 	return PiSessionEventEnvelopeSchema.parse(JSON.parse(data));
 };
 
+const resolveBridgeBaseUrl = (baseUrl: string) => {
+	const trimmed = baseUrl.trim().replace(/\/+$/, "");
+	if (trimmed.length > 0) {
+		return trimmed;
+	}
+	if (typeof window !== "undefined" && window.location.origin !== "null") {
+		return window.location.origin;
+	}
+	return "http://127.0.0.1:5173";
+};
+
 export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesktopApi => {
-	const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+	const normalizedBaseUrl = resolveBridgeBaseUrl(baseUrl);
 	const rpcUrl = `${normalizedBaseUrl}/api/rpc`;
 	const eventsUrl = `${normalizedBaseUrl.replace(/^http/, "ws")}/api/events`;
 	const eventListeners = new Set<PiSessionEventListener>();

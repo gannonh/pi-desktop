@@ -153,10 +153,22 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 	try {
 		resources.appServer = await createAppServer({ backend, host, port: 0 });
 		env.VITE_PI_DESKTOP_APP_SERVER_URL = resources.appServer.url;
+		env.VITE_PI_DESKTOP_USE_SAME_ORIGIN_BRIDGE = "1";
 
 		resources.vite = await createVite({
 			configFile: "vite.renderer.config.ts",
-			server: { host, port: vitePort, strictPort: false },
+			server: {
+				host,
+				port: vitePort,
+				strictPort: false,
+				proxy: {
+					"/api": {
+						target: resources.appServer.url,
+						changeOrigin: true,
+						ws: true,
+					},
+				},
+			},
 		});
 
 		await resources.vite.listen();

@@ -14,6 +14,7 @@ interface ProjectMainProps {
 	onProjectState: (result: ProjectStateViewResult) => void;
 	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
+	workspaceColumnDetached?: boolean;
 }
 
 const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
@@ -33,6 +34,7 @@ export function ProjectMain({
 	onProjectState,
 	composerHost,
 	onAbortSession,
+	workspaceColumnDetached = false,
 }: ProjectMainProps) {
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		try {
@@ -103,6 +105,7 @@ export function ProjectMain({
 					scope={transcriptScope}
 					composerHost={composerHost}
 					onAbortSession={onAbortSession}
+					workspaceColumnDetached={workspaceColumnDetached}
 				/>
 			)}
 		</main>

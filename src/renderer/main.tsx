@@ -7,11 +7,13 @@ import { createUnavailablePiDesktopApi } from "./app-api/unavailable-api";
 import "./styles.css";
 
 if (!Object.hasOwn(window, "piDesktop")) {
-	const appServerUrl = import.meta.env.VITE_PI_DESKTOP_APP_SERVER_URL;
+	const useSameOriginBridge = import.meta.env.VITE_PI_DESKTOP_USE_SAME_ORIGIN_BRIDGE === "1";
+	const appServerUrl = import.meta.env.VITE_PI_DESKTOP_APP_SERVER_URL?.trim() ?? "";
+	const bridgeBaseUrl = useSameOriginBridge ? "" : appServerUrl;
 	window.piDesktop =
-		typeof appServerUrl === "string" && appServerUrl.trim().length > 0
-			? createHttpPiDesktopApi({ baseUrl: appServerUrl })
-			: createUnavailablePiDesktopApi("No app transport configured.");
+		useSameOriginBridge || bridgeBaseUrl.length > 0
+			? createHttpPiDesktopApi({ baseUrl: bridgeBaseUrl })
+			: createUnavailablePiDesktopApi("No app transport configured. Start the preview with `pnpm dev:web`.");
 }
 
 const root = document.getElementById("root");

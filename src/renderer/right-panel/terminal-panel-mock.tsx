@@ -6,7 +6,7 @@ interface TerminalPanelMockProps {
 
 export function TerminalPanelMock({ data }: TerminalPanelMockProps) {
 	return (
-		<div className="right-panel-mock right-panel-mock--terminal">
+		<div className="right-panel-mock right-panel-mock--terminal" data-testid="workspace-panel-terminal">
 			<div className="right-panel-mock__meta">
 				<span className="right-panel-mock__label">cwd</span>
 				<span className="right-panel-mock__value">{data.cwd}</span>
