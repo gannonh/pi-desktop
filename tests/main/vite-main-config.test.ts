@@ -6,6 +6,10 @@ type RenderChunkPlugin = {
 	name: string;
 	renderChunk: (code: string, chunk: { fileName: string }, options?: never) => { code: string; map: null } | null;
 };
+type TransformPlugin = {
+	name: string;
+	transform: (code: string, id: string) => { code: string; map: null } | null;
+};
 
 const pluginOptions = () => ((mainViteConfig.plugins ?? []) as unknown[]).flat(Number.POSITIVE_INFINITY) as unknown[];
 
@@ -17,6 +21,11 @@ const hasRenderChunk = (plugin: unknown): plugin is RenderChunkPlugin =>
 	"renderChunk" in plugin &&
 	typeof (plugin as { renderChunk?: unknown }).renderChunk === "function";
 
+const hasTransform = (plugin: unknown): plugin is TransformPlugin =>
+	hasPluginName(plugin) &&
+	"transform" in plugin &&
+	typeof (plugin as { transform?: unknown }).transform === "function";
+
 const getMainRenderChunkPlugin = () => {
 	const plugin = pluginOptions()
 		.filter(hasRenderChunk)
@@ -24,6 +33,18 @@ const getMainRenderChunkPlugin = () => {
 
 	if (!plugin) {
 		throw new Error("preserve-main-import-meta-url plugin not found.");
+	}
+
+	return plugin;
+};
+
+const getTransformPlugin = (name: string) => {
+	const plugin = pluginOptions()
+		.filter(hasTransform)
+		.find((candidate) => candidate.name === name);
+
+	if (!plugin) {
+		throw new Error(`${name} plugin not found.`);
 	}
 
 	return plugin;
@@ -81,5 +102,33 @@ describe("main Vite package config", () => {
 			].join(" "),
 		);
 		expect(plugin.renderChunk("const a=({}).resolve(specifier);", { fileName: "chunk.js" })).toBeNull();
+	});
+
+	it("uses virtual extension modules in Electron main bundles so packaged apps can load Pi extensions", () => {
+		const plugin = getTransformPlugin("use-virtual-extension-modules-in-electron-main");
+		const source = [
+			"const VIRTUAL_MODULES = {",
+			'"@earendil-works/pi-coding-agent": _bundledPiCodingAgent,',
+			'"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,',
+			"};",
+			"async function loadExtensionModule(extensionPath) {",
+			"const jiti = createJiti(import.meta.url, {",
+			"moduleCache: false,",
+			"...(isBunBinary ? { virtualModules: VIRTUAL_MODULES, tryNative: false } : { alias: getAliases() }),",
+			"});",
+			"}",
+		].join("\n");
+
+		const result = plugin.transform(
+			source,
+			"/repo/node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/loader.js",
+		);
+
+		expect(result?.code).toContain('import.meta.url.includes("/.vite/build/")');
+		expect(result?.code).toContain('get "@earendil-works/pi-coding-agent"()');
+		expect(result?.code).toContain('get "@mariozechner/pi-coding-agent"()');
+		expect(result?.code).toContain("virtualModules: VIRTUAL_MODULES");
+		expect(result?.code).toContain("alias: getAliases()");
+		expect(plugin.transform(source, "/repo/src/main/index.ts")).toBeNull();
 	});
 });

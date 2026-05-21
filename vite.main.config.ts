@@ -20,6 +20,30 @@ export default defineConfig({
 	},
 	plugins: [
 		{
+			name: "use-virtual-extension-modules-in-electron-main",
+			transform(code, id) {
+				if (!id.includes("@earendil-works/pi-coding-agent") || !id.endsWith("/dist/core/extensions/loader.js")) {
+					return null;
+				}
+
+				const bundledMainCondition = 'isBunBinary || import.meta.url.includes("/.vite/build/")';
+				const transformed = code
+					.replace(
+						"...(isBunBinary ? { virtualModules: VIRTUAL_MODULES, tryNative: false } : { alias: getAliases() }),",
+						`...(${bundledMainCondition} ? { virtualModules: VIRTUAL_MODULES, tryNative: false } : { alias: getAliases() }),`,
+					)
+					.replace(
+						'"@earendil-works/pi-coding-agent": _bundledPiCodingAgent,',
+						'get "@earendil-works/pi-coding-agent"() { return _bundledPiCodingAgent; },',
+					)
+					.replace(
+						'"@mariozechner/pi-coding-agent": _bundledPiCodingAgent,',
+						'get "@mariozechner/pi-coding-agent"() { return _bundledPiCodingAgent; },',
+					);
+				return transformed === code ? null : { code: transformed, map: null };
+			},
+		},
+		{
 			name: "preserve-main-import-meta-url",
 			renderChunk(code, chunk) {
 				if (chunk.fileName !== "main.js") {
