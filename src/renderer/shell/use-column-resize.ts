@@ -28,6 +28,7 @@ export function useColumnResize({ width, setWidth, enabled, edge, clamp }: UseCo
 		const onUp = () => {
 			document.removeEventListener("pointermove", onMove);
 			document.removeEventListener("pointerup", onUp);
+			document.removeEventListener("pointercancel", onUp);
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
 		};
@@ -36,6 +37,7 @@ export function useColumnResize({ width, setWidth, enabled, edge, clamp }: UseCo
 		document.body.style.userSelect = "none";
 		document.addEventListener("pointermove", onMove);
 		document.addEventListener("pointerup", onUp);
+		document.addEventListener("pointercancel", onUp);
 	};
 
 	return { onResizeStart };

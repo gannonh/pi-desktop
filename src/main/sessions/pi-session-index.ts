@@ -67,7 +67,12 @@ type SessionCatalogEntry = {
 	dir: string;
 };
 
-const sessionCatalogCache = new Map<string, Promise<SessionCatalogEntry[]>>();
+type SessionCatalogLoad = {
+	promise: Promise<SessionCatalogEntry[]>;
+	progressSubscribers: Set<PiSessionListProgress>;
+};
+
+const sessionCatalogCache = new Map<string, SessionCatalogLoad>();
 
 export const resetPiSessionCatalogCacheForTests = () => {
 	sessionCatalogCache.clear();
@@ -96,13 +101,28 @@ const buildSessionCatalog = async (
 const loadSessionCatalog = (root: string, onProgress?: PiSessionListProgress): Promise<SessionCatalogEntry[]> => {
 	const cached = sessionCatalogCache.get(root);
 	if (cached) {
-		return cached;
+		if (onProgress) {
+			cached.progressSubscribers.add(onProgress);
+		}
+		return cached.promise;
 	}
 
-	const catalogPromise = buildSessionCatalog(root, onProgress);
-	sessionCatalogCache.set(root, catalogPromise);
-	catalogPromise.catch(() => {
-		if (sessionCatalogCache.get(root) === catalogPromise) {
+	const progressSubscribers = new Set<PiSessionListProgress>();
+	if (onProgress) {
+		progressSubscribers.add(onProgress);
+	}
+
+	const reportProgress: PiSessionListProgress = (loaded, total) => {
+		for (const subscriber of progressSubscribers) {
+			subscriber(loaded, total);
+		}
+	};
+
+	const catalogPromise = buildSessionCatalog(root, reportProgress);
+	const load: SessionCatalogLoad = { promise: catalogPromise, progressSubscribers };
+	sessionCatalogCache.set(root, load);
+	catalogPromise.finally(() => {
+		if (sessionCatalogCache.get(root) === load) {
 			sessionCatalogCache.delete(root);
 		}
 	});
