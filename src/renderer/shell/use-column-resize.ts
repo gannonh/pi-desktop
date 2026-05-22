@@ -1,19 +1,16 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 
-export const WORKSPACE_COLUMN_WIDTH_DEFAULT = 352;
-export const WORKSPACE_COLUMN_WIDTH_MIN = 240;
-export const WORKSPACE_COLUMN_WIDTH_MAX = 720;
+export type ColumnResizeEdge = "start" | "end";
 
-export const clampWorkspaceColumnWidth = (width: number) =>
-	Math.min(WORKSPACE_COLUMN_WIDTH_MAX, Math.max(WORKSPACE_COLUMN_WIDTH_MIN, width));
-
-type UseWorkspaceColumnResizeOptions = {
+type UseColumnResizeOptions = {
 	width: number;
 	setWidth: (width: number) => void;
 	enabled: boolean;
+	edge: ColumnResizeEdge;
+	clamp: (width: number) => number;
 };
 
-export function useWorkspaceColumnResize({ width, setWidth, enabled }: UseWorkspaceColumnResizeOptions) {
+export function useColumnResize({ width, setWidth, enabled, edge, clamp }: UseColumnResizeOptions) {
 	const onResizeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
 		if (!enabled || event.button !== 0) {
 			return;
@@ -24,8 +21,8 @@ export function useWorkspaceColumnResize({ width, setWidth, enabled }: UseWorksp
 		const startWidth = width;
 
 		const onMove = (moveEvent: PointerEvent) => {
-			const delta = startX - moveEvent.clientX;
-			setWidth(clampWorkspaceColumnWidth(startWidth + delta));
+			const delta = edge === "start" ? startX - moveEvent.clientX : moveEvent.clientX - startX;
+			setWidth(clamp(startWidth + delta));
 		};
 
 		const onUp = () => {

@@ -2,8 +2,8 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
+import { ShellTestProviders } from "./shell-test-providers";
 import { RightPanelWorkspace } from "../../src/renderer/right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
 
@@ -19,9 +19,9 @@ function WorkspaceFixture() {
 describe("right panel workspace integration", () => {
 	it("switches panel body when selecting tabs", () => {
 		render(
-			<RightPanelProvider initialState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
 				<WorkspaceFixture />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		expect(screen.getByTestId("workspace-panel-diffs")).toBeTruthy();
@@ -38,9 +38,9 @@ describe("right panel workspace integration", () => {
 
 	it("opens the add menu with all required panel kinds", () => {
 		render(
-			<RightPanelProvider initialState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
 				<WorkspaceFixture />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		fireEvent.click(screen.getByRole("button", { name: "Add panel" }));
@@ -53,9 +53,9 @@ describe("right panel workspace integration", () => {
 	it("expands the workspace when selecting a tab while collapsed", () => {
 		const initial = { ...createDefaultRightPanelState(), collapsed: true };
 		render(
-			<RightPanelProvider initialState={initial}>
+			<ShellTestProviders initialRightPanelState={initial}>
 				<WorkspaceFixture />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		expect(screen.queryByTestId("workspace-panel-body")).toBeNull();
@@ -66,9 +66,9 @@ describe("right panel workspace integration", () => {
 
 	it("hides and shows the workspace panel with the strip toggle", () => {
 		render(
-			<RightPanelProvider initialState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
 				<WorkspaceFixture />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		expect(screen.getByTestId("workspace-panel-body")).toBeTruthy();

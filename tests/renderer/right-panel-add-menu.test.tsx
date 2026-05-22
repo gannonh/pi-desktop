@@ -3,13 +3,13 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { RightPanelAddMenu } from "../../src/renderer/right-panel/right-panel-add-menu";
-import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
+import { ShellTestProviders } from "./shell-test-providers";
 
 function renderAddMenu(onAdd = vi.fn()) {
 	return render(
-		<RightPanelProvider>
+		<ShellTestProviders>
 			<RightPanelAddMenu onAdd={onAdd} />
-		</RightPanelProvider>,
+		</ShellTestProviders>,
 	);
 }
 
@@ -32,10 +32,10 @@ describe("RightPanelAddMenu", () => {
 
 	it("closes on outside pointer down", () => {
 		render(
-			<RightPanelProvider>
+			<ShellTestProviders>
 				<RightPanelAddMenu onAdd={vi.fn()} />
 				<button type="button">Outside</button>
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		fireEvent.click(screen.getByRole("button", { name: "Add panel" }));

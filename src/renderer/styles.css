@@ -141,6 +141,7 @@ button:disabled {
 }
 
 .app-shell {
+	position: relative;
 	display: grid;
 	grid-template-columns: var(--app-sidebar-width) minmax(var(--app-main-min-width), 1fr);
 	grid-template-rows: var(--sidebar-chrome-height) minmax(0, 1fr);
@@ -219,7 +220,6 @@ button:disabled {
 	container-name: workspace;
 	position: relative;
 	display: flex;
-	width: 22rem;
 	min-width: 0;
 	min-height: 0;
 	flex-shrink: 0;
@@ -235,19 +235,30 @@ button:disabled {
 	border-left: 0;
 }
 
-.app-shell__workspace-resize-handle {
+.app-shell__column-resize-handle {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: -2px;
-	z-index: 4;
+	z-index: 5;
 	width: 4px;
 	cursor: col-resize;
 	touch-action: none;
 }
 
-.app-shell__workspace-resize-handle:hover,
-.app-shell__workspace-resize-handle:focus-visible {
+.app-shell__column-resize-handle--sidebar {
+	top: 0;
+	bottom: 0;
+	left: calc(var(--app-sidebar-width) - 2px);
+	z-index: 10;
+	pointer-events: auto;
+}
+
+.app-shell__column-resize-handle--workspace {
+	left: -2px;
+}
+
+.app-shell__column-resize-handle:hover,
+.app-shell__column-resize-handle:focus-visible {
 	background: color-mix(in oklch, var(--color-foreground) 18%, transparent);
 }
 
@@ -2131,6 +2142,7 @@ button:disabled {
 	left: 0;
 	display: flex;
 	width: var(--app-sidebar-width);
+	max-width: 100%;
 	flex-direction: column;
 	overflow: hidden;
 	border-right: 1px solid var(--color-border);

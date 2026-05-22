@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import type { ComposerHostProps } from "../chat/composer-host";
@@ -6,7 +6,9 @@ import { createChatShellRoute, resolveChatSessionHeader, shouldUseChatStartLayou
 import { useRightPanel } from "../right-panel/right-panel-context";
 import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../right-panel/workspace-tab-strip";
-import { useWorkspaceColumnResize } from "../right-panel/use-workspace-column-resize";
+import { useShellLayout } from "../shell/shell-layout-context";
+import { useColumnResize } from "../shell/use-column-resize";
+import { clampSidebarWidth, clampWorkspaceWidth } from "../shell/shell-layout";
 import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
@@ -44,17 +46,31 @@ export function AppShell({
 	const showMainHeader = showPathBadge || sessionHeader !== null;
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
-	const {
-		state: rightPanelState,
-		workspaceWidth,
-		isNarrowLayout,
-		setWorkspaceWidth,
-	} = useRightPanel();
-	const { onResizeStart } = useWorkspaceColumnResize({
+	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
+	const { state: rightPanelState } = useRightPanel();
+
+	const { onResizeStart: onSidebarResizeStart } = useColumnResize({
+		width: sidebarWidth,
+		setWidth: setSidebarWidth,
+		enabled: !sidebarCollapsed,
+		edge: "end",
+		clamp: clampSidebarWidth,
+	});
+	const { onResizeStart: onWorkspaceResizeStart } = useColumnResize({
 		width: workspaceWidth,
 		setWidth: setWorkspaceWidth,
 		enabled: showWorkspaceColumn && !rightPanelState.collapsed && !isNarrowLayout,
+		edge: "start",
+		clamp: clampWorkspaceWidth,
 	});
+
+	const shellStyle: CSSProperties = {
+		["--app-sidebar-width" as string]: `${sidebarWidth}px`,
+		gridTemplateColumns: sidebarCollapsed
+			? `0 minmax(var(--app-main-min-width), 1fr)`
+			: `${sidebarWidth}px minmax(var(--app-main-min-width), 1fr)`,
+	};
+
 	const workspaceColumnStyle =
 		showWorkspaceColumn && !rightPanelState.collapsed && !isNarrowLayout
 			? ({ width: workspaceWidth } as const)
@@ -78,6 +94,7 @@ export function AppShell({
 		<div
 			data-testid="app-shell"
 			className={["app-shell", sidebarCollapsed ? "app-shell--sidebar-collapsed" : ""].filter(Boolean).join(" ")}
+			style={shellStyle}
 		>
 			<ProjectSidebar
 				state={state}
@@ -85,6 +102,15 @@ export function AppShell({
 				onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
 				onProjectState={onProjectState}
 			/>
+			{!sidebarCollapsed ? (
+				<div
+					className="app-shell__column-resize-handle app-shell__column-resize-handle--sidebar"
+					role="separator"
+					aria-orientation="vertical"
+					aria-label="Resize project sidebar"
+					onPointerDown={onSidebarResizeStart}
+				/>
+			) : null}
 
 			{showWorkspaceColumn ? (
 				<div
@@ -130,11 +156,11 @@ export function AppShell({
 					>
 						{!rightPanelState.collapsed && !isNarrowLayout ? (
 							<div
-								className="app-shell__workspace-resize-handle"
+								className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
 								role="separator"
 								aria-orientation="vertical"
 								aria-label="Resize workspace"
-								onPointerDown={onResizeStart}
+								onPointerDown={onWorkspaceResizeStart}
 							/>
 						) : null}
 						<div className="app-shell__workspace-chrome">

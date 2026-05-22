@@ -3,17 +3,17 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
+import { ShellTestProviders } from "./shell-test-providers";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
 
 describe("WorkspaceTabStrip", () => {
 	it("renders horizontal workspace tabs and add control in the shell tab strip", () => {
 		const markup = renderToStaticMarkup(
-			createElement(
-				RightPanelProvider,
-				{ initialState: createDefaultRightPanelState(), children: createElement(WorkspaceTabStrip) },
-			),
+			createElement(ShellTestProviders, {
+				initialRightPanelState: createDefaultRightPanelState(),
+				children: createElement(WorkspaceTabStrip),
+			}),
 		);
 
 		expect(markup).toContain('class="workspace-tab-strip"');

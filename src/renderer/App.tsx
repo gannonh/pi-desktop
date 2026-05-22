@@ -12,6 +12,7 @@ import type {
 import type { ComposerHostProps } from "./chat/composer-host";
 import { AppShell } from "./components/app-shell";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
+import { ShellLayoutProvider } from "./shell/shell-layout-context";
 import {
 	type SessionScope,
 	bufferPendingSessionEvent,
@@ -783,8 +784,9 @@ export function App() {
 	}, [applyProjectStateViewResult]);
 
 	return (
-		<RightPanelProvider>
-			<AppShell
+		<ShellLayoutProvider>
+			<RightPanelProvider>
+				<AppShell
 				state={projectState}
 				statusMessage={statusMessage?.message}
 				session={
@@ -801,7 +803,8 @@ export function App() {
 				composerHost={composerHost}
 				defaultComposerSettings={defaultComposerSettings}
 				onAbortSession={abortSession}
-			/>
-		</RightPanelProvider>
+				/>
+			</RightPanelProvider>
+		</ShellLayoutProvider>
 	);
 }

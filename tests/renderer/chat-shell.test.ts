@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
-import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
+import { ShellTestProviders } from "./shell-test-providers";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
 import { createIdleTranscriptHydration } from "../../src/renderer/session/transcript-hydration";
 import { createComposerContext, createComposerHost } from "./composer-fixtures";
@@ -37,7 +37,7 @@ const renderChatShell = (
 	hydration = createIdleTranscriptHydration(),
 ) =>
 	renderToStaticMarkup(
-		createElement(RightPanelProvider, {
+		createElement(ShellTestProviders, {
 			children: createElement(ChatShell, {
 				route,
 				session,

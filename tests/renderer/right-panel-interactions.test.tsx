@@ -2,17 +2,17 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
+import { ShellTestProviders } from "./shell-test-providers";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
 
 describe("right panel interactions", () => {
 	it("adds a new terminal tab from the plus menu", () => {
 		const initial = createDefaultRightPanelState();
 		render(
-			<RightPanelProvider initialState={initial}>
+			<ShellTestProviders initialRightPanelState={initial}>
 				<WorkspaceTabStrip />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		const tabsBefore = screen.getAllByRole("tab").length;
@@ -25,9 +25,9 @@ describe("right panel interactions", () => {
 
 	it("adds a new file tab from the plus menu", () => {
 		render(
-			<RightPanelProvider initialState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
 				<WorkspaceTabStrip />
-			</RightPanelProvider>,
+			</ShellTestProviders>,
 		);
 
 		const tabsBefore = screen.getAllByRole("tab").length;
