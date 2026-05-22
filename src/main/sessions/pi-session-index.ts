@@ -73,7 +73,10 @@ export const resetPiSessionCatalogCacheForTests = () => {
 	sessionCatalogCache.clear();
 };
 
-const buildSessionCatalog = async (root: string, onProgress?: PiSessionListProgress): Promise<SessionCatalogEntry[]> => {
+const buildSessionCatalog = async (
+	root: string,
+	onProgress?: PiSessionListProgress,
+): Promise<SessionCatalogEntry[]> => {
 	const dirs = [root, ...(await readSessionDirs(root))];
 	const catalog: SessionCatalogEntry[] = [];
 	let loadedDirs = 0;

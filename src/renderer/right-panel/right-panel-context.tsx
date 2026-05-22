@@ -30,7 +30,10 @@ interface RightPanelProviderProps {
 	initialState?: RightPanelState;
 }
 
-export function RightPanelProvider({ children, initialState = createDefaultRightPanelState() }: RightPanelProviderProps) {
+export function RightPanelProvider({
+	children,
+	initialState = createDefaultRightPanelState(),
+}: RightPanelProviderProps) {
 	const [state, setState] = useState(initialState);
 	const { isNarrowLayout } = useShellLayout();
 

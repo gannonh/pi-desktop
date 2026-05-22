@@ -68,10 +68,7 @@ export function RightPanelAddMenu({ onAdd }: RightPanelAddMenuProps) {
 			{open ? (
 				<MenuSurface
 					id={menuId}
-					className={[
-						"workspace-add-menu__surface",
-						isNarrowLayout ? "workspace-add-menu__surface--above" : "",
-					]
+					className={["workspace-add-menu__surface", isNarrowLayout ? "workspace-add-menu__surface--above" : ""]
 						.filter(Boolean)
 						.join(" ")}
 					aria-label="Add panel"

@@ -114,19 +114,13 @@ export function AppShell({
 
 			{showWorkspaceColumn ? (
 				<div
-					className={[
-						"app-shell__workspace-layout",
-						isNarrowLayout ? "app-shell__workspace-layout--stacked" : "",
-					]
+					className={["app-shell__workspace-layout", isNarrowLayout ? "app-shell__workspace-layout--stacked" : ""]
 						.filter(Boolean)
 						.join(" ")}
 				>
 					<div className="app-shell__chat-column">
 						<header
-							className={[
-								"app-shell__chat-header",
-								showMainHeader ? "" : "app-shell__chat-header--empty",
-							]
+							className={["app-shell__chat-header", showMainHeader ? "" : "app-shell__chat-header--empty"]
 								.filter(Boolean)
 								.join(" ")}
 						>

@@ -6,8 +6,7 @@ export const WORKSPACE_WIDTH_MIN = 320;
 export const WORKSPACE_WIDTH_MAX = 960;
 export const WORKSPACE_WIDTH_RATIO = 0.38;
 
-export const clampSidebarWidth = (width: number) =>
-	Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, width));
+export const clampSidebarWidth = (width: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, width));
 
 export const clampWorkspaceWidth = (width: number) =>
 	Math.min(WORKSPACE_WIDTH_MAX, Math.max(WORKSPACE_WIDTH_MIN, width));

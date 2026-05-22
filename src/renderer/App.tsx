@@ -787,22 +787,22 @@ export function App() {
 		<ShellLayoutProvider>
 			<RightPanelProvider>
 				<AppShell
-				state={projectState}
-				statusMessage={statusMessage?.message}
-				session={
-					isSessionScopeSelected(
-						{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
-						{ projectId: selectedProjectId, chatId: selectedChatId },
-					)
-						? sessionState
-						: createInitialSessionState()
-				}
-				transcriptHydration={transcriptHydration}
-				transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
-				onProjectState={applyProjectStateViewResult}
-				composerHost={composerHost}
-				defaultComposerSettings={defaultComposerSettings}
-				onAbortSession={abortSession}
+					state={projectState}
+					statusMessage={statusMessage?.message}
+					session={
+						isSessionScopeSelected(
+							{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+							{ projectId: selectedProjectId, chatId: selectedChatId },
+						)
+							? sessionState
+							: createInitialSessionState()
+					}
+					transcriptHydration={transcriptHydration}
+					transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
+					onProjectState={applyProjectStateViewResult}
+					composerHost={composerHost}
+					defaultComposerSettings={defaultComposerSettings}
+					onAbortSession={abortSession}
 				/>
 			</RightPanelProvider>
 		</ShellLayoutProvider>
