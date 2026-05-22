@@ -363,26 +363,7 @@ Acceptance:
 - User can abort an active run from the composer.
 - Composer explains why send is disabled when runtime or auth blocks submission.
 
-### ✅ M07A: Tool Timeline MVP
-
-Goal: make agent tool execution inspectable in a PR-sized first coding-panels slice.
-
-Deliverables:
-
-- Desktop-safe normalization for Pi tool execution start, update, and end events.
-- Coding panel shell that can sit alongside the transcript without changing session ownership.
-- Tool call timeline with status, tool name, input summary, result summary, and timestamps where available.
-- Expandable raw tool input and output state.
-- Terminal/bash output as the first specialized tool result renderer.
-- Browser-preview smoke data for active, completed, and failed tool calls.
-
-Acceptance:
-
-- Tool calls render with status, input summary, and result summary during a live session.
-- Bash or terminal-style output can be expanded and read without leaving the chat surface.
-- Tool event failures remain visible and do not get flattened into assistant text only.
-
-### M07A.2: Right Panel Tab Shell
+### ✅ M07A: Right Panel Tab Shell
 
 Goal: turn the coding panel foundation into a UI-first right-side tab workspace that can host arbitrary agent-adjacent surfaces.
 
@@ -403,43 +384,72 @@ Acceptance:
 - User can add a mock tab from the right-side tab menu.
 - Chat remains the primary conversational flow while the right panel preserves selected tab state.
 
-### M07B: File Activity and Preview
+### M07B: Right Panel - File Explorer + Viewer/Editor
 
-Goal: wire file-oriented agent work into the right-panel tab shell.
-
-Deliverables:
-
-- File activity extraction for read, write, and edit-style tool results.
-- File activity list linked to the relevant tool call where possible.
-- Read-only file preview panel for inspected file events.
-- Empty, missing, and unavailable-file states.
-- Active panel navigation between transcript-adjacent timeline and file preview views.
-
-Acceptance:
-
-- File read/write/edit events can be inspected from the coding panels.
-- Selecting a file activity shows a readable preview or a visible reason the preview is unavailable.
-- File activity rows preserve their related tool status and summary context.
-
-### M07C: Diff and Patch Review
-
-Goal: make agent file changes reviewable before the user commits.
+Goal: turn the right-panel file tab from a mock surface into a real project file workspace where users can browse the selected project, open files, inspect readable contents, and make small text edits without leaving the chat session.
 
 Deliverables:
 
-- Diff or patch extraction for edit/write events where Pi exposes structured data.
-- Git-backed diff lookup for changed workspace files when structured patch data is unavailable.
-- Patch/diff panel with readable before/after changes.
-- Navigation from file activity and tool timeline rows into the relevant diff view.
-- Collapsed/expanded diff context state.
+- Project-scoped file explorer rooted at the active workspace, with folders, files, loading states, empty states, and visible current path context.
+- File tab integration in the existing right-panel workspace, including open-file tabs, active file selection, dirty-state indicators, and close/switch behavior.
+- Read-only viewers for common safe text, Markdown, and code files, with clear unsupported, binary, and too-large-file states.
+- Lightweight text editor for editable files, with explicit save behavior, unsaved-change handling, and visible success/error feedback.
+- Main-process/preload filesystem IPC for listing, reading, and writing files through narrow typed APIs that respect the selected project root.
+- Renderer state for open file tabs, selected explorer item, file content loading status, dirty buffers, and file operation errors.
+- Preview/mock coverage and focused tests for explorer navigation, file open, save, unsupported files, and path-boundary safeguards.
 
 Acceptance:
 
-- Diffs are readable before and after file edits.
-- File change events link to the relevant diff when one exists.
-- Missing or unavailable diffs show a visible explanation.
+- User can open a real project file explorer from the right panel while a chat remains active in the center column.
+- User can expand folders, select files, and open multiple project files as right-panel tabs.
+- Text, Markdown, and code files render with readable formatting and path metadata; unsupported, binary, missing, or oversized files show clear states instead of broken UI.
+- User can edit an opened text file, see that it is dirty, save it explicitly, and see the saved content reflected after reload or reopen.
+- File operations are constrained to the selected project root and do not expose arbitrary filesystem access to the renderer.
+- Closing or switching tabs handles unsaved changes intentionally, without silently discarding edits.
+- Existing chat, composer, session streaming, and right-panel tab interactions continue to work.
+- The implementation passes targeted unit/component tests and the repo check command.
 
-### M08: Settings and Auth
+### M07C: Right Panel - Git/Github/PRs
+
+Goal:
+
+Deliverables:
+
+Acceptance:
+
+### M07D: Right Panel - Terminal
+
+Goal:
+
+Deliverables:
+
+Acceptance:
+
+### M07E: Right Panel - Browser
+
+Goal:
+
+Deliverables:
+
+Acceptance:
+
+### M07F: Right Panel - Plans & Tasks Creation
+
+Goal: Provide a Plan mode, whereby the agent creates a spec in a special markdown format with yaml frontmatter
+
+Deliverables:
+
+Acceptance:
+
+### M07G: Right Panel - Plans & Tasks Execution
+
+Goal:
+
+Deliverables:
+
+Acceptance:
+
+### M0X: Settings and Auth
 
 Goal: expose core Pi configuration in desktop UI.
 
@@ -459,7 +469,7 @@ Acceptance:
 - Auth failures explain the required next action.
 - Settings persist across restarts.
 
-### M09: Worktrees and Git UX
+### M0X: Worktrees and Git UX
 
 Goal: support branch-based coding workflows.
 
@@ -479,7 +489,7 @@ Acceptance:
 - User can inspect changed files and diffs.
 - User can prepare a commit with explicit file selection.
 
-### M10: Extensibility
+### M0X: Extensibility
 
 Goal: expose Pi customization through desktop surfaces.
 
@@ -497,7 +507,7 @@ Acceptance:
 - User can see discovered skills/prompts/extensions for a workspace.
 - User can enable, disable, or inspect available customization sources.
 
-### M11: Automation and Advanced Surfaces
+### M0X: Automation and Advanced Surfaces
 
 Goal: explore Codex-like advanced desktop workflows after the local core is stable.
 
@@ -547,6 +557,6 @@ Acceptance:
 
 Milestone 6 is complete. **M07A: Tool Timeline MVP** has built the tool execution event foundation. The next planning target is **M07A.2: Right Panel Tab Shell**: reshape that foundation into a UI-first right-side tab workspace with mock Terminal, Browser, Markdown/File, and Diffs/PR panels.
 
-After M07A.2, **M07B: File Activity and Preview** wires real file-oriented agent work into the right-panel tab shell. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
+After M07A.2, **M07B: Right Panel - File Explorer + Viewer/Editor** turns the mock file surface into a real project file workspace. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
 
 Milestone 3.2 is complete. M04 through M07C keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.

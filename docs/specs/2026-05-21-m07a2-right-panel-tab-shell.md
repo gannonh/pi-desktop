@@ -45,7 +45,7 @@ Recommended branch strategy: continue on `feat/M07A-tool-timeline-mvp`. M07A is 
   
 - Real GitHub PR API or git diff wiring.
   
-- Real file preview integration from agent reads and edits. That belongs to M07B.
+- Real file explorer, file viewer, or file editor integration. That belongs to M07B.
   
 - Real diff extraction or review workflows. That belongs to M07C.
   
@@ -341,7 +341,7 @@ Run `pnpm check` before opening the PR when practical.
   
 - Approved scope: Renderer-only right-panel tab shell with mock panel data, add/select tab interactions, no raw tool-call default panel, and responsive layout.
   
-- Non-goals: Real terminal/browser/markdown/PR/file/diff integrations, durable tab persistence, backend IPC, M07B/M07C wiring, generic Activity panel, and raw tool-call panel.
+- Non-goals: Real terminal/browser/markdown/PR/file explorer/file editor/diff integrations, durable tab persistence, backend IPC, M07B/M07C wiring, generic Activity panel, and raw tool-call panel.
   
 - Ordered task list: Phase 1 model and mock data, Phase 2 shell components, Phase 3 chat layout integration, Phase 4 visual pass and preview data, Phase 5 verification and PR prep.
   

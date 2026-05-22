@@ -4,7 +4,7 @@ Verified
 ## Goal
 Make live Pi tool execution inspectable in Pi Desktop through a transcript-adjacent coding panel that shows tool status, tool input summaries, result summaries, expandable raw details, and bash-style output.
 ## Background
-The roadmap splits the original M07 Coding Panels scope into three PR-sized milestones. M07A is the first slice and focuses on the tool timeline foundation. M07B will add file activity and previews. M07C will add diff and patch review.
+The roadmap splits the original M07 Coding Panels scope into three PR-sized milestones. M07A is the first slice and focuses on the tool timeline foundation. M07B will add the right-panel file explorer and viewer/editor. M07C will add diff and patch review.
 
 Current session plumbing already streams Pi session events through `src/main/pi-session/pi-session-event-normalizer.ts`, validates renderer-safe events in `src/shared/pi-session.ts`, and reduces them into `LiveSessionState` in `src/renderer/session/session-state.ts`. The live transcript renders from that state in `src/renderer/components/chat-shell.tsx`, `src/renderer/components/transcript-panel.tsx`, and `src/renderer/components/live-session-transcript.tsx`.
 
@@ -52,7 +52,7 @@ Alternative: introduce a separate coding-panel IPC stream.
 - Keep runtime, validation, and renderer failures visible through existing error paths.
   
 ## Non-goals
-- File activity extraction, file preview panels, and file availability states. Those belong to M07B.
+- File explorer, file viewer, and file editor surfaces. Those belong to M07B.
   
 - Diff, patch, and git-backed changed-file review. Those belong to M07C.
   
@@ -507,7 +507,7 @@ Verification commands:
   
 - Approved scope: Extend Pi Desktop's existing custom Pi session event path to normalize live tool execution events, store them in renderer session state, and render a transcript-adjacent Tool Timeline MVP with expandable raw details and bash-style output.
   
-- Non-goals: M07B file activity and preview, M07C diff and patch review, tool approval, new IPC channels, durable structured tool timeline hydration, AI SDK `useChat` adoption, provider/auth changes, persisted coding-panel preferences.
+- Non-goals: M07B file explorer and viewer/editor work, M07C diff and patch review, tool approval, new IPC channels, durable structured tool timeline hydration, AI SDK `useChat` adoption, provider/auth changes, persisted coding-panel preferences.
   
 - Ordered task list: Phase 1 shared event contract and normalization, Phase 2 renderer state model, Phase 3 tool timeline view model, Phase 4 coding panel UI, Phase 5 browser preview and smoke coverage, Phase 6 final verification and docs closeout.
   
