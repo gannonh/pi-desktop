@@ -20,7 +20,7 @@ export function RightPanelTabs({ tabs, activeTabId, onSelect, onRemove }: RightP
 		if (activeTab && typeof activeTab.scrollIntoView === "function") {
 			activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
 		}
-	}, [activeTabId, tabs]);
+	}, [activeTabId]);
 
 	if (tabs.length === 0) {
 		return null;

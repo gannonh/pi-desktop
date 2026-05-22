@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { useWorkspaceLayout } from "../right-panel/use-workspace-layout";
 import {
 	clampSidebarWidth,
@@ -32,8 +32,8 @@ export function ShellLayoutProvider({
 	const [workspaceWidth, setWorkspaceWidthState] = useState(() => clampWorkspaceWidth(initialWorkspaceWidth));
 	const { isNarrow: isNarrowLayout } = useWorkspaceLayout();
 
-	const setSidebarWidth = (width: number) => setSidebarWidthState(clampSidebarWidth(width));
-	const setWorkspaceWidth = (width: number) => setWorkspaceWidthState(clampWorkspaceWidth(width));
+	const setSidebarWidth = useCallback((width: number) => setSidebarWidthState(clampSidebarWidth(width)), []);
+	const setWorkspaceWidth = useCallback((width: number) => setWorkspaceWidthState(clampWorkspaceWidth(width)), []);
 
 	const value = useMemo<ShellLayoutContextValue>(
 		() => ({
@@ -43,7 +43,7 @@ export function ShellLayoutProvider({
 			setSidebarWidth,
 			setWorkspaceWidth,
 		}),
-		[sidebarWidth, workspaceWidth, isNarrowLayout],
+		[sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth],
 	);
 
 	return <ShellLayoutContext.Provider value={value}>{children}</ShellLayoutContext.Provider>;

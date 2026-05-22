@@ -47,7 +47,7 @@ const stringifyPayload = (value: unknown): string => {
 	}
 };
 
-export const summarizeToolArgs = (toolName: string, args: unknown): string => {
+export const summarizeToolArgs = (_toolName: string, args: unknown): string => {
 	const command = commandFromArgs(args);
 	if (command) {
 		return truncate(command);
@@ -61,7 +61,7 @@ export const summarizeToolArgs = (toolName: string, args: unknown): string => {
 	return truncate(serialized.replace(/\s+/g, " "));
 };
 
-export const summarizeToolResult = (toolName: string, result: unknown, isError: boolean): string => {
+export const summarizeToolResult = (_toolName: string, result: unknown, isError: boolean): string => {
 	if (isError) {
 		const text = textFromContent(isRecord(result) ? result.content : result).trim();
 		return text ? truncate(text) : "Tool failed";
@@ -81,7 +81,7 @@ export const summarizeToolResult = (toolName: string, result: unknown, isError: 
 	return serialized ? truncate(serialized.replace(/\s+/g, " ")) : "Result unavailable";
 };
 
-export const getToolOutputText = (toolName: string, result: unknown): string => {
+export const getToolOutputText = (_toolName: string, result: unknown): string => {
 	if (typeof result === "string") {
 		return result;
 	}

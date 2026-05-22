@@ -8,7 +8,14 @@ import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../right-panel/workspace-tab-strip";
 import { useShellLayout } from "../shell/shell-layout-context";
 import { useColumnResize } from "../shell/use-column-resize";
-import { clampSidebarWidth, clampWorkspaceWidth } from "../shell/shell-layout";
+import {
+	clampSidebarWidth,
+	clampWorkspaceWidth,
+	SIDEBAR_WIDTH_MAX,
+	SIDEBAR_WIDTH_MIN,
+	WORKSPACE_WIDTH_MAX,
+	WORKSPACE_WIDTH_MIN,
+} from "../shell/shell-layout";
 import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
@@ -105,9 +112,13 @@ export function AppShell({
 			{!sidebarCollapsed ? (
 				<div
 					className="app-shell__column-resize-handle app-shell__column-resize-handle--sidebar"
-					role="separator"
+					role="slider"
+					tabIndex={0}
 					aria-orientation="vertical"
 					aria-label="Resize project sidebar"
+					aria-valuenow={sidebarWidth}
+					aria-valuemin={SIDEBAR_WIDTH_MIN}
+					aria-valuemax={SIDEBAR_WIDTH_MAX}
 					onPointerDown={onSidebarResizeStart}
 				/>
 			) : null}
@@ -151,9 +162,13 @@ export function AppShell({
 						{!rightPanelState.collapsed && !isNarrowLayout ? (
 							<div
 								className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
-								role="separator"
+								role="slider"
+								tabIndex={0}
 								aria-orientation="vertical"
 								aria-label="Resize workspace"
+								aria-valuenow={workspaceWidth}
+								aria-valuemin={WORKSPACE_WIDTH_MIN}
+								aria-valuemax={WORKSPACE_WIDTH_MAX}
 								onPointerDown={onWorkspaceResizeStart}
 							/>
 						) : null}

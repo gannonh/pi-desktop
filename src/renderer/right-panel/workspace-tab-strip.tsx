@@ -8,7 +8,7 @@ export function WorkspaceTabStrip() {
 	const { state, selectTab, addTabFromMenu, removeTab, toggleCollapsed } = useRightPanel();
 
 	return (
-		<div className="workspace-tab-strip" aria-label="Workspace tabs">
+		<section className="workspace-tab-strip" aria-label="Workspace tabs">
 			<RightPanelTabs
 				tabs={state.tabs}
 				activeTabId={state.activeTabId}
@@ -27,6 +27,6 @@ export function WorkspaceTabStrip() {
 					<Hugeicon icon={SidebarRight01Icon} className="workspace-tab-strip__toggle-icon" />
 				</button>
 			</div>
-		</div>
+		</section>
 	);
 }

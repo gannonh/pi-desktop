@@ -37,8 +37,10 @@ const renderChatShell = (
 	hydration = createIdleTranscriptHydration(),
 ) =>
 	renderToStaticMarkup(
-		createElement(ShellTestProviders, {
-			children: createElement(ChatShell, {
+		createElement(
+			ShellTestProviders,
+			null,
+			createElement(ChatShell, {
 				route,
 				session,
 				hydration,
@@ -46,7 +48,7 @@ const renderChatShell = (
 				composerHost,
 				onAbortSession: vi.fn(),
 			}),
-		}),
+		),
 	);
 
 describe("ChatShell", () => {
