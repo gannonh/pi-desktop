@@ -153,6 +153,10 @@ export const PiSessionHistoryPayloadSchema = z.strictObject({
 	messages: z.array(PiSessionHistoryMessageSchema),
 });
 
+export const PiSessionToolExecutionStatusSchema = z.enum(["running", "completed", "failed"]);
+
+export const PiSessionSerializablePayloadSchema = z.unknown();
+
 export const PiSessionEventSchema = z.discriminatedUnion("type", [
 	z.strictObject({
 		type: z.literal("status"),
@@ -212,6 +216,33 @@ export const PiSessionEventSchema = z.discriminatedUnion("type", [
 		messages: z.array(PiSessionQueuedMessageSchema),
 		receivedAt: z.string().datetime(),
 	}),
+	z.strictObject({
+		type: z.literal("tool_execution_start"),
+		sessionId: z.string().min(1),
+		toolCallId: z.string().min(1),
+		toolName: z.string().min(1),
+		args: PiSessionSerializablePayloadSchema,
+		receivedAt: z.string().datetime(),
+	}),
+	z.strictObject({
+		type: z.literal("tool_execution_update"),
+		sessionId: z.string().min(1),
+		toolCallId: z.string().min(1),
+		toolName: z.string().min(1),
+		args: PiSessionSerializablePayloadSchema,
+		partialResult: PiSessionSerializablePayloadSchema,
+		receivedAt: z.string().datetime(),
+	}),
+	z.strictObject({
+		type: z.literal("tool_execution_end"),
+		sessionId: z.string().min(1),
+		toolCallId: z.string().min(1),
+		toolName: z.string().min(1),
+		args: PiSessionSerializablePayloadSchema.optional(),
+		result: PiSessionSerializablePayloadSchema,
+		isError: z.boolean(),
+		receivedAt: z.string().datetime(),
+	}),
 ]);
 
 export const PiSessionStartResultSchema = createResultSchema(PiSessionStartPayloadSchema);
@@ -247,6 +278,7 @@ export type PiSessionActionPayload = z.infer<typeof PiSessionActionPayloadSchema
 export type PiSessionMessageRole = z.infer<typeof PiSessionMessageRoleSchema>;
 export type PiSessionHistoryMessage = z.infer<typeof PiSessionHistoryMessageSchema>;
 export type PiSessionHistoryPayload = z.infer<typeof PiSessionHistoryPayloadSchema>;
+export type PiSessionToolExecutionStatus = z.infer<typeof PiSessionToolExecutionStatusSchema>;
 export type PiSessionEvent = z.infer<typeof PiSessionEventSchema>;
 export type PiSessionStartResult = IpcResult<PiSessionStartPayload>;
 export type PiSessionActionResult = IpcResult<PiSessionActionPayload>;

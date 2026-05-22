@@ -87,8 +87,16 @@ describe("resolveDevWebUserDataDir", () => {
 describe("startDevWebServer", () => {
 	it("sets the app server URL environment variable before creating the Vite server", async () => {
 		const fixture = createViteServer({
-			createViteServer: vi.fn(async () => {
+			createViteServer: vi.fn(async (config) => {
 				expect(fixture.processLike.env.VITE_PI_DESKTOP_APP_SERVER_URL).toBe(fixture.appServer.url);
+				expect(fixture.processLike.env.VITE_PI_DESKTOP_USE_SAME_ORIGIN_BRIDGE).toBe("1");
+				expect(config.server?.proxy).toEqual({
+					"/api": {
+						target: fixture.appServer.url,
+						changeOrigin: true,
+						ws: true,
+					},
+				});
 				return fixture.vite;
 			}),
 		});
@@ -100,10 +108,23 @@ describe("startDevWebServer", () => {
 			host: "127.0.0.1",
 			port: 0,
 		});
-		expect(fixture.deps.createViteServer).toHaveBeenCalledWith({
-			configFile: "vite.renderer.config.ts",
-			server: { host: "127.0.0.1", port: 5173, strictPort: false },
-		});
+		expect(fixture.deps.createViteServer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				configFile: "vite.renderer.config.ts",
+				server: expect.objectContaining({
+					host: "127.0.0.1",
+					port: 5173,
+					strictPort: false,
+					proxy: {
+						"/api": {
+							target: fixture.appServer.url,
+							changeOrigin: true,
+							ws: true,
+						},
+					},
+				}),
+			}),
+		);
 		expect(fixture.vite.listen).toHaveBeenCalledOnce();
 		expect(fixture.vite.printUrls).toHaveBeenCalledOnce();
 		expect(fixture.logger.log).toHaveBeenCalledWith(`Local app data bridge: ${fixture.appServer.url}`);

@@ -10,7 +10,6 @@ import {
 import { createProjectStore } from "../../src/main/projects/project-store";
 import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
 
-const devWebUrl = "http://127.0.0.1:5173/";
 const projectName = "Smoke bridge project";
 
 const noopLogger = {
@@ -83,7 +82,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 
 		server = await startDevWebServer({ logger: noopLogger, process: noopProcess });
 
-		await page.goto(devWebUrl);
+		await page.goto(server.previewUrl);
 		await hideAgentationOverlay(page);
 
 		await expect(page.getByTestId("app-shell")).toBeVisible();
@@ -107,6 +106,28 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Idle", { exact: true })).toBeVisible({ timeout: 30_000 });
+		await expect(page.getByLabel("Workspace tabs")).toBeVisible();
+		await expect(page.getByRole("tab", { name: /PR #11/ })).toBeVisible();
+		await expect(page.getByTestId("workspace-panel-diffs")).toBeVisible();
+		await expect(page.getByRole("complementary", { name: "Workspace panel" })).toBeVisible();
+		await expect(page.getByRole("button", { name: "Add panel" })).toBeVisible();
+
+		await page.getByRole("tab", { name: "Terminal" }).click();
+		await expect(page.getByTestId("workspace-panel-terminal")).toBeVisible();
+		await expect(page.getByTestId("workspace-panel-diffs")).toHaveCount(0);
+
+		await page.getByRole("button", { name: "Add panel" }).click();
+		for (const label of ["Changes", "Terminal", "Browser", "File", "Markdown"]) {
+			await expect(page.getByRole("menuitem", { name: label })).toBeVisible();
+		}
+		await page.keyboard.press("Escape");
+
+		await page.setViewportSize({ width: 800, height: 900 });
+		await expect(page.locator(".app-shell__workspace-layout--stacked")).toBeVisible();
+		await page.getByRole("button", { name: "Hide workspace" }).click();
+		await expect(page.getByTestId("workspace-panel-body")).toHaveCount(0);
+		await page.getByRole("button", { name: "Show workspace" }).click();
+		await expect(page.getByTestId("workspace-panel-body")).toBeVisible();
 	} finally {
 		await server?.shutdown();
 		if (previousUserDataDir === undefined) {

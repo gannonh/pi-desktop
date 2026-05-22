@@ -18,6 +18,7 @@ import {
 	createStandaloneChatFromSessionInfo,
 	getChatTitleFromSessionInfo,
 	readSessionInfoForPath,
+	resetPiSessionCatalogCacheForTests,
 	resolveChatTitleForSession,
 } from "../../src/main/sessions/pi-session-index";
 import { ChatMetadataSchema, createProjectId, StandaloneChatMetadataSchema } from "../../src/shared/project-state";
@@ -39,6 +40,7 @@ const createSessionInfo = (overrides: Partial<SessionInfo> = {}): SessionInfo =>
 describe("pi session index", () => {
 	beforeEach(() => {
 		sessionManagerMock.list.mockReset();
+		resetPiSessionCatalogCacheForTests();
 	});
 
 	it("lists project sessions across all session directories by matching session cwd", async () => {
@@ -103,6 +105,69 @@ describe("pi session index", () => {
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", legacyDir);
 		expect(sessionManagerMock.list).toHaveBeenCalledWith("", outsideDir);
 		expect(onProgress).toHaveBeenLastCalledWith(4, 4);
+	});
+
+	it("refreshes the session catalog on each project lookup", async () => {
+		const sessionRoot = await mkdtemp(join(tmpdir(), "pi-session-root-cache-"));
+		const encodedDir = join(sessionRoot, "--%2Ftmp%2Fpi--");
+		await mkdir(encodedDir);
+		const encodedSession = createSessionInfo({
+			id: "encoded",
+			path: join(encodedDir, "encoded.jsonl"),
+			cwd: "/tmp/pi",
+		});
+		sessionManagerMock.list.mockImplementation(async (_cwd: string, dir: string) => {
+			if (dir === sessionRoot) {
+				return [];
+			}
+			if (dir === encodedDir) {
+				return [encodedSession];
+			}
+			return [];
+		});
+
+		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: sessionRoot });
+		await lister.listProject("/tmp/pi");
+		await lister.listProject("/tmp/pi");
+
+		expect(sessionManagerMock.list).toHaveBeenCalledTimes(4);
+	});
+
+	it("dedupes concurrent session catalog scans and reports progress to late subscribers", async () => {
+		const sessionRoot = await mkdtemp(join(tmpdir(), "pi-session-root-concurrent-"));
+		const encodedDir = join(sessionRoot, "--%2Ftmp%2Fpi--");
+		await mkdir(encodedDir);
+		const encodedSession = createSessionInfo({
+			id: "encoded",
+			path: join(encodedDir, "encoded.jsonl"),
+			cwd: "/tmp/pi",
+		});
+		let resolveList: (() => void) | undefined;
+		const listGate = new Promise<void>((resolve) => {
+			resolveList = resolve;
+		});
+		sessionManagerMock.list.mockImplementation(async (_cwd: string, dir: string) => {
+			if (dir === sessionRoot) {
+				await listGate;
+				return [];
+			}
+			if (dir === encodedDir) {
+				return [encodedSession];
+			}
+			return [];
+		});
+
+		const lister = createPiSessionLister({ PI_CODING_AGENT_SESSION_DIR: sessionRoot });
+		const firstProgress = vi.fn();
+		const secondProgress = vi.fn();
+		const firstLookup = lister.listProject("/tmp/pi", firstProgress);
+		const secondLookup = lister.listProject("/tmp/pi", secondProgress);
+		resolveList?.();
+		await Promise.all([firstLookup, secondLookup]);
+
+		expect(sessionManagerMock.list).toHaveBeenCalledTimes(2);
+		expect(firstProgress).toHaveBeenLastCalledWith(2, 2);
+		expect(secondProgress).toHaveBeenLastCalledWith(2, 2);
 	});
 
 	it("reads session info for an exact session path match", async () => {

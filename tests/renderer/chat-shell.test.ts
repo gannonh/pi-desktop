@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
+import { ShellTestProviders } from "./shell-test-providers";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
 import { createIdleTranscriptHydration } from "../../src/renderer/session/transcript-hydration";
 import { createComposerContext, createComposerHost } from "./composer-fixtures";
@@ -23,6 +24,7 @@ const liveSession: LiveSessionState = {
 	status: "running",
 	statusLabel: "Running",
 	messages: [{ id: "assistant:1", role: "assistant", content: "Live response", streaming: true }],
+	toolExecutions: [],
 	errorMessage: "",
 	retryMessage: "",
 	settings: null,
@@ -35,14 +37,18 @@ const renderChatShell = (
 	hydration = createIdleTranscriptHydration(),
 ) =>
 	renderToStaticMarkup(
-		createElement(ChatShell, {
-			route,
-			session,
-			hydration,
-			scope,
-			composerHost,
-			onAbortSession: vi.fn(),
-		}),
+		createElement(
+			ShellTestProviders,
+			null,
+			createElement(ChatShell, {
+				route,
+				session,
+				hydration,
+				scope,
+				composerHost,
+				onAbortSession: vi.fn(),
+			}),
+		),
 	);
 
 describe("ChatShell", () => {
@@ -164,6 +170,45 @@ describe("ChatShell", () => {
 		expect(markup).toContain("Loading conversation");
 		expect(markup).not.toContain("No messages yet.");
 		expect(markup).not.toContain("What should we build in pi-desktop?");
+	});
+
+	it("renders the right panel workspace in the session layout without exposing raw tool calls", () => {
+		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
+			kind: "empty-chat",
+			title: "Milestone transcript",
+			startTitle: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:session:one",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+			resumeLabel: "Resume session",
+			metadataLabel: "running · updated 5/12/2026, 10:00:00 AM",
+		};
+
+		const markup = renderChatShell(route, {
+			...liveSession,
+			toolExecutions: [
+				{
+					id: "call_1",
+					toolName: "bash",
+					status: "running",
+					args: { command: "pnpm test" },
+					partialResult: null,
+					result: null,
+					isError: false,
+					startedAt: "2026-05-14T12:00:00.000Z",
+					updatedAt: "2026-05-14T12:00:00.000Z",
+					endedAt: null,
+				},
+			],
+		});
+
+		expect(markup).toContain("chat-shell__session-body");
+		expect(markup).toContain('aria-label="Workspace panel"');
+		expect(markup).toContain("M07A.2 right panel tab shell");
+		expect(markup).not.toContain("workspace-tab-strip");
+		expect(markup).not.toContain('aria-label="Tool timeline"');
+		expect(markup).not.toContain("pnpm test");
 	});
 
 	it("renders an empty selected draft chat as the centered project start state before the first message", () => {

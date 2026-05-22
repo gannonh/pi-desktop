@@ -141,6 +141,8 @@ describe("dev preview fixture API", () => {
 		unsubscribe();
 
 		const sessionId = started.data.sessionId;
+		const bashCallId = `${sessionId}:preview:0:bash`;
+		const failedCallId = `${sessionId}:preview:0:read`;
 		expect(events).toEqual([
 			{ type: "status", sessionId, status: "running", label: "Running", receivedAt: "2026-05-12T18:00:00.000Z" },
 			{
@@ -160,18 +162,70 @@ describe("dev preview fixture API", () => {
 				receivedAt: "2026-05-12T18:00:00.002Z",
 			},
 			{
+				type: "tool_execution_start",
+				sessionId,
+				toolCallId: bashCallId,
+				toolName: "bash",
+				args: { command: "ls -la" },
+				receivedAt: "2026-05-12T18:00:00.003Z",
+			},
+			{
+				type: "tool_execution_update",
+				sessionId,
+				toolCallId: bashCallId,
+				toolName: "bash",
+				args: { command: "ls -la" },
+				partialResult: {
+					content: [{ type: "text", text: "README.md\n" }],
+					details: {},
+				},
+				receivedAt: "2026-05-12T18:00:00.004Z",
+			},
+			{
+				type: "tool_execution_start",
+				sessionId,
+				toolCallId: failedCallId,
+				toolName: "read",
+				args: { path: "missing.txt" },
+				receivedAt: "2026-05-12T18:00:00.005Z",
+			},
+			{
 				type: "assistant_delta",
 				sessionId,
 				messageId: `${sessionId}:preview:0:assistant`,
 				delta: "I can see this project. ",
-				receivedAt: "2026-05-12T18:00:00.003Z",
+				receivedAt: "2026-05-12T18:00:00.006Z",
 			},
 			{
 				type: "assistant_delta",
 				sessionId,
 				messageId: `${sessionId}:preview:0:assistant`,
 				delta: "Pi session streaming is connected.",
-				receivedAt: "2026-05-12T18:00:00.004Z",
+				receivedAt: "2026-05-12T18:00:00.007Z",
+			},
+			{
+				type: "tool_execution_end",
+				sessionId,
+				toolCallId: bashCallId,
+				toolName: "bash",
+				result: {
+					content: [{ type: "text", text: "README.md\nsrc\n" }],
+					details: {},
+				},
+				isError: false,
+				receivedAt: "2026-05-12T18:00:00.008Z",
+			},
+			{
+				type: "tool_execution_end",
+				sessionId,
+				toolCallId: failedCallId,
+				toolName: "read",
+				result: {
+					content: [{ type: "text", text: "ENOENT: missing.txt" }],
+					details: {},
+				},
+				isError: true,
+				receivedAt: "2026-05-12T18:00:00.009Z",
 			},
 			{
 				type: "message_end",
@@ -179,9 +233,9 @@ describe("dev preview fixture API", () => {
 				messageId: `${sessionId}:preview:0:assistant`,
 				role: "assistant",
 				content: "I can see this project. Pi session streaming is connected.",
-				receivedAt: "2026-05-12T18:00:00.005Z",
+				receivedAt: "2026-05-12T18:00:00.010Z",
 			},
-			{ type: "status", sessionId, status: "idle", label: "Idle", receivedAt: "2026-05-12T18:00:00.006Z" },
+			{ type: "status", sessionId, status: "idle", label: "Idle", receivedAt: "2026-05-12T18:00:00.011Z" },
 		]);
 	});
 

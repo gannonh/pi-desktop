@@ -13,6 +13,7 @@ const session: LiveSessionState = {
 		{ id: "user:2", role: "user", content: "Second", streaming: false },
 		{ id: "tool:1", role: "tool", content: "npm test", streaming: false },
 	],
+	toolExecutions: [],
 	errorMessage: "",
 	retryMessage: "Retrying after rate limit",
 	settings: null,

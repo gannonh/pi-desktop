@@ -241,6 +241,36 @@ export const installDevPreviewApi = () => {
 			content: "",
 			receivedAt: receivedAt(),
 		});
+		const bashCallId = `${sessionId}:preview:${streamIndex}:bash`;
+		const failedCallId = `${sessionId}:preview:${streamIndex}:read`;
+		emitSessionEvent({
+			type: "tool_execution_start",
+			sessionId,
+			toolCallId: bashCallId,
+			toolName: "bash",
+			args: { command: "ls -la" },
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({
+			type: "tool_execution_update",
+			sessionId,
+			toolCallId: bashCallId,
+			toolName: "bash",
+			args: { command: "ls -la" },
+			partialResult: {
+				content: [{ type: "text", text: "README.md\n" }],
+				details: {},
+			},
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({
+			type: "tool_execution_start",
+			sessionId,
+			toolCallId: failedCallId,
+			toolName: "read",
+			args: { path: "missing.txt" },
+			receivedAt: receivedAt(),
+		});
 		for (const delta of ["I can see this project. ", "Pi session streaming is connected."]) {
 			emitSessionEvent({
 				type: "assistant_delta",
@@ -250,6 +280,30 @@ export const installDevPreviewApi = () => {
 				receivedAt: receivedAt(),
 			});
 		}
+		emitSessionEvent({
+			type: "tool_execution_end",
+			sessionId,
+			toolCallId: bashCallId,
+			toolName: "bash",
+			result: {
+				content: [{ type: "text", text: "README.md\nsrc\n" }],
+				details: {},
+			},
+			isError: false,
+			receivedAt: receivedAt(),
+		});
+		emitSessionEvent({
+			type: "tool_execution_end",
+			sessionId,
+			toolCallId: failedCallId,
+			toolName: "read",
+			result: {
+				content: [{ type: "text", text: "ENOENT: missing.txt" }],
+				details: {},
+			},
+			isError: true,
+			receivedAt: receivedAt(),
+		});
 		emitSessionEvent({
 			type: "message_end",
 			sessionId,

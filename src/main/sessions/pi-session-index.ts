@@ -62,30 +62,95 @@ const readSessionDirs = async (root: string): Promise<string[]> => {
 	}
 };
 
-const listSessionsMatchingCwd = async (
+type SessionCatalogEntry = {
+	session: SessionInfo;
+	dir: string;
+};
+
+type SessionCatalogLoad = {
+	promise: Promise<SessionCatalogEntry[]>;
+	progressSubscribers: Set<PiSessionListProgress>;
+};
+
+const sessionCatalogCache = new Map<string, SessionCatalogLoad>();
+
+export const resetPiSessionCatalogCacheForTests = () => {
+	sessionCatalogCache.clear();
+};
+
+const buildSessionCatalog = async (
 	root: string,
-	cwd: string,
 	onProgress?: PiSessionListProgress,
-): Promise<SessionInfo[]> => {
+): Promise<SessionCatalogEntry[]> => {
 	const dirs = [root, ...(await readSessionDirs(root))];
-	const targetCwd = normalizeCwd(cwd);
-	const sessions: SessionInfo[] = [];
+	const catalog: SessionCatalogEntry[] = [];
 	let loadedDirs = 0;
 
 	for (const dir of dirs) {
 		const dirSessions = await SessionManager.list("", dir);
 		loadedDirs += 1;
 		onProgress?.(loadedDirs, dirs.length);
-		sessions.push(...dirSessions.filter((session) => sessionMatchesCwd(session, dir, cwd, targetCwd)));
+		for (const session of dirSessions) {
+			catalog.push({ session, dir });
+		}
 	}
+
+	return catalog;
+};
+
+const loadSessionCatalog = (root: string, onProgress?: PiSessionListProgress): Promise<SessionCatalogEntry[]> => {
+	const cached = sessionCatalogCache.get(root);
+	if (cached) {
+		if (onProgress) {
+			cached.progressSubscribers.add(onProgress);
+		}
+		return cached.promise;
+	}
+
+	const progressSubscribers = new Set<PiSessionListProgress>();
+	if (onProgress) {
+		progressSubscribers.add(onProgress);
+	}
+
+	const reportProgress: PiSessionListProgress = (loaded, total) => {
+		for (const subscriber of progressSubscribers) {
+			subscriber(loaded, total);
+		}
+	};
+
+	const catalogPromise = buildSessionCatalog(root, reportProgress);
+	const load: SessionCatalogLoad = { promise: catalogPromise, progressSubscribers };
+	sessionCatalogCache.set(root, load);
+	catalogPromise.finally(() => {
+		if (sessionCatalogCache.get(root) === load) {
+			sessionCatalogCache.delete(root);
+		}
+	});
+	return catalogPromise;
+};
+
+const listSessionsMatchingCwd = async (
+	root: string,
+	cwd: string,
+	onProgress?: PiSessionListProgress,
+): Promise<SessionInfo[]> => {
+	const catalog = await loadSessionCatalog(root, onProgress);
+	const targetCwd = normalizeCwd(cwd);
+	const sessions = catalog
+		.filter(({ session, dir }) => sessionMatchesCwd(session, dir, cwd, targetCwd))
+		.map(({ session }) => session);
 
 	sessions.sort((a, b) => b.modified.getTime() - a.modified.getTime());
 	return sessions;
 };
 
-export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => ({
-	listProject: (cwd, onProgress) => listSessionsMatchingCwd(resolvePiSessionFilesRoot(env), cwd, onProgress),
-});
+export const createPiSessionLister = (env?: NodeJS.ProcessEnv): PiSessionLister => {
+	const root = resolvePiSessionFilesRoot(env);
+
+	return {
+		listProject: (cwd, onProgress) => listSessionsMatchingCwd(root, cwd, onProgress),
+	};
+};
 
 export const resolveChatTitleForSession = (
 	existingTitle: string | undefined,

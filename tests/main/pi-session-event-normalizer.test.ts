@@ -4,6 +4,7 @@ import {
 	createRuntimeErrorEvent,
 	normalizePiSessionEvent,
 	sanitizeRuntimeErrorMessage,
+	serializePiSessionPayload,
 } from "../../src/main/pi-session/pi-session-event-normalizer";
 import { PiSessionEventSchema } from "../../src/shared/pi-session";
 
@@ -386,6 +387,84 @@ describe("pi session event normalizer", () => {
 
 	it("ignores events without renderer state changes", () => {
 		expect(normalizeAndParse({ type: "turn_start" })).toEqual([]);
+	});
+
+	it("normalizes tool execution lifecycle events with serializable payloads", () => {
+		const symbolKey = Symbol("secret");
+		expect(
+			normalizeAndParse({
+				type: "tool_execution_start",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				args: { command: "ls -la", token: symbolKey },
+			}),
+		).toEqual([
+			{
+				type: "tool_execution_start",
+				sessionId: "pi-session:one",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				args: { command: "ls -la", token: symbolKey.toString() },
+				receivedAt,
+			},
+		]);
+
+		expect(
+			normalizeAndParse({
+				type: "tool_execution_update",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				args: { command: "ls -la" },
+				partialResult: {
+					content: [{ type: "text", text: "partial" }],
+					details: {},
+				},
+			}),
+		).toEqual([
+			{
+				type: "tool_execution_update",
+				sessionId: "pi-session:one",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				args: { command: "ls -la" },
+				partialResult: {
+					content: [{ type: "text", text: "partial" }],
+					details: {},
+				},
+				receivedAt,
+			},
+		]);
+
+		expect(
+			normalizeAndParse({
+				type: "tool_execution_end",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				result: {
+					content: [{ type: "text", text: "done" }],
+					details: {},
+				},
+				isError: false,
+			}),
+		).toEqual([
+			{
+				type: "tool_execution_end",
+				sessionId: "pi-session:one",
+				toolCallId: "call_bash",
+				toolName: "bash",
+				result: {
+					content: [{ type: "text", text: "done" }],
+					details: {},
+				},
+				isError: false,
+				receivedAt,
+			},
+		]);
+	});
+
+	it("serializes unsupported payload values without dropping the event", () => {
+		expect(serializePiSessionPayload(new Error("boom"))).toEqual({ name: "Error", message: "boom" });
+		expect(serializePiSessionPayload(() => undefined)).toBe("[Function]");
 	});
 
 	it("creates runtime error events without stack traces or secrets", () => {

@@ -444,6 +444,7 @@ const syncChatTitleForSession = async (
 
 export const createProjectService = (deps: ProjectServiceDeps): ProjectService => {
 	let transactionQueue: Promise<void> = Promise.resolve();
+	let inflightGetState: Promise<ProjectStateView> | null = null;
 	const activeSessionIds = new Set<string>();
 
 	const runSerialized = async <T>(work: () => Promise<T>): Promise<T> => {
@@ -463,7 +464,11 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 
 	return {
 		async getState() {
-			return runSerialized(async () => {
+			if (inflightGetState) {
+				return inflightGetState;
+			}
+
+			inflightGetState = runSerialized(async () => {
 				const store = await deps.store.load();
 				const changed = await refreshAllProjectAvailability(store, deps.now());
 				const withSessions = await refreshSessionChats(deps, store, activeSessionIds);
@@ -472,7 +477,11 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				}
 
 				return createProjectStateView(withSessions);
+			}).finally(() => {
+				inflightGetState = null;
 			});
+
+			return inflightGetState;
 		},
 
 		async createFromScratch() {

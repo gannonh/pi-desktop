@@ -11,6 +11,8 @@ import type {
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
 import { AppShell } from "./components/app-shell";
+import { RightPanelProvider } from "./right-panel/right-panel-context";
+import { ShellLayoutProvider } from "./shell/shell-layout-context";
 import {
 	type SessionScope,
 	bufferPendingSessionEvent,
@@ -782,23 +784,27 @@ export function App() {
 	}, [applyProjectStateViewResult]);
 
 	return (
-		<AppShell
-			state={projectState}
-			statusMessage={statusMessage?.message}
-			session={
-				isSessionScopeSelected(
-					{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
-					{ projectId: selectedProjectId, chatId: selectedChatId },
-				)
-					? sessionState
-					: createInitialSessionState()
-			}
-			transcriptHydration={transcriptHydration}
-			transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
-			onProjectState={applyProjectStateViewResult}
-			composerHost={composerHost}
-			defaultComposerSettings={defaultComposerSettings}
-			onAbortSession={abortSession}
-		/>
+		<ShellLayoutProvider>
+			<RightPanelProvider>
+				<AppShell
+					state={projectState}
+					statusMessage={statusMessage?.message}
+					session={
+						isSessionScopeSelected(
+							{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
+							{ projectId: selectedProjectId, chatId: selectedChatId },
+						)
+							? sessionState
+							: createInitialSessionState()
+					}
+					transcriptHydration={transcriptHydration}
+					transcriptScope={{ projectId: selectedProjectId, chatId: selectedChatId }}
+					onProjectState={applyProjectStateViewResult}
+					composerHost={composerHost}
+					defaultComposerSettings={defaultComposerSettings}
+					onAbortSession={abortSession}
+				/>
+			</RightPanelProvider>
+		</ShellLayoutProvider>
 	);
 }
