@@ -363,7 +363,7 @@ Acceptance:
 - User can abort an active run from the composer.
 - Composer explains why send is disabled when runtime or auth blocks submission.
 
-### M07A: Tool Timeline MVP
+### ✅ M07A: Tool Timeline MVP
 
 Goal: make agent tool execution inspectable in a PR-sized first coding-panels slice.
 
