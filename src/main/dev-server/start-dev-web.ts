@@ -25,6 +25,7 @@ type DevWebViteServer = {
 	close: () => Promise<void>;
 	listen: () => Promise<unknown>;
 	printUrls: () => void;
+	resolvedUrls?: { local: string[] } | null;
 };
 type CreateViteDevServer = (config: InlineConfig) => Promise<DevWebViteServer>;
 type DevWebLogger = Pick<Console, "error" | "log">;
@@ -53,7 +54,21 @@ export type StartDevWebServerDeps = {
 };
 
 export type DevWebServerHandle = DevWebServerResources & {
+	previewUrl: string;
 	shutdown: () => Promise<void>;
+};
+
+export const resolveDevWebPreviewUrl = (
+	vite: Pick<DevWebViteServer, "resolvedUrls"> | undefined,
+	devHost: string = host,
+	fallbackPort: number = vitePort,
+): string => {
+	const localUrl = vite?.resolvedUrls?.local[0];
+	if (localUrl) {
+		return localUrl.endsWith("/") ? localUrl : `${localUrl}/`;
+	}
+
+	return `http://${devHost}:${fallbackPort}/`;
 };
 
 const unavailableNativeOperation = async () => {
@@ -150,12 +165,14 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 		await cleanupDevWebResources(resources, logger);
 	};
 
+	let previewUrl = resolveDevWebPreviewUrl(undefined);
+
 	try {
 		resources.appServer = await createAppServer({ backend, host, port: 0 });
 		env.VITE_PI_DESKTOP_APP_SERVER_URL = resources.appServer.url;
 		env.VITE_PI_DESKTOP_USE_SAME_ORIGIN_BRIDGE = "1";
 
-		resources.vite = await createVite({
+		const vite = (await createVite({
 			configFile: "vite.renderer.config.ts",
 			server: {
 				host,
@@ -169,10 +186,12 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 					},
 				},
 			},
-		});
+		})) as DevWebViteServer;
+		resources.vite = vite;
 
-		await resources.vite.listen();
-		resources.vite.printUrls();
+		await vite.listen();
+		vite.printUrls();
+		previewUrl = resolveDevWebPreviewUrl(vite);
 		logger.log(`Local app data bridge: ${resources.appServer.url}`);
 		logger.log(
 			`pi-desktop workspace store: ${resolveProjectStorePath({
@@ -198,7 +217,7 @@ export const startDevWebServer = async (deps: StartDevWebServerDeps = {}): Promi
 	registerSignalHandler("SIGINT");
 	registerSignalHandler("SIGTERM");
 
-	return { ...resources, shutdown };
+	return { ...resources, previewUrl, shutdown };
 };
 
 const entrypoint = process.argv[1];

@@ -10,7 +10,6 @@ import {
 import { createProjectStore } from "../../src/main/projects/project-store";
 import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
 
-const devWebUrl = "http://127.0.0.1:5173/";
 const projectName = "Smoke bridge project";
 
 const noopLogger = {
@@ -83,7 +82,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 
 		server = await startDevWebServer({ logger: noopLogger, process: noopProcess });
 
-		await page.goto(devWebUrl);
+		await page.goto(server.previewUrl);
 		await hideAgentationOverlay(page);
 
 		await expect(page.getByTestId("app-shell")).toBeVisible();
