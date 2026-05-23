@@ -283,3 +283,4 @@ Transcript cards make file and tool effects inspectable. They should remain flat
 - **Don't** animate layout properties such as width, height, grid tracks, margin, or padding. Use transform, opacity, clip, and color instead.
 - **Don't** copy Codex app pixels, proprietary assets, or implementation details. Use the category pattern as a reference and keep Pi Desktop original.
 - **Don't** use side-stripe borders, gradient text, default glassmorphism, hero metrics, or identical card grids.
+
