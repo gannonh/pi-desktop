@@ -117,7 +117,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByTestId("workspace-panel-diffs")).toHaveCount(0);
 
 		await page.getByRole("button", { name: "Add panel" }).click();
-		for (const label of ["Changes", "Terminal", "Browser", "File", "Markdown"]) {
+		for (const label of ["Changes", "Terminal", "Browser", "File", "Canvas"]) {
 			await expect(page.getByRole("menuitem", { name: label })).toBeVisible();
 		}
 		await page.keyboard.press("Escape");
