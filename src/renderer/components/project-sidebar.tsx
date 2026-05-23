@@ -214,9 +214,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						<SquarePen className="project-sidebar__icon" />
 					</button>
 				</div>
-				{chromeTitle ? (
+				{collapsed && chromeTitle ? (
 					<div className="project-sidebar__chrome-title-group">
-						<div className="project-sidebar__chrome-title">{chromeTitle}</div>
+						<div className="project-sidebar__chrome-title app-chrome-title">{chromeTitle}</div>
 						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
 							<MoreHorizontal className="project-sidebar__icon" />
 						</button>

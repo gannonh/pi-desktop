@@ -31,6 +31,7 @@
 		"vite.main.config.ts",
 		"vite.preload.config.ts",
 		"vite.renderer.config.ts",
+		"vite/workspace-dev-watch.ts",
 		"vitest.config.ts"
 	]
 }

@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
+import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ComposerHostProps } from "../chat/composer-host";
 import { createChatShellRoute, resolveChatSessionHeader, shouldUseChatStartLayout } from "../chat/chat-view-model";
 import { useRightPanel } from "../right-panel/right-panel-context";
@@ -50,8 +51,15 @@ export function AppShell({
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
 	const sessionHeader = resolveChatSessionHeader(route, session);
+	const sidebarChromeTitle = state.selectedChat?.title
+		? formatChatDisplayLabel(state.selectedChat.title)
+		: undefined;
+	const showChatHeaderTitle = sessionHeader !== null && !(sidebarCollapsed && sidebarChromeTitle);
 	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed && !sessionHeader?.metadataLabel;
-	const showMainHeader = showPathBadge || sessionHeader !== null;
+	const showMainHeader =
+		showPathBadge ||
+		(sessionHeader !== null &&
+			(showChatHeaderTitle || Boolean(sessionHeader.resumeLabel) || Boolean(sessionHeader.metadataLabel)));
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
@@ -137,8 +145,8 @@ export function AppShell({
 								.filter(Boolean)
 								.join(" ")}
 						>
-							{sessionHeader ? (
-								<h1 id="app-shell-title" className="app-shell__chat-title" title={sessionHeader.title}>
+							{sessionHeader && showChatHeaderTitle ? (
+								<h1 id="app-shell-title" className="app-shell__chat-title app-chrome-title" title={sessionHeader.title}>
 									{sessionHeader.title}
 								</h1>
 							) : null}
@@ -191,11 +199,13 @@ export function AppShell({
 							.filter(Boolean)
 							.join(" ")}
 					>
-						{sessionHeader ? (
+						{sessionHeader && (showChatHeaderTitle || sessionHeader.resumeLabel || sessionHeader.metadataLabel) ? (
 							<div className="app-shell__main-header-copy">
-								<h1 id="app-shell-title" className="app-shell__chat-title">
-									{sessionHeader.title}
-								</h1>
+								{showChatHeaderTitle ? (
+									<h1 id="app-shell-title" className="app-shell__chat-title app-chrome-title">
+										{sessionHeader.title}
+									</h1>
+								) : null}
 								{sessionHeader.resumeLabel && sessionHeader.metadataLabel ? (
 									<section className="app-shell__session-labels" aria-label="Session metadata">
 										<span className="app-shell__resume-label">{sessionHeader.resumeLabel}</span>

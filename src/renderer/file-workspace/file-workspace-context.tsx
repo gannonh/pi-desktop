@@ -54,6 +54,8 @@ interface FileWorkspaceProviderProps {
 export function FileWorkspaceProvider({ project, children }: FileWorkspaceProviderProps) {
 	const { selectTab, state: rightPanelState } = useRightPanel();
 	const [state, setState] = useState<FileWorkspaceState>(() => createInitialFileWorkspaceState());
+	const stateRef = useRef(state);
+	stateRef.current = state;
 	const projectIdRef = useRef<string | null>(project?.id ?? null);
 
 	const selectWorkspaceTab = useCallback(
@@ -179,12 +181,17 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 	);
 
 	const saveActiveFile = useCallback(async () => {
-		const tab = getActiveFileTab(state);
-		if (!project || !tab || tab.readOnly || !tab.dirty) {
+		if (!project || project.availability.status !== "available") {
+			return;
+		}
+
+		const tab = getActiveFileTab(stateRef.current);
+		if (!tab || tab.readOnly || !tab.dirty) {
 			return;
 		}
 
 		setState((current) => setSaveStatus(current, "saving"));
+
 		const result = await window.piDesktop.workspaceFiles.writeFile({
 			projectId: project.id,
 			relativePath: tab.relativePath,
@@ -195,7 +202,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			return;
 		}
 		setState((current) => markFileSaved(current, tab.id, tab.buffer));
-	}, [project, state]);
+	}, [project]);
 
 	const value = useMemo<FileWorkspaceContextValue>(
 		() => ({

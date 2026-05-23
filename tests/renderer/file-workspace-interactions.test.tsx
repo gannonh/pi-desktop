@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
+import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
 
 const project: ProjectRecord = {
@@ -38,7 +39,11 @@ describe("file workspace interactions", () => {
 			workspaceFiles: { listDirectory, readFile, writeFile: vi.fn() },
 		};
 
-		render(<FileWorkspacePanel project={project} />);
+		render(
+			<ShellTestProviders project={project}>
+				<FileWorkspacePanel project={project} />
+			</ShellTestProviders>,
+		);
 
 		await waitFor(() => {
 			expect(screen.getByRole("button", { name: /AGENTS\.md/ })).toBeTruthy();
@@ -54,5 +59,60 @@ describe("file workspace interactions", () => {
 		});
 
 		expect(screen.getByTestId("file-editor-preview")).toBeTruthy();
+	});
+
+	it("saves the active file on Cmd+S", async () => {
+		const writeFile = vi.fn(async () => ({
+			ok: true as const,
+			data: { relativePath: "AGENTS.md", size: 12 },
+		}));
+		const readFile = vi.fn(async () => ({
+			ok: true as const,
+			data: { kind: "text" as const, content: "# Agent\n", size: 8 },
+		}));
+		const listDirectory = vi.fn(async ({ relativePath }: { relativePath: string }) => ({
+			ok: true as const,
+			data: {
+				entries:
+					relativePath === ""
+						? [{ name: "AGENTS.md", relativePath: "AGENTS.md", kind: "file" as const }]
+						: [],
+			},
+		}));
+
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			workspaceFiles: { listDirectory, readFile, writeFile },
+		};
+
+		render(
+			<ShellTestProviders project={project}>
+				<FileWorkspacePanel project={project} />
+			</ShellTestProviders>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /AGENTS\.md/ })).toBeTruthy();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /AGENTS\.md/ }));
+
+		await waitFor(() => {
+			expect(screen.getByTestId("file-editor-preview")).toBeTruthy();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+
+		const editor = await screen.findByTestId("file-editor-source");
+		fireEvent.change(editor, { target: { value: "# Agent\nedited\n" } });
+		fireEvent.keyDown(window, { key: "s", metaKey: true });
+
+		await waitFor(() => {
+			expect(writeFile).toHaveBeenCalledWith({
+				projectId: project.id,
+				relativePath: "AGENTS.md",
+				content: "# Agent\nedited\n",
+			});
+		});
 	});
 });
