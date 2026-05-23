@@ -384,7 +384,7 @@ Acceptance:
 - User can add a mock tab from the right-side tab menu.
 - Chat remains the primary conversational flow while the right panel preserves selected tab state.
 
-### M07B: Right Panel - File Explorer + Viewer/Editor
+### ✅ M07B: Right Panel - File Explorer + Viewer/Editor
 
 Goal: turn the right-panel file tab from a mock surface into a real project file workspace where users can browse the selected project, open files, inspect readable contents, and make small text edits without leaving the chat session.
 
@@ -433,7 +433,7 @@ Deliverables:
 
 Acceptance:
 
-### M07F: Right Panel - Plans & Tasks Creation
+### M07F: Right Panel - Plans &amp; Tasks Creation
 
 Goal: Provide a Plan mode, whereby the agent creates a spec in a special markdown format with yaml frontmatter
 
@@ -441,7 +441,7 @@ Deliverables:
 
 Acceptance:
 
-### M07G: Right Panel - Plans & Tasks Execution
+### M07G: Right Panel - Plans &amp; Tasks Execution
 
 Goal:
 
