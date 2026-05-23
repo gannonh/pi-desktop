@@ -37,6 +37,7 @@ export function FileViewer() {
 		};
 	}, [menuOpen]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: close the overflow menu when the active file tab changes.
 	useEffect(() => {
 		setMenuOpen(false);
 	}, [activeTab?.id]);

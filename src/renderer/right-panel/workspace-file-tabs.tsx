@@ -22,7 +22,7 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 		if (activeTab && typeof activeTab.scrollIntoView === "function") {
 			activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
 		}
-	}, [activeTabId, tabs.length]);
+	}, [activeTabId]);
 
 	if (tabs.length === 0) {
 		return null;

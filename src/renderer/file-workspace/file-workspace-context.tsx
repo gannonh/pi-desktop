@@ -221,7 +221,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				void loadDirectory(relativePath);
 			},
 		}),
-		[closeTab, loadDirectory, project, saveActiveFile, selectExplorerItem, state, toggleDirectory],
+		[closeTab, loadDirectory, project, saveActiveFile, selectExplorerItem, selectWorkspaceTab, state, toggleDirectory],
 	);
 
 	return <FileWorkspaceContext.Provider value={value}>{children}</FileWorkspaceContext.Provider>;

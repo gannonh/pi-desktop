@@ -1,10 +1,9 @@
 import { FolderTree, GitBranch, Globe, Terminal, type LucideIcon } from "lucide-react";
 import type { RightPanelTab } from "./right-panel-types";
-import { WORKSPACE_TOOL_KINDS } from "./right-panel-state";
 import { FILE_WORKSPACE_VIEW_ID } from "./workspace-tab-ids";
 import { WORKSPACE_PANEL_ID } from "./workspace-panel-id";
 
-type WorkspaceToolKind = (typeof WORKSPACE_TOOL_KINDS)[number];
+type WorkspaceToolKind = "diffs" | "terminal" | "browser";
 
 const toolIcons: Record<WorkspaceToolKind, LucideIcon> = {
 	diffs: GitBranch,

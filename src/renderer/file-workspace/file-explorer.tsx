@@ -65,7 +65,7 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 				</button>
 			</div>
 			{kind === "directory" && expanded ? (
-				<ul className="file-explorer__children" role="group">
+				<div className="file-explorer__children">
 					{listing?.status === "loading" ? (
 						<li className="file-explorer__status" style={{ "--file-explorer-depth": depth + 1 } as CSSProperties}>
 							<Loader2 className="file-explorer__status-icon" aria-hidden />
@@ -91,7 +91,7 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 								/>
 							))
 						: null}
-				</ul>
+				</div>
 			) : null}
 		</li>
 	);
@@ -112,7 +112,7 @@ export function FileExplorer() {
 					{project.displayName}
 				</h2>
 			</header>
-			<ul className="file-explorer__tree" role="tree">
+			<div className="file-explorer__tree" role="tree">
 				{rootListing?.status === "loading" ? (
 					<li className="file-explorer__status file-explorer__status--root">
 						<Loader2 className="file-explorer__status-icon" aria-hidden />
@@ -138,7 +138,7 @@ export function FileExplorer() {
 							/>
 						))
 					: null}
-			</ul>
+			</div>
 		</section>
 	);
 }
