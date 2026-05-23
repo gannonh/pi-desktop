@@ -1,3 +1,6 @@
+import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
+import type { CSSProperties } from "react";
+import { getExplorerFileIcon } from "./file-explorer-icons";
 import { useFileWorkspace } from "./file-workspace-context";
 
 interface ExplorerNodeProps {
@@ -12,38 +15,67 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 	const expanded = kind === "directory" && state.expandedPaths.includes(relativePath);
 	const selected = state.selectedPath === relativePath;
 	const listing = state.directoryEntries[relativePath];
+	const FileIcon = kind === "file" ? getExplorerFileIcon(name) : expanded ? FolderOpen : Folder;
+
+	const onSelect = () => {
+		if (kind === "file") {
+			selectExplorerItem(relativePath, kind);
+			return;
+		}
+		selectExplorerItem(relativePath, kind);
+	};
 
 	return (
-		<li className="file-explorer__node">
-			<button
-				type="button"
-				className={`file-explorer__row${selected ? " file-explorer__row--selected" : ""}`}
-				style={{ paddingLeft: `${12 + depth * 14}px` }}
-				onClick={() => {
-					if (kind === "directory") {
-						toggleDirectory(relativePath);
-						return;
-					}
-					selectExplorerItem(relativePath, kind);
-				}}
+		<li className="file-explorer__node" data-depth={depth}>
+			<div
+				className={`file-explorer__row-wrap${selected ? " file-explorer__row-wrap--selected" : ""}`}
+				style={{ "--file-explorer-depth": depth } as CSSProperties}
 			>
-				<span className="file-explorer__chevron" aria-hidden="true">
-					{kind === "directory" ? (expanded ? "▾" : "▸") : " "}
-				</span>
-				<span className={`file-explorer__icon file-explorer__icon--${kind}`} aria-hidden="true" />
-				<span className="file-explorer__name">{name}</span>
-			</button>
+				{kind === "directory" ? (
+					<button
+						type="button"
+						className="file-explorer__disclosure"
+						aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
+						aria-expanded={expanded}
+						onClick={(event) => {
+							event.stopPropagation();
+							toggleDirectory(relativePath);
+						}}
+					>
+						<ChevronRight
+							className={`file-explorer__chevron${expanded ? " file-explorer__chevron--expanded" : ""}`}
+							aria-hidden
+						/>
+					</button>
+				) : (
+					<span className="file-explorer__disclosure file-explorer__disclosure--spacer" aria-hidden />
+				)}
+				<button
+					type="button"
+					className="file-explorer__row"
+					aria-current={selected ? "true" : undefined}
+					onClick={onSelect}
+				>
+					<FileIcon
+						className={`file-explorer__icon file-explorer__icon--${kind}`}
+						aria-hidden
+						strokeWidth={1.75}
+					/>
+					<span className="file-explorer__name">{name}</span>
+				</button>
+			</div>
 			{kind === "directory" && expanded ? (
-				<ul className="file-explorer__children">
+				<ul className="file-explorer__children" role="group">
 					{listing?.status === "loading" ? (
-						<li className="file-explorer__status" style={{ paddingLeft: `${26 + depth * 14}px` }}>
-							Loading…
+						<li className="file-explorer__status" style={{ "--file-explorer-depth": depth + 1 } as CSSProperties}>
+							<Loader2 className="file-explorer__status-icon" aria-hidden />
+							<span>Loading…</span>
 						</li>
 					) : null}
 					{listing?.status === "error" ? (
 						<li
 							className="file-explorer__status file-explorer__status--error"
-							style={{ paddingLeft: `${26 + depth * 14}px` }}
+							style={{ "--file-explorer-depth": depth + 1 } as CSSProperties}
 						>
 							{listing.message}
 						</li>
@@ -77,11 +109,19 @@ export function FileExplorer() {
 		<section className="file-explorer" aria-label="Project files" data-testid="file-explorer">
 			<header className="file-explorer__header">
 				<h2 className="file-explorer__title">{project.displayName}</h2>
+				<p className="file-explorer__path" title={project.path}>
+					{project.path}
+				</p>
 			</header>
-			<ul className="file-explorer__tree">
-				{rootListing?.status === "loading" ? <li className="file-explorer__status">Loading…</li> : null}
+			<ul className="file-explorer__tree" role="tree">
+				{rootListing?.status === "loading" ? (
+					<li className="file-explorer__status file-explorer__status--root">
+						<Loader2 className="file-explorer__status-icon" aria-hidden />
+						<span>Loading…</span>
+					</li>
+				) : null}
 				{rootListing?.status === "error" ? (
-					<li className="file-explorer__status file-explorer__status--error">
+					<li className="file-explorer__status file-explorer__status--error file-explorer__status--root">
 						{rootListing.message}
 						<button type="button" className="file-explorer__retry" onClick={() => retryLoadDirectory("")}>
 							Retry

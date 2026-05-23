@@ -892,51 +892,137 @@ button:disabled {
 }
 
 .file-explorer {
+	--file-explorer-indent: 0.75rem;
+	--file-explorer-row-height: 1.625rem;
+	--file-explorer-gutter: 1.125rem;
 	display: flex;
 	min-width: 0;
 	min-height: 0;
 	flex-direction: column;
 	border-right: 1px solid var(--color-border);
+	background: var(--sidebar-background);
 	overflow: auto;
 }
 
 .file-explorer__header {
-	padding: 0.5rem 0.75rem;
+	padding: 0.5rem 0.75rem 0.45rem;
 	border-bottom: 1px solid var(--color-border);
 }
 
 .file-explorer__title {
 	margin: 0;
-	font-size: var(--type-caption);
+	font-size: var(--type-label);
 	font-weight: 600;
+	line-height: 1.2;
+}
+
+.file-explorer__path {
+	margin: 0.2rem 0 0;
+	overflow: hidden;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .file-explorer__tree,
 .file-explorer__children {
 	margin: 0;
-	padding: 0.25rem 0;
+	padding: 0.2rem 0 0.35rem;
 	list-style: none;
+}
+
+.file-explorer__children {
+	margin: 0;
+	padding: 0;
+}
+
+.file-explorer__node {
+	list-style: none;
+}
+
+.file-explorer__row-wrap {
+	display: grid;
+	grid-template-columns: var(--file-explorer-gutter) minmax(0, 1fr);
+	align-items: stretch;
+	min-height: var(--file-explorer-row-height);
+	padding-left: calc(0.35rem + var(--file-explorer-indent) * var(--file-explorer-depth, 0));
+	border-radius: var(--radius-control);
+}
+
+.file-explorer__row-wrap--selected {
+	background: var(--color-secondary);
+}
+
+.file-explorer__row-wrap:hover:not(.file-explorer__row-wrap--selected) {
+	background: color-mix(in oklch, var(--color-secondary) 55%, transparent);
+}
+
+.file-explorer__disclosure {
+	display: inline-flex;
+	width: var(--file-explorer-gutter);
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	background: transparent;
+	color: var(--sidebar-chrome-icon-color);
+	padding: 0;
+}
+
+.file-explorer__disclosure--spacer {
+	pointer-events: none;
+}
+
+.file-explorer__disclosure:focus-visible {
+	outline: 2px solid var(--color-ring);
+	outline-offset: -2px;
+	border-radius: var(--radius-control);
+}
+
+.file-explorer__chevron {
+	width: 0.875rem;
+	height: 0.875rem;
+	flex: 0 0 auto;
+	transition: transform 150ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.file-explorer__chevron--expanded {
+	transform: rotate(90deg);
 }
 
 .file-explorer__row {
 	display: flex;
-	width: 100%;
+	min-width: 0;
 	align-items: center;
 	gap: 0.35rem;
 	border: 0;
 	background: transparent;
 	color: var(--color-foreground);
 	font-size: var(--type-caption);
+	line-height: 1.2;
+	padding: 0 0.35rem 0 0;
 	text-align: left;
 }
 
-.file-explorer__row--selected {
-	background: color-mix(in oklch, #3b82f6 24%, transparent);
+.file-explorer__row:focus-visible {
+	outline: 2px solid var(--color-ring);
+	outline-offset: -2px;
+	border-radius: var(--radius-control);
 }
 
-.file-explorer__chevron {
-	width: 0.75rem;
-	color: var(--color-muted-foreground);
+.file-explorer__icon {
+	width: 0.9375rem;
+	height: 0.9375rem;
+	flex: 0 0 auto;
+}
+
+.file-explorer__icon--directory {
+	color: color-mix(in oklch, var(--sidebar-chat-color) 72%, var(--sidebar-attention-color) 28%);
+}
+
+.file-explorer__icon--file {
+	color: var(--sidebar-chrome-icon-color);
 }
 
 .file-explorer__name {
@@ -946,17 +1032,55 @@ button:disabled {
 }
 
 .file-explorer__status {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.2rem 0.5rem 0.2rem calc(0.35rem + var(--file-explorer-indent) * var(--file-explorer-depth, 0) + var(--file-explorer-gutter));
 	color: var(--color-muted-foreground);
 	font-size: var(--type-caption);
 	list-style: none;
 }
 
+.file-explorer__status--root {
+	padding-left: 0.75rem;
+}
+
 .file-explorer__status--error {
-	color: color-mix(in oklch, var(--color-foreground) 55%, #ef4444 45%);
+	color: color-mix(in oklch, var(--color-foreground) 55%, var(--color-destructive) 45%);
+}
+
+.file-explorer__status-icon {
+	width: 0.875rem;
+	height: 0.875rem;
+	flex: 0 0 auto;
+	animation: file-explorer-spin 900ms linear infinite;
+}
+
+@keyframes file-explorer-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.file-explorer__chevron {
+		transition: none;
+	}
+
+	.file-explorer__status-icon {
+		animation: none;
+	}
 }
 
 .file-explorer__retry {
 	margin-left: 0.35rem;
+	border: 0;
+	background: transparent;
+	color: var(--sidebar-attention-color);
+	font-size: inherit;
+	padding: 0;
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
 }
 
 .file-viewer {
