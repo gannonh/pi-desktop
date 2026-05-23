@@ -1,20 +1,17 @@
-import {
-	resolveBrowserMock,
-	resolveDiffsMock,
-	resolveMarkdownMock,
-	resolveTerminalMock,
-} from "./right-panel-mock-data";
+import { resolveBrowserMock, resolveDiffsMock, resolveTerminalMock } from "./right-panel-mock-data";
 import type { RightPanelTab } from "./right-panel-types";
+import type { ProjectRecord } from "../../shared/project-state";
+import { FileWorkspacePanel } from "../file-workspace/file-workspace-panel";
 import { BrowserPanelMock } from "./browser-panel-mock";
 import { DiffsPanelMock } from "./diffs-panel-mock";
-import { MarkdownPanelMock } from "./markdown-panel-mock";
 import { TerminalPanelMock } from "./terminal-panel-mock";
 
 interface RightPanelBodyProps {
 	tab: RightPanelTab | null;
+	selectedProject: ProjectRecord | null;
 }
 
-export function RightPanelBody({ tab }: RightPanelBodyProps) {
+export function RightPanelBody({ tab, selectedProject }: RightPanelBodyProps) {
 	if (!tab) {
 		return (
 			<div className="right-panel__empty-body">
@@ -28,8 +25,8 @@ export function RightPanelBody({ tab }: RightPanelBodyProps) {
 			return <TerminalPanelMock data={resolveTerminalMock(tab)} />;
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
-		case "markdown":
-			return <MarkdownPanelMock data={resolveMarkdownMock(tab)} />;
+		case "files":
+			return <FileWorkspacePanel project={selectedProject} />;
 		case "diffs":
 			return <DiffsPanelMock data={resolveDiffsMock(tab)} />;
 	}

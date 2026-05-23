@@ -15,7 +15,7 @@ export const createMockTab = (
 	const defaults: Record<RightPanelKind, Pick<RightPanelTab, "title" | "subtitle">> = {
 		terminal: { title: "Terminal", subtitle: "~/pi-desktop" },
 		browser: { title: "Browser", subtitle: "localhost:5173" },
-		markdown: { title: "README.md", subtitle: "docs/README.md" },
+		files: { title: "Files", subtitle: "Project workspace" },
 		diffs: { title: "PR #11", subtitle: "feat/right-panel-shell" },
 	};
 
@@ -31,7 +31,7 @@ export const createMockTab = (
 export const createDefaultMockTabs = (): RightPanelTab[] => [
 	createMockTab("diffs"),
 	createMockTab("terminal"),
-	createMockTab("markdown"),
+	createMockTab("files"),
 	createMockTab("browser"),
 ];
 

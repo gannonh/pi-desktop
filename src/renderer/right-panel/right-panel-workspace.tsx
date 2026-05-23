@@ -1,8 +1,13 @@
+import type { ProjectRecord } from "../../shared/project-state";
 import { RightPanelBody } from "./right-panel-body";
 import { useRightPanel } from "./right-panel-context";
 import { WORKSPACE_PANEL_ID } from "./workspace-panel-id";
 
-export function RightPanelWorkspace() {
+interface RightPanelWorkspaceProps {
+	selectedProject: ProjectRecord | null;
+}
+
+export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProps) {
 	const { state, activeTab } = useRightPanel();
 
 	if (state.collapsed) {
@@ -27,7 +32,7 @@ export function RightPanelWorkspace() {
 					data-testid="workspace-panel-body"
 					data-active-kind={activeTab?.kind ?? "none"}
 				>
-					<RightPanelBody key={activeTab?.id ?? "empty"} tab={activeTab} />
+					<RightPanelBody key={activeTab?.id ?? "empty"} tab={activeTab} selectedProject={selectedProject} />
 				</div>
 			)}
 		</aside>

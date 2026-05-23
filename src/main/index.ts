@@ -162,6 +162,15 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.piSessionRemoveQueuedMessage, (_event, input) =>
 		invokeBackend("piSession.removeQueuedMessage", input),
 	);
+	ipcMain.handle(IpcChannels.workspaceFilesListDirectory, (_event, input) =>
+		invokeBackend("workspaceFiles.listDirectory", input),
+	);
+	ipcMain.handle(IpcChannels.workspaceFilesReadFile, (_event, input) =>
+		invokeBackend("workspaceFiles.readFile", input),
+	);
+	ipcMain.handle(IpcChannels.workspaceFilesWriteFile, (_event, input) =>
+		invokeBackend("workspaceFiles.writeFile", input),
+	);
 };
 
 app.whenReady().then(() => {

@@ -98,6 +98,9 @@ describe("IPC contracts", () => {
 			piSessionUpdateQueuedMessage: "pi-session:updateQueuedMessage",
 			piSessionRemoveQueuedMessage: "pi-session:removeQueuedMessage",
 			piSessionEvent: "pi-session:event",
+			workspaceFilesListDirectory: "workspace-files:listDirectory",
+			workspaceFilesReadFile: "workspace-files:readFile",
+			workspaceFilesWriteFile: "workspace-files:writeFile",
 		});
 	});
 

@@ -13,8 +13,7 @@ export const rightPanelAddMenuItems: RightPanelAddMenuItem[] = [
 	{ id: "diffs", kind: "diffs", label: "Changes" },
 	{ id: "terminal", kind: "terminal", label: "Terminal" },
 	{ id: "browser", kind: "browser", label: "Browser" },
-	{ id: "markdown-file", kind: "markdown", label: "File" },
-	{ id: "markdown-doc", kind: "markdown", label: "Markdown" },
+	{ id: "files", kind: "files", label: "Files" },
 ];
 
 interface RightPanelAddMenuProps {

@@ -36,22 +36,9 @@ const titleForAddedTab = (
 	};
 };
 
-const menuItemTabOverrides = (
-	item: RightPanelAddMenuItem,
-	tabs: readonly RightPanelTab[],
-): Partial<Pick<RightPanelTab, "title" | "subtitle">> => {
-	if (item.id === "markdown-file") {
-		return { title: "New file", subtitle: "untitled.md" };
-	}
-	if (item.id === "markdown-doc") {
-		return { title: "New note", subtitle: "notes/draft.md" };
-	}
-	return titleForAddedTab(item.kind, tabs);
-};
-
 const findTabForMenuItem = (tabs: readonly RightPanelTab[], item: RightPanelAddMenuItem): RightPanelTab | null => {
-	if (item.kind === "markdown") {
-		return null;
+	if (item.kind === "files") {
+		return tabs.find((tab) => tab.kind === "files") ?? null;
 	}
 	return tabs.find((tab) => tab.kind === item.kind) ?? null;
 };
@@ -76,9 +63,7 @@ export const addOrActivateRightPanelTab = (state: RightPanelState, item: RightPa
 		return selectRightPanelTab(state, existing.id);
 	}
 
-	const overrides =
-		item.kind === "markdown" ? menuItemTabOverrides(item, state.tabs) : titleForAddedTab(item.kind, state.tabs);
-	return addRightPanelTab(state, item.kind, overrides);
+	return addRightPanelTab(state, item.kind);
 };
 
 const nearestTabId = (tabs: readonly RightPanelTab[], removedIndex: number): string | null => {

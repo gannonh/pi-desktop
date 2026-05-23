@@ -14,7 +14,7 @@ describe("right panel state", () => {
 		const state = createDefaultRightPanelState();
 
 		expect(state.tabs).toHaveLength(4);
-		expect(state.tabs.map((tab) => tab.kind)).toEqual(["diffs", "terminal", "markdown", "browser"]);
+		expect(state.tabs.map((tab) => tab.kind)).toEqual(["diffs", "terminal", "files", "browser"]);
 		expect(state.activeTabId).toBe(state.tabs[0]?.id);
 	});
 
@@ -46,20 +46,17 @@ describe("right panel state", () => {
 		expect(next.activeTabId).toBe(state.tabs.find((tab) => tab.kind === "terminal")?.id);
 	});
 
-	it("adds markdown file and markdown doc tabs separately", () => {
-		const fileItem = rightPanelAddMenuItems.find((item) => item.id === "markdown-file");
-		const docItem = rightPanelAddMenuItems.find((item) => item.id === "markdown-doc");
-		expect(fileItem && docItem).toBeTruthy();
-		if (!fileItem || !docItem) {
+	it("activates the existing files tab instead of duplicating it", () => {
+		const filesItem = rightPanelAddMenuItems.find((item) => item.id === "files");
+		expect(filesItem).toBeTruthy();
+		if (!filesItem) {
 			return;
 		}
 
-		const withFile = addOrActivateRightPanelTab(createDefaultRightPanelState(), fileItem);
-		const withDoc = addOrActivateRightPanelTab(withFile, docItem);
+		const next = addOrActivateRightPanelTab(createDefaultRightPanelState(), filesItem);
 
-		expect(withDoc.tabs.at(-2)?.title).toBe("New file");
-		expect(withDoc.tabs.at(-1)?.title).toBe("New note");
-		expect(withDoc.activeTabId).toBe(withDoc.tabs.at(-1)?.id);
+		expect(next.tabs).toHaveLength(4);
+		expect(next.activeTabId).toBe(next.tabs.find((tab) => tab.kind === "files")?.id);
 	});
 
 	it("adds a tab by kind and activates it", () => {
@@ -99,7 +96,7 @@ describe("right panel state", () => {
 });
 
 describe("right panel tab titles", () => {
-	const kinds: RightPanelKind[] = ["terminal", "browser", "markdown", "diffs"];
+	const kinds: RightPanelKind[] = ["terminal", "browser", "files", "diffs"];
 
 	it.each(kinds)("adds a unique title for %s tabs", (kind) => {
 		const first = addRightPanelTab(createDefaultRightPanelState(), kind);

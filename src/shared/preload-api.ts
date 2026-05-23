@@ -30,6 +30,11 @@ import type {
 	ProjectPinnedInput,
 	ProjectRenameInput,
 	ProjectStateViewResult,
+	WorkspaceFilesPathInput,
+	WorkspaceFilesWriteInput,
+	WorkspaceListDirectoryResult,
+	WorkspaceReadFileResult,
+	WorkspaceWriteFileResult,
 } from "./ipc";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
@@ -58,6 +63,11 @@ export interface PiDesktopApi {
 		fork: (input: ChatForkInput) => Promise<ProjectStateViewResult>;
 		clone: (input: ChatCloneInput) => Promise<ProjectStateViewResult>;
 		branch: (input: ChatBranchInput) => Promise<ProjectStateViewResult>;
+	};
+	workspaceFiles: {
+		listDirectory: (input: WorkspaceFilesPathInput) => Promise<WorkspaceListDirectoryResult>;
+		readFile: (input: WorkspaceFilesPathInput) => Promise<WorkspaceReadFileResult>;
+		writeFile: (input: WorkspaceFilesWriteInput) => Promise<WorkspaceWriteFileResult>;
 	};
 	piSession: {
 		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;

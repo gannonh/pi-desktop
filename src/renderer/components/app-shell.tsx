@@ -94,6 +94,7 @@ export function AppShell({
 			composerHost={composerHost}
 			onAbortSession={onAbortSession}
 			workspaceColumnDetached={showWorkspaceColumn}
+			selectedProject={state.selectedProject}
 		/>
 	);
 
@@ -176,7 +177,7 @@ export function AppShell({
 							<WorkspaceTabStrip />
 						</div>
 						<div className="app-shell__workspace-body">
-							<RightPanelWorkspace />
+							<RightPanelWorkspace selectedProject={state.selectedProject} />
 						</div>
 					</aside>
 				</div>

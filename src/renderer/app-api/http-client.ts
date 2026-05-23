@@ -207,5 +207,10 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 				};
 			},
 		},
+		workspaceFiles: {
+			listDirectory: (input) => callRpc("workspaceFiles.listDirectory", input),
+			readFile: (input) => callRpc("workspaceFiles.readFile", input),
+			writeFile: (input) => callRpc("workspaceFiles.writeFile", input),
+		},
 	};
 };
