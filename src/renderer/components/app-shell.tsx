@@ -51,9 +51,7 @@ export function AppShell({
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
 	const sessionHeader = resolveChatSessionHeader(route, session);
-	const sidebarChromeTitle = state.selectedChat?.title
-		? formatChatDisplayLabel(state.selectedChat.title)
-		: undefined;
+	const sidebarChromeTitle = state.selectedChat?.title ? formatChatDisplayLabel(state.selectedChat.title) : undefined;
 	const showChatHeaderTitle = sessionHeader !== null && !(sidebarCollapsed && sidebarChromeTitle);
 	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed && !sessionHeader?.metadataLabel;
 	const showMainHeader =
@@ -146,7 +144,11 @@ export function AppShell({
 								.join(" ")}
 						>
 							{sessionHeader && showChatHeaderTitle ? (
-								<h1 id="app-shell-title" className="app-shell__chat-title app-chrome-title" title={sessionHeader.title}>
+								<h1
+									id="app-shell-title"
+									className="app-shell__chat-title app-chrome-title"
+									title={sessionHeader.title}
+								>
 									{sessionHeader.title}
 								</h1>
 							) : null}
@@ -199,7 +201,8 @@ export function AppShell({
 							.filter(Boolean)
 							.join(" ")}
 					>
-						{sessionHeader && (showChatHeaderTitle || sessionHeader.resumeLabel || sessionHeader.metadataLabel) ? (
+						{sessionHeader &&
+						(showChatHeaderTitle || sessionHeader.resumeLabel || sessionHeader.metadataLabel) ? (
 							<div className="app-shell__main-header-copy">
 								{showChatHeaderTitle ? (
 									<h1 id="app-shell-title" className="app-shell__chat-title app-chrome-title">

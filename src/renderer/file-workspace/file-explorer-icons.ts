@@ -1,13 +1,4 @@
-import {
-	Braces,
-	File,
-	FileCode2,
-	FileImage,
-	FileJson2,
-	FileText,
-	Settings2,
-	type LucideIcon,
-} from "lucide-react";
+import { Braces, File, FileCode2, FileImage, FileJson2, FileText, Settings2, type LucideIcon } from "lucide-react";
 
 export function getExplorerFileIcon(fileName: string): LucideIcon {
 	const extension = fileName.includes(".") ? fileName.split(".").pop()?.toLowerCase() : undefined;

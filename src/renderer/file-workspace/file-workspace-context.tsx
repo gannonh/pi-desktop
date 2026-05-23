@@ -168,9 +168,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				const next = closeFileTab(current, tabId);
 				if (rightPanelState.activeTabId === tabId) {
 					const fallback =
-						next.activeTabId ??
-						(next.tabs.length > 0 ? next.tabs.at(-1)?.id : null) ??
-						FILE_WORKSPACE_VIEW_ID;
+						next.activeTabId ?? (next.tabs.length > 0 ? next.tabs.at(-1)?.id : null) ?? FILE_WORKSPACE_VIEW_ID;
 					selectWorkspaceTab(fallback);
 				}
 				return next;
