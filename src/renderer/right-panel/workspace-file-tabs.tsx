@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { getExplorerFileIcon } from "../file-workspace/file-explorer-icons";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
@@ -33,12 +34,15 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 				const selected = tab.id === activeTabId;
 				const FileIcon = getExplorerFileIcon(tab.title);
 				return (
-					<div key={tab.id} className="workspace-tabs__tab-wrap workspace-tabs__tab-wrap--file">
+					<div
+						key={tab.id}
+						className={`workspace-tabs__tab-wrap workspace-tabs__tab-wrap--file${selected ? " workspace-tabs__tab-wrap--active" : ""}`}
+					>
 						<button
 							type="button"
 							id={`workspace-tab-${tab.id}`}
 							data-tab-id={tab.id}
-							className={`workspace-tabs__tab workspace-tabs__tab--file${selected ? " workspace-tabs__tab--active" : ""}`}
+							className="workspace-tabs__file-tab-select"
 							role="tab"
 							aria-selected={selected}
 							aria-controls={WORKSPACE_PANEL_ID}
@@ -50,14 +54,15 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 						</button>
 						<button
 							type="button"
-							className="workspace-tabs__tab-close"
+							className="workspace-tabs__file-tab-close"
 							aria-label={`Close ${tab.title}`}
+							tabIndex={-1}
 							onClick={(event) => {
 								event.stopPropagation();
 								fileWorkspace?.closeTab(tab.id);
 							}}
 						>
-							×
+							<X className="workspace-tabs__file-tab-close-icon" aria-hidden strokeWidth={1.75} />
 						</button>
 					</div>
 				);
