@@ -8,7 +8,7 @@ interface RightPanelWorkspaceProps {
 }
 
 export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProps) {
-	const { state, activeTab } = useRightPanel();
+	const { state, activeTab, filesActive } = useRightPanel();
 
 	if (state.collapsed) {
 		return null;
@@ -30,9 +30,14 @@ export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProp
 					role="tabpanel"
 					aria-labelledby={activeTab ? `workspace-tab-${activeTab.id}` : undefined}
 					data-testid="workspace-panel-body"
-					data-active-kind={activeTab?.kind ?? "none"}
+					data-active-kind={filesActive ? "files" : (activeTab?.kind ?? "none")}
 				>
-					<RightPanelBody key={activeTab?.id ?? "empty"} tab={activeTab} selectedProject={selectedProject} />
+					<RightPanelBody
+						key={filesActive ? "files" : (activeTab?.id ?? "empty")}
+						tab={activeTab}
+						filesActive={filesActive}
+						selectedProject={selectedProject}
+					/>
 				</div>
 			)}
 		</aside>

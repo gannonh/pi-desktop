@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
+import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
 
 const project: ProjectRecord = {
@@ -34,7 +35,12 @@ describe("FileWorkspacePanel", () => {
 			},
 		};
 
-		const markup = renderToStaticMarkup(createElement(FileWorkspacePanel, { project }));
+		const markup = renderToStaticMarkup(
+			createElement(
+				ShellTestProviders,
+				{ project, children: createElement(FileWorkspacePanel, { project }) },
+			),
+		);
 
 		expect(markup).toContain('data-testid="workspace-panel-files"');
 		expect(markup).toContain('data-testid="file-explorer"');

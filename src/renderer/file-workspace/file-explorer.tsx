@@ -108,10 +108,9 @@ export function FileExplorer() {
 	return (
 		<section className="file-explorer" aria-label="Project files" data-testid="file-explorer">
 			<header className="file-explorer__header">
-				<h2 className="file-explorer__title">{project.displayName}</h2>
-				<p className="file-explorer__path" title={project.path}>
-					{project.path}
-				</p>
+				<h2 className="file-explorer__title" title={project.path}>
+					{project.displayName}
+				</h2>
 			</header>
 			<ul className="file-explorer__tree" role="tree">
 				{rootListing?.status === "loading" ? (

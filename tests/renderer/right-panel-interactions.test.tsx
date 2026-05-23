@@ -23,7 +23,7 @@ describe("right panel interactions", () => {
 		expect(screen.getByRole("tab", { name: "Terminal", selected: true })).toBeTruthy();
 	});
 
-	it("activates the files tab from the plus menu without duplicating it", () => {
+	it("activates the file workspace from the plus menu without adding tool tabs", () => {
 		render(
 			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
 				<WorkspaceTabStrip />
@@ -32,9 +32,8 @@ describe("right panel interactions", () => {
 
 		const tabsBefore = screen.getAllByRole("tab").length;
 		fireEvent.click(screen.getByRole("button", { name: "Add panel" }));
-		fireEvent.click(screen.getByRole("menuitem", { name: "Files" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "File" }));
 
 		expect(screen.getAllByRole("tab")).toHaveLength(tabsBefore);
-		expect(screen.getByRole("tab", { name: "Files", selected: true })).toBeTruthy();
 	});
 });

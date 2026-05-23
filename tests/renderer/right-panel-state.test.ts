@@ -13,8 +13,8 @@ describe("right panel state", () => {
 	it("creates default mock tabs with an active selection", () => {
 		const state = createDefaultRightPanelState();
 
-		expect(state.tabs).toHaveLength(4);
-		expect(state.tabs.map((tab) => tab.kind)).toEqual(["diffs", "terminal", "files", "browser"]);
+		expect(state.tabs).toHaveLength(3);
+		expect(state.tabs.map((tab) => tab.kind)).toEqual(["diffs", "terminal", "browser"]);
 		expect(state.activeTabId).toBe(state.tabs[0]?.id);
 	});
 
@@ -46,7 +46,7 @@ describe("right panel state", () => {
 		expect(next.activeTabId).toBe(state.tabs.find((tab) => tab.kind === "terminal")?.id);
 	});
 
-	it("activates the existing files tab instead of duplicating it", () => {
+	it("activates the file workspace view from the add menu", () => {
 		const filesItem = rightPanelAddMenuItems.find((item) => item.id === "files");
 		expect(filesItem).toBeTruthy();
 		if (!filesItem) {
@@ -55,8 +55,8 @@ describe("right panel state", () => {
 
 		const next = addOrActivateRightPanelTab(createDefaultRightPanelState(), filesItem);
 
-		expect(next.tabs).toHaveLength(4);
-		expect(next.activeTabId).toBe(next.tabs.find((tab) => tab.kind === "files")?.id);
+		expect(next.tabs).toHaveLength(3);
+		expect(next.activeTabId).toBe("file-workspace:view");
 	});
 
 	it("adds a tab by kind and activates it", () => {

@@ -31,7 +31,7 @@ describe("right panel workspace integration", () => {
 		expect(screen.getByTestId("workspace-panel-terminal")).toBeTruthy();
 		expect(screen.queryByTestId("workspace-panel-diffs")).toBeNull();
 
-		fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+		fireEvent.click(screen.getByRole("tab", { name: "File explorer" }));
 		expect(screen.getByTestId("workspace-panel-files")).toBeTruthy();
 		expect(screen.queryByTestId("workspace-panel-terminal")).toBeNull();
 	});
@@ -45,7 +45,7 @@ describe("right panel workspace integration", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Add panel" }));
 
-		for (const label of ["Changes", "Terminal", "Browser", "Files"]) {
+		for (const label of ["Changes", "Terminal", "Browser", "File"]) {
 			expect(screen.getByRole("menuitem", { name: label })).toBeTruthy();
 		}
 	});

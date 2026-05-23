@@ -5,6 +5,7 @@ import {
 	addRightPanelTab,
 	createDefaultRightPanelState,
 	getActiveRightPanelTab,
+	isWorkspaceFilesActive,
 	removeRightPanelTab,
 	selectRightPanelTab,
 	setRightPanelCollapsed,
@@ -15,6 +16,7 @@ import { useShellLayout } from "../shell/shell-layout-context";
 type RightPanelContextValue = {
 	state: RightPanelState;
 	activeTab: RightPanelTab | null;
+	filesActive: boolean;
 	isNarrowLayout: boolean;
 	selectTab: (tabId: string) => void;
 	addTab: (kind: RightPanelKind) => void;
@@ -41,6 +43,7 @@ export function RightPanelProvider({
 		() => ({
 			state,
 			activeTab: getActiveRightPanelTab(state),
+			filesActive: isWorkspaceFilesActive(state),
 			isNarrowLayout,
 			selectTab: (tabId) => setState((current) => selectRightPanelTab(current, tabId)),
 			addTab: (kind) => setState((current) => addRightPanelTab(current, kind)),

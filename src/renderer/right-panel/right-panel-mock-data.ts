@@ -31,7 +31,6 @@ export const createMockTab = (
 export const createDefaultMockTabs = (): RightPanelTab[] => [
 	createMockTab("diffs"),
 	createMockTab("terminal"),
-	createMockTab("files"),
 	createMockTab("browser"),
 ];
 

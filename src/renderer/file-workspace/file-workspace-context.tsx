@@ -19,6 +19,8 @@ import {
 	toggleExpandedPath,
 	updateFileBuffer,
 } from "./file-workspace-state";
+import { useRightPanel } from "../right-panel/right-panel-context";
+import { FILE_WORKSPACE_VIEW_ID } from "../right-panel/workspace-tab-ids";
 import type { FileViewMode, FileWorkspaceState } from "./file-workspace-types";
 
 type FileWorkspaceContextValue = {
@@ -35,7 +37,7 @@ type FileWorkspaceContextValue = {
 	retryLoadDirectory: (relativePath: string) => void;
 };
 
-const FileWorkspaceContext = createContext<FileWorkspaceContextValue | null>(null);
+export const FileWorkspaceContext = createContext<FileWorkspaceContextValue | null>(null);
 
 const confirmDiscard = (titles: string[]) => {
 	if (titles.length === 0) {
@@ -50,8 +52,16 @@ interface FileWorkspaceProviderProps {
 }
 
 export function FileWorkspaceProvider({ project, children }: FileWorkspaceProviderProps) {
+	const { selectTab, state: rightPanelState } = useRightPanel();
 	const [state, setState] = useState<FileWorkspaceState>(() => createInitialFileWorkspaceState());
 	const projectIdRef = useRef<string | null>(project?.id ?? null);
+
+	const selectWorkspaceTab = useCallback(
+		(tabId: string) => {
+			selectTab(tabId);
+		},
+		[selectTab],
+	);
 
 	useEffect(() => {
 		if (projectIdRef.current === (project?.id ?? null)) {
@@ -131,10 +141,16 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				return;
 			}
 
-			setState((current) => openFileTab(current, relativePath));
+			setState((current) => {
+				const next = openFileTab(current, relativePath);
+				if (next.activeTabId) {
+					selectWorkspaceTab(next.activeTabId);
+				}
+				return next;
+			});
 			void loadFile(relativePath);
 		},
-		[loadFile, toggleDirectory],
+		[loadFile, selectWorkspaceTab, toggleDirectory],
 	);
 
 	const closeTab = useCallback(
@@ -146,10 +162,20 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			if (!force && tab.dirty && !confirmDiscard([tab.title])) {
 				return false;
 			}
-			setState((current) => closeFileTab(current, tabId));
+			setState((current) => {
+				const next = closeFileTab(current, tabId);
+				if (rightPanelState.activeTabId === tabId) {
+					const fallback =
+						next.activeTabId ??
+						(next.tabs.length > 0 ? next.tabs.at(-1)?.id : null) ??
+						FILE_WORKSPACE_VIEW_ID;
+					selectWorkspaceTab(fallback);
+				}
+				return next;
+			});
 			return true;
 		},
-		[state.tabs],
+		[rightPanelState.activeTabId, selectWorkspaceTab, state.tabs],
 	);
 
 	const saveActiveFile = useCallback(async () => {
@@ -178,7 +204,10 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			activeTab: getActiveFileTab(state),
 			toggleDirectory,
 			selectExplorerItem,
-			setActiveTab: (tabId) => setState((current) => setActiveFileTab(current, tabId)),
+			setActiveTab: (tabId) => {
+				setState((current) => setActiveFileTab(current, tabId));
+				selectWorkspaceTab(tabId);
+			},
 			closeTab,
 			updateBuffer: (tabId, buffer) => setState((current) => updateFileBuffer(current, tabId, buffer)),
 			setViewMode: (tabId, viewMode) => setState((current) => setFileViewMode(current, tabId, viewMode)),

@@ -8,10 +8,15 @@ import { TerminalPanelMock } from "./terminal-panel-mock";
 
 interface RightPanelBodyProps {
 	tab: RightPanelTab | null;
+	filesActive: boolean;
 	selectedProject: ProjectRecord | null;
 }
 
-export function RightPanelBody({ tab, selectedProject }: RightPanelBodyProps) {
+export function RightPanelBody({ tab, filesActive, selectedProject }: RightPanelBodyProps) {
+	if (filesActive) {
+		return <FileWorkspacePanel project={selectedProject} />;
+	}
+
 	if (!tab) {
 		return (
 			<div className="right-panel__empty-body">
@@ -25,9 +30,9 @@ export function RightPanelBody({ tab, selectedProject }: RightPanelBodyProps) {
 			return <TerminalPanelMock data={resolveTerminalMock(tab)} />;
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
-		case "files":
-			return <FileWorkspacePanel project={selectedProject} />;
 		case "diffs":
 			return <DiffsPanelMock data={resolveDiffsMock(tab)} />;
+		case "files":
+			return <FileWorkspacePanel project={selectedProject} />;
 	}
 }

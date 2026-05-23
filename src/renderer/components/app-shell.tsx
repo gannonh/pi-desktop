@@ -4,6 +4,7 @@ import type { ProjectStateView } from "@/shared/project-state";
 import type { ComposerHostProps } from "../chat/composer-host";
 import { createChatShellRoute, resolveChatSessionHeader, shouldUseChatStartLayout } from "../chat/chat-view-model";
 import { useRightPanel } from "../right-panel/right-panel-context";
+import { FileWorkspaceProvider } from "../file-workspace/file-workspace-context";
 import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../right-panel/workspace-tab-strip";
 import { useShellLayout } from "../shell/shell-layout-context";
@@ -173,12 +174,14 @@ export function AppShell({
 								onPointerDown={onWorkspaceResizeStart}
 							/>
 						) : null}
-						<div className="app-shell__workspace-chrome">
-							<WorkspaceTabStrip />
-						</div>
-						<div className="app-shell__workspace-body">
-							<RightPanelWorkspace selectedProject={state.selectedProject} />
-						</div>
+						<FileWorkspaceProvider project={state.selectedProject}>
+							<div className="app-shell__workspace-chrome">
+								<WorkspaceTabStrip />
+							</div>
+							<div className="app-shell__workspace-body">
+								<RightPanelWorkspace selectedProject={state.selectedProject} />
+							</div>
+						</FileWorkspaceProvider>
 					</aside>
 				</div>
 			) : (
