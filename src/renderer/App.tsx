@@ -11,6 +11,7 @@ import type {
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
 import { AppShell } from "./components/app-shell";
+import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
 import {
@@ -322,6 +323,9 @@ export function App() {
 
 	const selectComposerProject = useCallback(
 		async (projectId: string) => {
+			if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+				return;
+			}
 			applyProjectStateViewResult(await window.piDesktop.project.select({ projectId }));
 		},
 		[applyProjectStateViewResult],

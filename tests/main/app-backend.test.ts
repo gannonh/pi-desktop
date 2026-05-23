@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createAppBackend } from "../../src/main/app-backend";
 import type { AppRpcRequest } from "../../src/shared/app-transport";
@@ -708,6 +711,81 @@ describe("app backend", () => {
 			unsubscribeFailing();
 			unsubscribeReceiving();
 			consoleError.mockRestore();
+		}
+	});
+});
+
+describe("workspace files", () => {
+	const createWorkspaceProjectService = (projectRoot: string): ProjectService => {
+		const projectService = createProjectService();
+		projectService.getSessionWorkspace = vi.fn(async () => ({
+			projectId: "project:workspace",
+			displayName: "workspace",
+			path: projectRoot,
+		}));
+		return projectService;
+	};
+
+	it("lists, reads, and writes files under the project root", async () => {
+		const projectRoot = await mkdtemp(join(tmpdir(), "pi-desktop-workspace-backend-"));
+		await writeFile(join(projectRoot, "notes.md"), "# hello\n", "utf8");
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService: createWorkspaceProjectService(projectRoot),
+			now: () => "2026-05-23T00:00:00.000Z",
+		});
+
+		try {
+			const listed = await backend.handle({
+				operation: "workspaceFiles.listDirectory",
+				input: { projectId: "project:workspace", relativePath: "" },
+			});
+			if (!listed.ok || !("entries" in listed.data)) {
+				throw new Error("Expected workspace directory listing to succeed.");
+			}
+			expect(listed.data.entries.some((entry) => entry.relativePath === "notes.md")).toBe(true);
+
+			const read = await backend.handle({
+				operation: "workspaceFiles.readFile",
+				input: { projectId: "project:workspace", relativePath: "notes.md" },
+			});
+			expect(read).toEqual({
+				ok: true,
+				data: { kind: "text", content: "# hello\n", size: 8 },
+			});
+
+			const written = await backend.handle({
+				operation: "workspaceFiles.writeFile",
+				input: { projectId: "project:workspace", relativePath: "notes.md", content: "# updated\n" },
+			});
+			expect(written).toEqual({
+				ok: true,
+				data: { relativePath: "notes.md", size: 10 },
+			});
+		} finally {
+			await rm(projectRoot, { recursive: true, force: true });
+		}
+	});
+
+	it("returns path_invalid for paths outside the project root", async () => {
+		const projectRoot = await mkdtemp(join(tmpdir(), "pi-desktop-workspace-backend-"));
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService: createWorkspaceProjectService(projectRoot),
+			now: () => "2026-05-23T00:00:00.000Z",
+		});
+
+		try {
+			const result = await backend.handle({
+				operation: "workspaceFiles.readFile",
+				input: { projectId: "project:workspace", relativePath: "../outside.md" },
+			});
+			expect(result).toEqual({
+				ok: false,
+				error: { code: "workspace_files.path_invalid", message: expect.any(String) },
+			});
+		} finally {
+			await rm(projectRoot, { recursive: true, force: true });
 		}
 	});
 });

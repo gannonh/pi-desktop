@@ -107,7 +107,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Idle", { exact: true })).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByLabel("Workspace tabs")).toBeVisible();
-		await expect(page.getByRole("tab", { name: /PR #11/ })).toBeVisible();
+		await expect(page.getByRole("tab", { name: "Changes" })).toBeVisible();
 		await expect(page.getByTestId("workspace-panel-diffs")).toBeVisible();
 		await expect(page.getByRole("complementary", { name: "Workspace panel" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Add panel" })).toBeVisible();
@@ -117,7 +117,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByTestId("workspace-panel-diffs")).toHaveCount(0);
 
 		await page.getByRole("button", { name: "Add panel" }).click();
-		for (const label of ["Changes", "Terminal", "Browser", "File", "Markdown"]) {
+		for (const label of ["Changes", "Terminal", "Browser", "File", "Canvas"]) {
 			await expect(page.getByRole("menuitem", { name: label })).toBeVisible();
 		}
 		await page.keyboard.press("Escape");

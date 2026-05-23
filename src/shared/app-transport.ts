@@ -32,6 +32,11 @@ import {
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
 	ProjectStateViewResultSchema,
+	WorkspaceFilesPathInputSchema,
+	WorkspaceFilesWriteInputSchema,
+	WorkspaceListDirectoryResultSchema,
+	WorkspaceReadFileResultSchema,
+	WorkspaceWriteFileResultSchema,
 } from "./ipc";
 
 export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
@@ -79,6 +84,18 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		operation: z.literal("piSession.removeQueuedMessage"),
 		input: PiSessionRemoveQueuedMessageInputSchema,
 	}),
+	z.strictObject({
+		operation: z.literal("workspaceFiles.listDirectory"),
+		input: WorkspaceFilesPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("workspaceFiles.readFile"),
+		input: WorkspaceFilesPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("workspaceFiles.writeFile"),
+		input: WorkspaceFilesWriteInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -117,6 +134,9 @@ export const AppRpcResponseSchemas = {
 	"piSession.setDefaultThinkingLevel": PiSessionSettingsResultSchema,
 	"piSession.updateQueuedMessage": PiSessionQueueResultSchema,
 	"piSession.removeQueuedMessage": PiSessionQueueResultSchema,
+	"workspaceFiles.listDirectory": WorkspaceListDirectoryResultSchema,
+	"workspaceFiles.readFile": WorkspaceReadFileResultSchema,
+	"workspaceFiles.writeFile": WorkspaceWriteFileResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

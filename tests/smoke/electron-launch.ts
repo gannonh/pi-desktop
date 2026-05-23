@@ -8,13 +8,16 @@ export const isSmokeElectronHeaded = (): boolean =>
 
 export const launchElectronApp = (options: ElectronLaunchOptions): Promise<ElectronApplication> => {
 	const { env: launchEnv, ...rest } = options;
-
-	return electron.launch({
-		...rest,
-		env: {
+	const env = Object.fromEntries(
+		Object.entries({
 			...process.env,
 			...launchEnv,
 			PI_DESKTOP_SMOKE_HEADLESS: isSmokeElectronHeaded() ? "0" : "1",
-		},
+		}).filter(([key, value]) => key !== "ELECTRON_RUN_AS_NODE" && typeof value === "string"),
+	) as Record<string, string>;
+
+	return electron.launch({
+		...rest,
+		env,
 	});
 };

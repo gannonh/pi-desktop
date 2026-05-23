@@ -197,6 +197,84 @@ const addProject = (projectPath: string) => {
 	store.selectedChatId = null;
 };
 
+type PreviewFileNode =
+	| { kind: "file"; content: string }
+	| { kind: "directory"; children: Record<string, PreviewFileNode> };
+
+const createPreviewFileTree = (): PreviewFileNode => ({
+	kind: "directory",
+	children: {
+		"AGENTS.md": {
+			kind: "file",
+			content: ["# Agent Context", "", "Preview file workspace for pi-desktop."].join("\n"),
+		},
+		"README.md": {
+			kind: "file",
+			content: ["# pi-desktop", "", "Local graphical command center for Pi coding-agent work."].join("\n"),
+		},
+		docs: {
+			kind: "directory",
+			children: {
+				"roadmap.md": {
+					kind: "file",
+					content: ["# Roadmap", "", "M07B file explorer and viewer."].join("\n"),
+				},
+			},
+		},
+	},
+});
+
+const previewFileTrees = new Map<string, PreviewFileNode>();
+
+const getPreviewFileTree = (projectId: string): PreviewFileNode => {
+	const existing = previewFileTrees.get(projectId);
+	if (existing) {
+		return existing;
+	}
+	const created = createPreviewFileTree();
+	previewFileTrees.set(projectId, created);
+	return created;
+};
+
+const resolvePreviewNode = (root: PreviewFileNode, relativePath: string): PreviewFileNode | null => {
+	if (relativePath.length === 0) {
+		return root.kind === "directory" ? root : null;
+	}
+
+	let current: PreviewFileNode = root;
+	for (const segment of relativePath.split("/")) {
+		if (current.kind !== "directory") {
+			return null;
+		}
+		const next = current.children[segment];
+		if (!next) {
+			return null;
+		}
+		current = next;
+	}
+
+	return current;
+};
+
+const toPreviewDirectoryEntries = (relativePath: string, node: PreviewFileNode) => {
+	if (node.kind !== "directory") {
+		return [];
+	}
+
+	return Object.entries(node.children)
+		.map(([name, child]) => ({
+			name,
+			relativePath: relativePath.length === 0 ? name : `${relativePath}/${name}`,
+			kind: child.kind === "directory" ? ("directory" as const) : ("file" as const),
+		}))
+		.sort((left, right) => {
+			if (left.kind !== right.kind) {
+				return left.kind === "directory" ? -1 : 1;
+			}
+			return left.name.localeCompare(right.name);
+		});
+};
+
 export const installDevPreviewApi = () => {
 	if ("piDesktop" in window) {
 		return;
@@ -632,6 +710,70 @@ export const installDevPreviewApi = () => {
 				sessionListeners.add(listener);
 				return () => {
 					sessionListeners.delete(listener);
+				};
+			},
+		},
+		workspaceFiles: {
+			listDirectory: async ({ projectId, relativePath }) => {
+				const lookup = findProject(projectId);
+				if (!lookup.ok) {
+					return lookup;
+				}
+				const node = resolvePreviewNode(getPreviewFileTree(projectId), relativePath);
+				if (!node || node.kind !== "directory") {
+					return {
+						ok: false,
+						error: { code: "workspace_files.path_invalid", message: "Path is not a directory." },
+					};
+				}
+				return { ok: true, data: { entries: toPreviewDirectoryEntries(relativePath, node) } };
+			},
+			readFile: async ({ projectId, relativePath }) => {
+				const lookup = findProject(projectId);
+				if (!lookup.ok) {
+					return lookup;
+				}
+				const node = resolvePreviewNode(getPreviewFileTree(projectId), relativePath);
+				if (!node) {
+					return { ok: true, data: { kind: "not_found" } };
+				}
+				if (node.kind === "directory") {
+					return { ok: true, data: { kind: "unsupported" } };
+				}
+				return {
+					ok: true,
+					data: {
+						kind: "text",
+						content: node.content,
+						size: new TextEncoder().encode(node.content).length,
+					},
+				};
+			},
+			writeFile: async ({ projectId, relativePath, content }) => {
+				const lookup = findProject(projectId);
+				if (!lookup.ok) {
+					return lookup;
+				}
+				const segments = relativePath.split("/");
+				const fileName = segments.pop();
+				if (!fileName) {
+					return { ok: false, error: { code: "workspace_files.path_invalid", message: "Invalid file path." } };
+				}
+				const parentPath = segments.join("/");
+				const parent = resolvePreviewNode(getPreviewFileTree(projectId), parentPath);
+				if (!parent || parent.kind !== "directory") {
+					return {
+						ok: false,
+						error: { code: "workspace_files.path_invalid", message: "Parent folder was not found." },
+					};
+				}
+				parent.children[fileName] = { kind: "file", content };
+				return {
+					ok: true,
+					data: {
+						relativePath,
+						size: new TextEncoder().encode(content).length,
+					},
 				};
 			},
 		},

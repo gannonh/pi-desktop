@@ -1,6 +1,7 @@
 import type { ComposerHostProps } from "../chat/composer-host";
 import type { ChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
+import type { ProjectRecord } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatShell } from "./chat-shell";
@@ -15,6 +16,7 @@ interface ProjectMainProps {
 	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 	workspaceColumnDetached?: boolean;
+	selectedProject?: ProjectRecord | null;
 }
 
 const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
@@ -35,6 +37,7 @@ export function ProjectMain({
 	composerHost,
 	onAbortSession,
 	workspaceColumnDetached = false,
+	selectedProject = null,
 }: ProjectMainProps) {
 	const runProjectAction = async (action: () => Promise<ProjectStateViewResult>) => {
 		try {
@@ -106,6 +109,7 @@ export function ProjectMain({
 					composerHost={composerHost}
 					onAbortSession={onAbortSession}
 					workspaceColumnDetached={workspaceColumnDetached}
+					selectedProject={selectedProject}
 				/>
 			)}
 		</main>

@@ -25,8 +25,15 @@ import {
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
+	WorkspaceFilesPathInputSchema,
+	WorkspaceFilesWriteInputSchema,
 	type AppVersion,
 } from "../shared/ipc";
+import type {
+	WorkspaceListDirectoryPayload,
+	WorkspaceReadFileStatusPayload,
+	WorkspaceWriteFilePayload,
+} from "../shared/workspace-files";
 import type {
 	PiSessionActionPayload,
 	PiSessionEvent,
@@ -42,6 +49,8 @@ import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-norma
 import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
+import { WorkspacePathError } from "./workspace-files/path-guard";
+import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
 type CreateAgentSession = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createAgentSession"]>;
 type CreateSessionManager = NonNullable<Parameters<typeof createPiSessionRuntime>[0]["createSessionManager"]>;
@@ -65,6 +74,9 @@ export type AppBackendResult = IpcResult<
 	| PiSessionHistoryPayload
 	| PiSessionSettingsPayload
 	| PiSessionQueuePayload
+	| WorkspaceListDirectoryPayload
+	| WorkspaceReadFileStatusPayload
+	| WorkspaceWriteFilePayload
 >;
 
 export type AppBackend = {
@@ -155,6 +167,22 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			return ok(await operation());
 		} catch (error) {
 			return err("project.operation_failed", toErrorMessage(error));
+		}
+	};
+
+	const resolveProjectRoot = async (projectId: string): Promise<string> => {
+		const workspace = await deps.projectService.getSessionWorkspace({ projectId });
+		return workspace.path;
+	};
+
+	const handleWorkspaceFilesOperation = async <T>(operation: () => Promise<T>): Promise<IpcResult<T>> => {
+		try {
+			return ok(await operation());
+		} catch (error) {
+			if (error instanceof WorkspacePathError) {
+				return err("workspace_files.path_invalid", error.message);
+			}
+			return err("workspace_files.operation_failed", toErrorMessage(error));
 		}
 	};
 
@@ -350,6 +378,24 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.removeQueuedMessage(PiSessionRemoveQueuedMessageInputSchema.parse(request.input)),
 					);
+				case "workspaceFiles.listDirectory":
+					return handleWorkspaceFilesOperation(async () => {
+						const parsed = WorkspaceFilesPathInputSchema.parse(request.input);
+						const projectRoot = await resolveProjectRoot(parsed.projectId);
+						return listDirectory(projectRoot, parsed.relativePath);
+					});
+				case "workspaceFiles.readFile":
+					return handleWorkspaceFilesOperation(async () => {
+						const parsed = WorkspaceFilesPathInputSchema.parse(request.input);
+						const projectRoot = await resolveProjectRoot(parsed.projectId);
+						return readWorkspaceFile(projectRoot, parsed.relativePath);
+					});
+				case "workspaceFiles.writeFile":
+					return handleWorkspaceFilesOperation(async () => {
+						const parsed = WorkspaceFilesWriteInputSchema.parse(request.input);
+						const projectRoot = await resolveProjectRoot(parsed.projectId);
+						return writeWorkspaceFile(projectRoot, parsed.relativePath, parsed.content);
+					});
 				default:
 					return assertNever(request);
 			}

@@ -1,6 +1,9 @@
 import { createDefaultMockTabs, createMockTab } from "./right-panel-mock-data";
 import type { RightPanelAddMenuItem } from "./right-panel-add-menu";
 import type { RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
+import { FILE_WORKSPACE_VIEW_ID, isWorkspaceFileTabId } from "./workspace-tab-ids";
+
+export const WORKSPACE_TOOL_KINDS = ["diffs", "terminal", "browser"] as const satisfies readonly RightPanelKind[];
 
 export const createDefaultRightPanelState = (): RightPanelState => {
 	const tabs = createDefaultMockTabs();
@@ -14,7 +17,7 @@ export const createDefaultRightPanelState = (): RightPanelState => {
 const findTabIndex = (tabs: readonly RightPanelTab[], tabId: string) => tabs.findIndex((tab) => tab.id === tabId);
 
 export const selectRightPanelTab = (state: RightPanelState, tabId: string): RightPanelState => {
-	if (!state.tabs.some((tab) => tab.id === tabId)) {
+	if (!isWorkspaceFileTabId(tabId) && !state.tabs.some((tab) => tab.id === tabId)) {
 		return state;
 	}
 	return { ...state, activeTabId: tabId, collapsed: false };
@@ -36,21 +39,8 @@ const titleForAddedTab = (
 	};
 };
 
-const menuItemTabOverrides = (
-	item: RightPanelAddMenuItem,
-	tabs: readonly RightPanelTab[],
-): Partial<Pick<RightPanelTab, "title" | "subtitle">> => {
-	if (item.id === "markdown-file") {
-		return { title: "New file", subtitle: "untitled.md" };
-	}
-	if (item.id === "markdown-doc") {
-		return { title: "New note", subtitle: "notes/draft.md" };
-	}
-	return titleForAddedTab(item.kind, tabs);
-};
-
 const findTabForMenuItem = (tabs: readonly RightPanelTab[], item: RightPanelAddMenuItem): RightPanelTab | null => {
-	if (item.kind === "markdown") {
+	if (item.kind === "files") {
 		return null;
 	}
 	return tabs.find((tab) => tab.kind === item.kind) ?? null;
@@ -71,14 +61,31 @@ export const addRightPanelTab = (
 };
 
 export const addOrActivateRightPanelTab = (state: RightPanelState, item: RightPanelAddMenuItem): RightPanelState => {
+	if (item.kind === "files") {
+		return selectRightPanelTab(state, FILE_WORKSPACE_VIEW_ID);
+	}
+
 	const existing = findTabForMenuItem(state.tabs, item);
 	if (existing) {
 		return selectRightPanelTab(state, existing.id);
 	}
 
-	const overrides =
-		item.kind === "markdown" ? menuItemTabOverrides(item, state.tabs) : titleForAddedTab(item.kind, state.tabs);
-	return addRightPanelTab(state, item.kind, overrides);
+	return addRightPanelTab(state, item.kind);
+};
+
+export const selectWorkspaceFileTab = (state: RightPanelState, tabId: string): RightPanelState =>
+	selectRightPanelTab(state, tabId);
+
+export const getWorkspaceToolTabs = (state: RightPanelState): RightPanelTab[] =>
+	state.tabs.filter((tab) => WORKSPACE_TOOL_KINDS.includes(tab.kind as (typeof WORKSPACE_TOOL_KINDS)[number]));
+
+export const isWorkspaceFilesActive = (state: RightPanelState): boolean => isWorkspaceFileTabId(state.activeTabId);
+
+export const getActiveWorkspaceToolTab = (state: RightPanelState): RightPanelTab | null => {
+	if (!state.activeTabId || isWorkspaceFileTabId(state.activeTabId)) {
+		return null;
+	}
+	return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
 };
 
 const nearestTabId = (tabs: readonly RightPanelTab[], removedIndex: number): string | null => {
@@ -111,9 +118,5 @@ export const setRightPanelCollapsed = (state: RightPanelState, collapsed: boolea
 	collapsed,
 });
 
-export const getActiveRightPanelTab = (state: RightPanelState): RightPanelTab | null => {
-	if (!state.activeTabId) {
-		return null;
-	}
-	return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
-};
+export const getActiveRightPanelTab = (state: RightPanelState): RightPanelTab | null =>
+	getActiveWorkspaceToolTab(state);

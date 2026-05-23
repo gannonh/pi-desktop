@@ -10,6 +10,9 @@ import {
 	PiSessionSettingsResultSchema,
 	PiSessionStartResultSchema,
 	ProjectStateViewResultSchema,
+	WorkspaceListDirectoryResultSchema,
+	WorkspaceReadFileResultSchema,
+	WorkspaceWriteFileResultSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
@@ -97,6 +100,14 @@ const api: PiDesktopApi = {
 			ipcRenderer.on(IpcChannels.piSessionEvent, handler);
 			return () => ipcRenderer.removeListener(IpcChannels.piSessionEvent, handler);
 		},
+	},
+	workspaceFiles: {
+		listDirectory: async (input) =>
+			safeInvokeParse(IpcChannels.workspaceFilesListDirectory, WorkspaceListDirectoryResultSchema, input),
+		readFile: async (input) =>
+			safeInvokeParse(IpcChannels.workspaceFilesReadFile, WorkspaceReadFileResultSchema, input),
+		writeFile: async (input) =>
+			safeInvokeParse(IpcChannels.workspaceFilesWriteFile, WorkspaceWriteFileResultSchema, input),
 	},
 };
 

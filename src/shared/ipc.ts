@@ -41,6 +41,18 @@ import {
 } from "./pi-session";
 import { type ProjectStateView, ProjectStateViewSchema } from "./project-state";
 import { createResultSchema, type IpcResult } from "./result";
+import {
+	WorkspaceFilesPathInputSchema,
+	WorkspaceFilesWriteInputSchema,
+	WorkspaceListDirectoryResultSchema,
+	WorkspaceReadFileResultSchema,
+	WorkspaceWriteFileResultSchema,
+	type WorkspaceFilesPathInput,
+	type WorkspaceFilesWriteInput,
+	type WorkspaceListDirectoryResult,
+	type WorkspaceReadFileResult,
+	type WorkspaceWriteFileResult,
+} from "./workspace-files";
 
 export const IpcChannels = {
 	appGetVersion: "app:getVersion",
@@ -76,6 +88,9 @@ export const IpcChannels = {
 	piSessionUpdateQueuedMessage: "pi-session:updateQueuedMessage",
 	piSessionRemoveQueuedMessage: "pi-session:removeQueuedMessage",
 	piSessionEvent: "pi-session:event",
+	workspaceFilesListDirectory: "workspace-files:listDirectory",
+	workspaceFilesReadFile: "workspace-files:readFile",
+	workspaceFilesWriteFile: "workspace-files:writeFile",
 } as const;
 
 export const PiSessionOperationFailedCode = "pi_session.operation_failed";
@@ -131,6 +146,14 @@ export const ChatBranchInputSchema = ChatForkInputSchema.extend({
 	entryId: z.string().min(1),
 });
 
+export {
+	WorkspaceFilesPathInputSchema,
+	WorkspaceFilesWriteInputSchema,
+	WorkspaceListDirectoryResultSchema,
+	WorkspaceReadFileResultSchema,
+	WorkspaceWriteFileResultSchema,
+};
+
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
 export const ProjectStateViewResultSchema = createResultSchema(ProjectStateViewSchema);
 
@@ -170,6 +193,13 @@ export type ChatCloneInput = z.infer<typeof ChatCloneInputSchema>;
 export type ChatBranchInput = z.infer<typeof ChatBranchInputSchema>;
 export type AppVersionResult = IpcResult<AppVersion>;
 export type ProjectStateViewResult = IpcResult<ProjectStateView>;
+export type {
+	WorkspaceFilesPathInput,
+	WorkspaceFilesWriteInput,
+	WorkspaceListDirectoryResult,
+	WorkspaceReadFileResult,
+	WorkspaceWriteFileResult,
+};
 export type {
 	PiSessionAbortInput,
 	PiSessionActionResult,

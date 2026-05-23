@@ -30,6 +30,11 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			clone: unavailable,
 			branch: unavailable,
 		},
+		workspaceFiles: {
+			listDirectory: unavailable,
+			readFile: unavailable,
+			writeFile: unavailable,
+		},
 		piSession: {
 			start: unavailable,
 			submit: unavailable,

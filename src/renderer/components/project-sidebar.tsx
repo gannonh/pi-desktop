@@ -52,6 +52,7 @@ import {
 	MenuSeparator,
 	MenuSurface,
 } from "./menu";
+import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
 import { SidebarInlineRenameField } from "./sidebar-inline-rename";
 
 interface ProjectSidebarProps {
@@ -170,6 +171,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		});
 	};
 	const selectStandaloneChat = (chatId: string) => {
+		if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+			return;
+		}
 		void runProjectAction(() =>
 			window.piDesktop.chat.selectStandalone({
 				chatId,
@@ -214,9 +218,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 						<SquarePen className="project-sidebar__icon" />
 					</button>
 				</div>
-				{chromeTitle ? (
+				{collapsed && chromeTitle ? (
 					<div className="project-sidebar__chrome-title-group">
-						<div className="project-sidebar__chrome-title">{chromeTitle}</div>
+						<div className="project-sidebar__chrome-title app-chrome-title">{chromeTitle}</div>
 						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
 							<MoreHorizontal className="project-sidebar__icon" />
 						</button>
@@ -680,6 +684,9 @@ function ProjectSidebarProject({
 						type="button"
 						title={row.path}
 						onClick={() => {
+							if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+								return;
+							}
 							void runProjectAction(() =>
 								window.piDesktop.project.select({
 									projectId: row.projectId,
@@ -857,14 +864,17 @@ function ProjectChatRow({
 						.join(" ")}
 					type="button"
 					tabIndex={closed ? -1 : undefined}
-					onClick={() =>
+					onClick={() => {
+						if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+							return;
+						}
 						void runProjectAction(() =>
 							window.piDesktop.chat.select({
 								projectId,
 								chatId: child.chatId,
 							}),
-						)
-					}
+						);
+					}}
 				>
 					<span className="project-sidebar__chat-label">{child.label}</span>
 					{child.needsAttention ? (

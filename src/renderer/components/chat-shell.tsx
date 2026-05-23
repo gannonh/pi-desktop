@@ -2,6 +2,7 @@ import { type ChatShellRoute, isResumableChatRoute, shouldUseChatStartLayout } f
 import { formatComposerFocusKey } from "../chat/composer-focus-key";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
 import type { ComposerHostProps } from "../chat/composer-host";
+import type { ProjectRecord } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
@@ -17,6 +18,7 @@ interface ChatShellProps {
 	composerHost: ComposerHostProps;
 	onAbortSession: () => void;
 	workspaceColumnDetached?: boolean;
+	selectedProject?: ProjectRecord | null;
 }
 
 export function ChatShell({
@@ -27,6 +29,7 @@ export function ChatShell({
 	composerHost,
 	onAbortSession,
 	workspaceColumnDetached = false,
+	selectedProject = null,
 }: ChatShellProps) {
 	const running =
 		session.status === "starting" ||
@@ -82,7 +85,7 @@ export function ChatShell({
 						</button>
 					) : null}
 				</div>
-				{workspaceColumnDetached ? null : <RightPanelWorkspace />}
+				{workspaceColumnDetached ? null : <RightPanelWorkspace selectedProject={selectedProject} />}
 			</div>
 			<div className="chat-shell__bottom-composer">
 				<Composer

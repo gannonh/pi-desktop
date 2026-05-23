@@ -31,6 +31,16 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 - Keep roadmap status and ADR decisions aligned when milestone direction changes.
 - Preserve spike outcomes in specs or ADRs; do not keep dead prototype code or dependencies in product branches unless explicitly adopted.
 
+## Renderer UI (shadcn boundary)
+
+Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [docs/adr/0003-shadcn-ui-boundary.md](docs/adr/0003-shadcn-ui-boundary.md).
+
+- **Config:** `components.json` (`iconLibrary: lucide`, new-york, radix). Visual tokens and rules live in `DESIGN.md` and `src/renderer/styles.css`.
+- **Custom by design:** app shell, project sidebar, workspace tab strip, file workspace chrome (layout and workbench interactions). Do not rewrite these to shadcn `Sidebar` / `Tabs` unless a milestone explicitly scopes consolidation.
+- **Prefer shadcn for new generic UI:** menus, dialogs, forms, confirmations, standard buttons, empty states. Add registry components via the shadcn CLI before inventing parallel primitives.
+- **Icons:** use `lucide-react` only in the renderer. Do not add other icon libraries for product UI.
+- **Existing custom menus:** `src/renderer/components/menu.tsx` is legacy shell chrome; new overflow and action menus should move toward `DropdownMenu` when touched, not extend the custom menu pattern without reason.
+
 ## Codebase Shape
 
 - Prefer feature folders with clear ownership.

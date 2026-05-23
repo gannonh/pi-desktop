@@ -17,12 +17,14 @@ describe("WorkspaceTabStrip", () => {
 		);
 
 		expect(markup).toContain('class="workspace-tab-strip"');
-		expect(markup).toContain('role="tablist"');
-		expect(markup).toContain("PR #11");
-		expect(markup).toContain("Terminal");
+		expect(markup).toContain("workspace-tabs--tools");
+		expect(markup).toContain('role="tab"');
+		expect(markup).toContain('aria-label="Changes"');
+		expect(markup).toContain('aria-label="Terminal"');
+		expect(markup).toContain('aria-label="File explorer"');
 		expect(markup).toContain('aria-label="Add panel"');
 		expect(markup).toContain('aria-label="Hide workspace"');
-		expect(markup).toContain("workspace-tab-strip__toggle");
+		expect(markup).toContain("workspace-tab-strip__action");
 		expect(markup).not.toContain("right-panel__tabs");
 	});
 });
