@@ -745,7 +745,7 @@ export const installDevPreviewApi = () => {
 					data: {
 						kind: "text",
 						content: node.content,
-						size: Buffer.byteLength(node.content, "utf8"),
+						size: new TextEncoder().encode(node.content).length,
 					},
 				};
 			},
@@ -772,7 +772,7 @@ export const installDevPreviewApi = () => {
 					ok: true,
 					data: {
 						relativePath,
-						size: Buffer.byteLength(content, "utf8"),
+						size: new TextEncoder().encode(content).length,
 					},
 				};
 			},

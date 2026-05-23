@@ -6,11 +6,14 @@ import {
 	createInitialFileWorkspaceState,
 	dirtyTabLabels,
 	hasDirtyTabs,
+	markFileSaved,
 	openFileTab,
 	setDirectoryError,
 	setDirectoryLoaded,
 	setDirectoryLoading,
+	setActiveFileTab,
 	setFileViewMode,
+	setSaveStatus,
 	toggleExpandedPath,
 	updateFileBuffer,
 } from "../../src/renderer/file-workspace/file-workspace-state";
@@ -37,6 +40,42 @@ describe("file workspace state", () => {
 		expect(loaded.tabs).toHaveLength(1);
 		expect(loaded.tabs[0]?.dirty).toBe(false);
 		expect(loaded.tabs[0]?.buffer).toBe("# Agent\n");
+	});
+
+	it("keeps dirty in-memory edits when a stale file load finishes", () => {
+		let state = openFileTab(createInitialFileWorkspaceState(), "AGENTS.md");
+		state = applyFileLoadResult(state, "AGENTS.md", { kind: "text", content: "saved" });
+		const tabId = state.tabs[0]?.id;
+		expect(tabId).toBeTruthy();
+		if (!tabId) {
+			return;
+		}
+
+		state = updateFileBuffer(state, tabId, "unsaved edit");
+		state = applyFileLoadResult(state, "AGENTS.md", { kind: "text", content: "disk content" });
+
+		expect(state.tabs[0]?.buffer).toBe("unsaved edit");
+		expect(state.tabs[0]?.dirty).toBe(true);
+	});
+
+	it("keeps edits made while a save is in flight", () => {
+		let state = openFileTab(createInitialFileWorkspaceState(), "AGENTS.md");
+		state = applyFileLoadResult(state, "AGENTS.md", { kind: "text", content: "saved" });
+		const tabId = state.tabs[0]?.id;
+		expect(tabId).toBeTruthy();
+		if (!tabId) {
+			return;
+		}
+
+		state = updateFileBuffer(state, tabId, "save payload");
+		state = setSaveStatus(state, "saving");
+		state = updateFileBuffer(state, tabId, "newer edit");
+		state = markFileSaved(state, tabId, "save payload");
+
+		expect(state.tabs[0]?.buffer).toBe("newer edit");
+		expect(state.tabs[0]?.savedContent).toBe("save payload");
+		expect(state.tabs[0]?.dirty).toBe(true);
+		expect(state.saveStatus).toBe("idle");
 	});
 
 	it("records non-text load results as read-only tabs", () => {
@@ -79,6 +118,14 @@ describe("file workspace state", () => {
 		expect(dirtyTabLabels(state)).toEqual(["notes.md"]);
 		state = setFileViewMode(state, tabId, "source");
 		expect(state.tabs[0]?.viewMode).toBe("source");
+	});
+
+	it("ignores invalid active tab ids", () => {
+		const state = openFileTab(createInitialFileWorkspaceState(), "a.txt");
+		const next = setActiveFileTab(state, "missing");
+
+		expect(next).toBe(state);
+		expect(next.activeTabId).toBe(state.activeTabId);
 	});
 
 	it("selects a neighbor tab when closing the active tab", () => {

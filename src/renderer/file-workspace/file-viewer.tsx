@@ -79,6 +79,7 @@ export function FileViewer() {
 						<button
 							type="button"
 							className={`file-viewer__mode${activeTab.viewMode === "preview" ? " file-viewer__mode--active" : ""}`}
+							aria-pressed={activeTab.viewMode === "preview"}
 							onClick={() => setViewMode(activeTab.id, "preview")}
 						>
 							Preview
@@ -86,6 +87,7 @@ export function FileViewer() {
 						<button
 							type="button"
 							className={`file-viewer__mode${activeTab.viewMode === "source" ? " file-viewer__mode--active" : ""}`}
+							aria-pressed={activeTab.viewMode === "source"}
 							onClick={() => setViewMode(activeTab.id, "source")}
 						>
 							Markdown

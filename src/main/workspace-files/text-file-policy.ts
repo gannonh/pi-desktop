@@ -65,7 +65,7 @@ export const isSupportedTextFile = (relativePath: string): boolean => {
 
 	const extension = path.extname(relativePath).toLowerCase();
 	if (extension.length === 0) {
-		return TEXT_BASENAMES.has(basename);
+		return false;
 	}
 
 	return TEXT_EXTENSIONS.has(extension);

@@ -15,6 +15,7 @@ export const workspaceDevWatchIgnored = [
 	"**/.agents/**",
 	"**/coverage/**",
 	"**/*.md",
+	"**/*.mdx",
 	"**/*.markdown",
 ] as const;
 

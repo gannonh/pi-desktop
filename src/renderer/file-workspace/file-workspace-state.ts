@@ -97,10 +97,13 @@ export const openFileTab = (state: FileWorkspaceState, relativePath: string): Fi
 
 export const setActiveFileTab = (state: FileWorkspaceState, tabId: string): FileWorkspaceState => {
 	const tab = state.tabs.find((candidate) => candidate.id === tabId);
+	if (!tab) {
+		return state;
+	}
 	return {
 		...state,
 		activeTabId: tabId,
-		selectedPath: tab?.relativePath ?? state.selectedPath,
+		selectedPath: tab.relativePath,
 	};
 };
 
@@ -112,6 +115,10 @@ export const applyFileLoadResult = (
 	...state,
 	tabs: state.tabs.map((tab) => {
 		if (tab.relativePath !== relativePath) {
+			return tab;
+		}
+
+		if (tab.dirty) {
 			return tab;
 		}
 
@@ -175,21 +182,25 @@ export const setFileViewMode = (
 	tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, viewMode } : tab)),
 });
 
-export const markFileSaved = (state: FileWorkspaceState, tabId: string, content: string): FileWorkspaceState => ({
-	...state,
-	saveStatus: "saved",
-	saveMessage: "Saved",
-	tabs: state.tabs.map((tab) =>
-		tab.id === tabId
-			? {
-					...tab,
-					buffer: content,
-					savedContent: content,
-					dirty: false,
-				}
-			: tab,
-	),
-});
+export const markFileSaved = (state: FileWorkspaceState, tabId: string, content: string): FileWorkspaceState => {
+	const savedTab = state.tabs.find((tab) => tab.id === tabId);
+	const savedCurrentBuffer = savedTab?.buffer === content;
+	return {
+		...state,
+		saveStatus: savedCurrentBuffer ? "saved" : "idle",
+		saveMessage: savedCurrentBuffer ? "Saved" : undefined,
+		tabs: state.tabs.map((tab) =>
+			tab.id === tabId
+				? {
+						...tab,
+						buffer: savedCurrentBuffer ? content : tab.buffer,
+						savedContent: content,
+						dirty: !savedCurrentBuffer,
+					}
+				: tab,
+		),
+	};
+};
 
 export const setSaveStatus = (
 	state: FileWorkspaceState,

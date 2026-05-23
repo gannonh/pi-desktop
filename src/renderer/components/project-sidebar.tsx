@@ -171,6 +171,9 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 		});
 	};
 	const selectStandaloneChat = (chatId: string) => {
+		if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+			return;
+		}
 		void runProjectAction(() =>
 			window.piDesktop.chat.selectStandalone({
 				chatId,
@@ -861,14 +864,17 @@ function ProjectChatRow({
 						.join(" ")}
 					type="button"
 					tabIndex={closed ? -1 : undefined}
-					onClick={() =>
+					onClick={() => {
+						if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+							return;
+						}
 						void runProjectAction(() =>
 							window.piDesktop.chat.select({
 								projectId,
 								chatId: child.chatId,
 							}),
-						)
-					}
+						);
+					}}
 				>
 					<span className="project-sidebar__chat-label">{child.label}</span>
 					{child.needsAttention ? (

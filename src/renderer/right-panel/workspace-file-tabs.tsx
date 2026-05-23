@@ -18,7 +18,9 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 		if (!activeTabId || !listRef.current) {
 			return;
 		}
-		const activeTab = listRef.current.querySelector<HTMLButtonElement>(`[data-tab-id="${activeTabId}"]`);
+		const activeTab = Array.from(listRef.current.querySelectorAll<HTMLButtonElement>("[data-tab-id]")).find(
+			(candidate) => candidate.dataset.tabId === activeTabId,
+		);
 		if (activeTab && typeof activeTab.scrollIntoView === "function") {
 			activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
 		}
@@ -56,7 +58,6 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 							type="button"
 							className="workspace-tabs__file-tab-close"
 							aria-label={`Close ${tab.title}`}
-							tabIndex={-1}
 							onClick={(event) => {
 								event.stopPropagation();
 								fileWorkspace?.closeTab(tab.id);

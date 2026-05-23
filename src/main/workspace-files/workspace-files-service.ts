@@ -69,7 +69,15 @@ export const readWorkspaceFile = async (
 		return { kind: "unsupported" };
 	}
 
-	const filePath = await resolvePathWithinProjectRoot(projectRoot, safeRelative);
+	let filePath: string;
+	try {
+		filePath = await resolvePathWithinProjectRoot(projectRoot, safeRelative);
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			return { kind: "not_found" };
+		}
+		throw error;
+	}
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);

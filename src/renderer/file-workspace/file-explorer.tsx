@@ -108,7 +108,7 @@ export function FileExplorer() {
 					{project.displayName}
 				</h2>
 			</header>
-			<div className="file-explorer__tree" role="tree">
+			<div className="file-explorer__tree">
 				<ul className="file-explorer__tree-root">
 					{rootListing?.status === "loading" ? (
 						<li className="file-explorer__status file-explorer__status--root">

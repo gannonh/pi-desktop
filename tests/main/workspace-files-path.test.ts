@@ -11,8 +11,14 @@ import {
 
 describe("workspace files path guard", () => {
 	let tempRoot = "";
+	let outsideTempRoot = "";
 
 	afterEach(async () => {
+		if (outsideTempRoot) {
+			const { rm } = await import("node:fs/promises");
+			await rm(outsideTempRoot, { recursive: true, force: true });
+			outsideTempRoot = "";
+		}
 		if (tempRoot) {
 			const { rm } = await import("node:fs/promises");
 			await rm(tempRoot, { recursive: true, force: true });
@@ -46,6 +52,7 @@ describe("workspace files path guard", () => {
 	it("rejects symlink escape outside the project root", async () => {
 		const projectRoot = await createProject();
 		const outsideDir = await mkdtemp(join(tmpdir(), "pi-desktop-outside-"));
+		outsideTempRoot = outsideDir;
 		await writeFile(join(outsideDir, "secret.txt"), "secret\n", "utf8");
 		await symlink(outsideDir, join(projectRoot, "escape"), "dir");
 
@@ -60,6 +67,11 @@ describe("workspace files path guard", () => {
 	it("rejects reading the project root as a file", async () => {
 		const projectRoot = await createProject();
 		await expect(readWorkspaceFile(projectRoot, "")).rejects.toThrow(WorkspacePathError);
+	});
+
+	it("returns not_found for a missing supported file", async () => {
+		const projectRoot = await createProject();
+		await expect(readWorkspaceFile(projectRoot, "missing.md")).resolves.toEqual({ kind: "not_found" });
 	});
 
 	it("skips node_modules and dot directories when listing", async () => {

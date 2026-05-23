@@ -43,6 +43,8 @@ type FileWorkspaceContextValue = {
 
 export const FileWorkspaceContext = createContext<FileWorkspaceContextValue | null>(null);
 
+const errorMessageFor = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
 interface FileWorkspaceProviderProps {
 	project: ProjectRecord | null;
 	children: ReactNode;
@@ -94,10 +96,18 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			const projectId = project.id;
 
 			setState((current) => setDirectoryLoading(current, relativePath));
-			const result = await window.piDesktop.workspaceFiles.listDirectory({
-				projectId,
-				relativePath,
-			});
+			let result: Awaited<ReturnType<typeof window.piDesktop.workspaceFiles.listDirectory>>;
+			try {
+				result = await window.piDesktop.workspaceFiles.listDirectory({
+					projectId,
+					relativePath,
+				});
+			} catch (error) {
+				if (isLoadCurrent(generation, projectId)) {
+					setState((current) => setDirectoryError(current, relativePath, errorMessageFor(error)));
+				}
+				return;
+			}
 			if (!isLoadCurrent(generation, projectId)) {
 				return;
 			}
@@ -119,10 +129,18 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			const generation = loadGenerationRef.current;
 			const projectId = project.id;
 
-			const result = await window.piDesktop.workspaceFiles.readFile({
-				projectId,
-				relativePath,
-			});
+			let result: Awaited<ReturnType<typeof window.piDesktop.workspaceFiles.readFile>>;
+			try {
+				result = await window.piDesktop.workspaceFiles.readFile({
+					projectId,
+					relativePath,
+				});
+			} catch (error) {
+				if (isLoadCurrent(generation, projectId)) {
+					setState((current) => applyFileLoadError(current, relativePath, errorMessageFor(error)));
+				}
+				return;
+			}
 			if (!isLoadCurrent(generation, projectId)) {
 				return;
 			}
@@ -173,6 +191,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				return;
 			}
 
+			const existing = stateRef.current.tabs.find((tab) => tab.relativePath === relativePath);
 			setState((current) => {
 				const next = openFileTab(current, relativePath);
 				if (next.activeTabId) {
@@ -180,7 +199,9 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				}
 				return next;
 			});
-			void loadFile(relativePath);
+			if (!existing?.dirty) {
+				void loadFile(relativePath);
+			}
 		},
 		[loadFile, selectWorkspaceTab, toggleDirectory],
 	);
@@ -221,13 +242,22 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 		const generation = loadGenerationRef.current;
 		const projectId = project.id;
 
+		const savedBuffer = tab.buffer;
 		setState((current) => setSaveStatus(current, "saving"));
 
-		const result = await window.piDesktop.workspaceFiles.writeFile({
-			projectId,
-			relativePath: tab.relativePath,
-			content: tab.buffer,
-		});
+		let result: Awaited<ReturnType<typeof window.piDesktop.workspaceFiles.writeFile>>;
+		try {
+			result = await window.piDesktop.workspaceFiles.writeFile({
+				projectId,
+				relativePath: tab.relativePath,
+				content: savedBuffer,
+			});
+		} catch (error) {
+			if (isLoadCurrent(generation, projectId)) {
+				setState((current) => setSaveStatus(current, "error", errorMessageFor(error)));
+			}
+			return;
+		}
 		if (!isLoadCurrent(generation, projectId)) {
 			return;
 		}
@@ -235,7 +265,12 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			setState((current) => setSaveStatus(current, "error", result.error.message));
 			return;
 		}
-		setState((current) => markFileSaved(current, tab.id, tab.buffer));
+		const currentTab = stateRef.current.tabs.find((candidate) => candidate.id === tab.id);
+		if (!currentTab || currentTab.buffer !== savedBuffer) {
+			setState((current) => setSaveStatus(current, "idle"));
+			return;
+		}
+		setState((current) => markFileSaved(current, tab.id, savedBuffer));
 	}, [isLoadCurrent, project]);
 
 	const value = useMemo<FileWorkspaceContextValue>(

@@ -390,6 +390,7 @@ button:disabled {
 
 .workspace-tabs__tab-wrap--file.workspace-tabs__tab-wrap--active {
 	--workspace-file-tab-fade: color-mix(in oklch, var(--color-secondary) 88%, var(--sidebar-background));
+
 	background: var(--workspace-file-tab-fade);
 	color: var(--color-foreground);
 }
@@ -599,7 +600,7 @@ button:disabled {
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
-	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
 	white-space: nowrap;
 }
 
@@ -1050,6 +1051,7 @@ button:disabled {
 
 .file-workspace {
 	--file-workspace-subheader-height: 2.125rem;
+
 	display: grid;
 	min-height: 0;
 	flex: 1;
@@ -1082,6 +1084,7 @@ button:disabled {
 	--file-explorer-indent: 0.75rem;
 	--file-explorer-row-height: 1.625rem;
 	--file-explorer-gutter: 1.125rem;
+
 	display: flex;
 	min-width: 0;
 	min-height: 0;

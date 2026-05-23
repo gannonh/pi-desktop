@@ -29,6 +29,7 @@ describe("file workspace guard", () => {
 		const confirm = vi.spyOn(window, "confirm");
 		expect(confirmDiscardUnsavedChanges([])).toBe(true);
 		expect(confirm).not.toHaveBeenCalled();
+		confirm.mockRestore();
 	});
 
 	it("confirmDiscardUnsavedFileWorkspaceChanges allows when no provider is mounted", () => {
