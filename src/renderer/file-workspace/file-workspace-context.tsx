@@ -1,11 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
+import { confirmDiscardUnsavedChanges } from "./confirm-discard";
 import {
 	applyFileLoadError,
 	applyFileLoadResult,
 	closeFileTab,
 	createInitialFileWorkspaceState,
+	dirtyTabLabels,
 	getActiveFileTab,
+	hasDirtyTabs,
 	markFileSaved,
 	openFileTab,
 	resetFileWorkspaceState,
@@ -19,6 +22,7 @@ import {
 	toggleExpandedPath,
 	updateFileBuffer,
 } from "./file-workspace-state";
+import { registerFileWorkspaceDiscardConfirm } from "./file-workspace-guard";
 import { useRightPanel } from "../right-panel/right-panel-context";
 import { FILE_WORKSPACE_VIEW_ID } from "../right-panel/workspace-tab-ids";
 import type { FileViewMode, FileWorkspaceState } from "./file-workspace-types";
@@ -39,13 +43,6 @@ type FileWorkspaceContextValue = {
 
 export const FileWorkspaceContext = createContext<FileWorkspaceContextValue | null>(null);
 
-const confirmDiscard = (titles: string[]) => {
-	if (titles.length === 0) {
-		return true;
-	}
-	return window.confirm(`Discard unsaved changes in ${titles.join(", ")}?`);
-};
-
 interface FileWorkspaceProviderProps {
 	project: ProjectRecord | null;
 	children: ReactNode;
@@ -57,19 +54,33 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 	const stateRef = useRef(state);
 	stateRef.current = state;
 	const projectIdRef = useRef<string | null>(project?.id ?? null);
+	const loadGenerationRef = useRef(0);
 
-	const selectWorkspaceTab = useCallback(
-		(tabId: string) => {
-			selectTab(tabId);
-		},
-		[selectTab],
+	const isLoadCurrent = useCallback(
+		(generation: number, expectedProjectId: string) =>
+			generation === loadGenerationRef.current && projectIdRef.current === expectedProjectId,
+		[],
 	);
+
+	const confirmDiscardUnsavedIfNeeded = useCallback(() => {
+		const current = stateRef.current;
+		if (!hasDirtyTabs(current)) {
+			return true;
+		}
+		return confirmDiscardUnsavedChanges(dirtyTabLabels(current));
+	}, []);
+
+	useEffect(() => {
+		registerFileWorkspaceDiscardConfirm(confirmDiscardUnsavedIfNeeded);
+		return () => registerFileWorkspaceDiscardConfirm(null);
+	}, [confirmDiscardUnsavedIfNeeded]);
 
 	useEffect(() => {
 		if (projectIdRef.current === (project?.id ?? null)) {
 			return;
 		}
 		projectIdRef.current = project?.id ?? null;
+		loadGenerationRef.current += 1;
 		setState(resetFileWorkspaceState());
 	}, [project?.id]);
 
@@ -79,18 +90,24 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				return;
 			}
 
+			const generation = loadGenerationRef.current;
+			const projectId = project.id;
+
 			setState((current) => setDirectoryLoading(current, relativePath));
 			const result = await window.piDesktop.workspaceFiles.listDirectory({
-				projectId: project.id,
+				projectId,
 				relativePath,
 			});
+			if (!isLoadCurrent(generation, projectId)) {
+				return;
+			}
 			if (!result.ok) {
 				setState((current) => setDirectoryError(current, relativePath, result.error.message));
 				return;
 			}
 			setState((current) => setDirectoryLoaded(current, relativePath, result.data.entries));
 		},
-		[project],
+		[isLoadCurrent, project],
 	);
 
 	const loadFile = useCallback(
@@ -99,17 +116,23 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 				return;
 			}
 
+			const generation = loadGenerationRef.current;
+			const projectId = project.id;
+
 			const result = await window.piDesktop.workspaceFiles.readFile({
-				projectId: project.id,
+				projectId,
 				relativePath,
 			});
+			if (!isLoadCurrent(generation, projectId)) {
+				return;
+			}
 			if (!result.ok) {
 				setState((current) => applyFileLoadError(current, relativePath, result.error.message));
 				return;
 			}
 			setState((current) => applyFileLoadResult(current, relativePath, result.data));
 		},
-		[project],
+		[isLoadCurrent, project],
 	);
 
 	const toggleDirectory = useCallback(
@@ -135,6 +158,13 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 		void loadDirectory("");
 	}, [loadDirectory, project]);
 
+	const selectWorkspaceTab = useCallback(
+		(tabId: string) => {
+			selectTab(tabId);
+		},
+		[selectTab],
+	);
+
 	const selectExplorerItem = useCallback(
 		(relativePath: string, kind: "file" | "directory") => {
 			if (kind === "directory") {
@@ -157,11 +187,11 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 
 	const closeTab = useCallback(
 		(tabId: string, force = false) => {
-			const tab = state.tabs.find((candidate) => candidate.id === tabId);
+			const tab = stateRef.current.tabs.find((candidate) => candidate.id === tabId);
 			if (!tab) {
 				return false;
 			}
-			if (!force && tab.dirty && !confirmDiscard([tab.title])) {
+			if (!force && tab.dirty && !confirmDiscardUnsavedChanges([tab.title])) {
 				return false;
 			}
 			setState((current) => {
@@ -175,7 +205,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			});
 			return true;
 		},
-		[rightPanelState.activeTabId, selectWorkspaceTab, state.tabs],
+		[rightPanelState.activeTabId, selectWorkspaceTab],
 	);
 
 	const saveActiveFile = useCallback(async () => {
@@ -188,19 +218,25 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			return;
 		}
 
+		const generation = loadGenerationRef.current;
+		const projectId = project.id;
+
 		setState((current) => setSaveStatus(current, "saving"));
 
 		const result = await window.piDesktop.workspaceFiles.writeFile({
-			projectId: project.id,
+			projectId,
 			relativePath: tab.relativePath,
 			content: tab.buffer,
 		});
+		if (!isLoadCurrent(generation, projectId)) {
+			return;
+		}
 		if (!result.ok) {
 			setState((current) => setSaveStatus(current, "error", result.error.message));
 			return;
 		}
 		setState((current) => markFileSaved(current, tab.id, tab.buffer));
-	}, [project]);
+	}, [isLoadCurrent, project]);
 
 	const value = useMemo<FileWorkspaceContextValue>(
 		() => ({

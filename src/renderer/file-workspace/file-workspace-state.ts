@@ -1,3 +1,4 @@
+import { isMarkdownRelativePath } from "./file-workspace-paths";
 import type { FileEditorTab, FileViewMode, FileWorkspaceState } from "./file-workspace-types";
 
 export const createInitialFileWorkspaceState = (): FileWorkspaceState => ({
@@ -13,8 +14,6 @@ export const createInitialFileWorkspaceState = (): FileWorkspaceState => ({
 const tabIdForPath = (relativePath: string) => `file:${relativePath}`;
 
 const basename = (relativePath: string) => relativePath.split("/").at(-1) ?? relativePath;
-
-const isMarkdownPath = (relativePath: string) => /\.(?:md|markdown)$/i.test(relativePath);
 
 export const toggleExpandedPath = (state: FileWorkspaceState, relativePath: string): FileWorkspaceState => {
 	const expanded = state.expandedPaths.includes(relativePath)
@@ -84,7 +83,7 @@ export const openFileTab = (state: FileWorkspaceState, relativePath: string): Fi
 		savedContent: null,
 		buffer: "",
 		status: "loading",
-		viewMode: isMarkdownPath(relativePath) ? "preview" : "source",
+		viewMode: isMarkdownRelativePath(relativePath) ? "preview" : "source",
 		readOnly: false,
 	};
 

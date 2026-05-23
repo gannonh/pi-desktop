@@ -1113,6 +1113,7 @@ button:disabled {
 	white-space: nowrap;
 }
 
+.file-explorer__tree-root,
 .file-explorer__tree,
 .file-explorer__children {
 	margin: 0;

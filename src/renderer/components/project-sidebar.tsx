@@ -52,6 +52,7 @@ import {
 	MenuSeparator,
 	MenuSurface,
 } from "./menu";
+import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
 import { SidebarInlineRenameField } from "./sidebar-inline-rename";
 
 interface ProjectSidebarProps {
@@ -680,6 +681,9 @@ function ProjectSidebarProject({
 						type="button"
 						title={row.path}
 						onClick={() => {
+							if (!confirmDiscardUnsavedFileWorkspaceChanges()) {
+								return;
+							}
 							void runProjectAction(() =>
 								window.piDesktop.project.select({
 									projectId: row.projectId,

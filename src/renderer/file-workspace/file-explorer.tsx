@@ -18,10 +18,6 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 	const FileIcon = kind === "file" ? getExplorerFileIcon(name) : expanded ? FolderOpen : Folder;
 
 	const onSelect = () => {
-		if (kind === "file") {
-			selectExplorerItem(relativePath, kind);
-			return;
-		}
 		selectExplorerItem(relativePath, kind);
 	};
 
@@ -65,7 +61,7 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 				</button>
 			</div>
 			{kind === "directory" && expanded ? (
-				<div className="file-explorer__children">
+				<ul className="file-explorer__children">
 					{listing?.status === "loading" ? (
 						<li className="file-explorer__status" style={{ "--file-explorer-depth": depth + 1 } as CSSProperties}>
 							<Loader2 className="file-explorer__status-icon" aria-hidden />
@@ -91,7 +87,7 @@ function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 								/>
 							))
 						: null}
-				</div>
+				</ul>
 			) : null}
 		</li>
 	);
@@ -113,31 +109,33 @@ export function FileExplorer() {
 				</h2>
 			</header>
 			<div className="file-explorer__tree" role="tree">
-				{rootListing?.status === "loading" ? (
-					<li className="file-explorer__status file-explorer__status--root">
-						<Loader2 className="file-explorer__status-icon" aria-hidden />
-						<span>Loading…</span>
-					</li>
-				) : null}
-				{rootListing?.status === "error" ? (
-					<li className="file-explorer__status file-explorer__status--error file-explorer__status--root">
-						{rootListing.message}
-						<button type="button" className="file-explorer__retry" onClick={() => retryLoadDirectory("")}>
-							Retry
-						</button>
-					</li>
-				) : null}
-				{rootListing?.status === "loaded"
-					? rootListing.entries.map((entry) => (
-							<ExplorerNode
-								key={entry.relativePath}
-								relativePath={entry.relativePath}
-								name={entry.name}
-								kind={entry.kind}
-								depth={0}
-							/>
-						))
-					: null}
+				<ul className="file-explorer__tree-root">
+					{rootListing?.status === "loading" ? (
+						<li className="file-explorer__status file-explorer__status--root">
+							<Loader2 className="file-explorer__status-icon" aria-hidden />
+							<span>Loading…</span>
+						</li>
+					) : null}
+					{rootListing?.status === "error" ? (
+						<li className="file-explorer__status file-explorer__status--error file-explorer__status--root">
+							{rootListing.message}
+							<button type="button" className="file-explorer__retry" onClick={() => retryLoadDirectory("")}>
+								Retry
+							</button>
+						</li>
+					) : null}
+					{rootListing?.status === "loaded"
+						? rootListing.entries.map((entry) => (
+								<ExplorerNode
+									key={entry.relativePath}
+									relativePath={entry.relativePath}
+									name={entry.name}
+									kind={entry.kind}
+									depth={0}
+								/>
+							))
+						: null}
+				</ul>
 			</div>
 		</section>
 	);

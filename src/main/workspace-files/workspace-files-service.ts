@@ -89,6 +89,9 @@ export const readWorkspaceFile = async (
 	}
 
 	const buffer = await readFile(filePath);
+	if (buffer.byteLength > WORKSPACE_FILES_MAX_BYTES) {
+		return { kind: "too_large", size: buffer.byteLength };
+	}
 	if (containsNullByte(buffer)) {
 		return { kind: "binary" };
 	}

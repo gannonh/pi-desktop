@@ -3,8 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
 import { FileEditor } from "./file-editor";
 import { useFileWorkspace } from "./file-workspace-context";
-
-const isMarkdownTab = (relativePath: string) => /\.(?:md|markdown)$/i.test(relativePath);
+import { isMarkdownRelativePath } from "./file-workspace-paths";
 
 export function FileViewer() {
 	const { state, activeTab, updateBuffer, setViewMode, saveActiveFile } = useFileWorkspace();
@@ -75,7 +74,7 @@ export function FileViewer() {
 				<div className="file-viewer__breadcrumbs" data-testid="file-viewer-breadcrumbs">
 					{activeTab.relativePath.split("/").join(" › ")}
 				</div>
-				{isMarkdownTab(activeTab.relativePath) ? (
+				{isMarkdownRelativePath(activeTab.relativePath) ? (
 					<div className="file-viewer__mode-toggle" data-testid="file-viewer-mode-toggle">
 						<button
 							type="button"
