@@ -1233,19 +1233,39 @@ button:disabled {
 	color: var(--color-foreground);
 }
 
-.file-viewer__save {
-	border: 0;
-	border-radius: var(--radius-control);
-	padding: 0.25rem 0.6rem;
-	background: var(--color-secondary);
-	color: var(--color-foreground);
-	font-size: var(--type-caption);
-	font-weight: 500;
-	line-height: 1.2;
+.file-viewer__actions {
+	position: relative;
+	flex: 0 0 auto;
 }
 
-.file-viewer__save:disabled {
-	opacity: 0.45;
+.file-viewer__overflow {
+	display: inline-flex;
+	width: 1.75rem;
+	height: 1.75rem;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: var(--radius-control);
+	background: transparent;
+	color: var(--color-muted-foreground);
+	cursor: pointer;
+}
+
+.file-viewer__overflow:hover,
+.file-viewer__overflow:focus-visible {
+	background: color-mix(in oklch, var(--color-muted) 24%, transparent);
+	color: var(--color-foreground);
+}
+
+.file-viewer__overflow-icon {
+	width: 1rem;
+	height: 1rem;
+}
+
+.file-viewer__menu {
+	right: 0;
+	left: auto;
+	min-width: 9rem;
 }
 
 .file-viewer__save-error,

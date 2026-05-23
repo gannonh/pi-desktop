@@ -1,6 +1,4 @@
-import { Expand, Maximize2 } from "lucide-react";
-import { SidebarRight01Icon } from "@hugeicons/core-free-icons";
-import { Hugeicon } from "../components/hugeicon";
+import { Expand, Maximize2, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { RightPanelAddMenu } from "./right-panel-add-menu";
 import { useRightPanel } from "./right-panel-context";
@@ -50,7 +48,11 @@ export function WorkspaceTabStrip() {
 					aria-pressed={!state.collapsed}
 					onClick={toggleCollapsed}
 				>
-					<Hugeicon icon={SidebarRight01Icon} className="workspace-tab-strip__action-icon" />
+					{state.collapsed ? (
+						<PanelRightOpen className="workspace-tab-strip__action-icon" aria-hidden />
+					) : (
+						<PanelRightClose className="workspace-tab-strip__action-icon" aria-hidden />
+					)}
 				</button>
 			</div>
 		</section>

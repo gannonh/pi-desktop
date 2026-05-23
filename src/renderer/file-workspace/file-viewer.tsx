@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
 import { FileEditor } from "./file-editor";
 import { useFileWorkspace } from "./file-workspace-context";
 
@@ -6,6 +8,38 @@ const isMarkdownTab = (relativePath: string) => /\.(?:md|markdown)$/i.test(relat
 
 export function FileViewer() {
 	const { state, activeTab, updateBuffer, setViewMode, saveActiveFile } = useFileWorkspace();
+	const [menuOpen, setMenuOpen] = useState(false);
+	const menuId = useId();
+	const menuAnchorRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!menuOpen) {
+			return;
+		}
+
+		const handlePointerDown = (event: PointerEvent) => {
+			if (!menuAnchorRef.current?.contains(event.target as Node)) {
+				setMenuOpen(false);
+			}
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setMenuOpen(false);
+			}
+		};
+
+		document.addEventListener("pointerdown", handlePointerDown);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", handlePointerDown);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [menuOpen]);
+
+	useEffect(() => {
+		setMenuOpen(false);
+	}, [activeTab?.id]);
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -58,16 +92,32 @@ export function FileViewer() {
 						</button>
 					</div>
 				) : null}
-				<div className="file-viewer__actions">
+				<MenuAnchor ref={menuAnchorRef} className="file-viewer__actions">
 					<button
 						type="button"
-						className="file-viewer__save"
-						disabled={!activeTab.dirty || activeTab.readOnly || state.saveStatus === "saving"}
-						onClick={() => void saveActiveFile()}
+						className="file-viewer__overflow"
+						aria-label="File actions"
+						aria-expanded={menuOpen}
+						aria-haspopup="menu"
+						aria-controls={menuId}
+						onClick={() => setMenuOpen((current) => !current)}
 					>
-						{state.saveStatus === "saving" ? "Saving…" : "Save"}
+						<MoreHorizontal className="file-viewer__overflow-icon" aria-hidden strokeWidth={1.75} />
 					</button>
-				</div>
+					{menuOpen ? (
+						<MenuSurface id={menuId} className="file-viewer__menu" variant="context" aria-label="File actions">
+							<MenuItem
+								disabled={!activeTab.dirty || activeTab.readOnly || state.saveStatus === "saving"}
+								onClick={() => {
+									void saveActiveFile();
+									setMenuOpen(false);
+								}}
+							>
+								{state.saveStatus === "saving" ? "Saving…" : "Save"}
+							</MenuItem>
+						</MenuSurface>
+					) : null}
+				</MenuAnchor>
 			</header>
 			{state.saveStatus === "error" && state.saveMessage ? (
 				<p className="file-viewer__save-error">{state.saveMessage}</p>
