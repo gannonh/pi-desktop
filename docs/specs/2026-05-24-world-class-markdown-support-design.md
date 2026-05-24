@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft, awaiting written spec review.
+Approved for Build.
 
 ## Source of truth
 
@@ -368,4 +368,4 @@ Exact test filenames may change if Build chooses a different naming split.
 - **Ordered phases:** dependency and editor spike, Markdown surface abstraction, file workspace mode integration, rich authoring toolbar, code block and image polish, tests and verification.
 - **Required verification:** representative Markdown fixture round-trip, focused renderer tests, manual UAT, and `pnpm check`.
 - **Known risks:** source normalization, dependency compatibility, CSS containment, unsupported Markdown recovery, split-mode update loops.
-- **Blocking question:** Written spec review is pending.
+- **Blocking questions:** None.
