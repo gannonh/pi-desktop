@@ -73,6 +73,8 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import { Fragment, createElement, type ComponentProps, type ReactElement } from "react";
+import { MarkdownCodeBlockEditor } from "./markdown-code-block";
+import { markdownImagePreviewHandler } from "./markdown-image-policy";
 
 export const mdxEditorPackage = {
 	name: "@mdxeditor/editor",
@@ -235,10 +237,23 @@ const createBaseMarkdownPlugins = (): RealmPlugin[] => [
 	quotePlugin(),
 	linkPlugin(),
 	linkDialogPlugin(),
-	imagePlugin(),
+	imagePlugin({
+		disableImageResize: true,
+		disableImageSettingsButton: true,
+		imagePreviewHandler: markdownImagePreviewHandler,
+	}),
 	tablePlugin(),
 	thematicBreakPlugin(),
-	codeBlockPlugin({ defaultCodeBlockLanguage: "ts" }),
+	codeBlockPlugin({
+		defaultCodeBlockLanguage: "ts",
+		codeBlockEditorDescriptors: [
+			{
+				priority: 100,
+				match: () => true,
+				Editor: MarkdownCodeBlockEditor,
+			},
+		],
+	}),
 	codeMirrorPlugin({
 		codeBlockLanguages: { markdown: "Markdown", ts: "TypeScript", js: "JavaScript", bash: "Shell" },
 		autoLoadLanguageSupport: false,

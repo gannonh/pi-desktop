@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement, isValidElement, useEffect, useRef } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMarkdownEditorAdapterConfig } from "../../src/renderer/markdown/mdxeditor-adapter";
@@ -27,6 +27,10 @@ const representativeMarkdownFixture = [
 	"```",
 	"",
 ].join("\n");
+
+const codeBlockFixture = ["```ts", "const markdown = 'source of truth';", "```"].join("\n");
+
+const relativeImageFixture = "![Architecture diagram](./images/architecture.png)";
 
 const expectedSerializedMarkdownFixture = [
 	"# World-class Markdown",
@@ -277,6 +281,64 @@ describe("MarkdownSurface", () => {
 
 		expect(onChange).toHaveBeenCalledWith("# Split source edit");
 		expect(onChange).toHaveBeenCalledWith("# Split rich edit");
+	});
+
+	it("copies rich code block contents and shows success feedback", async () => {
+		const writeText = vi.fn().mockResolvedValue(undefined);
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+
+		render(
+			<MarkdownSurface
+				value={codeBlockFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		const copyButton = await screen.findByRole("button", { name: "Copy ts code block" });
+		expect(screen.getByText("ts")).not.toBeNull();
+		fireEvent.click(copyButton);
+
+		await waitFor(() => expect(writeText).toHaveBeenCalledWith("const markdown = 'source of truth';"));
+		expect(await screen.findByText("Copied code block.")).not.toBeNull();
+	});
+
+	it("shows failure feedback when rich code block copy fails", async () => {
+		const writeText = vi.fn().mockRejectedValue(new Error("clipboard unavailable"));
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+
+		render(
+			<MarkdownSurface
+				value={codeBlockFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Copy ts code block" }));
+
+		expect(await screen.findByText("Copy failed. Use Markdown mode to copy source.")).not.toBeNull();
+	});
+
+	it("shows clear unsupported messaging for relative image previews", async () => {
+		render(
+			<MarkdownSurface
+				value={relativeImageFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		const notice = await screen.findByTestId("markdown-image-notice");
+		expect(notice.textContent).toContain("Local image previews are not available yet.");
+		expect(notice.textContent).toContain("./images/architecture.png");
+		expect(notice.textContent).toContain("Markdown mode keeps the image source editable.");
 	});
 
 	it("prevents preview links from navigating the renderer and reports the href", async () => {

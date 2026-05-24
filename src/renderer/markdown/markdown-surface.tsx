@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { unsupportedLocalImageSources } from "./markdown-image-policy";
 import { MarkdownSourceEditor } from "./markdown-source-editor";
 import { RichMarkdownEditor } from "./rich-markdown-editor";
 
@@ -16,6 +17,8 @@ export type MarkdownSurfaceEditorActions = {
 type MarkdownParseErrorState = {
 	message: string;
 	source: string;
+	relativePath: string;
+	value: string;
 };
 
 export type MarkdownSurfaceProps = {
@@ -40,20 +43,20 @@ export function MarkdownSurface({
 	onLinkClick,
 }: MarkdownSurfaceProps) {
 	const [parseError, setParseError] = useState<MarkdownParseErrorState | null>(null);
-
-	useEffect(() => {
-		setParseError(null);
-	}, [relativePath, value]);
+	const unsupportedImages = useMemo(() => unsupportedLocalImageSources(value), [value]);
+	const currentParseError =
+		parseError?.relativePath === relativePath && parseError.value === value ? parseError : null;
 
 	const handleEditorError = (message: string, source: string) => {
-		setParseError({ message, source });
+		setParseError({ message, source, relativePath, value });
 		onError?.(message, source);
 	};
 	const handleChange = (markdown: string) => {
 		onChange(markdown);
 		setParseError(null);
 	};
-	const showPreviewSourceFallback = mode === "preview" && parseError !== null;
+	const showPreviewSourceFallback = mode === "preview" && currentParseError !== null;
+	const showImageNotice = (mode === "preview" || mode === "split") && unsupportedImages.length > 0;
 
 	return (
 		<section
@@ -62,10 +65,19 @@ export function MarkdownSurface({
 			data-mode={mode}
 			data-relative-path={relativePath}
 		>
-			{parseError ? (
+			{showImageNotice ? (
+				<div className="markdown-surface__image-notice" role="note" data-testid="markdown-image-notice">
+					<p className="markdown-surface__image-notice-title">Local image previews are not available yet.</p>
+					<p>
+						Markdown mode keeps the image source editable. Unsupported image source
+						{unsupportedImages.length === 1 ? "" : "s"}: <code>{unsupportedImages.join(", ")}</code>
+					</p>
+				</div>
+			) : null}
+			{currentParseError ? (
 				<div className="markdown-surface__error" role="alert" data-testid="markdown-surface-error">
 					<p className="markdown-surface__error-title">Markdown preview error</p>
-					<p>{parseError.message}</p>
+					<p>{currentParseError.message}</p>
 					<p>Editing source mode keeps the current Markdown saveable.</p>
 				</div>
 			) : null}

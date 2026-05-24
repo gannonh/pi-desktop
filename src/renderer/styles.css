@@ -1481,8 +1481,199 @@ button:disabled {
 .markdown-surface__content {
 	min-height: 0;
 	flex: 1;
-	padding: 0.75rem 1rem 1rem;
+	padding: 1rem 1.125rem 1.25rem;
 	color: var(--color-foreground);
+	font-size: var(--type-body);
+	line-height: 1.6;
+}
+
+.markdown-surface__content :is(h1, h2, h3, h4, h5, h6) {
+	margin: 1.1em 0 0.45em;
+	color: var(--color-foreground);
+	font-weight: 650;
+	line-height: 1.2;
+}
+
+.markdown-surface__content :is(h1, h2):first-child,
+.markdown-surface__content :is(p, ul, ol, blockquote, table, pre):first-child {
+	margin-top: 0;
+}
+
+.markdown-surface__content h1 {
+	font-size: 1.45rem;
+}
+
+.markdown-surface__content h2 {
+	font-size: 1.18rem;
+}
+
+.markdown-surface__content h3 {
+	font-size: 1rem;
+}
+
+.markdown-surface__content :is(p, ul, ol, blockquote, table, pre, figure, hr) {
+	margin: 0.75rem 0;
+}
+
+.markdown-surface__content :is(ul, ol) {
+	padding-left: 1.4rem;
+}
+
+.markdown-surface__content li + li {
+	margin-top: 0.25rem;
+}
+
+.markdown-surface__content input[type="checkbox"] {
+	margin-right: 0.45rem;
+	accent-color: var(--color-primary);
+}
+
+.markdown-surface__content a {
+	color: color-mix(in oklch, var(--color-foreground) 70%, var(--color-primary) 30%);
+	text-underline-offset: 0.16em;
+}
+
+.markdown-surface__content :not(pre) > code {
+	border: 1px solid var(--border-subtle);
+	border-radius: 0.25rem;
+	padding: 0.08rem 0.28rem;
+	background: color-mix(in oklch, var(--composer-control-surface) 72%, transparent);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 0.85em;
+}
+
+.markdown-surface__content blockquote {
+	border-left: 3px solid color-mix(in oklch, var(--color-primary) 55%, var(--border-subtle));
+	padding: 0.25rem 0 0.25rem 0.85rem;
+	color: var(--color-muted-foreground);
+}
+
+.markdown-surface__content table {
+	width: 100%;
+	border-collapse: collapse;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-control);
+	font-size: var(--type-caption);
+}
+
+.markdown-surface__content :is(th, td) {
+	border: 1px solid var(--border-subtle);
+	padding: 0.45rem 0.55rem;
+	vertical-align: top;
+}
+
+.markdown-surface__content th {
+	background: color-mix(in oklch, var(--composer-control-surface) 72%, transparent);
+	color: var(--color-foreground);
+	font-weight: 600;
+}
+
+.markdown-surface__content hr {
+	border: 0;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.markdown-surface__content img {
+	max-width: 100%;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-panel);
+	background: var(--sidebar-background);
+}
+
+.markdown-surface__content :focus-visible,
+.markdown-surface__toolbar :focus-visible,
+.markdown-surface__code-copy:focus-visible {
+	outline: 2px solid var(--color-ring);
+	outline-offset: 2px;
+}
+
+.markdown-surface__code-block {
+	overflow: hidden;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-panel);
+	background: var(--sidebar-background);
+}
+
+.markdown-surface__code-block-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	border-bottom: 1px solid var(--border-subtle);
+	padding: 0.4rem 0.5rem 0.4rem 0.625rem;
+	background: color-mix(in oklch, var(--composer-control-surface) 78%, transparent);
+}
+
+.markdown-surface__code-block-language {
+	color: var(--color-muted-foreground);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: var(--type-caption);
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.markdown-surface__code-copy {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-control);
+	padding: 0.25rem 0.45rem;
+	background: transparent;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+	line-height: 1;
+	cursor: pointer;
+}
+
+.markdown-surface__code-copy:hover {
+	background: var(--composer-control-surface);
+	color: var(--color-foreground);
+}
+
+.markdown-surface__code-copy-icon {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+
+.markdown-surface__code-editor {
+	min-height: 0;
+}
+
+.markdown-surface__code-copy-status {
+	min-height: 1.35rem;
+	padding: 0 0.625rem 0.35rem;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.markdown-surface__image-notice {
+	margin: 0.625rem 0.75rem 0;
+	border: 1px dashed var(--border-subtle);
+	border-radius: var(--radius-control);
+	padding: 0.5rem 0.625rem;
+	background: color-mix(in oklch, var(--composer-control-surface) 64%, transparent);
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.markdown-surface__image-notice p {
+	margin: 0;
+}
+
+.markdown-surface__image-notice p + p {
+	margin-top: 0.25rem;
+}
+
+.markdown-surface__image-notice-title {
+	color: var(--color-foreground);
+	font-weight: 600;
+}
+
+.markdown-surface__image-notice code {
+	color: var(--color-foreground);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 @media (max-width: 959px) {
