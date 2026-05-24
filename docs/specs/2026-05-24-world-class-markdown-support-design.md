@@ -360,6 +360,15 @@ Exact test filenames may change if Build chooses a different naming split.
 - Rich Markdown editing outside the file workspace.
 - Broad source editor upgrade for all text and code files.
 
+## Implementation notes
+
+### B1 dependency spike
+
+- Installed `@mdxeditor/editor@4.0.1`. Its published peer dependencies accept the current React 19 and React DOM 19 stack.
+- MDXEditor brings CodeMirror 6, Lexical, and Radix editor dependencies transitively. Build phases should keep product icons on `lucide-react` rather than using package-provided Radix icons in Pi Desktop chrome.
+- Editor styles should be contained under `markdown-surface markdown-surface--mdxeditor` with content overrides under `markdown-surface__editor` and `markdown-surface__content`.
+- Initial source serialization preserves GFM content but normalizes some Markdown formatting, including task-list bullet markers, table padding, and trailing blank lines. This matches the source-fidelity rule that preview edits may normalize whitespace and table alignment while preserving semantic content.
+
 ## Build handoff
 
 - **Spec path:** `docs/specs/2026-05-24-world-class-markdown-support-design.md`
