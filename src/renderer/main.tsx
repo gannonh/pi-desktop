@@ -4,6 +4,7 @@ import { Agentation } from "agentation";
 import { App } from "./App";
 import { createHttpPiDesktopApi } from "./app-api/http-client";
 import { createUnavailablePiDesktopApi } from "./app-api/unavailable-api";
+import "./markdown/prism-global";
 import "./styles.css";
 
 if (!Object.hasOwn(window, "piDesktop")) {

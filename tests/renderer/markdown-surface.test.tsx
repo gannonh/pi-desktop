@@ -235,9 +235,9 @@ describe("MarkdownSurface", () => {
 			/>,
 		);
 
-		const sourceEditor = screen.getByTestId("markdown-source-editor");
+		const sourceEditor = await screen.findByTestId("markdown-source-editor");
 		expect(sourceEditor.getAttribute("data-source-engine")).toBe("codemirror");
-		expect(screen.getByLabelText("Markdown source for docs/README.md")).not.toBeNull();
+		expect(await screen.findByLabelText("Markdown source for docs/README.md")).not.toBeNull();
 
 		await waitFor(() => expect(sourceActions).not.toBeNull());
 		act(() => sourceActions?.replaceMarkdown("# Updated source"));
@@ -268,9 +268,9 @@ describe("MarkdownSurface", () => {
 			/>,
 		);
 
-		expect(screen.getByTestId("markdown-split-editor")).not.toBeNull();
-		expect(screen.getByTestId("markdown-source-editor")).not.toBeNull();
-		expect(screen.getByTestId("markdown-rich-editor")).not.toBeNull();
+		expect(await screen.findByTestId("markdown-split-editor")).not.toBeNull();
+		expect(await screen.findByTestId("markdown-source-editor")).not.toBeNull();
+		expect(await screen.findByTestId("markdown-rich-editor")).not.toBeNull();
 
 		await waitFor(() => {
 			expect(sourceActions).not.toBeNull();

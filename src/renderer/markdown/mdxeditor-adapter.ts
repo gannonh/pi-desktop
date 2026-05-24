@@ -1,3 +1,5 @@
+import "./prism-global";
+
 import {
 	BlockTypeSelect,
 	BoldItalicUnderlineToggles,

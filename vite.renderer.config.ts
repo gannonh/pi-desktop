@@ -13,6 +13,7 @@ export default defineConfig({
 		},
 	},
 	resolve: {
+		preserveSymlinks: false,
 		alias: {
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 		},
