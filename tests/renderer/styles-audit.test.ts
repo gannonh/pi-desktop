@@ -201,12 +201,18 @@ describe("renderer style audit rules", () => {
 		expect(option).toContain("padding: 0.35rem 0.5rem");
 	});
 
-	it("keeps the resizable file divider visible across the workspace height", () => {
+	it("keeps the resizable file divider visible as one stable vertical rule", () => {
 		const divider = ruleBody(styles(), ".file-workspace__divider");
+		const activeDivider = ruleBody(
+			styles(),
+			".file-workspace__divider:hover,\n.file-workspace__divider:focus-visible,\nbody.file-workspace--resizing .file-workspace__divider",
+		);
 
 		expect(divider).toContain("align-self: stretch");
 		expect(divider).toContain("min-height: 100%");
-		expect(divider).toContain("background: linear-gradient");
-		expect(divider).toContain("var(--color-border)");
+		expect(divider).toContain("border-left: 1px solid var(--color-border)");
+		expect(divider).toContain("background: transparent");
+		expect(divider).not.toContain("linear-gradient");
+		expect(activeDivider).toContain("border-left-color: var(--color-ring)");
 	});
 });
