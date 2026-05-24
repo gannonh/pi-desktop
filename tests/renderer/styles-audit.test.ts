@@ -187,4 +187,17 @@ describe("renderer style audit rules", () => {
 		expect(scrollRoot).toContain("flex: 1");
 		expect(scrollRoot).toContain("overflow-y: auto");
 	});
+
+	it("keeps Markdown toolbar dropdowns visible and selectable", () => {
+		const css = styles();
+		const dropdown = ruleBody(css, ".markdown-surface__editor .mdxeditor-select-content");
+		const option = ruleBody(css, ".markdown-surface__editor .mdxeditor-select-content [role='option']");
+
+		expect(dropdown).toContain("z-index: 20");
+		expect(dropdown).toContain("background: var(--menu-popover-background)");
+		expect(dropdown).toContain("border: 1px solid var(--color-border)");
+		expect(dropdown).toContain("box-shadow: 0 12px 32px oklch(0 0 0 / 35%)");
+		expect(option).toContain("cursor: pointer");
+		expect(option).toContain("padding: 0.35rem 0.5rem");
+	});
 });

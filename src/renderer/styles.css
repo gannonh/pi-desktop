@@ -1536,6 +1536,28 @@ button:disabled {
 	overflow-y: auto;
 }
 
+.markdown-surface__editor .mdxeditor-select-content {
+	z-index: 20;
+	overflow: hidden;
+	border: 1px solid var(--color-border);
+	border-radius: var(--menu-context-radius);
+	background: var(--menu-popover-background);
+	box-shadow: 0 12px 32px oklch(0 0 0 / 35%);
+	color: var(--menu-popover-color);
+}
+
+.markdown-surface__editor .mdxeditor-select-content [role='option'] {
+	cursor: pointer;
+	padding: 0.35rem 0.5rem;
+	font-size: var(--type-caption);
+	line-height: 1.2;
+}
+
+.markdown-surface__editor .mdxeditor-select-content [role='option']:hover,
+.markdown-surface__editor .mdxeditor-select-content [role='option'][data-highlighted] {
+	background: var(--menu-item-hover-background);
+}
+
 .markdown-surface__content {
 	min-height: 0;
 	flex: 1;
