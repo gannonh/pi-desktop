@@ -3,7 +3,7 @@
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect, useRef } from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMarkdownEditorAdapterConfig } from "../../src/renderer/markdown/mdxeditor-adapter";
 import { MarkdownSurface, type MarkdownSurfaceEditorActions } from "../../src/renderer/markdown/markdown-surface";
 
@@ -47,6 +47,58 @@ const expectedSerializedMarkdownFixture = [
 	"const markdown = 'source of truth';",
 	"```",
 ].join("\n");
+
+type ConsoleMessage = {
+	method: "error" | "warn";
+	input: unknown[];
+};
+
+const consoleMessages: ConsoleMessage[] = [];
+
+const knownMdxEditorActWarningComponents = new Set([
+	"ForwardRef(ContentEditableElementImpl)",
+	"Placeholder",
+	"Popper",
+	"Portal",
+	"Presence",
+	"RichTextPlugin",
+	"Select",
+	"SelectContent",
+	"SelectItem",
+	"SelectItemText",
+	"SourceEditor",
+	"Tooltip",
+]);
+
+const formatConsoleMessage = ({ method, input }: ConsoleMessage) =>
+	`${method}: ${input.map((entry) => (entry instanceof Error ? entry.stack ?? entry.message : String(entry))).join(" ")}`;
+
+const isKnownMdxEditorActWarning = ({ method, input }: ConsoleMessage) =>
+	method === "error" &&
+	typeof input[0] === "string" &&
+	input[0].startsWith("An update to %s inside a test was not wrapped in act(...).") &&
+	typeof input[1] === "string" &&
+	knownMdxEditorActWarningComponents.has(input[1]);
+
+beforeEach(() => {
+	consoleMessages.length = 0;
+	vi.spyOn(console, "error").mockImplementation((...input) => {
+		consoleMessages.push({ method: "error", input });
+	});
+	vi.spyOn(console, "warn").mockImplementation((...input) => {
+		consoleMessages.push({ method: "warn", input });
+	});
+});
+
+afterEach(() => {
+	const unexpectedMessages = consoleMessages.filter((message) => !isKnownMdxEditorActWarning(message));
+	vi.restoreAllMocks();
+
+	// MDXEditor 4.0.1 emits React act warnings from Radix/Lexical internals after mount in jsdom.
+	// The product code cannot wrap those internal updates, so this guard suppresses only that exact
+	// known warning shape and still fails the test on any other console warning or error.
+	expect(unexpectedMessages.map(formatConsoleMessage)).toEqual([]);
+});
 
 beforeAll(() => {
 	if (!Range.prototype.getClientRects) {
