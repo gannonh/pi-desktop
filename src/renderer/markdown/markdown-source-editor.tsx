@@ -31,6 +31,7 @@ export function MarkdownSourceEditor({
 		role: "source",
 		onChange,
 		onEditorReady,
+		onError,
 	});
 
 	return (

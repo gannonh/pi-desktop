@@ -1,5 +1,5 @@
 import { MDXEditor } from "@mdxeditor/editor";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
 import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
 import type { MarkdownSurfaceEditorActions, MarkdownSurfaceEditorRole } from "./markdown-surface";
 import { useMdxMarkdownEditorBridge } from "./use-mdx-markdown-editor-bridge";
@@ -11,6 +11,15 @@ type RichMarkdownEditorProps = {
 	onChange: (markdown: string) => void;
 	onEditorReady?: (role: MarkdownSurfaceEditorRole, actions: MarkdownSurfaceEditorActions) => void;
 	onError?: (message: string, source: string) => void;
+	onLinkClick?: (href: string) => void;
+};
+
+const closestMarkdownLink = (target: EventTarget | null) => {
+	if (!(target instanceof Element)) {
+		return null;
+	}
+
+	return target.closest<HTMLAnchorElement>("a[href]");
 };
 
 export function RichMarkdownEditor({
@@ -20,7 +29,9 @@ export function RichMarkdownEditor({
 	onChange,
 	onEditorReady,
 	onError,
+	onLinkClick,
 }: RichMarkdownEditorProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
 	const config = useMemo(() => createMarkdownEditorAdapterConfig(), []);
 	const { editorRef, handleChange } = useMdxMarkdownEditorBridge({
 		value,
@@ -28,10 +39,67 @@ export function RichMarkdownEditor({
 		role: "rich",
 		onChange,
 		onEditorReady,
+		onError,
 	});
 
+	const guardLinkClick = (event: {
+		target: EventTarget | null;
+		preventDefault: () => void;
+		stopPropagation: () => void;
+	}) => {
+		const link = closestMarkdownLink(event.target);
+		if (!link) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		onLinkClick?.(link.getAttribute("href") ?? link.href);
+	};
+
+	useLayoutEffect(() => {
+		const container = containerRef.current;
+		if (!container) {
+			return;
+		}
+
+		const handleNativeClick = (event: globalThis.MouseEvent) => {
+			guardLinkClick(event);
+		};
+
+		const linkedAnchors = new Set<HTMLAnchorElement>();
+		const syncAnchorGuards = () => {
+			for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+				if (linkedAnchors.has(link)) {
+					continue;
+				}
+				linkedAnchors.add(link);
+				link.addEventListener("click", handleNativeClick, { capture: true });
+			}
+		};
+
+		syncAnchorGuards();
+		const observer = new MutationObserver(syncAnchorGuards);
+		observer.observe(container, { childList: true, subtree: true });
+
+		return () => {
+			observer.disconnect();
+			for (const link of linkedAnchors) {
+				link.removeEventListener("click", handleNativeClick, { capture: true });
+			}
+		};
+	});
+
+	const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => guardLinkClick(event);
+
 	return (
-		<div className="markdown-surface__rich" data-testid="markdown-rich-editor" data-readonly={readOnly}>
+		<div
+			ref={containerRef}
+			className="markdown-surface__rich"
+			data-testid="markdown-rich-editor"
+			data-readonly={readOnly}
+			onClickCapture={handleClickCapture}
+		>
 			<MDXEditor
 				ref={editorRef}
 				markdown={value}

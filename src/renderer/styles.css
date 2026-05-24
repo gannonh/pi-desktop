@@ -1419,6 +1419,72 @@ button:disabled {
 	font-size: var(--type-caption);
 }
 
+.markdown-surface {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+}
+
+.markdown-surface__error {
+	margin: 0.625rem 0.75rem 0;
+	border: 1px solid color-mix(in oklch, var(--color-destructive) 42%, transparent);
+	border-radius: var(--radius-control);
+	padding: 0.5rem 0.625rem;
+	background: color-mix(in oklch, var(--color-destructive) 14%, transparent);
+	color: var(--color-foreground);
+	font-size: var(--type-caption);
+}
+
+.markdown-surface__error p {
+	margin: 0;
+}
+
+.markdown-surface__error p + p {
+	margin-top: 0.25rem;
+}
+
+.markdown-surface__error-title {
+	font-weight: 600;
+}
+
+.markdown-surface__rich,
+.markdown-surface__source,
+.markdown-surface__editor {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+}
+
+.markdown-surface__split {
+	display: grid;
+	min-height: 0;
+	flex: 1;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.markdown-surface__toolbar {
+	border-bottom: 1px solid var(--border-subtle);
+	background: var(--composer-control-surface);
+}
+
+.markdown-surface__toolbar-contents {
+	display: flex;
+	min-height: 2rem;
+	align-items: center;
+	gap: 0.125rem;
+	padding: 0.25rem 0.5rem;
+	overflow-x: auto;
+}
+
+.markdown-surface__content {
+	min-height: 0;
+	flex: 1;
+	padding: 0.75rem 1rem 1rem;
+	color: var(--color-foreground);
+}
+
 @media (max-width: 959px) {
 	.file-workspace {
 		grid-template-columns: 1fr;

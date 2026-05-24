@@ -8,6 +8,7 @@ type MdxMarkdownEditorBridgeOptions = {
 	role: MarkdownSurfaceEditorRole;
 	onChange: (markdown: string) => void;
 	onEditorReady?: (role: MarkdownSurfaceEditorRole, actions: MarkdownSurfaceEditorActions) => void;
+	onError?: (message: string, source: string) => void;
 };
 
 export const useMdxMarkdownEditorBridge = ({
@@ -16,6 +17,7 @@ export const useMdxMarkdownEditorBridge = ({
 	role,
 	onChange,
 	onEditorReady,
+	onError,
 }: MdxMarkdownEditorBridgeOptions) => {
 	const editorRef = useRef<MDXEditorMethods>(null);
 	const readOnlyRef = useRef(readOnly);
@@ -51,8 +53,11 @@ export const useMdxMarkdownEditorBridge = ({
 				editorRef.current?.setMarkdown(markdown);
 				onChange(markdown);
 			},
+			reportParseError: (message, source) => {
+				onError?.(message, source);
+			},
 		});
-	}, [onChange, onEditorReady, role]);
+	}, [onChange, onEditorReady, onError, role]);
 
 	const handleChange = (markdown: string, initialMarkdownNormalize: boolean) => {
 		if (initialMarkdownNormalize) {
