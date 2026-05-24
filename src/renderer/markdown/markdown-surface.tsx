@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MarkdownSourceEditor } from "./markdown-source-editor";
 import { RichMarkdownEditor } from "./rich-markdown-editor";
 
@@ -41,9 +41,17 @@ export function MarkdownSurface({
 }: MarkdownSurfaceProps) {
 	const [parseError, setParseError] = useState<MarkdownParseErrorState | null>(null);
 
+	useEffect(() => {
+		setParseError(null);
+	}, [relativePath, value]);
+
 	const handleEditorError = (message: string, source: string) => {
 		setParseError({ message, source });
 		onError?.(message, source);
+	};
+	const handleChange = (markdown: string) => {
+		onChange(markdown);
+		setParseError(null);
 	};
 	const showPreviewSourceFallback = mode === "preview" && parseError !== null;
 
@@ -66,7 +74,7 @@ export function MarkdownSurface({
 					value={value}
 					readOnly={readOnly}
 					relativePath={relativePath}
-					onChange={onChange}
+					onChange={handleChange}
 					onEditorReady={onEditorReady}
 					onError={handleEditorError}
 					onLinkClick={onLinkClick}
@@ -77,7 +85,7 @@ export function MarkdownSurface({
 					value={value}
 					readOnly={readOnly}
 					relativePath={relativePath}
-					onChange={onChange}
+					onChange={handleChange}
 					onEditorReady={onEditorReady}
 					onError={handleEditorError}
 				/>
@@ -87,7 +95,7 @@ export function MarkdownSurface({
 					value={value}
 					readOnly={readOnly}
 					relativePath={relativePath}
-					onChange={onChange}
+					onChange={handleChange}
 					onEditorReady={onEditorReady}
 					onError={handleEditorError}
 				/>
@@ -98,7 +106,7 @@ export function MarkdownSurface({
 						value={value}
 						readOnly={readOnly}
 						relativePath={relativePath}
-						onChange={onChange}
+						onChange={handleChange}
 						onEditorReady={onEditorReady}
 						onError={handleEditorError}
 					/>
@@ -106,7 +114,7 @@ export function MarkdownSurface({
 						value={value}
 						readOnly={readOnly}
 						relativePath={relativePath}
-						onChange={onChange}
+						onChange={handleChange}
 						onEditorReady={onEditorReady}
 						onError={handleEditorError}
 						onLinkClick={onLinkClick}

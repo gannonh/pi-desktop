@@ -343,6 +343,78 @@ describe("MarkdownSurface", () => {
 		expect(onError).toHaveBeenCalledWith("Unsupported Markdown construct", "<custom-block />");
 	});
 
+	it("clears stale parse errors when the Markdown file path changes", async () => {
+		let richActions: MarkdownSurfaceEditorActions | null = null;
+		const { rerender } = render(
+			<MarkdownSurface
+				value={representativeMarkdownFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+				onEditorReady={(role, actions) => {
+					if (role === "rich") {
+						richActions = actions;
+					}
+				}}
+			/>,
+		);
+
+		await waitFor(() => expect(richActions).not.toBeNull());
+		act(() => richActions?.reportParseError("Unsupported Markdown construct", "<custom-block />"));
+		expect(screen.getByRole("alert").textContent).toContain("Unsupported Markdown construct");
+		expect(screen.queryByTestId("markdown-rich-editor")).toBeNull();
+
+		rerender(
+			<MarkdownSurface
+				value="# New file"
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/NEXT.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+		expect(screen.getByTestId("markdown-rich-editor")).not.toBeNull();
+		expect(screen.queryByTestId("markdown-source-editor")).toBeNull();
+	});
+
+	it("clears stale parse errors after fallback source edits are emitted", async () => {
+		const onChange = vi.fn();
+		let richActions: MarkdownSurfaceEditorActions | null = null;
+		let sourceActions: MarkdownSurfaceEditorActions | null = null;
+
+		render(
+			<MarkdownSurface
+				value={representativeMarkdownFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={onChange}
+				onEditorReady={(role, actions) => {
+					if (role === "rich") {
+						richActions = actions;
+					}
+					if (role === "source") {
+						sourceActions = actions;
+					}
+				}}
+			/>,
+		);
+
+		await waitFor(() => expect(richActions).not.toBeNull());
+		act(() => richActions?.reportParseError("Unsupported Markdown construct", "<custom-block />"));
+		await waitFor(() => expect(sourceActions).not.toBeNull());
+
+		act(() => sourceActions?.replaceMarkdown("# Recovered source edit"));
+
+		expect(onChange).toHaveBeenCalledWith("# Recovered source edit");
+		await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+		expect(screen.getByTestId("markdown-rich-editor")).not.toBeNull();
+		expect(screen.queryByTestId("markdown-source-editor")).toBeNull();
+	});
+
 	it("disables editor changes in read-only split mode", async () => {
 		const onChange = vi.fn();
 		let sourceActions: MarkdownSurfaceEditorActions | null = null;
