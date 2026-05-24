@@ -200,4 +200,13 @@ describe("renderer style audit rules", () => {
 		expect(option).toContain("cursor: pointer");
 		expect(option).toContain("padding: 0.35rem 0.5rem");
 	});
+
+	it("keeps the resizable file divider visible across the workspace height", () => {
+		const divider = ruleBody(styles(), ".file-workspace__divider");
+
+		expect(divider).toContain("align-self: stretch");
+		expect(divider).toContain("min-height: 100%");
+		expect(divider).toContain("background: linear-gradient");
+		expect(divider).toContain("var(--color-border)");
+	});
 });
