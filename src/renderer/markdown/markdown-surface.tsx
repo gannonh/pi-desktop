@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { unsupportedLocalImageSources } from "./markdown-image-policy";
 
 const RichMarkdownEditor = lazy(() =>
@@ -52,14 +52,20 @@ export function MarkdownSurface({
 	const currentParseError =
 		parseError?.relativePath === relativePath && parseError.value === value ? parseError : null;
 
-	const handleEditorError = (message: string, source: string) => {
-		setParseError({ message, source, relativePath, value });
-		onError?.(message, source);
-	};
-	const handleChange = (markdown: string) => {
-		onChange(markdown);
-		setParseError(null);
-	};
+	const handleEditorError = useCallback(
+		(message: string, source: string) => {
+			setParseError({ message, source, relativePath, value });
+			onError?.(message, source);
+		},
+		[relativePath, value, onError],
+	);
+	const handleChange = useCallback(
+		(markdown: string) => {
+			onChange(markdown);
+			setParseError(null);
+		},
+		[onChange],
+	);
 	const showPreviewSourceFallback = mode === "preview" && currentParseError !== null;
 	const showImageNotice = (mode === "preview" || mode === "split") && unsupportedImages.length > 0;
 	const sharedEditorProps = {

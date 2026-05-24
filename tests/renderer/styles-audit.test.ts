@@ -132,6 +132,22 @@ describe("renderer style audit rules", () => {
 		expect(showMore).not.toContain("min-height");
 	});
 
+	it("defines the subtle border token used by Markdown surfaces", () => {
+		const root = ruleBody(styles(), ":root");
+
+		expect(root).toContain("--border-subtle: var(--color-border)");
+	});
+
+	it("hides the file divider when the workspace stacks vertically", () => {
+		const css = styles();
+		const mobileStart = css.indexOf("@media (max-width: 959px)");
+		expect(mobileStart).toBeGreaterThanOrEqual(0);
+		const mobileCss = css.slice(mobileStart, css.indexOf("}\n\n.workspace-panel__empty", mobileStart));
+
+		expect(mobileCss).toContain(".file-workspace__divider");
+		expect(mobileCss).toContain("display: none");
+	});
+
 	it("keeps Markdown toolbar icons compact and unmangled", () => {
 		const css = styles();
 		const icon = ruleBody(css, ".markdown-surface__icon");

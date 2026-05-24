@@ -1,6 +1,6 @@
 import { type CodeBlockEditorProps, CodeMirrorEditor } from "@mdxeditor/editor";
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type CopyStatus = "idle" | "copied" | "error";
 
@@ -63,15 +63,42 @@ const languageLabel = (language: string | null | undefined) => language?.trim() 
 
 export function MarkdownCodeBlockEditor(props: CodeBlockEditorProps) {
 	const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+	const copyResetTimerRef = useRef<number | null>(null);
 	const label = languageLabel(props.language);
 
+	useEffect(() => {
+		return () => {
+			if (copyResetTimerRef.current !== null) {
+				window.clearTimeout(copyResetTimerRef.current);
+			}
+		};
+	}, []);
+
+	const scheduleCopyStatusReset = () => {
+		if (copyResetTimerRef.current !== null) {
+			window.clearTimeout(copyResetTimerRef.current);
+		}
+
+		copyResetTimerRef.current = window.setTimeout(() => {
+			setCopyStatus("idle");
+			copyResetTimerRef.current = null;
+		}, 2000);
+	};
+
 	const handleCopy = async () => {
+		if (copyResetTimerRef.current !== null) {
+			window.clearTimeout(copyResetTimerRef.current);
+			copyResetTimerRef.current = null;
+		}
+
 		try {
 			await copyCodeBlock(props.code);
 			setCopyStatus("copied");
 		} catch {
 			setCopyStatus("error");
 		}
+
+		scheduleCopyStatusReset();
 	};
 
 	return (

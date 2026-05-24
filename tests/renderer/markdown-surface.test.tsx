@@ -2,6 +2,7 @@
 
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { PanelBottom, PanelRight } from "lucide-react";
 import { createElement, isValidElement, useEffect, useRef } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
@@ -84,6 +85,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	// MDXEditor 4.0.1 emits React act warnings from Radix/Lexical internals after mount in jsdom.
 	// The product code cannot wrap those internal updates, so this guard suppresses only that exact
 	// known warning shape and still fails the test on any other console warning or error.
@@ -159,6 +161,8 @@ describe("MarkdownSurface", () => {
 		const tableIconProps = tableIcon.props as Record<string, unknown>;
 		expect(undoIconProps["aria-hidden"]).toBe(true);
 		expect(tableIconProps["data-mdxeditor-icon"]).toBe("table");
+		expect(config.iconComponentFor("insert_row_below").type).toBe(PanelBottom);
+		expect(config.iconComponentFor("insert_col_right").type).toBe(PanelRight);
 	});
 
 	it("renders preview mode through the rich editor and emits rich editor changes", async () => {
@@ -193,6 +197,26 @@ describe("MarkdownSurface", () => {
 		act(() => richActions?.replaceMarkdown("## Updated from rich editor"));
 
 		expect(onChange).toHaveBeenCalledWith("## Updated from rich editor");
+	});
+
+	it("keeps editor-ready registration stable across unchanged parent renders", async () => {
+		const onChange = vi.fn();
+		const onEditorReady = vi.fn();
+		const props = {
+			value: representativeMarkdownFixture,
+			mode: "preview" as const,
+			readOnly: false,
+			relativePath: "docs/README.md",
+			onChange,
+			onEditorReady,
+		};
+		const { rerender } = render(<MarkdownSurface {...props} />);
+
+		await waitFor(() => expect(onEditorReady).toHaveBeenCalledTimes(1));
+		rerender(<MarkdownSurface {...props} />);
+		await act(async () => {});
+
+		expect(onEditorReady).toHaveBeenCalledTimes(1);
 	});
 
 	it("renders source mode through a CodeMirror-backed editor and emits source changes", async () => {
@@ -278,10 +302,18 @@ describe("MarkdownSurface", () => {
 
 		const copyButton = await screen.findByRole("button", { name: "Copy ts code block" });
 		expect(screen.getByText("ts")).not.toBeNull();
-		fireEvent.click(copyButton);
+		vi.useFakeTimers();
+		await act(async () => {
+			fireEvent.click(copyButton);
+			await Promise.resolve();
+		});
 
-		await waitFor(() => expect(writeText).toHaveBeenCalledWith("const markdown = 'source of truth';"));
-		expect(await screen.findByText("Copied code block.")).not.toBeNull();
+		expect(writeText).toHaveBeenCalledWith("const markdown = 'source of truth';");
+		expect(screen.getByText("Copied code block.")).not.toBeNull();
+
+		act(() => vi.advanceTimersByTime(2000));
+		expect(screen.queryByText("Copied code block.")).toBeNull();
+		expect(copyButton.textContent).toContain("Copy");
 	});
 
 	it("copies rich code block contents through the desktop clipboard bridge", async () => {

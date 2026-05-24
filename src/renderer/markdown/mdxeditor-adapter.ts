@@ -56,7 +56,9 @@ import {
 	Minus,
 	MoreHorizontal,
 	MoreVertical,
+	PanelBottom,
 	PanelLeft,
+	PanelRight,
 	PanelTop,
 	Pencil,
 	Redo2,
@@ -184,8 +186,8 @@ const mdxEditorIconMap: Record<IconKey, LucideIcon> = {
 	add_column: Columns3,
 	insert_col_left: PanelLeft,
 	insert_row_above: PanelTop,
-	insert_row_below: PanelTop,
-	insert_col_right: PanelLeft,
+	insert_row_below: PanelBottom,
+	insert_col_right: PanelRight,
 	check: Check,
 };
 

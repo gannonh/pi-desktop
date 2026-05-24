@@ -23,6 +23,7 @@
 }
 
 :root {
+	--border-subtle: var(--color-border);
 	--app-sidebar-width: 298px;
 	--app-main-min-width: 22.5rem;
 	--app-min-height: 40rem;
@@ -1853,6 +1854,10 @@ body.file-workspace--resizing {
 	.file-workspace {
 		grid-template-columns: 1fr;
 		grid-template-rows: minmax(8rem, 34%) minmax(0, 1fr);
+	}
+
+	.file-workspace__divider {
+		display: none;
 	}
 }
 

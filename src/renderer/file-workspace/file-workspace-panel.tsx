@@ -2,6 +2,7 @@ import {
 	type CSSProperties,
 	type KeyboardEvent,
 	type PointerEvent as ReactPointerEvent,
+	useCallback,
 	useEffect,
 	useRef,
 	useState,
@@ -27,6 +28,7 @@ function clampExplorerWidth(width: number, workspaceWidth: number): number {
 
 export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 	const [explorerWidth, setExplorerWidth] = useState<number | null>(null);
+	const [explorerMaxWidth, setExplorerMaxWidth] = useState<number | null>(null);
 	const workspaceRef = useRef<HTMLDivElement>(null);
 	const explorerRef = useRef<HTMLDivElement | null>(null);
 	const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -36,8 +38,23 @@ export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 
 	useEffect(() => () => dragCleanupRef.current?.(), []);
 
+	const updateExplorerMaxWidth = useCallback((workspaceWidth: number) => {
+		setExplorerMaxWidth(Math.max(MIN_EXPLORER_WIDTH, workspaceWidth - MIN_VIEWER_WIDTH));
+	}, []);
+
+	useEffect(() => {
+		const refreshExplorerMaxWidth = () => {
+			updateExplorerMaxWidth(workspaceRef.current?.getBoundingClientRect().width ?? 0);
+		};
+
+		refreshExplorerMaxWidth();
+		window.addEventListener("resize", refreshExplorerMaxWidth);
+		return () => window.removeEventListener("resize", refreshExplorerMaxWidth);
+	}, [updateExplorerMaxWidth]);
+
 	const resizeExplorer = (width: number) => {
 		const workspaceWidth = workspaceRef.current?.getBoundingClientRect().width ?? 0;
+		updateExplorerMaxWidth(workspaceWidth);
 		setExplorerWidth(clampExplorerWidth(width, workspaceWidth));
 	};
 
@@ -57,6 +74,7 @@ export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 		}
 
 		const workspaceWidth = workspace.getBoundingClientRect().width;
+		updateExplorerMaxWidth(workspaceWidth);
 		const startX = event.clientX;
 		const visibleExplorer = explorer.querySelector<HTMLElement>(".file-explorer");
 		const startWidth =
@@ -74,6 +92,8 @@ export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 			document.body.classList.remove("file-workspace--resizing");
 			document.removeEventListener("pointermove", onPointerMove);
 			document.removeEventListener("pointerup", cleanupDrag);
+			document.removeEventListener("pointercancel", cleanupDrag);
+			window.removeEventListener("blur", cleanupDrag);
 			dragCleanupRef.current = null;
 		};
 
@@ -82,6 +102,8 @@ export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 		document.body.classList.add("file-workspace--resizing");
 		document.addEventListener("pointermove", onPointerMove);
 		document.addEventListener("pointerup", cleanupDrag, { once: true });
+		document.addEventListener("pointercancel", cleanupDrag, { once: true });
+		window.addEventListener("blur", cleanupDrag, { once: true });
 	};
 
 	const resizeDividerWithKeyboard = (event: KeyboardEvent<HTMLElement>) => {
@@ -108,6 +130,7 @@ export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 						aria-label="Resize file explorer"
 						aria-orientation="vertical"
 						aria-valuemin={MIN_EXPLORER_WIDTH}
+						aria-valuemax={explorerMaxWidth ?? undefined}
 						aria-valuenow={explorerWidth ?? undefined}
 						tabIndex={0}
 						onKeyDown={resizeDividerWithKeyboard}

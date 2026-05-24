@@ -142,11 +142,14 @@ describe("FileWorkspacePanel", () => {
 		} as DOMRect);
 
 		fireEvent.pointerDown(divider, { clientX: 300, pointerId: 1 });
+		expect(divider.getAttribute("aria-valuemax")).toBe("620");
+		expect(document.body.classList.contains("file-workspace--resizing")).toBe(true);
 		fireEvent.pointerMove(document, { clientX: 420, pointerId: 1 });
-		fireEvent.pointerUp(document, { pointerId: 1 });
+		fireEvent.pointerCancel(document, { pointerId: 1 });
 
 		expect(workspace.getAttribute("style")).toContain("--file-explorer-width: 420px");
 		expect(divider.getAttribute("aria-valuenow")).toBe("420");
+		expect(document.body.classList.contains("file-workspace--resizing")).toBe(false);
 	});
 
 	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {
