@@ -131,4 +131,23 @@ describe("renderer style audit rules", () => {
 		expect(showMore).toContain("width: 100%");
 		expect(showMore).not.toContain("min-height");
 	});
+
+	it("keeps Markdown toolbar icons compact and unmangled", () => {
+		const css = styles();
+		const icon = ruleBody(css, ".markdown-surface__icon");
+		const toolbarItem = ruleBody(
+			css,
+			'.markdown-surface__toolbar-contents [data-toolbar-item]:not([role="combobox"])',
+		);
+		const toolbar = ruleBody(css, ".markdown-surface__toolbar-contents");
+
+		expect(icon).toContain("width: 1rem");
+		expect(icon).toContain("height: 1rem");
+		expect(icon).toContain("flex: 0 0 auto");
+		expect(toolbarItem).toContain("width: 1.75rem");
+		expect(toolbarItem).toContain("height: 1.75rem");
+		expect(toolbarItem).toContain("padding: 0");
+		expect(toolbar).toContain("flex-wrap: nowrap");
+		expect(toolbar).toContain("overflow-y: hidden");
+	});
 });
