@@ -121,6 +121,62 @@ describe("FileWorkspacePanel", () => {
 		expect(markup).toContain('data-testid="file-workspace-no-project"');
 	});
 
+	it("lets users drag the divider between the file explorer and editor", async () => {
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			workspaceFiles: {
+				listDirectory: vi.fn(async () => ({
+					ok: true as const,
+					data: {
+						entries: [{ name: "AGENTS.md", relativePath: "AGENTS.md", kind: "file" as const }],
+					},
+				})),
+				readFile: vi.fn(async () => ({ ok: true as const, data: { kind: "text" as const, content: "", size: 0 } })),
+				writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "AGENTS.md", size: 0 } })),
+			},
+		};
+
+		render(
+			<ShellTestProviders project={project}>
+				<FileWorkspacePanel project={project} />
+			</ShellTestProviders>,
+		);
+
+		const workspace = screen.getByTestId("workspace-panel-files");
+		const explorer = await screen.findByTestId("file-explorer");
+		const divider = screen.getByRole("separator", { name: "Resize file explorer" });
+
+		vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue({
+			x: 0,
+			y: 0,
+			width: 900,
+			height: 600,
+			top: 0,
+			right: 900,
+			bottom: 600,
+			left: 0,
+			toJSON: () => ({}),
+		} as DOMRect);
+		vi.spyOn(explorer, "getBoundingClientRect").mockReturnValue({
+			x: 0,
+			y: 0,
+			width: 300,
+			height: 600,
+			top: 0,
+			right: 300,
+			bottom: 600,
+			left: 0,
+			toJSON: () => ({}),
+		} as DOMRect);
+
+		fireEvent.pointerDown(divider, { clientX: 300, pointerId: 1 });
+		fireEvent.pointerMove(document, { clientX: 420, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(workspace.getAttribute("style")).toContain("--file-explorer-width: 420px");
+		expect(divider.getAttribute("aria-valuenow")).toBe("420");
+	});
+
 	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {
 		window.piDesktop = {
 			...createUnavailablePiDesktopApi("test"),

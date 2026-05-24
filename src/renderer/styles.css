@@ -1051,16 +1051,62 @@ button:disabled {
 
 .file-workspace {
 	--file-workspace-subheader-height: 2.125rem;
+	--file-explorer-width: 34%;
 
 	display: grid;
 	min-height: 0;
 	flex: 1;
-	grid-template-columns: minmax(11rem, 34%) minmax(0, 1fr);
+	grid-template-columns: minmax(11rem, var(--file-explorer-width)) 0.375rem minmax(0, 1fr);
 	background: var(--sidebar-background);
+}
+
+.file-workspace__explorer-pane {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+}
+
+.file-workspace__divider {
+	position: relative;
+	z-index: 1;
+	width: 0.375rem;
+	min-height: 0;
+	margin: 0;
+	border: 0;
+	background: transparent;
+	cursor: col-resize;
+}
+
+.file-workspace__divider::before {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 1px;
+	background: var(--color-border);
+	content: "";
+	transform: translateX(-50%);
+}
+
+.file-workspace__divider:hover::before,
+.file-workspace__divider:focus-visible::before,
+body.file-workspace--resizing .file-workspace__divider::before {
+	background: var(--color-ring);
+}
+
+.file-workspace__divider:focus-visible {
+	outline: 2px solid var(--color-ring);
+	outline-offset: -2px;
+}
+
+body.file-workspace--resizing {
+	cursor: col-resize;
+	user-select: none;
 }
 
 .file-workspace__empty {
 	display: grid;
+	grid-column: 1 / -1;
 	min-height: 12rem;
 	place-content: center;
 	gap: 0.35rem;
@@ -1086,10 +1132,10 @@ button:disabled {
 	--file-explorer-gutter: 1.125rem;
 
 	display: flex;
+	width: 100%;
 	min-width: 0;
 	min-height: 0;
 	flex-direction: column;
-	border-right: 1px solid var(--color-border);
 	background: var(--sidebar-background);
 	overflow: auto;
 }
