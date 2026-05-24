@@ -162,8 +162,10 @@ describe("renderer style audit rules", () => {
 		expect(triggerWrapper).toContain("display: inline-flex");
 		expect(triggerWrapper).toContain("height: 1.75rem");
 		expect(triggerWrapper).toContain("align-items: center");
+		expect(blockTypeTrigger).toContain("width: 4.75rem");
 		expect(blockTypeTrigger).toContain("font-size: var(--type-caption)");
 		expect(blockTypeTrigger).toContain("line-height: 1");
+		expect(blockTypeTrigger).toContain("white-space: nowrap");
 		expect(blockTypeTrigger).toContain("border-radius: var(--radius-control)");
 	});
 
