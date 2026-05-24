@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for Build.
+Implemented.
 
 ## Source of truth
 
@@ -339,17 +339,17 @@ Exact test filenames may change if Build chooses a different naming split.
 
 ## Acceptance criteria
 
-- [ ] Markdown files open in editable `Preview` mode by default.
-- [ ] Users can switch between `Preview`, `Markdown`, and `Split` modes.
-- [ ] Preview edits persist to Markdown source and reload correctly.
-- [ ] Source edits update preview without losing unsaved changes.
-- [ ] Headings, tables, task lists, links, images, code blocks, blockquotes, lists, inline code, and thematic breaks render and edit correctly.
-- [ ] Code blocks provide copy actions with visible success or failure feedback.
-- [ ] Save, dirty state, keyboard save, close prompts, and error handling match existing file workspace behavior.
-- [ ] Styling uses Pi Desktop renderer tokens and does not introduce a separate visual system.
-- [ ] Unsupported or malformed Markdown remains recoverable through source mode.
-- [ ] Focused renderer tests cover parsing/rendering, mode switching, preview editing, and save behavior.
-- [ ] `pnpm check` passes before implementation signoff.
+- [x] Markdown files open in editable `Preview` mode by default.
+- [x] Users can switch between `Preview`, `Markdown`, and `Split` modes.
+- [x] Preview edits persist to Markdown source and reload correctly.
+- [x] Source edits update preview without losing unsaved changes.
+- [x] Headings, tables, task lists, links, images, code blocks, blockquotes, lists, inline code, and thematic breaks render and edit correctly.
+- [x] Code blocks provide copy actions with visible success or failure feedback.
+- [x] Save, dirty state, keyboard save, close prompts, and error handling match existing file workspace behavior.
+- [x] Styling uses Pi Desktop renderer tokens and does not introduce a separate visual system.
+- [x] Unsupported or malformed Markdown remains recoverable through source mode.
+- [x] Focused renderer tests cover parsing/rendering, mode switching, preview editing, and save behavior.
+- [x] `pnpm check` passes before implementation signoff.
 
 ## Explicitly deferred work
 
@@ -378,3 +378,18 @@ Exact test filenames may change if Build chooses a different naming split.
 - **Required verification:** representative Markdown fixture round-trip, focused renderer tests, manual UAT, and `pnpm check`.
 - **Known risks:** source normalization, dependency compatibility, CSS containment, unsupported Markdown recovery, split-mode update loops.
 - **Blocking questions:** None.
+
+## Build completion report
+
+- **Spec path:** `docs/specs/2026-05-24-world-class-markdown-support-design.md`
+- **Base SHA:** `7baed81b651c6f2b868f503b6fa524b82d9578a0`
+- **Final head SHA:** `1949f4275affa6ff42e6df6964a04270159b0079`
+- **Tasks completed:** B1 dependency spike, B2 Markdown surface abstraction, B3 file workspace mode integration, B4 rich authoring toolbar and safety, B5 code blocks/images/visual finish, B6 final verification.
+- **Files changed:** Markdown renderer modules under `src/renderer/markdown/`, file workspace Markdown integration under `src/renderer/file-workspace/`, renderer startup/config for lazy MDXEditor runtime loading, scoped styles in `src/renderer/styles.css`, package/lockfile dependencies, and focused renderer tests.
+- **Verification run:** `pnpm test tests/renderer/markdown-surface.test.tsx`; `pnpm test tests/renderer/file-workspace-state.test.ts tests/renderer/file-workspace-panel.test.tsx`; `pnpm test tests/renderer/file-workspace-interactions.test.tsx`; `pnpm test:smoke`; `pnpm check`.
+- **Result:** All required checks passed. `pnpm check` includes format, lint, typecheck, coverage, build, and smoke tests. Lint reports the existing Biome schema-version info only.
+- **Review gates:** Per-task spec compliance and code quality reviews passed. Final whole-branch review passed with no Critical or Important issues.
+- **Approved deviations:** Local/project-relative images show clear unsupported preview messaging rather than loading project files through new IPC.
+- **Runtime fix during verification:** Initial `pnpm check` failed in smoke tests because the packaged renderer evaluated MDXEditor/Prism code at startup. The fix lazy-loads Markdown editor chunks, initializes Prism from the renderer entry, preserves pnpm dependency resolution for the renderer build, and adds direct package entries needed for packaged resolution.
+- **Known follow-up:** Enrich `src/renderer/dev-preview-api.ts` Markdown fixture content for broader manual visual review in web preview.
+- **Independent subagent review:** Used for implementation, spec compliance, code quality, and final branch review.
