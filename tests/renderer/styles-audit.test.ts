@@ -215,4 +215,22 @@ describe("renderer style audit rules", () => {
 		expect(divider).not.toContain("linear-gradient");
 		expect(activeDivider).toContain("border-left-color: var(--color-ring)");
 	});
+
+	it("keeps Markdown code blocks dark and free of duplicate editor chrome", () => {
+		const css = styles();
+		const nestedToolbar = ruleBody(css, '.markdown-surface__code-editor [class*="codeMirrorToolbar"]');
+		const nestedWrapper = ruleBody(css, '.markdown-surface__code-editor [class*="codeMirrorWrapper"]');
+		const codeEditor = ruleBody(css, ".markdown-surface__code-editor .cm-editor");
+		const codeGutters = ruleBody(css, ".markdown-surface__code-editor .cm-gutters");
+		const emptyStatus = ruleBody(css, ".markdown-surface__code-copy-status:empty");
+
+		expect(nestedToolbar).toContain("display: none");
+		expect(nestedWrapper).toContain("border: 0");
+		expect(nestedWrapper).toContain("padding: 0");
+		expect(nestedWrapper).toContain("margin: 0");
+		expect(codeEditor).toContain("background: var(--sidebar-background)");
+		expect(codeEditor).toContain("color: var(--color-foreground)");
+		expect(codeGutters).toContain("background: color-mix");
+		expect(emptyStatus).toContain("display: none");
+	});
 });
