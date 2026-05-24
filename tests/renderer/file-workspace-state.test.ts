@@ -118,6 +118,40 @@ describe("file workspace state", () => {
 		expect(dirtyTabLabels(state)).toEqual(["notes.md"]);
 		state = setFileViewMode(state, tabId, "source");
 		expect(state.tabs[0]?.viewMode).toBe("source");
+		state = setFileViewMode(state, tabId, "split");
+		expect(state.tabs[0]?.viewMode).toBe("split");
+	});
+
+	it("keeps Markdown preview mode when editable preview changes the buffer", () => {
+		let state = openFileTab(createInitialFileWorkspaceState(), "notes.md");
+		state = applyFileLoadResult(state, "notes.md", { kind: "text", content: "draft" });
+		const tabId = state.tabs[0]?.id;
+		expect(tabId).toBeTruthy();
+		if (!tabId) {
+			return;
+		}
+
+		const dirty = updateFileBuffer(state, tabId, "draft from preview");
+
+		expect(dirty.tabs[0]?.buffer).toBe("draft from preview");
+		expect(dirty.tabs[0]?.dirty).toBe(true);
+		expect(dirty.tabs[0]?.viewMode).toBe("preview");
+	});
+
+	it("switches Markdown modes without changing the buffer or dirty state", () => {
+		let state = openFileTab(createInitialFileWorkspaceState(), "notes.md");
+		state = applyFileLoadResult(state, "notes.md", { kind: "text", content: "draft" });
+		const tabId = state.tabs[0]?.id;
+		expect(tabId).toBeTruthy();
+		if (!tabId) {
+			return;
+		}
+
+		const split = setFileViewMode(state, tabId, "split");
+
+		expect(split.tabs[0]?.buffer).toBe("draft");
+		expect(split.tabs[0]?.dirty).toBe(false);
+		expect(split.tabs[0]?.viewMode).toBe("split");
 	});
 
 	it("ignores invalid active tab ids", () => {

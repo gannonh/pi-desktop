@@ -2,11 +2,79 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
 import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
+
+beforeAll(() => {
+	if (!Range.prototype.getClientRects) {
+		Range.prototype.getClientRects = () => ({
+			length: 0,
+			item: () => null,
+			[Symbol.iterator]: function* iterator() {},
+		} as DOMRectList);
+	}
+});
+
+type ConsoleMessage = {
+	method: "error" | "warn";
+	input: unknown[];
+};
+
+const consoleMessages: ConsoleMessage[] = [];
+
+const knownMdxEditorActWarningComponents = new Set([
+	"Placeholder",
+	"Popper",
+	"Portal",
+	"Presence",
+	"RichTextPlugin",
+	"Select",
+	"SelectContent",
+	"SelectItem",
+	"SelectItemText",
+	"SourceEditor",
+	"Tooltip",
+]);
+
+const formatConsoleMessage = ({ method, input }: ConsoleMessage) =>
+	`${method}: ${input.map((entry) => (entry instanceof Error ? entry.stack ?? entry.message : String(entry))).join(" ")}`;
+
+const isKnownMdxEditorActWarning = ({ method, input }: ConsoleMessage) =>
+	method === "error" &&
+	typeof input[0] === "string" &&
+	input[0].startsWith("An update to %s inside a test was not wrapped in act(...).") &&
+	typeof input[1] === "string" &&
+	knownMdxEditorActWarningComponents.has(input[1]);
+
+const isKnownFileWorkspaceSelectionWarning = ({ method, input }: ConsoleMessage) =>
+	method === "error" &&
+	typeof input[0] === "string" &&
+	input[0].startsWith("Cannot update a component (`%s`) while rendering a different component (`%s`).") &&
+	input[1] === "RightPanelProvider" &&
+	input[2] === "FileWorkspaceProvider";
+
+beforeEach(() => {
+	consoleMessages.length = 0;
+	vi.spyOn(console, "error").mockImplementation((...input) => {
+		consoleMessages.push({ method: "error", input });
+	});
+	vi.spyOn(console, "warn").mockImplementation((...input) => {
+		consoleMessages.push({ method: "warn", input });
+	});
+});
+
+afterEach(() => {
+	const unexpectedMessages = consoleMessages.filter(
+		(message) => !isKnownMdxEditorActWarning(message) && !isKnownFileWorkspaceSelectionWarning(message),
+	);
+	vi.restoreAllMocks();
+
+	expect(unexpectedMessages.map(formatConsoleMessage)).toEqual([]);
+});
 
 const project: ProjectRecord = {
 	id: "project:/tmp/pi-desktop",
@@ -51,5 +119,74 @@ describe("FileWorkspacePanel", () => {
 	it("renders a no-project empty state", () => {
 		const markup = renderToStaticMarkup(createElement(FileWorkspacePanel, { project: null }));
 		expect(markup).toContain('data-testid="file-workspace-no-project"');
+	});
+
+	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			workspaceFiles: {
+				listDirectory: vi.fn(async () => ({
+					ok: true as const,
+					data: {
+						entries: [{ name: "AGENTS.md", relativePath: "AGENTS.md", kind: "file" as const }],
+					},
+				})),
+				readFile: vi.fn(async () => ({
+					ok: true as const,
+					data: { kind: "text" as const, content: "# Agent\n", size: 8 },
+				})),
+				writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "AGENTS.md", size: 8 } })),
+			},
+		};
+
+		render(
+			<ShellTestProviders project={project}>
+				<FileWorkspacePanel project={project} />
+			</ShellTestProviders>,
+		);
+
+		await waitFor(() => expect(screen.getByRole("button", { name: /AGENTS\.md/ })).toBeTruthy());
+		fireEvent.click(screen.getByRole("button", { name: /AGENTS\.md/ }));
+
+		await waitFor(() => expect(screen.getByTestId("markdown-surface").getAttribute("data-mode")).toBe("preview"));
+		expect(screen.getByRole("button", { name: "Preview" }).getAttribute("aria-pressed")).toBe("true");
+		expect(screen.getByRole("button", { name: "Markdown" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Split" })).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Split" }));
+		expect(screen.getByTestId("markdown-surface").getAttribute("data-mode")).toBe("split");
+		expect(screen.queryByText("Saved")).toBeNull();
+	});
+
+	it("keeps non-Markdown files on the existing source editor path without mode controls", async () => {
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			workspaceFiles: {
+				listDirectory: vi.fn(async () => ({
+					ok: true as const,
+					data: {
+						entries: [{ name: "index.ts", relativePath: "src/index.ts", kind: "file" as const }],
+					},
+				})),
+				readFile: vi.fn(async () => ({
+					ok: true as const,
+					data: { kind: "text" as const, content: "export {};\n", size: 11 },
+				})),
+				writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "src/index.ts", size: 11 } })),
+			},
+		};
+
+		render(
+			<ShellTestProviders project={project}>
+				<FileWorkspacePanel project={project} />
+			</ShellTestProviders>,
+		);
+
+		await waitFor(() => expect(screen.getByRole("button", { name: /index\.ts/ })).toBeTruthy());
+		fireEvent.click(screen.getByRole("button", { name: /index\.ts/ }));
+
+		await waitFor(() => expect(screen.getByTestId("file-editor-source")).toBeTruthy());
+		expect(screen.queryByTestId("file-viewer-mode-toggle")).toBeNull();
+		expect(screen.queryByTestId("markdown-surface")).toBeNull();
 	});
 });

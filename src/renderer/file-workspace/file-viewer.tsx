@@ -1,9 +1,16 @@
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import type { FileViewMode } from "./file-workspace-types";
 import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
 import { FileEditor } from "./file-editor";
 import { useFileWorkspace } from "./file-workspace-context";
 import { isMarkdownRelativePath } from "./file-workspace-paths";
+
+const markdownModes: { mode: FileViewMode; label: string }[] = [
+	{ mode: "preview", label: "Preview" },
+	{ mode: "source", label: "Markdown" },
+	{ mode: "split", label: "Split" },
+];
 
 export function FileViewer() {
 	const { state, activeTab, updateBuffer, setViewMode, saveActiveFile } = useFileWorkspace();
@@ -76,22 +83,17 @@ export function FileViewer() {
 				</div>
 				{isMarkdownRelativePath(activeTab.relativePath) ? (
 					<div className="file-viewer__mode-toggle" data-testid="file-viewer-mode-toggle">
-						<button
-							type="button"
-							className={`file-viewer__mode${activeTab.viewMode === "preview" ? " file-viewer__mode--active" : ""}`}
-							aria-pressed={activeTab.viewMode === "preview"}
-							onClick={() => setViewMode(activeTab.id, "preview")}
-						>
-							Preview
-						</button>
-						<button
-							type="button"
-							className={`file-viewer__mode${activeTab.viewMode === "source" ? " file-viewer__mode--active" : ""}`}
-							aria-pressed={activeTab.viewMode === "source"}
-							onClick={() => setViewMode(activeTab.id, "source")}
-						>
-							Markdown
-						</button>
+						{markdownModes.map(({ mode, label }) => (
+							<button
+								key={mode}
+								type="button"
+								className={`file-viewer__mode${activeTab.viewMode === mode ? " file-viewer__mode--active" : ""}`}
+								aria-pressed={activeTab.viewMode === mode}
+								onClick={() => setViewMode(activeTab.id, mode)}
+							>
+								{label}
+							</button>
+						))}
 					</div>
 				) : null}
 				<MenuAnchor ref={menuAnchorRef} className="file-viewer__actions">

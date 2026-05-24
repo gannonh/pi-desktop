@@ -1,5 +1,6 @@
+import { MarkdownSurface } from "../markdown/markdown-surface";
+import { isMarkdownRelativePath } from "./file-workspace-paths";
 import type { FileEditorTab } from "./file-workspace-types";
-import { renderMarkdownHtml } from "../markdown/render-markdown-html";
 
 interface FileEditorProps {
 	tab: FileEditorTab;
@@ -38,13 +39,14 @@ export function FileEditor({ tab, onChange }: FileEditorProps) {
 		);
 	}
 
-	if (tab.viewMode === "preview") {
+	if (isMarkdownRelativePath(tab.relativePath)) {
 		return (
-			<div
-				className="file-editor file-editor--preview"
-				data-testid="file-editor-preview"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown HTML.
-				dangerouslySetInnerHTML={{ __html: renderMarkdownHtml(tab.buffer) }}
+			<MarkdownSurface
+				value={tab.buffer}
+				mode={tab.viewMode}
+				readOnly={tab.readOnly}
+				relativePath={tab.relativePath}
+				onChange={onChange}
 			/>
 		);
 	}
