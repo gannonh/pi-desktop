@@ -6,9 +6,9 @@ Product context and roadmap live in [docs/superpowers/specs/2026-05-12-pi-deskto
 
 ## Prerequisites
 
-- macOS
-- Node.js 24.x
-- pnpm 11.1.1
+* macOS
+* Node.js 24.x
+* pnpm 11.1.1
 
 Use Corepack to activate the pinned pnpm version:
 
