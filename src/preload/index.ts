@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { z } from "zod";
 import {
 	AppVersionResultSchema,
+	ClipboardWriteTextResultSchema,
 	IpcChannels,
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
@@ -108,6 +109,10 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.workspaceFilesReadFile, WorkspaceReadFileResultSchema, input),
 		writeFile: async (input) =>
 			safeInvokeParse(IpcChannels.workspaceFilesWriteFile, WorkspaceWriteFileResultSchema, input),
+	},
+	clipboard: {
+		writeText: async (input) =>
+			safeInvokeParse(IpcChannels.clipboardWriteText, ClipboardWriteTextResultSchema, input),
 	},
 };
 

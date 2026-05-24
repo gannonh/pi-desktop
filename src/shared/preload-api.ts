@@ -5,9 +5,11 @@ import type {
 	ChatCreateInput,
 	ChatForkInput,
 	ChatRenameInput,
-	ChatStandaloneCreateInput,
 	ChatSelectionInput,
+	ChatStandaloneCreateInput,
 	ChatStandaloneSelectionInput,
+	ClipboardWriteTextInput,
+	ClipboardWriteTextResult,
 	PiSessionAbortInput,
 	PiSessionActionResult,
 	PiSessionDisposeInput,
@@ -68,6 +70,9 @@ export interface PiDesktopApi {
 		listDirectory: (input: WorkspaceFilesPathInput) => Promise<WorkspaceListDirectoryResult>;
 		readFile: (input: WorkspaceFilesPathInput) => Promise<WorkspaceReadFileResult>;
 		writeFile: (input: WorkspaceFilesWriteInput) => Promise<WorkspaceWriteFileResult>;
+	};
+	clipboard: {
+		writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;
 	};
 	piSession: {
 		start: (input: PiSessionStartInput) => Promise<PiSessionStartResult>;

@@ -167,7 +167,6 @@ export const updateFileBuffer = (state: FileWorkspaceState, tabId: string, buffe
 			...tab,
 			buffer,
 			dirty,
-			viewMode: tab.viewMode === "preview" && dirty ? "source" : tab.viewMode,
 		};
 	}),
 	saveStatus: "idle",

@@ -1,4 +1,4 @@
-export type FileViewMode = "preview" | "source";
+export type FileViewMode = "preview" | "source" | "split";
 
 export type FileEditorTab = {
 	id: string;

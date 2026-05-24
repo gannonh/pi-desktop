@@ -1,21 +1,40 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { useFileWorkspace } from "../../src/renderer/file-workspace/file-workspace-context";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
-import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
+import {
+	captureConsoleMessages,
+	ensureRangeClientRects,
+	expectNoUnexpectedConsoleMessages,
+	isKnownFileWorkspaceSelectionWarning,
+	type ConsoleMessage,
+} from "./console-test-guard";
+import { ShellTestProviders } from "./shell-test-providers";
 
 function TabCloseHarness() {
 	const { closeTab } = useFileWorkspace();
 	return (
-		<button type="button" onClick={() => closeTab("file:AGENTS.md")}>
-			Close AGENTS.md
+		<button type="button" onClick={() => closeTab("file:notes.txt")}>
+			Close notes.txt
 		</button>
 	);
 }
+
+beforeAll(ensureRangeClientRects);
+
+let consoleMessages: ConsoleMessage[];
+
+beforeEach(() => {
+	consoleMessages = captureConsoleMessages();
+});
+
+afterEach(() => {
+	expectNoUnexpectedConsoleMessages(consoleMessages, isKnownFileWorkspaceSelectionWarning);
+});
 
 const project: ProjectRecord = {
 	id: "project:/tmp/pi-desktop",
@@ -29,7 +48,7 @@ const project: ProjectRecord = {
 };
 
 describe("file workspace interactions", () => {
-	it("loads the root listing and opens a file from the explorer", async () => {
+	it("loads the root listing and opens a Markdown file from the explorer", async () => {
 		const readFile = vi.fn(async () => ({
 			ok: true as const,
 			data: { kind: "text" as const, content: "# Agent\n", size: 8 },
@@ -68,20 +87,20 @@ describe("file workspace interactions", () => {
 			});
 		});
 
-		expect(screen.getByTestId("file-editor-preview")).toBeTruthy();
+		expect(screen.getByTestId("markdown-surface").getAttribute("data-mode")).toBe("preview");
 	});
 
-	it("does not close a dirty tab when discard is cancelled", async () => {
+	it("does not close a dirty non-Markdown tab when discard is cancelled", async () => {
 		const readFile = vi.fn(async () => ({
 			ok: true as const,
-			data: { kind: "text" as const, content: "# Agent\n", size: 8 },
+			data: { kind: "text" as const, content: "notes\n", size: 6 },
 		}));
 		const listDirectory = vi.fn(async ({ relativePath }: { relativePath: string }) => ({
 			ok: true as const,
 			data: {
 				entries:
 					relativePath === ""
-						? [{ name: "AGENTS.md", relativePath: "AGENTS.md", kind: "file" as const }]
+						? [{ name: "notes.txt", relativePath: "notes.txt", kind: "file" as const }]
 						: [],
 			},
 		}));
@@ -100,41 +119,36 @@ describe("file workspace interactions", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByRole("button", { name: /AGENTS\.md/ })).toBeTruthy();
+			expect(screen.getByRole("button", { name: /notes\.txt/ })).toBeTruthy();
 		});
 
 		const explorer = screen.getByTestId("file-explorer");
-		fireEvent.click(within(explorer).getByRole("button", { name: /AGENTS\.md/ }));
-		await waitFor(() => {
-			expect(screen.getByTestId("file-editor-preview")).toBeTruthy();
-		});
-
-		fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+		fireEvent.click(within(explorer).getByRole("button", { name: /notes\.txt/ }));
 		const editor = await screen.findByTestId("file-editor-source");
-		fireEvent.change(editor, { target: { value: "# Agent\nedited\n" } });
+		fireEvent.change(editor, { target: { value: "notes\nedited\n" } });
 
-		fireEvent.click(screen.getByRole("button", { name: "Close AGENTS.md" }));
+		fireEvent.click(screen.getByRole("button", { name: "Close notes.txt" }));
 
 		expect(screen.getByTestId("file-editor-source")).toBeTruthy();
 		expect(confirm).toHaveBeenCalled();
 		confirm.mockRestore();
 	});
 
-	it("saves the active file on Cmd+S", async () => {
+	it("saves the active non-Markdown file on Cmd+S", async () => {
 		const writeFile = vi.fn(async () => ({
 			ok: true as const,
-			data: { relativePath: "AGENTS.md", size: 12 },
+			data: { relativePath: "notes.txt", size: 13 },
 		}));
 		const readFile = vi.fn(async () => ({
 			ok: true as const,
-			data: { kind: "text" as const, content: "# Agent\n", size: 8 },
+			data: { kind: "text" as const, content: "notes\n", size: 6 },
 		}));
 		const listDirectory = vi.fn(async ({ relativePath }: { relativePath: string }) => ({
 			ok: true as const,
 			data: {
 				entries:
 					relativePath === ""
-						? [{ name: "AGENTS.md", relativePath: "AGENTS.md", kind: "file" as const }]
+						? [{ name: "notes.txt", relativePath: "notes.txt", kind: "file" as const }]
 						: [],
 			},
 		}));
@@ -151,26 +165,20 @@ describe("file workspace interactions", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByRole("button", { name: /AGENTS\.md/ })).toBeTruthy();
+			expect(screen.getByRole("button", { name: /notes\.txt/ })).toBeTruthy();
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: /AGENTS\.md/ }));
-
-		await waitFor(() => {
-			expect(screen.getByTestId("file-editor-preview")).toBeTruthy();
-		});
-
-		fireEvent.click(screen.getByRole("button", { name: "Markdown" }));
+		fireEvent.click(screen.getByRole("button", { name: /notes\.txt/ }));
 
 		const editor = await screen.findByTestId("file-editor-source");
-		fireEvent.change(editor, { target: { value: "# Agent\nedited\n" } });
+		fireEvent.change(editor, { target: { value: "notes\nedited\n" } });
 		fireEvent.keyDown(window, { key: "s", metaKey: true });
 
 		await waitFor(() => {
 			expect(writeFile).toHaveBeenCalledWith({
 				projectId: project.id,
-				relativePath: "AGENTS.md",
-				content: "# Agent\nedited\n",
+				relativePath: "notes.txt",
+				content: "notes\nedited\n",
 			});
 		});
 	});

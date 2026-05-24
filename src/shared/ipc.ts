@@ -1,58 +1,68 @@
 import { z } from "zod";
 import {
-	PiSessionAbortInputSchema,
-	PiSessionActionResultSchema,
-	PiSessionDisposeInputSchema,
-	PiSessionEventSchema,
-	PiSessionGetDefaultSettingsInputSchema,
-	PiSessionGetSettingsInputSchema,
-	PiSessionHistoryInputSchema,
-	PiSessionHistoryResultSchema,
-	PiSessionQueueResultSchema,
-	PiSessionRemoveQueuedMessageInputSchema,
-	PiSessionSetDefaultModelInputSchema,
-	PiSessionSetDefaultThinkingLevelInputSchema,
-	PiSessionSetModelInputSchema,
-	PiSessionSetThinkingLevelInputSchema,
-	PiSessionSettingsResultSchema,
-	PiSessionStartInputSchema,
-	PiSessionStartResultSchema,
-	PiSessionSubmitInputSchema,
-	PiSessionUpdateQueuedMessageInputSchema,
 	type PiSessionAbortInput,
+	PiSessionAbortInputSchema,
 	type PiSessionActionResult,
+	PiSessionActionResultSchema,
 	type PiSessionDisposeInput,
+	PiSessionDisposeInputSchema,
 	type PiSessionEvent,
+	PiSessionEventSchema,
 	type PiSessionGetDefaultSettingsInput,
+	PiSessionGetDefaultSettingsInputSchema,
 	type PiSessionGetSettingsInput,
+	PiSessionGetSettingsInputSchema,
 	type PiSessionHistoryInput,
+	PiSessionHistoryInputSchema,
 	type PiSessionHistoryResult,
+	PiSessionHistoryResultSchema,
 	type PiSessionQueueResult,
+	PiSessionQueueResultSchema,
 	type PiSessionRemoveQueuedMessageInput,
+	PiSessionRemoveQueuedMessageInputSchema,
 	type PiSessionSetDefaultModelInput,
+	PiSessionSetDefaultModelInputSchema,
 	type PiSessionSetDefaultThinkingLevelInput,
+	PiSessionSetDefaultThinkingLevelInputSchema,
 	type PiSessionSetModelInput,
+	PiSessionSetModelInputSchema,
 	type PiSessionSetThinkingLevelInput,
+	PiSessionSetThinkingLevelInputSchema,
 	type PiSessionSettingsResult,
+	PiSessionSettingsResultSchema,
 	type PiSessionStartInput,
+	PiSessionStartInputSchema,
 	type PiSessionStartResult,
+	PiSessionStartResultSchema,
 	type PiSessionSubmitInput,
+	PiSessionSubmitInputSchema,
 	type PiSessionUpdateQueuedMessageInput,
+	PiSessionUpdateQueuedMessageInputSchema,
 } from "./pi-session";
 import { type ProjectStateView, ProjectStateViewSchema } from "./project-state";
 import { createResultSchema, type IpcResult } from "./result";
 import {
-	WorkspaceFilesPathInputSchema,
-	WorkspaceFilesWriteInputSchema,
-	WorkspaceListDirectoryResultSchema,
-	WorkspaceReadFileResultSchema,
-	WorkspaceWriteFileResultSchema,
 	type WorkspaceFilesPathInput,
+	WorkspaceFilesPathInputSchema,
 	type WorkspaceFilesWriteInput,
+	WorkspaceFilesWriteInputSchema,
 	type WorkspaceListDirectoryResult,
+	WorkspaceListDirectoryResultSchema,
 	type WorkspaceReadFileResult,
+	WorkspaceReadFileResultSchema,
 	type WorkspaceWriteFileResult,
+	WorkspaceWriteFileResultSchema,
 } from "./workspace-files";
+
+export const ClipboardWriteTextInputSchema = z.strictObject({
+	text: z.string(),
+});
+
+export const ClipboardWriteTextResultSchema = createResultSchema(
+	z.strictObject({
+		written: z.literal(true),
+	}),
+);
 
 export const IpcChannels = {
 	appGetVersion: "app:getVersion",
@@ -91,6 +101,7 @@ export const IpcChannels = {
 	workspaceFilesListDirectory: "workspace-files:listDirectory",
 	workspaceFilesReadFile: "workspace-files:readFile",
 	workspaceFilesWriteFile: "workspace-files:writeFile",
+	clipboardWriteText: "clipboard:writeText",
 } as const;
 
 export const PiSessionOperationFailedCode = "pi_session.operation_failed";
@@ -179,6 +190,8 @@ export {
 	PiSessionUpdateQueuedMessageInputSchema,
 };
 
+export type ClipboardWriteTextInput = z.infer<typeof ClipboardWriteTextInputSchema>;
+export type ClipboardWriteTextResult = z.infer<typeof ClipboardWriteTextResultSchema>;
 export type AppVersion = z.infer<typeof AppVersionSchema>;
 export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
@@ -193,13 +206,6 @@ export type ChatCloneInput = z.infer<typeof ChatCloneInputSchema>;
 export type ChatBranchInput = z.infer<typeof ChatBranchInputSchema>;
 export type AppVersionResult = IpcResult<AppVersion>;
 export type ProjectStateViewResult = IpcResult<ProjectStateView>;
-export type {
-	WorkspaceFilesPathInput,
-	WorkspaceFilesWriteInput,
-	WorkspaceListDirectoryResult,
-	WorkspaceReadFileResult,
-	WorkspaceWriteFileResult,
-};
 export type {
 	PiSessionAbortInput,
 	PiSessionActionResult,
@@ -220,4 +226,9 @@ export type {
 	PiSessionStartResult,
 	PiSessionSubmitInput,
 	PiSessionUpdateQueuedMessageInput,
+	WorkspaceFilesPathInput,
+	WorkspaceFilesWriteInput,
+	WorkspaceListDirectoryResult,
+	WorkspaceReadFileResult,
+	WorkspaceWriteFileResult,
 };

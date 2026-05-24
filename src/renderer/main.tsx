@@ -1,6 +1,6 @@
+import { Agentation } from "agentation";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Agentation } from "agentation";
 import { App } from "./App";
 import { createHttpPiDesktopApi } from "./app-api/http-client";
 import { createUnavailablePiDesktopApi } from "./app-api/unavailable-api";

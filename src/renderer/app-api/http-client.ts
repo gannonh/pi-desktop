@@ -1,13 +1,14 @@
+import type { z } from "zod";
 import {
-	AppRpcResponseSchemas,
-	PiSessionEventEnvelopeSchema,
 	type AppRpcOperation,
 	type AppRpcRequest,
+	AppRpcResponseSchemas,
+	PiSessionEventEnvelopeSchema,
 } from "../../shared/app-transport";
 import type { PiSessionEvent } from "../../shared/ipc";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
-import type { z } from "zod";
+import { writeBrowserClipboardText } from "./browser-clipboard";
 
 type AppRpcResponse<TOperation extends AppRpcOperation> = z.infer<(typeof AppRpcResponseSchemas)[TOperation]>;
 type AppRpcInputArgs<TOperation extends AppRpcOperation> =
@@ -211,6 +212,9 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			listDirectory: (input) => callRpc("workspaceFiles.listDirectory", input),
 			readFile: (input) => callRpc("workspaceFiles.readFile", input),
 			writeFile: (input) => callRpc("workspaceFiles.writeFile", input),
+		},
+		clipboard: {
+			writeText: writeBrowserClipboardText,
 		},
 	};
 };

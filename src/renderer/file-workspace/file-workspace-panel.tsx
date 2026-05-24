@@ -1,19 +1,141 @@
+import {
+	type CSSProperties,
+	type KeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import { FileEmptyStates } from "./file-empty-states";
 import { FileExplorer } from "./file-explorer";
 import { FileViewer } from "./file-viewer";
+
+const MIN_EXPLORER_WIDTH = 176;
+const MIN_VIEWER_WIDTH = 280;
+const KEYBOARD_RESIZE_STEP = 24;
+const DEFAULT_EXPLORER_WIDTH = 306;
+
 interface FileWorkspacePanelProps {
 	project: ProjectRecord | null;
 }
 
+function clampExplorerWidth(width: number, workspaceWidth: number): number {
+	const maxWidth = Math.max(MIN_EXPLORER_WIDTH, workspaceWidth - MIN_VIEWER_WIDTH);
+	return Math.min(Math.max(width, MIN_EXPLORER_WIDTH), maxWidth);
+}
+
 export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
+	const [explorerWidth, setExplorerWidth] = useState<number | null>(null);
+	const [explorerMaxWidth, setExplorerMaxWidth] = useState<number | null>(null);
+	const workspaceRef = useRef<HTMLDivElement>(null);
+	const explorerRef = useRef<HTMLDivElement | null>(null);
+	const dragCleanupRef = useRef<(() => void) | null>(null);
 	const blocked = <FileEmptyStates project={project} />;
+	const workspaceStyle =
+		explorerWidth === null ? undefined : ({ "--file-explorer-width": `${explorerWidth}px` } as CSSProperties);
+
+	useEffect(() => () => dragCleanupRef.current?.(), []);
+
+	const updateExplorerMaxWidth = useCallback((workspaceWidth: number) => {
+		setExplorerMaxWidth(Math.max(MIN_EXPLORER_WIDTH, workspaceWidth - MIN_VIEWER_WIDTH));
+	}, []);
+
+	useEffect(() => {
+		const refreshExplorerMaxWidth = () => {
+			updateExplorerMaxWidth(workspaceRef.current?.getBoundingClientRect().width ?? 0);
+		};
+
+		refreshExplorerMaxWidth();
+		window.addEventListener("resize", refreshExplorerMaxWidth);
+		return () => window.removeEventListener("resize", refreshExplorerMaxWidth);
+	}, [updateExplorerMaxWidth]);
+
+	const resizeExplorer = (width: number) => {
+		const workspaceWidth = workspaceRef.current?.getBoundingClientRect().width ?? 0;
+		updateExplorerMaxWidth(workspaceWidth);
+		setExplorerWidth(clampExplorerWidth(width, workspaceWidth));
+	};
+
+	const startDividerDrag = (event: ReactPointerEvent<HTMLElement>) => {
+		const workspace = workspaceRef.current;
+		const explorer = explorerRef.current;
+
+		if (!workspace || !explorer) {
+			return;
+		}
+
+		event.preventDefault();
+		try {
+			event.currentTarget.setPointerCapture?.(event.pointerId);
+		} catch {
+			// Pointer capture is unavailable for synthetic events used by tests and browser probes.
+		}
+
+		const workspaceWidth = workspace.getBoundingClientRect().width;
+		updateExplorerMaxWidth(workspaceWidth);
+		const startX = event.clientX;
+		const visibleExplorer = explorer.querySelector<HTMLElement>(".file-explorer");
+		const startWidth =
+			explorer.getBoundingClientRect().width ||
+			visibleExplorer?.getBoundingClientRect().width ||
+			explorerWidth ||
+			DEFAULT_EXPLORER_WIDTH;
+
+		const onPointerMove = (moveEvent: PointerEvent) => {
+			const nextWidth = startWidth + moveEvent.clientX - startX;
+			setExplorerWidth(clampExplorerWidth(nextWidth, workspaceWidth));
+		};
+
+		const cleanupDrag = () => {
+			document.body.classList.remove("file-workspace--resizing");
+			document.removeEventListener("pointermove", onPointerMove);
+			document.removeEventListener("pointerup", cleanupDrag);
+			document.removeEventListener("pointercancel", cleanupDrag);
+			window.removeEventListener("blur", cleanupDrag);
+			dragCleanupRef.current = null;
+		};
+
+		dragCleanupRef.current?.();
+		dragCleanupRef.current = cleanupDrag;
+		document.body.classList.add("file-workspace--resizing");
+		document.addEventListener("pointermove", onPointerMove);
+		document.addEventListener("pointerup", cleanupDrag, { once: true });
+		document.addEventListener("pointercancel", cleanupDrag, { once: true });
+		window.addEventListener("blur", cleanupDrag, { once: true });
+	};
+
+	const resizeDividerWithKeyboard = (event: KeyboardEvent<HTMLElement>) => {
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+			return;
+		}
+
+		event.preventDefault();
+		const currentWidth =
+			explorerWidth ?? explorerRef.current?.getBoundingClientRect().width ?? DEFAULT_EXPLORER_WIDTH;
+		const direction = event.key === "ArrowLeft" ? -1 : 1;
+		resizeExplorer(currentWidth + direction * KEYBOARD_RESIZE_STEP);
+	};
 
 	return (
-		<div className="file-workspace" data-testid="workspace-panel-files">
+		<div ref={workspaceRef} className="file-workspace" data-testid="workspace-panel-files" style={workspaceStyle}>
 			{project && project.availability.status === "available" ? (
 				<>
-					<FileExplorer />
+					<div ref={explorerRef} className="file-workspace__explorer-pane">
+						<FileExplorer />
+					</div>
+					<hr
+						className="file-workspace__divider"
+						aria-label="Resize file explorer"
+						aria-orientation="vertical"
+						aria-valuemin={MIN_EXPLORER_WIDTH}
+						aria-valuemax={explorerMaxWidth ?? undefined}
+						aria-valuenow={explorerWidth ?? undefined}
+						tabIndex={0}
+						onKeyDown={resizeDividerWithKeyboard}
+						onPointerDown={startDividerDrag}
+					/>
 					<FileViewer />
 				</>
 			) : (

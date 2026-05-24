@@ -101,6 +101,7 @@ describe("IPC contracts", () => {
 			workspaceFilesListDirectory: "workspace-files:listDirectory",
 			workspaceFilesReadFile: "workspace-files:readFile",
 			workspaceFilesWriteFile: "workspace-files:writeFile",
+			clipboardWriteText: "clipboard:writeText",
 		});
 	});
 

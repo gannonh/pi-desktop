@@ -131,4 +131,122 @@ describe("renderer style audit rules", () => {
 		expect(showMore).toContain("width: 100%");
 		expect(showMore).not.toContain("min-height");
 	});
+
+	it("defines the subtle border token used by Markdown surfaces", () => {
+		const root = ruleBody(styles(), ":root");
+
+		expect(root).toContain("--border-subtle: var(--color-border)");
+	});
+
+	it("hides the file divider when the workspace stacks vertically", () => {
+		const css = styles();
+		const mobileStart = css.indexOf("@media (max-width: 959px)");
+		expect(mobileStart).toBeGreaterThanOrEqual(0);
+		const mobileCss = css.slice(mobileStart, css.indexOf("}\n\n.workspace-panel__empty", mobileStart));
+
+		expect(mobileCss).toContain(".file-workspace__divider");
+		expect(mobileCss).toContain("display: none");
+	});
+
+	it("keeps Markdown toolbar icons compact and unmangled", () => {
+		const css = styles();
+		const icon = ruleBody(css, ".markdown-surface__icon");
+		const toolbarItem = ruleBody(
+			css,
+			'.markdown-surface__toolbar-contents [data-toolbar-item]:not([role="combobox"])',
+		);
+		const toolbar = ruleBody(css, ".markdown-surface__toolbar-contents");
+
+		expect(icon).toContain("width: 1rem");
+		expect(icon).toContain("height: 1rem");
+		expect(icon).toContain("flex: 0 0 auto");
+		expect(toolbarItem).toContain("width: 1.75rem");
+		expect(toolbarItem).toContain("height: 1.75rem");
+		expect(toolbarItem).toContain("padding: 0");
+		expect(toolbar).toContain("flex-wrap: nowrap");
+		expect(toolbar).toContain("overflow-y: hidden");
+	});
+
+	it("keeps the Markdown block-type selector visually compact", () => {
+		const css = styles();
+		const triggerWrapper = ruleBody(css, ".markdown-surface__toolbar-contents > span");
+		const blockTypeTrigger = ruleBody(
+			css,
+			'.markdown-surface__toolbar-contents [role="combobox"][data-toolbar-item]',
+		);
+
+		expect(triggerWrapper).toContain("display: inline-flex");
+		expect(triggerWrapper).toContain("height: 1.75rem");
+		expect(triggerWrapper).toContain("align-items: center");
+		expect(blockTypeTrigger).toContain("width: 4.75rem");
+		expect(blockTypeTrigger).toContain("font-size: var(--type-caption)");
+		expect(blockTypeTrigger).toContain("line-height: 1");
+		expect(blockTypeTrigger).toContain("white-space: nowrap");
+		expect(blockTypeTrigger).toContain("border-radius: var(--radius-control)");
+	});
+
+	it("keeps Markdown list markers visible in rendered content", () => {
+		const css = styles();
+		const unordered = ruleBody(css, ".markdown-surface__content ul");
+		const ordered = ruleBody(css, ".markdown-surface__content ol");
+		const listItem = ruleBody(css, ".markdown-surface__content li");
+
+		expect(unordered).toContain("list-style: disc outside");
+		expect(ordered).toContain("list-style: decimal outside");
+		expect(listItem).toContain("display: list-item");
+	});
+
+	it("keeps long Markdown documents scrollable inside the file viewer", () => {
+		const scrollRoot = ruleBody(styles(), ".markdown-surface__editor .mdxeditor-root-contenteditable");
+
+		expect(scrollRoot).toContain("min-height: 0");
+		expect(scrollRoot).toContain("flex: 1");
+		expect(scrollRoot).toContain("overflow-y: auto");
+	});
+
+	it("keeps Markdown toolbar dropdowns visible and selectable", () => {
+		const css = styles();
+		const dropdown = ruleBody(css, ".markdown-surface__editor .mdxeditor-select-content");
+		const option = ruleBody(css, ".markdown-surface__editor .mdxeditor-select-content [role='option']");
+
+		expect(dropdown).toContain("z-index: 20");
+		expect(dropdown).toContain("background: var(--menu-popover-background)");
+		expect(dropdown).toContain("border: 1px solid var(--color-border)");
+		expect(dropdown).toContain("box-shadow: 0 12px 32px oklch(0 0 0 / 35%)");
+		expect(option).toContain("cursor: pointer");
+		expect(option).toContain("padding: 0.35rem 0.5rem");
+	});
+
+	it("keeps the resizable file divider visible as one stable vertical rule", () => {
+		const divider = ruleBody(styles(), ".file-workspace__divider");
+		const activeDivider = ruleBody(
+			styles(),
+			".file-workspace__divider:hover,\n.file-workspace__divider:focus-visible,\nbody.file-workspace--resizing .file-workspace__divider",
+		);
+
+		expect(divider).toContain("align-self: stretch");
+		expect(divider).toContain("min-height: 100%");
+		expect(divider).toContain("border-left: 1px solid var(--color-border)");
+		expect(divider).toContain("background: transparent");
+		expect(divider).not.toContain("linear-gradient");
+		expect(activeDivider).toContain("border-left-color: var(--color-ring)");
+	});
+
+	it("keeps Markdown code blocks dark and free of duplicate editor chrome", () => {
+		const css = styles();
+		const nestedToolbar = ruleBody(css, '.markdown-surface__code-editor [class*="codeMirrorToolbar"]');
+		const nestedWrapper = ruleBody(css, '.markdown-surface__code-editor [class*="codeMirrorWrapper"]');
+		const codeEditor = ruleBody(css, ".markdown-surface__code-editor .cm-editor");
+		const codeGutters = ruleBody(css, ".markdown-surface__code-editor .cm-gutters");
+		const emptyStatus = ruleBody(css, ".markdown-surface__code-copy-status:empty");
+
+		expect(nestedToolbar).toContain("display: none");
+		expect(nestedWrapper).toContain("border: 0");
+		expect(nestedWrapper).toContain("padding: 0");
+		expect(nestedWrapper).toContain("margin: 0");
+		expect(codeEditor).toContain("background: var(--sidebar-background)");
+		expect(codeEditor).toContain("color: var(--color-foreground)");
+		expect(codeGutters).toContain("background: color-mix");
+		expect(emptyStatus).toContain("display: none");
+	});
 });
