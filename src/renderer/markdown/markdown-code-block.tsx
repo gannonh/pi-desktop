@@ -4,22 +4,59 @@ import { useState } from "react";
 
 type CopyStatus = "idle" | "copied" | "error";
 
+const copyCodeBlockWithSelection = (code: string): boolean => {
+	if (typeof document.execCommand !== "function") {
+		return false;
+	}
+
+	const textarea = document.createElement("textarea");
+	textarea.value = code;
+	textarea.readOnly = true;
+	textarea.style.position = "fixed";
+	textarea.style.inset = "0 auto auto -9999px";
+	textarea.style.opacity = "0";
+	document.body.append(textarea);
+	textarea.focus();
+	textarea.select();
+	textarea.setSelectionRange(0, code.length);
+
+	try {
+		return document.execCommand("copy");
+	} finally {
+		textarea.remove();
+	}
+};
+
 const copyCodeBlock = async (code: string): Promise<void> => {
+	const errors: string[] = [];
 	const desktopClipboard = window.piDesktop?.clipboard;
 	if (desktopClipboard) {
-		const result = await desktopClipboard.writeText({ text: code });
-		if (!result.ok) {
-			throw new Error(result.error.message);
+		try {
+			const result = await desktopClipboard.writeText({ text: code });
+			if (result.ok) {
+				return;
+			}
+			errors.push(result.error.message);
+		} catch (error) {
+			errors.push(error instanceof Error ? error.message : "Desktop clipboard failed.");
 		}
-		return;
 	}
 
 	const clipboard = navigator.clipboard;
-	if (!clipboard?.writeText) {
-		throw new Error("Clipboard API unavailable.");
+	if (clipboard?.writeText) {
+		try {
+			await clipboard.writeText(code);
+			return;
+		} catch (error) {
+			errors.push(error instanceof Error ? error.message : "Browser clipboard failed.");
+		}
 	}
 
-	await clipboard.writeText(code);
+	if (copyCodeBlockWithSelection(code)) {
+		return;
+	}
+
+	throw new Error(errors.join(" ") || "Clipboard API unavailable.");
 };
 
 const languageLabel = (language: string | null | undefined) => language?.trim() || "plain text";

@@ -331,9 +331,37 @@ describe("MarkdownSurface", () => {
 		expect(await screen.findByText("Copied code block.")).not.toBeNull();
 	});
 
+	it("falls back to user-gesture copy when clipboard APIs reject", async () => {
+		const desktopWriteText = vi.fn().mockRejectedValue(new Error("desktop clipboard unavailable"));
+		const browserWriteText = vi.fn().mockRejectedValue(new Error("browser clipboard unavailable"));
+		const execCommand = vi.fn().mockReturnValue(true);
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			clipboard: { writeText: desktopWriteText },
+		};
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: browserWriteText } });
+		Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+
+		render(
+			<MarkdownSurface
+				value={codeBlockFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Copy ts code block" }));
+
+		await waitFor(() => expect(execCommand).toHaveBeenCalledWith("copy"));
+		expect(await screen.findByText("Copied code block.")).not.toBeNull();
+	});
+
 	it("shows failure feedback when rich code block copy fails", async () => {
 		const writeText = vi.fn().mockRejectedValue(new Error("clipboard unavailable"));
 		Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+		Object.defineProperty(document, "execCommand", { configurable: true, value: undefined });
 
 		render(
 			<MarkdownSurface
