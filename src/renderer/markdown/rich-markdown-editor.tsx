@@ -1,5 +1,5 @@
 import { MDXEditor } from "@mdxeditor/editor";
-import { useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
 import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
 import type { MarkdownSurfaceEditorActions, MarkdownSurfaceEditorRole } from "./markdown-surface";
 import { useMdxMarkdownEditorBridge } from "./use-mdx-markdown-editor-bridge";
@@ -42,20 +42,19 @@ export function RichMarkdownEditor({
 		onError,
 	});
 
-	const guardLinkClick = (event: {
-		target: EventTarget | null;
-		preventDefault: () => void;
-		stopPropagation: () => void;
-	}) => {
-		const link = closestMarkdownLink(event.target);
-		if (!link) {
-			return;
-		}
+	const guardLinkClick = useCallback(
+		(event: { target: EventTarget | null; preventDefault: () => void; stopPropagation: () => void }) => {
+			const link = closestMarkdownLink(event.target);
+			if (!link) {
+				return;
+			}
 
-		event.preventDefault();
-		event.stopPropagation();
-		onLinkClick?.(link.getAttribute("href") ?? link.href);
-	};
+			event.preventDefault();
+			event.stopPropagation();
+			onLinkClick?.(link.getAttribute("href") ?? link.href);
+		},
+		[onLinkClick],
+	);
 
 	useLayoutEffect(() => {
 		const container = containerRef.current;
@@ -88,9 +87,12 @@ export function RichMarkdownEditor({
 				link.removeEventListener("click", handleNativeClick, { capture: true });
 			}
 		};
-	});
+	}, [guardLinkClick]);
 
-	const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => guardLinkClick(event);
+	const handleClickCapture = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => guardLinkClick(event),
+		[guardLinkClick],
+	);
 
 	return (
 		<div
@@ -104,6 +106,7 @@ export function RichMarkdownEditor({
 				ref={editorRef}
 				markdown={value}
 				plugins={config.plugins}
+				iconComponentFor={config.iconComponentFor}
 				className={config.editorClassName}
 				contentEditableClassName={config.contentClassName}
 				readOnly={readOnly}

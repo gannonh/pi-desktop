@@ -24,10 +24,55 @@ import {
 	tablePlugin,
 	thematicBreakPlugin,
 	toolbarPlugin,
+	type IconKey,
 	type RealmPlugin,
 	type ViewMode,
 } from "@mdxeditor/editor";
-import { Fragment, createElement } from "react";
+import {
+	AlignCenter,
+	AlignLeft,
+	AlignRight,
+	Bold,
+	Check,
+	ChevronDown,
+	Code2,
+	Columns3,
+	Copy,
+	ExternalLink,
+	FileCode2,
+	FileText,
+	GitCompare,
+	Highlighter,
+	ImagePlus,
+	Italic,
+	Link,
+	List,
+	ListChecks,
+	ListOrdered,
+	MessageSquareWarning,
+	Minus,
+	MoreHorizontal,
+	MoreVertical,
+	PanelLeft,
+	PanelTop,
+	Pencil,
+	Redo2,
+	Rows3,
+	Settings,
+	Strikethrough,
+	Subscript,
+	Superscript,
+	Table2,
+	Text,
+	Trash,
+	Trash2,
+	Underline,
+	Undo2,
+	Unlink,
+	X,
+	type LucideIcon,
+} from "lucide-react";
+import { Fragment, createElement, type ComponentProps, type ReactElement } from "react";
 
 export const mdxEditorPackage = {
 	name: "@mdxeditor/editor",
@@ -68,6 +113,7 @@ export type MarkdownEditorAdapterConfig = {
 	contentClassName: typeof mdxEditorClassNames.content;
 	toolbarClassName: typeof mdxEditorClassNames.toolbar;
 	pluginFeatures: MarkdownEditorPluginFeature[];
+	iconComponentFor: (name: IconKey) => ReactElement;
 	plugins: RealmPlugin[];
 };
 
@@ -91,6 +137,66 @@ const markdownPluginFeatures: MarkdownEditorPluginFeature[] = [
 	"source-codemirror",
 	"toolbar",
 ];
+
+const mdxEditorIconMap: Record<IconKey, LucideIcon> = {
+	undo: Undo2,
+	redo: Redo2,
+	format_bold: Bold,
+	format_italic: Italic,
+	format_underlined: Underline,
+	code: Code2,
+	strikeThrough: Strikethrough,
+	superscript: Superscript,
+	subscript: Subscript,
+	format_list_bulleted: List,
+	format_list_numbered: ListOrdered,
+	format_list_checked: ListChecks,
+	format_highlight: Highlighter,
+	link: Link,
+	add_photo: ImagePlus,
+	table: Table2,
+	horizontal_rule: Minus,
+	frontmatter: FileText,
+	frame_source: FileCode2,
+	arrow_drop_down: ChevronDown,
+	admonition: MessageSquareWarning,
+	rich_text: Text,
+	difference: GitCompare,
+	markdown: FileText,
+	open_in_new: ExternalLink,
+	link_off: Unlink,
+	edit: Pencil,
+	content_copy: Copy,
+	more_horiz: MoreHorizontal,
+	more_vert: MoreVertical,
+	close: X,
+	settings: Settings,
+	delete_big: Trash2,
+	delete_small: Trash,
+	format_align_center: AlignCenter,
+	format_align_left: AlignLeft,
+	format_align_right: AlignRight,
+	add_row: Rows3,
+	add_column: Columns3,
+	insert_col_left: PanelLeft,
+	insert_row_above: PanelTop,
+	insert_row_below: PanelTop,
+	insert_col_right: PanelLeft,
+	check: Check,
+};
+
+type MdxEditorLucideIconProps = ComponentProps<LucideIcon> & { "data-mdxeditor-icon": IconKey };
+
+export const iconComponentFor = (name: IconKey): ReactElement => {
+	const Icon = mdxEditorIconMap[name];
+	const props: MdxEditorLucideIconProps = {
+		"aria-hidden": true,
+		className: "markdown-surface__icon",
+		"data-mdxeditor-icon": name,
+		strokeWidth: 1.75,
+	};
+	return createElement(Icon, props);
+};
 
 const toolbarSeparator = (key: string) => createElement(Separator, { key });
 
@@ -154,6 +260,7 @@ export const createMarkdownEditorAdapterConfig = (
 	contentClassName: mdxEditorClassNames.content,
 	toolbarClassName: mdxEditorClassNames.toolbar,
 	pluginFeatures: markdownPluginFeatures,
+	iconComponentFor,
 	plugins: [
 		...createBaseMarkdownPlugins(),
 		...(options.viewMode === "source"

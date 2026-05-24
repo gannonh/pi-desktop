@@ -49,6 +49,7 @@ export function MarkdownSourceEditor({
 				ref={editorRef}
 				markdown={value}
 				plugins={config.plugins}
+				iconComponentFor={config.iconComponentFor}
 				className={config.editorClassName}
 				contentEditableClassName={config.contentClassName}
 				readOnly={readOnly}

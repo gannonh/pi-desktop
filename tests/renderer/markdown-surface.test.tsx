@@ -2,7 +2,7 @@
 
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { createElement, useEffect, useRef } from "react";
+import { createElement, isValidElement, useEffect, useRef } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMarkdownEditorAdapterConfig } from "../../src/renderer/markdown/mdxeditor-adapter";
 import { MarkdownSurface, type MarkdownSurfaceEditorActions } from "../../src/renderer/markdown/markdown-surface";
@@ -163,6 +163,21 @@ describe("MarkdownSurface", () => {
 		);
 	});
 
+	it("provides lucide-backed icons for MDXEditor toolbar controls", () => {
+		const config = createMarkdownEditorAdapterConfig();
+
+		expect(config.iconComponentFor).toBeTypeOf("function");
+		const undoIcon = config.iconComponentFor("undo");
+		const tableIcon = config.iconComponentFor("table");
+
+		expect(isValidElement(undoIcon)).toBe(true);
+		expect(isValidElement(tableIcon)).toBe(true);
+		const undoIconProps = undoIcon.props as Record<string, unknown>;
+		const tableIconProps = tableIcon.props as Record<string, unknown>;
+		expect(undoIconProps["aria-hidden"]).toBe(true);
+		expect(tableIconProps["data-mdxeditor-icon"]).toBe("table");
+	});
+
 	it("renders preview mode through the rich editor and emits rich editor changes", async () => {
 		const onChange = vi.fn();
 		let richActions: MarkdownSurfaceEditorActions | null = null;
@@ -186,7 +201,9 @@ describe("MarkdownSurface", () => {
 		expect(surface.getAttribute("data-mode")).toBe("preview");
 		expect(surface.getAttribute("data-relative-path")).toBe("docs/README.md");
 		expect(await screen.findByTestId("markdown-rich-editor")).not.toBeNull();
-		expect(await screen.findByTestId("markdown-rich-toolbar")).not.toBeNull();
+		const toolbar = await screen.findByTestId("markdown-rich-toolbar");
+		expect(toolbar).not.toBeNull();
+		expect(toolbar.querySelector('[data-mdxeditor-icon="undo"]')).not.toBeNull();
 		expect(screen.getByLabelText("Markdown editing toolbar")).not.toBeNull();
 
 		await waitFor(() => expect(richActions).not.toBeNull());
@@ -285,9 +302,11 @@ describe("MarkdownSurface", () => {
 		expect(onLinkClick).toHaveBeenCalledWith("https://github.com/gannonh/pi-desktop");
 	});
 
-	it("surfaces rich editor parse errors and preserves source recovery guidance", async () => {
+	it("falls back to editable source mode after a rich editor parse error", async () => {
+		const onChange = vi.fn();
 		const onError = vi.fn();
 		let richActions: MarkdownSurfaceEditorActions | null = null;
+		let sourceActions: MarkdownSurfaceEditorActions | null = null;
 
 		render(
 			<MarkdownSurface
@@ -295,11 +314,14 @@ describe("MarkdownSurface", () => {
 				mode="preview"
 				readOnly={false}
 				relativePath="docs/README.md"
-				onChange={vi.fn()}
+				onChange={onChange}
 				onError={onError}
 				onEditorReady={(role, actions) => {
 					if (role === "rich") {
 						richActions = actions;
+					}
+					if (role === "source") {
+						sourceActions = actions;
 					}
 				}}
 			/>,
@@ -310,7 +332,14 @@ describe("MarkdownSurface", () => {
 
 		const alert = screen.getByRole("alert");
 		expect(alert.textContent).toContain("Unsupported Markdown construct");
-		expect(alert.textContent).toContain("Switch to Markdown or Split mode to recover the source.");
+		expect(alert.textContent).toContain("Editing source mode keeps the current Markdown saveable.");
+		expect(screen.queryByTestId("markdown-rich-editor")).toBeNull();
+		expect(screen.getByTestId("markdown-source-editor")).not.toBeNull();
+		await waitFor(() => expect(sourceActions).not.toBeNull());
+
+		act(() => sourceActions?.replaceMarkdown("# Recovered source edit"));
+
+		expect(onChange).toHaveBeenCalledWith("# Recovered source edit");
 		expect(onError).toHaveBeenCalledWith("Unsupported Markdown construct", "<custom-block />");
 	});
 

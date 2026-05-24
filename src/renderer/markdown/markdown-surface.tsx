@@ -45,6 +45,7 @@ export function MarkdownSurface({
 		setParseError({ message, source });
 		onError?.(message, source);
 	};
+	const showPreviewSourceFallback = mode === "preview" && parseError !== null;
 
 	return (
 		<section
@@ -57,10 +58,10 @@ export function MarkdownSurface({
 				<div className="markdown-surface__error" role="alert" data-testid="markdown-surface-error">
 					<p className="markdown-surface__error-title">Markdown preview error</p>
 					<p>{parseError.message}</p>
-					<p>Switch to Markdown or Split mode to recover the source.</p>
+					<p>Editing source mode keeps the current Markdown saveable.</p>
 				</div>
 			) : null}
-			{mode === "preview" ? (
+			{mode === "preview" && !showPreviewSourceFallback ? (
 				<RichMarkdownEditor
 					value={value}
 					readOnly={readOnly}
@@ -69,6 +70,16 @@ export function MarkdownSurface({
 					onEditorReady={onEditorReady}
 					onError={handleEditorError}
 					onLinkClick={onLinkClick}
+				/>
+			) : null}
+			{showPreviewSourceFallback ? (
+				<MarkdownSourceEditor
+					value={value}
+					readOnly={readOnly}
+					relativePath={relativePath}
+					onChange={onChange}
+					onEditorReady={onEditorReady}
+					onError={handleEditorError}
 				/>
 			) : null}
 			{mode === "source" ? (
