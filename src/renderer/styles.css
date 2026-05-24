@@ -1530,6 +1530,12 @@ button:disabled {
 	flex: 0 0 auto;
 }
 
+.markdown-surface__editor .mdxeditor-root-contenteditable {
+	min-height: 0;
+	flex: 1;
+	overflow-y: auto;
+}
+
 .markdown-surface__content {
 	min-height: 0;
 	flex: 1;

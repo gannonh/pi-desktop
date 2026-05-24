@@ -179,4 +179,12 @@ describe("renderer style audit rules", () => {
 		expect(ordered).toContain("list-style: decimal outside");
 		expect(listItem).toContain("display: list-item");
 	});
+
+	it("keeps long Markdown documents scrollable inside the file viewer", () => {
+		const scrollRoot = ruleBody(styles(), ".markdown-surface__editor .mdxeditor-root-contenteditable");
+
+		expect(scrollRoot).toContain("min-height: 0");
+		expect(scrollRoot).toContain("flex: 1");
+		expect(scrollRoot).toContain("overflow-y: auto");
+	});
 });
