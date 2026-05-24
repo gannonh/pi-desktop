@@ -27,14 +27,25 @@ const representativeMarkdownFixture = [
 	"",
 ].join("\n");
 
-const markdownFeatures = [
+const expectedSerializedMarkdownFixture = [
 	"# World-class Markdown",
-	"preserve task lists",
-	"Area",
-	"Status",
+	"",
+	"A [Pi Desktop](https://github.com/gannonh/pi-desktop) document with **strong** Markdown coverage.",
+	"",
+	"* [x] preserve task lists",
+	"* [ ] keep unchecked tasks",
+	"",
+	"> Markdown remains inspectable and editable.",
+	"",
+	"| Area   | Status  |",
+	"| ------ | ------- |",
+	"| Tables | Covered |",
+	"| Links  | Covered |",
+	"",
 	"```ts",
-	"[Pi Desktop](https://github.com/gannonh/pi-desktop)",
-];
+	"const markdown = 'source of truth';",
+	"```",
+].join("\n");
 
 beforeAll(() => {
 	if (!Range.prototype.getClientRects) {
@@ -87,7 +98,7 @@ describe("Markdown editor dependency spike", () => {
 		expect(config.packageVersion).toBe("4.0.1");
 	});
 
-	it("mounts the selected editor package and reads Markdown source through its public ref", async () => {
+	it("round-trips the representative Markdown fixture through the selected editor package", async () => {
 		let serialized = "";
 
 		render(
@@ -100,10 +111,6 @@ describe("Markdown editor dependency spike", () => {
 		);
 
 		await waitFor(() => expect(serialized).toContain("# World-class Markdown"));
-		for (const feature of markdownFeatures) {
-			expect(serialized).toContain(feature);
-		}
-		expect(serialized).toMatch(/[*-] \[x\] preserve task lists/);
-		expect(serialized).toContain("const markdown = 'source of truth';");
+		expect(serialized).toBe(expectedSerializedMarkdownFixture);
 	});
 });
