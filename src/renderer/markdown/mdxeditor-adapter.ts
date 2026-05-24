@@ -1,6 +1,7 @@
 import {
 	codeBlockPlugin,
 	codeMirrorPlugin,
+	diffSourcePlugin,
 	headingsPlugin,
 	linkPlugin,
 	listsPlugin,
@@ -9,6 +10,7 @@ import {
 	tablePlugin,
 	thematicBreakPlugin,
 	type RealmPlugin,
+	type ViewMode,
 } from "@mdxeditor/editor";
 
 export const mdxEditorPackage = {
@@ -35,24 +37,38 @@ export type MarkdownEditorAdapterConfig = {
 	plugins: RealmPlugin[];
 };
 
-export const createMarkdownEditorAdapterConfig = (): MarkdownEditorAdapterConfig => ({
+export type MarkdownEditorAdapterOptions = {
+	viewMode?: Extract<ViewMode, "rich-text" | "source">;
+	readOnlySource?: boolean;
+};
+
+const createBaseMarkdownPlugins = (): RealmPlugin[] => [
+	headingsPlugin(),
+	listsPlugin(),
+	quotePlugin(),
+	linkPlugin(),
+	tablePlugin(),
+	thematicBreakPlugin(),
+	codeBlockPlugin({ defaultCodeBlockLanguage: "ts" }),
+	codeMirrorPlugin({
+		codeBlockLanguages: { markdown: "Markdown", ts: "TypeScript", js: "JavaScript", bash: "Shell" },
+		autoLoadLanguageSupport: false,
+	}),
+	markdownShortcutPlugin(),
+];
+
+export const createMarkdownEditorAdapterConfig = (
+	options: MarkdownEditorAdapterOptions = {},
+): MarkdownEditorAdapterConfig => ({
 	packageName: mdxEditorPackage.name,
 	packageVersion: mdxEditorPackage.version,
 	wrapperClassName: mdxEditorClassNames.wrapper,
 	editorClassName: mdxEditorClassNames.editor,
 	contentClassName: mdxEditorClassNames.content,
 	plugins: [
-		headingsPlugin(),
-		listsPlugin(),
-		quotePlugin(),
-		linkPlugin(),
-		tablePlugin(),
-		thematicBreakPlugin(),
-		codeBlockPlugin({ defaultCodeBlockLanguage: "ts" }),
-		codeMirrorPlugin({
-			codeBlockLanguages: { markdown: "Markdown", ts: "TypeScript", js: "JavaScript", bash: "Shell" },
-			autoLoadLanguageSupport: false,
-		}),
-		markdownShortcutPlugin(),
+		...createBaseMarkdownPlugins(),
+		...(options.viewMode === "source"
+			? [diffSourcePlugin({ viewMode: "source", readOnlyDiff: options.readOnlySource ?? false })]
+			: []),
 	],
 });
