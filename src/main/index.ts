@@ -1,10 +1,10 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transport";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
+import { type AppRpcOperation, AppRpcRequestSchema } from "../shared/app-transport";
 import { ClipboardWriteTextInputSchema, IpcChannels } from "../shared/ipc";
 import { err, ok } from "../shared/result";
-import { createAppBackend, type AppBackend } from "./app-backend";
+import { type AppBackend, createAppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
 import { branchSession, cloneSession, forkSession, writeSessionName } from "./pi-session/pi-session-file-actions";
 import { createSmokePiAgentSession, loadSmokePiSessionHistory } from "./pi-session/smoke-pi-session";

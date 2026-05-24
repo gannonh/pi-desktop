@@ -1,15 +1,16 @@
-import type { PiDesktopApi } from "../shared/preload-api";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type { PiSessionEvent, PiSessionSettingsPayload } from "../shared/pi-session";
+import type { PiDesktopApi } from "../shared/preload-api";
 import {
+	type ChatMetadata,
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
-	type ChatMetadata,
 	type ProjectRecord,
 	type ProjectStore,
 	type StandaloneChatMetadata,
 } from "../shared/project-state";
+import { writeBrowserClipboardText } from "./app-api/browser-clipboard";
 
 const now = new Date().toISOString();
 
@@ -714,10 +715,7 @@ export const installDevPreviewApi = () => {
 			},
 		},
 		clipboard: {
-			writeText: async ({ text }) => {
-				await navigator.clipboard.writeText(text);
-				return { ok: true, data: { written: true } };
-			},
+			writeText: writeBrowserClipboardText,
 		},
 		workspaceFiles: {
 			listDirectory: async ({ projectId, relativePath }) => {

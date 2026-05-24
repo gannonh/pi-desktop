@@ -62,6 +62,32 @@ export function MarkdownSurface({
 	};
 	const showPreviewSourceFallback = mode === "preview" && currentParseError !== null;
 	const showImageNotice = (mode === "preview" || mode === "split") && unsupportedImages.length > 0;
+	const sharedEditorProps = {
+		value,
+		readOnly,
+		relativePath,
+		onChange: handleChange,
+		onEditorReady,
+		onError: handleEditorError,
+	};
+	const sourceEditor = <MarkdownSourceEditor {...sharedEditorProps} />;
+	const richEditor = <RichMarkdownEditor {...sharedEditorProps} onLinkClick={onLinkClick} />;
+	const editorContent = (() => {
+		if (mode === "split") {
+			return (
+				<div className="markdown-surface__split" data-testid="markdown-split-editor">
+					{sourceEditor}
+					{richEditor}
+				</div>
+			);
+		}
+
+		if (mode === "source" || showPreviewSourceFallback) {
+			return sourceEditor;
+		}
+
+		return richEditor;
+	})();
 
 	return (
 		<section
@@ -93,58 +119,7 @@ export function MarkdownSurface({
 						<p>Editing source mode keeps the current Markdown saveable.</p>
 					</div>
 				) : null}
-				{mode === "preview" && !showPreviewSourceFallback ? (
-					<RichMarkdownEditor
-						value={value}
-						readOnly={readOnly}
-						relativePath={relativePath}
-						onChange={handleChange}
-						onEditorReady={onEditorReady}
-						onError={handleEditorError}
-						onLinkClick={onLinkClick}
-					/>
-				) : null}
-				{showPreviewSourceFallback ? (
-					<MarkdownSourceEditor
-						value={value}
-						readOnly={readOnly}
-						relativePath={relativePath}
-						onChange={handleChange}
-						onEditorReady={onEditorReady}
-						onError={handleEditorError}
-					/>
-				) : null}
-				{mode === "source" ? (
-					<MarkdownSourceEditor
-						value={value}
-						readOnly={readOnly}
-						relativePath={relativePath}
-						onChange={handleChange}
-						onEditorReady={onEditorReady}
-						onError={handleEditorError}
-					/>
-				) : null}
-				{mode === "split" ? (
-					<div className="markdown-surface__split" data-testid="markdown-split-editor">
-						<MarkdownSourceEditor
-							value={value}
-							readOnly={readOnly}
-							relativePath={relativePath}
-							onChange={handleChange}
-							onEditorReady={onEditorReady}
-							onError={handleEditorError}
-						/>
-						<RichMarkdownEditor
-							value={value}
-							readOnly={readOnly}
-							relativePath={relativePath}
-							onChange={handleChange}
-							onEditorReady={onEditorReady}
-							onError={handleEditorError}
-							onLinkClick={onLinkClick}
-						/>
-					</div>
-				) : null}
+				{editorContent}
 			</Suspense>
 		</section>
 	);

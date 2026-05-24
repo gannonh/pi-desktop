@@ -7,6 +7,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { createMarkdownEditorAdapterConfig } from "../../src/renderer/markdown/mdxeditor-adapter";
 import { MarkdownSurface, type MarkdownSurfaceEditorActions } from "../../src/renderer/markdown/markdown-surface";
+import {
+	captureConsoleMessages,
+	ensureRangeClientRects,
+	expectNoUnexpectedConsoleMessages,
+	isKnownMdxEditorActWarning,
+	type ConsoleMessage,
+} from "./console-test-guard";
 
 const representativeMarkdownFixture = [
 	"# World-class Markdown",
@@ -53,12 +60,7 @@ const expectedSerializedMarkdownFixture = [
 	"```",
 ].join("\n");
 
-type ConsoleMessage = {
-	method: "error" | "warn";
-	input: unknown[];
-};
-
-const consoleMessages: ConsoleMessage[] = [];
+let consoleMessages: ConsoleMessage[];
 
 const knownMdxEditorActWarningComponents = new Set([
 	"ForwardRef(ContentEditableElementImpl)",
@@ -76,46 +78,21 @@ const knownMdxEditorActWarningComponents = new Set([
 	"UndoRedo",
 ]);
 
-const formatConsoleMessage = ({ method, input }: ConsoleMessage) =>
-	`${method}: ${input.map((entry) => (entry instanceof Error ? entry.stack ?? entry.message : String(entry))).join(" ")}`;
-
-const isKnownMdxEditorActWarning = ({ method, input }: ConsoleMessage) =>
-	method === "error" &&
-	typeof input[0] === "string" &&
-	input[0].startsWith("An update to %s inside a test was not wrapped in act(...).") &&
-	typeof input[1] === "string" &&
-	knownMdxEditorActWarningComponents.has(input[1]);
-
 beforeEach(() => {
 	Reflect.deleteProperty(window, "piDesktop");
-	consoleMessages.length = 0;
-	vi.spyOn(console, "error").mockImplementation((...input) => {
-		consoleMessages.push({ method: "error", input });
-	});
-	vi.spyOn(console, "warn").mockImplementation((...input) => {
-		consoleMessages.push({ method: "warn", input });
-	});
+	consoleMessages = captureConsoleMessages();
 });
 
 afterEach(() => {
-	const unexpectedMessages = consoleMessages.filter((message) => !isKnownMdxEditorActWarning(message));
-	vi.restoreAllMocks();
-
 	// MDXEditor 4.0.1 emits React act warnings from Radix/Lexical internals after mount in jsdom.
 	// The product code cannot wrap those internal updates, so this guard suppresses only that exact
 	// known warning shape and still fails the test on any other console warning or error.
-	expect(unexpectedMessages.map(formatConsoleMessage)).toEqual([]);
+	expectNoUnexpectedConsoleMessages(consoleMessages, (message) =>
+		isKnownMdxEditorActWarning(knownMdxEditorActWarningComponents, message),
+	);
 });
 
-beforeAll(() => {
-	if (!Range.prototype.getClientRects) {
-		Range.prototype.getClientRects = () => ({
-			length: 0,
-			item: () => null,
-			[Symbol.iterator]: function* iterator() {},
-		} as DOMRectList);
-	}
-});
+beforeAll(ensureRangeClientRects);
 
 interface MarkdownEditorProbeProps {
 	markdown: string;

@@ -1,10 +1,10 @@
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import type { FileViewMode } from "./file-workspace-types";
 import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
 import { FileEditor } from "./file-editor";
 import { useFileWorkspace } from "./file-workspace-context";
 import { isMarkdownRelativePath } from "./file-workspace-paths";
+import type { FileViewMode } from "./file-workspace-types";
 
 const markdownModes: { mode: FileViewMode; label: string }[] = [
 	{ mode: "preview", label: "Preview" },

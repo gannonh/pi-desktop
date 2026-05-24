@@ -1,4 +1,4 @@
-import { CodeMirrorEditor, type CodeBlockEditorProps } from "@mdxeditor/editor";
+import { type CodeBlockEditorProps, CodeMirrorEditor } from "@mdxeditor/editor";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 

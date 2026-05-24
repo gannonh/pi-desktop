@@ -1,7 +1,7 @@
 import { MDXEditor } from "@mdxeditor/editor";
 import { useMemo } from "react";
-import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
 import type { MarkdownSurfaceEditorActions, MarkdownSurfaceEditorRole } from "./markdown-surface";
+import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
 import { useMdxMarkdownEditorBridge } from "./use-mdx-markdown-editor-bridge";
 
 type MarkdownSourceEditorProps = {

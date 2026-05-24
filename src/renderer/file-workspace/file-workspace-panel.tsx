@@ -1,10 +1,10 @@
 import {
-	useEffect,
-	useRef,
-	useState,
 	type CSSProperties,
 	type KeyboardEvent,
 	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useRef,
+	useState,
 } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import { FileEmptyStates } from "./file-empty-states";
@@ -20,10 +20,10 @@ interface FileWorkspacePanelProps {
 	project: ProjectRecord | null;
 }
 
-const clampExplorerWidth = (width: number, workspaceWidth: number) => {
+function clampExplorerWidth(width: number, workspaceWidth: number): number {
 	const maxWidth = Math.max(MIN_EXPLORER_WIDTH, workspaceWidth - MIN_VIEWER_WIDTH);
 	return Math.min(Math.max(width, MIN_EXPLORER_WIDTH), maxWidth);
-};
+}
 
 export function FileWorkspacePanel({ project }: FileWorkspacePanelProps) {
 	const [explorerWidth, setExplorerWidth] = useState<number | null>(null);

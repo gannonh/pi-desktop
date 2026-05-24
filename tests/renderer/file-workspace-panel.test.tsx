@@ -1,30 +1,25 @@
 // @vitest-environment jsdom
 
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
-import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
+import {
+	captureConsoleMessages,
+	ensureRangeClientRects,
+	expectNoUnexpectedConsoleMessages,
+	isKnownFileWorkspaceSelectionWarning,
+	isKnownMdxEditorActWarning,
+	type ConsoleMessage,
+} from "./console-test-guard";
+import { ShellTestProviders } from "./shell-test-providers";
 
-beforeAll(() => {
-	if (!Range.prototype.getClientRects) {
-		Range.prototype.getClientRects = () => ({
-			length: 0,
-			item: () => null,
-			[Symbol.iterator]: function* iterator() {},
-		} as DOMRectList);
-	}
-});
+beforeAll(ensureRangeClientRects);
 
-type ConsoleMessage = {
-	method: "error" | "warn";
-	input: unknown[];
-};
-
-const consoleMessages: ConsoleMessage[] = [];
+let consoleMessages: ConsoleMessage[];
 
 const knownMdxEditorActWarningComponents = new Set([
 	"Placeholder",
@@ -40,40 +35,17 @@ const knownMdxEditorActWarningComponents = new Set([
 	"Tooltip",
 ]);
 
-const formatConsoleMessage = ({ method, input }: ConsoleMessage) =>
-	`${method}: ${input.map((entry) => (entry instanceof Error ? entry.stack ?? entry.message : String(entry))).join(" ")}`;
-
-const isKnownMdxEditorActWarning = ({ method, input }: ConsoleMessage) =>
-	method === "error" &&
-	typeof input[0] === "string" &&
-	input[0].startsWith("An update to %s inside a test was not wrapped in act(...).") &&
-	typeof input[1] === "string" &&
-	knownMdxEditorActWarningComponents.has(input[1]);
-
-const isKnownFileWorkspaceSelectionWarning = ({ method, input }: ConsoleMessage) =>
-	method === "error" &&
-	typeof input[0] === "string" &&
-	input[0].startsWith("Cannot update a component (`%s`) while rendering a different component (`%s`).") &&
-	input[1] === "RightPanelProvider" &&
-	input[2] === "FileWorkspaceProvider";
-
 beforeEach(() => {
-	consoleMessages.length = 0;
-	vi.spyOn(console, "error").mockImplementation((...input) => {
-		consoleMessages.push({ method: "error", input });
-	});
-	vi.spyOn(console, "warn").mockImplementation((...input) => {
-		consoleMessages.push({ method: "warn", input });
-	});
+	consoleMessages = captureConsoleMessages();
 });
 
 afterEach(() => {
-	const unexpectedMessages = consoleMessages.filter(
-		(message) => !isKnownMdxEditorActWarning(message) && !isKnownFileWorkspaceSelectionWarning(message),
+	expectNoUnexpectedConsoleMessages(
+		consoleMessages,
+		(message) =>
+			isKnownMdxEditorActWarning(knownMdxEditorActWarningComponents, message) ||
+			isKnownFileWorkspaceSelectionWarning(message),
 	);
-	vi.restoreAllMocks();
-
-	expect(unexpectedMessages.map(formatConsoleMessage)).toEqual([]);
 });
 
 const project: ProjectRecord = {

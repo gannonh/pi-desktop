@@ -5,29 +5,29 @@ import {
 	BoldItalicUnderlineToggles,
 	CodeToggle,
 	CreateLink,
-	InsertCodeBlock,
-	InsertImage,
-	InsertTable,
-	InsertThematicBreak,
-	ListsToggle,
-	Separator,
-	StrikeThroughSupSubToggles,
-	UndoRedo,
 	codeBlockPlugin,
 	codeMirrorPlugin,
 	diffSourcePlugin,
 	headingsPlugin,
+	type IconKey,
+	InsertCodeBlock,
+	InsertImage,
+	InsertTable,
+	InsertThematicBreak,
 	imagePlugin,
+	ListsToggle,
 	linkDialogPlugin,
 	linkPlugin,
 	listsPlugin,
 	markdownShortcutPlugin,
 	quotePlugin,
+	type RealmPlugin,
+	Separator,
+	StrikeThroughSupSubToggles,
 	tablePlugin,
 	thematicBreakPlugin,
 	toolbarPlugin,
-	type IconKey,
-	type RealmPlugin,
+	UndoRedo,
 	type ViewMode,
 } from "@mdxeditor/editor";
 import {
@@ -51,6 +51,7 @@ import {
 	List,
 	ListChecks,
 	ListOrdered,
+	type LucideIcon,
 	MessageSquareWarning,
 	Minus,
 	MoreHorizontal,
@@ -72,9 +73,8 @@ import {
 	Undo2,
 	Unlink,
 	X,
-	type LucideIcon,
 } from "lucide-react";
-import { Fragment, createElement, type ComponentProps, type ReactElement } from "react";
+import { type ComponentProps, createElement, Fragment, type ReactElement } from "react";
 import { MarkdownCodeBlockEditor } from "./markdown-code-block";
 import { markdownImagePreviewHandler } from "./markdown-image-policy";
 
@@ -267,21 +267,24 @@ const createBaseMarkdownPlugins = (): RealmPlugin[] => [
 	}),
 ];
 
-export const createMarkdownEditorAdapterConfig = (
+export function createMarkdownEditorAdapterConfig(
 	options: MarkdownEditorAdapterOptions = {},
-): MarkdownEditorAdapterConfig => ({
-	packageName: mdxEditorPackage.name,
-	packageVersion: mdxEditorPackage.version,
-	wrapperClassName: mdxEditorClassNames.wrapper,
-	editorClassName: mdxEditorClassNames.editor,
-	contentClassName: mdxEditorClassNames.content,
-	toolbarClassName: mdxEditorClassNames.toolbar,
-	pluginFeatures: markdownPluginFeatures,
-	iconComponentFor,
-	plugins: [
-		...createBaseMarkdownPlugins(),
-		...(options.viewMode === "source"
-			? [diffSourcePlugin({ viewMode: "source", readOnlyDiff: options.readOnlySource ?? false })]
-			: []),
-	],
-});
+): MarkdownEditorAdapterConfig {
+	const plugins = createBaseMarkdownPlugins();
+
+	if (options.viewMode === "source") {
+		plugins.push(diffSourcePlugin({ viewMode: "source", readOnlyDiff: options.readOnlySource ?? false }));
+	}
+
+	return {
+		packageName: mdxEditorPackage.name,
+		packageVersion: mdxEditorPackage.version,
+		wrapperClassName: mdxEditorClassNames.wrapper,
+		editorClassName: mdxEditorClassNames.editor,
+		contentClassName: mdxEditorClassNames.content,
+		toolbarClassName: mdxEditorClassNames.toolbar,
+		pluginFeatures: markdownPluginFeatures,
+		iconComponentFor,
+		plugins,
+	};
+}

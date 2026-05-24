@@ -5,8 +5,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { useFileWorkspace } from "../../src/renderer/file-workspace/file-workspace-context";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
-import { ShellTestProviders } from "./shell-test-providers";
 import type { ProjectRecord } from "../../src/shared/project-state";
+import {
+	captureConsoleMessages,
+	ensureRangeClientRects,
+	expectNoUnexpectedConsoleMessages,
+	isKnownFileWorkspaceSelectionWarning,
+	type ConsoleMessage,
+} from "./console-test-guard";
+import { ShellTestProviders } from "./shell-test-providers";
 
 function TabCloseHarness() {
 	const { closeTab } = useFileWorkspace();
@@ -17,48 +24,16 @@ function TabCloseHarness() {
 	);
 }
 
-beforeAll(() => {
-	if (!Range.prototype.getClientRects) {
-		Range.prototype.getClientRects = () => ({
-			length: 0,
-			item: () => null,
-			[Symbol.iterator]: function* iterator() {},
-		} as DOMRectList);
-	}
-});
+beforeAll(ensureRangeClientRects);
 
-type ConsoleMessage = {
-	method: "error" | "warn";
-	input: unknown[];
-};
-
-const consoleMessages: ConsoleMessage[] = [];
-
-const formatConsoleMessage = ({ method, input }: ConsoleMessage) =>
-	`${method}: ${input.map((entry) => (entry instanceof Error ? entry.stack ?? entry.message : String(entry))).join(" ")}`;
-
-const isKnownFileWorkspaceSelectionWarning = ({ method, input }: ConsoleMessage) =>
-	method === "error" &&
-	typeof input[0] === "string" &&
-	input[0].startsWith("Cannot update a component (`%s`) while rendering a different component (`%s`).") &&
-	input[1] === "RightPanelProvider" &&
-	input[2] === "FileWorkspaceProvider";
+let consoleMessages: ConsoleMessage[];
 
 beforeEach(() => {
-	consoleMessages.length = 0;
-	vi.spyOn(console, "error").mockImplementation((...input) => {
-		consoleMessages.push({ method: "error", input });
-	});
-	vi.spyOn(console, "warn").mockImplementation((...input) => {
-		consoleMessages.push({ method: "warn", input });
-	});
+	consoleMessages = captureConsoleMessages();
 });
 
 afterEach(() => {
-	const unexpectedMessages = consoleMessages.filter((message) => !isKnownFileWorkspaceSelectionWarning(message));
-	vi.restoreAllMocks();
-
-	expect(unexpectedMessages.map(formatConsoleMessage)).toEqual([]);
+	expectNoUnexpectedConsoleMessages(consoleMessages, isKnownFileWorkspaceSelectionWarning);
 });
 
 const project: ProjectRecord = {

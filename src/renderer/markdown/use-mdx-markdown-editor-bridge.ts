@@ -11,14 +11,14 @@ type MdxMarkdownEditorBridgeOptions = {
 	onError?: (message: string, source: string) => void;
 };
 
-export const useMdxMarkdownEditorBridge = ({
+export function useMdxMarkdownEditorBridge({
 	value,
 	readOnly,
 	role,
 	onChange,
 	onEditorReady,
 	onError,
-}: MdxMarkdownEditorBridgeOptions) => {
+}: MdxMarkdownEditorBridgeOptions) {
 	const editorRef = useRef<MDXEditorMethods>(null);
 	const readOnlyRef = useRef(readOnly);
 	const lastValueRef = useRef(value);
@@ -75,4 +75,4 @@ export const useMdxMarkdownEditorBridge = ({
 	};
 
 	return { editorRef, handleChange };
-};
+}

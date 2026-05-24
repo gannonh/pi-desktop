@@ -1,7 +1,7 @@
 import { MDXEditor } from "@mdxeditor/editor";
-import { useCallback, useLayoutEffect, useMemo, useRef, type MouseEvent } from "react";
-import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
+import { type MouseEvent, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { MarkdownSurfaceEditorActions, MarkdownSurfaceEditorRole } from "./markdown-surface";
+import { createMarkdownEditorAdapterConfig } from "./mdxeditor-adapter";
 import { useMdxMarkdownEditorBridge } from "./use-mdx-markdown-editor-bridge";
 
 type RichMarkdownEditorProps = {
