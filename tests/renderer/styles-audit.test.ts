@@ -150,4 +150,31 @@ describe("renderer style audit rules", () => {
 		expect(toolbar).toContain("flex-wrap: nowrap");
 		expect(toolbar).toContain("overflow-y: hidden");
 	});
+
+	it("keeps the Markdown block-type selector visually compact", () => {
+		const css = styles();
+		const triggerWrapper = ruleBody(css, ".markdown-surface__toolbar-contents > span");
+		const blockTypeTrigger = ruleBody(
+			css,
+			'.markdown-surface__toolbar-contents [role="combobox"][data-toolbar-item]',
+		);
+
+		expect(triggerWrapper).toContain("display: inline-flex");
+		expect(triggerWrapper).toContain("height: 1.75rem");
+		expect(triggerWrapper).toContain("align-items: center");
+		expect(blockTypeTrigger).toContain("font-size: var(--type-caption)");
+		expect(blockTypeTrigger).toContain("line-height: 1");
+		expect(blockTypeTrigger).toContain("border-radius: var(--radius-control)");
+	});
+
+	it("keeps Markdown list markers visible in rendered content", () => {
+		const css = styles();
+		const unordered = ruleBody(css, ".markdown-surface__content ul");
+		const ordered = ruleBody(css, ".markdown-surface__content ol");
+		const listItem = ruleBody(css, ".markdown-surface__content li");
+
+		expect(unordered).toContain("list-style: disc outside");
+		expect(ordered).toContain("list-style: decimal outside");
+		expect(listItem).toContain("display: list-item");
+	});
 });
