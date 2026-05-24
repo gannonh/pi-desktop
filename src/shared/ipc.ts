@@ -54,6 +54,16 @@ import {
 	type WorkspaceWriteFileResult,
 } from "./workspace-files";
 
+export const ClipboardWriteTextInputSchema = z.strictObject({
+	text: z.string(),
+});
+
+export const ClipboardWriteTextResultSchema = createResultSchema(
+	z.strictObject({
+		written: z.literal(true),
+	}),
+);
+
 export const IpcChannels = {
 	appGetVersion: "app:getVersion",
 	projectGetState: "project:getState",
@@ -91,6 +101,7 @@ export const IpcChannels = {
 	workspaceFilesListDirectory: "workspace-files:listDirectory",
 	workspaceFilesReadFile: "workspace-files:readFile",
 	workspaceFilesWriteFile: "workspace-files:writeFile",
+	clipboardWriteText: "clipboard:writeText",
 } as const;
 
 export const PiSessionOperationFailedCode = "pi_session.operation_failed";
@@ -179,6 +190,8 @@ export {
 	PiSessionUpdateQueuedMessageInputSchema,
 };
 
+export type ClipboardWriteTextInput = z.infer<typeof ClipboardWriteTextInputSchema>;
+export type ClipboardWriteTextResult = z.infer<typeof ClipboardWriteTextResultSchema>;
 export type AppVersion = z.infer<typeof AppVersionSchema>;
 export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;

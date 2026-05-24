@@ -212,5 +212,11 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			readFile: (input) => callRpc("workspaceFiles.readFile", input),
 			writeFile: (input) => callRpc("workspaceFiles.writeFile", input),
 		},
+		clipboard: {
+			writeText: async ({ text }) => {
+				await navigator.clipboard.writeText(text);
+				return { ok: true, data: { written: true } };
+			},
+		},
 	};
 };

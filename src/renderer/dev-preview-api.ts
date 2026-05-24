@@ -713,6 +713,12 @@ export const installDevPreviewApi = () => {
 				};
 			},
 		},
+		clipboard: {
+			writeText: async ({ text }) => {
+				await navigator.clipboard.writeText(text);
+				return { ok: true, data: { written: true } };
+			},
+		},
 		workspaceFiles: {
 			listDirectory: async ({ projectId, relativePath }) => {
 				const lookup = findProject(projectId);

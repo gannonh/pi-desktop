@@ -5,6 +5,15 @@ import { useState } from "react";
 type CopyStatus = "idle" | "copied" | "error";
 
 const copyCodeBlock = async (code: string): Promise<void> => {
+	const desktopClipboard = window.piDesktop?.clipboard;
+	if (desktopClipboard) {
+		const result = await desktopClipboard.writeText({ text: code });
+		if (!result.ok) {
+			throw new Error(result.error.message);
+		}
+		return;
+	}
+
 	const clipboard = navigator.clipboard;
 	if (!clipboard?.writeText) {
 		throw new Error("Clipboard API unavailable.");

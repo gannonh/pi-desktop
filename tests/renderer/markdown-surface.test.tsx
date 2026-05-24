@@ -4,6 +4,7 @@ import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement, isValidElement, useEffect, useRef } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { createMarkdownEditorAdapterConfig } from "../../src/renderer/markdown/mdxeditor-adapter";
 import { MarkdownSurface, type MarkdownSurfaceEditorActions } from "../../src/renderer/markdown/markdown-surface";
 
@@ -86,6 +87,7 @@ const isKnownMdxEditorActWarning = ({ method, input }: ConsoleMessage) =>
 	knownMdxEditorActWarningComponents.has(input[1]);
 
 beforeEach(() => {
+	Reflect.deleteProperty(window, "piDesktop");
 	consoleMessages.length = 0;
 	vi.spyOn(console, "error").mockImplementation((...input) => {
 		consoleMessages.push({ method: "error", input });
@@ -302,6 +304,30 @@ describe("MarkdownSurface", () => {
 		fireEvent.click(copyButton);
 
 		await waitFor(() => expect(writeText).toHaveBeenCalledWith("const markdown = 'source of truth';"));
+		expect(await screen.findByText("Copied code block.")).not.toBeNull();
+	});
+
+	it("copies rich code block contents through the desktop clipboard bridge", async () => {
+		const writeText = vi.fn().mockResolvedValue({ ok: true, data: { written: true } });
+		window.piDesktop = {
+			...createUnavailablePiDesktopApi("test"),
+			clipboard: { writeText },
+		};
+		Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+
+		render(
+			<MarkdownSurface
+				value={codeBlockFixture}
+				mode="preview"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Copy ts code block" }));
+
+		await waitFor(() => expect(writeText).toHaveBeenCalledWith({ text: "const markdown = 'source of truth';" }));
 		expect(await screen.findByText("Copied code block.")).not.toBeNull();
 	});
 

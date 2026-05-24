@@ -1,9 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppRpcRequestSchema, type AppRpcOperation } from "../shared/app-transport";
-import { IpcChannels } from "../shared/ipc";
-import { err } from "../shared/result";
+import { ClipboardWriteTextInputSchema, IpcChannels } from "../shared/ipc";
+import { err, ok } from "../shared/result";
 import { createAppBackend, type AppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
 import { branchSession, cloneSession, forkSession, writeSessionName } from "./pi-session/pi-session-file-actions";
@@ -171,6 +171,14 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.workspaceFilesWriteFile, (_event, input) =>
 		invokeBackend("workspaceFiles.writeFile", input),
 	);
+	ipcMain.handle(IpcChannels.clipboardWriteText, (_event, input) => {
+		const parsed = ClipboardWriteTextInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("clipboard.input_invalid", "Clipboard text input is invalid.");
+		}
+		clipboard.writeText(parsed.data.text);
+		return ok({ written: true as const });
+	});
 };
 
 app.whenReady().then(() => {

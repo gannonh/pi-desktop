@@ -35,6 +35,9 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			readFile: unavailable,
 			writeFile: unavailable,
 		},
+		clipboard: {
+			writeText: unavailable,
+		},
 		piSession: {
 			start: unavailable,
 			submit: unavailable,
