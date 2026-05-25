@@ -59,6 +59,35 @@ const project: ProjectRecord = {
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
 };
 
+const contextMenuLabels = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+
+const renderExplorerWithEntries = async () => {
+	window.piDesktop = {
+		...createUnavailablePiDesktopApi("test"),
+		workspaceFiles: {
+			listDirectory: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{ name: "src", relativePath: "src", kind: "directory" as const },
+						{ name: "index.ts", relativePath: "src/index.ts", kind: "file" as const },
+					],
+				},
+			})),
+			readFile: vi.fn(async () => ({ ok: true as const, data: { kind: "text" as const, content: "", size: 0 } })),
+			writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "src/index.ts", size: 0 } })),
+		},
+	};
+
+	render(
+		<ShellTestProviders project={project}>
+			<FileWorkspacePanel project={project} />
+		</ShellTestProviders>,
+	);
+
+	return screen.findByTestId("file-explorer");
+};
+
 describe("FileWorkspacePanel", () => {
 	it("renders explorer and viewer chrome for an available project", () => {
 		window.piDesktop = {
@@ -150,6 +179,47 @@ describe("FileWorkspacePanel", () => {
 		expect(workspace.getAttribute("style")).toContain("--file-explorer-width: 420px");
 		expect(divider.getAttribute("aria-valuenow")).toBe("420");
 		expect(document.body.classList.contains("file-workspace--resizing")).toBe(false);
+	});
+
+	it("shows folder context menu actions on folder right click", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+
+		expect(contextMenuLabels()).toEqual([
+			"New File",
+			"New Folder",
+			"Copy Path",
+			"Copy Relative Path",
+			"Reveal in Finder",
+			"Rename",
+			"Delete",
+		]);
+	});
+
+	it("shows file context menu actions on file right click", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(screen.getByRole("button", { name: /index\.ts/ }), { clientX: 80, clientY: 146 });
+
+		expect(contextMenuLabels()).toEqual([
+			"New File",
+			"New Folder",
+			"Copy Path",
+			"Copy Relative Path",
+			"Duplicate",
+			"Reveal in Finder",
+			"Rename",
+			"Delete",
+		]);
+	});
+
+	it("shows creation actions on file explorer background right click", async () => {
+		const explorer = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+
+		expect(contextMenuLabels()).toEqual(["New File", "New Folder"]);
 	});
 
 	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {
