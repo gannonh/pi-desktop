@@ -135,6 +135,39 @@ describe("createPiSessionRuntime", () => {
 		expect(session.prompt).toHaveBeenLastCalledWith("Follow up", { images });
 	});
 
+	it("passes selected model and thinking level to the SDK session factory on start", async () => {
+		const { session } = createFakeSession();
+		const sessionManager = {
+			getSessionFile: vi.fn(() => undefined),
+			getSessionId: vi.fn(() => "sdk-session:one"),
+		};
+		const createAgentSession = vi.fn(async () => ({ session }));
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: () => {},
+			createSessionManager: vi.fn(() => sessionManager),
+			createAgentSession,
+		});
+
+		await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Use this model",
+			modelProvider: "anthropic",
+			modelId: "claude-sonnet-4",
+			thinkingLevel: "high",
+		});
+
+		expect(createAgentSession).toHaveBeenCalledWith({
+			cwd: "/tmp/pi-desktop",
+			sessionManager,
+			modelProvider: "anthropic",
+			modelId: "claude-sonnet-4",
+			thinkingLevel: "high",
+		});
+	});
+
 	it("starts from an existing session manager when resuming a session path", async () => {
 		const events: PiSessionEvent[] = [];
 		const projectId = "project:/tmp/pi-desktop";
