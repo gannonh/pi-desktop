@@ -1409,19 +1409,11 @@ body.file-workspace--resizing {
 	min-width: 9rem;
 }
 
-.file-viewer__save-error,
-.file-viewer__save-success {
+.file-viewer__save-error {
 	margin: 0;
 	padding: 0 0.75rem;
-	font-size: var(--type-caption);
-}
-
-.file-viewer__save-error {
 	color: color-mix(in oklch, var(--color-foreground) 55%, #ef4444 45%);
-}
-
-.file-viewer__save-success {
-	color: color-mix(in oklch, var(--color-foreground) 70%, #2d8a4e 30%);
+	font-size: var(--type-caption);
 }
 
 .file-editor {

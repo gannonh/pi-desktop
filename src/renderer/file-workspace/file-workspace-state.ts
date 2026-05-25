@@ -186,8 +186,8 @@ export const markFileSaved = (state: FileWorkspaceState, tabId: string, content:
 	const savedCurrentBuffer = savedTab?.buffer === content;
 	return {
 		...state,
-		saveStatus: savedCurrentBuffer ? "saved" : "idle",
-		saveMessage: savedCurrentBuffer ? "Saved" : undefined,
+		saveStatus: "idle",
+		saveMessage: undefined,
 		tabs: state.tabs.map((tab) =>
 			tab.id === tabId
 				? {
