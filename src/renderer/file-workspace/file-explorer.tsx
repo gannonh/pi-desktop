@@ -60,10 +60,9 @@ interface ExplorerNodeProps {
 	name: string;
 	kind: "file" | "directory";
 	depth: number;
-	onOpenContextMenu: (kind: ExplorerContextMenuKind, event: ReactMouseEvent) => void;
 }
 
-function ExplorerNode({ relativePath, name, kind, depth, onOpenContextMenu }: ExplorerNodeProps) {
+function ExplorerNode({ relativePath, name, kind, depth }: ExplorerNodeProps) {
 	const { state, selectExplorerItem, toggleDirectory } = useFileWorkspace();
 	const expanded = kind === "directory" && state.expandedPaths.includes(relativePath);
 	const selected = state.selectedPath === relativePath;
@@ -79,6 +78,7 @@ function ExplorerNode({ relativePath, name, kind, depth, onOpenContextMenu }: Ex
 			<div
 				className={`file-explorer__row-wrap${selected ? " file-explorer__row-wrap--selected" : ""}`}
 				style={{ "--file-explorer-depth": depth } as CSSProperties}
+				data-context-menu-kind={kind}
 			>
 				{kind === "directory" ? (
 					<button
@@ -86,7 +86,6 @@ function ExplorerNode({ relativePath, name, kind, depth, onOpenContextMenu }: Ex
 						className="file-explorer__disclosure"
 						aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
 						aria-expanded={expanded}
-						onContextMenu={(event) => onOpenContextMenu(kind, event)}
 						onClick={(event) => {
 							event.stopPropagation();
 							toggleDirectory(relativePath);
@@ -104,7 +103,6 @@ function ExplorerNode({ relativePath, name, kind, depth, onOpenContextMenu }: Ex
 					type="button"
 					className="file-explorer__row"
 					aria-current={selected ? "true" : undefined}
-					onContextMenu={(event) => onOpenContextMenu(kind, event)}
 					onClick={onSelect}
 				>
 					<FileIcon
@@ -139,7 +137,6 @@ function ExplorerNode({ relativePath, name, kind, depth, onOpenContextMenu }: Ex
 									name={entry.name}
 									kind={entry.kind}
 									depth={depth + 1}
-									onOpenContextMenu={onOpenContextMenu}
 								/>
 							))
 						: null}
@@ -189,12 +186,19 @@ export function FileExplorer() {
 		setContextMenu({ kind, x: event.clientX, y: event.clientY });
 	};
 
+	const handleContextMenu = (event: ReactMouseEvent) => {
+		const rowWrap =
+			event.target instanceof Element ? event.target.closest<HTMLElement>(".file-explorer__row-wrap") : null;
+		const kind = rowWrap?.dataset.contextMenuKind;
+		openContextMenu(kind === "directory" || kind === "file" ? kind : "background", event);
+	};
+
 	return (
 		<section
 			className="file-explorer"
 			aria-label="Project files"
 			data-testid="file-explorer"
-			onContextMenu={(event) => openContextMenu("background", event)}
+			onContextMenu={handleContextMenu}
 		>
 			<header className="file-explorer__header">
 				<h2 className="file-explorer__title" title={project.path}>
@@ -225,7 +229,6 @@ export function FileExplorer() {
 									name={entry.name}
 									kind={entry.kind}
 									depth={0}
-									onOpenContextMenu={openContextMenu}
 								/>
 							))
 						: null}

@@ -61,6 +61,15 @@ const project: ProjectRecord = {
 
 const contextMenuLabels = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
 
+function getExplorerRowWrap(name: RegExp): HTMLElement {
+	const row = screen.getByRole("button", { name });
+	const rowWrap = row.closest(".file-explorer__row-wrap");
+	if (!(rowWrap instanceof HTMLElement)) {
+		throw new Error(`Explorer row wrapper for ${name} was not found.`);
+	}
+	return rowWrap;
+}
+
 const renderExplorerWithEntries = async () => {
 	window.piDesktop = {
 		...createUnavailablePiDesktopApi("test"),
@@ -197,10 +206,10 @@ describe("FileWorkspacePanel", () => {
 		]);
 	});
 
-	it("shows file context menu actions on file right click", async () => {
+	it("shows file context menu actions when right clicking across the file row", async () => {
 		await renderExplorerWithEntries();
 
-		fireEvent.contextMenu(screen.getByRole("button", { name: /index\.ts/ }), { clientX: 80, clientY: 146 });
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
 
 		expect(contextMenuLabels()).toEqual([
 			"New File",
