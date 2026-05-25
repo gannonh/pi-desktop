@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
@@ -239,6 +239,18 @@ describe("FileWorkspacePanel", () => {
 		expect(explorer.contains(menu)).toBe(false);
 	});
 
+	it("keeps context menus inside the viewport edge padding", async () => {
+		Object.defineProperty(window, "innerWidth", { configurable: true, value: 100 });
+		Object.defineProperty(window, "innerHeight", { configurable: true, value: 80 });
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 160, clientY: 120 });
+
+		const menu = screen.getByRole("menu", { name: "File explorer actions" });
+		expect(menu.getAttribute("style")).toContain("top: 72px");
+		expect(menu.getAttribute("style")).toContain("left: 92px");
+	});
+
 	it("shows icons for file context menu actions", async () => {
 		await renderExplorerWithEntries();
 
@@ -275,6 +287,30 @@ describe("FileWorkspacePanel", () => {
 
 		await waitFor(() => expect(clipboardWriteText).toHaveBeenCalledWith({ text: "/tmp/pi-desktop/src" }));
 		expect(screen.getByRole("status").textContent).toBe("Copied path.");
+	});
+
+	it("auto-dismisses copied path status feedback", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+		vi.useFakeTimers();
+		try {
+			fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+			fireEvent.click(screen.getByRole("menuitem", { name: "Copy Path" }));
+
+			await act(async () => {
+				await Promise.resolve();
+			});
+
+			expect(clipboardWriteText).toHaveBeenCalledWith({ text: "/tmp/pi-desktop/src" });
+			expect(screen.getByRole("status").textContent).toBe("Copied path.");
+
+			act(() => {
+				vi.advanceTimersByTime(3000);
+			});
+
+			expect(screen.queryByRole("status")).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("disables file actions that are not implemented yet", async () => {

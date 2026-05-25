@@ -52,6 +52,8 @@ type ExplorerContextMenuState =
 	| null;
 
 const implementedContextMenuActions = new Set<ExplorerContextMenuActionId>(["copy-path", "copy-relative-path"]);
+const contextMenuViewportPadding = 8;
+const contextStatusDismissMs = 3000;
 
 const joinProjectPath = (projectPath: string, relativePath: string): string =>
 	`${projectPath.replace(/\/+$/, "")}/${relativePath}`;
@@ -206,6 +208,15 @@ export function FileExplorer() {
 		};
 	}, [contextMenu]);
 
+	useEffect(() => {
+		if (!contextStatus) {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => setContextStatus(null), contextStatusDismissMs);
+		return () => window.clearTimeout(timeout);
+	}, [contextStatus]);
+
 	if (!project) {
 		return null;
 	}
@@ -268,7 +279,14 @@ export function FileExplorer() {
 					className="file-explorer__context-menu"
 					variant="context"
 					aria-label="File explorer actions"
-					style={{ position: "fixed", top: contextMenu.y, right: "auto", left: contextMenu.x } as CSSProperties}
+					style={
+						{
+							position: "fixed",
+							top: Math.min(contextMenu.y, window.innerHeight - contextMenuViewportPadding),
+							right: "auto",
+							left: Math.min(contextMenu.x, window.innerWidth - contextMenuViewportPadding),
+						} as CSSProperties
+					}
 				>
 					{contextMenuItems[contextMenu.kind].map(({ Icon, ...item }) => {
 						const enabled = contextMenu.kind !== "background" && implementedContextMenuActions.has(item.id);
