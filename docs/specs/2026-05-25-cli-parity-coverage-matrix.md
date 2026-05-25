@@ -296,8 +296,65 @@
 - Desktop evidence: `README.md`, `docs/docs-map.md`, `docs/pi-desktop-high-level-roadmap.md`.
 - Disposition: revisit with onboarding/settings work.
 
+## Roadmap traceability
+
+### Priority R001: M07C Right Panel - Diff and Patch Review
+
+- Roadmap decision: make diff and patch review the next implementation milestone after S002.
+- Requirement: AUDIT-05, AUDIT-06.
+- Gap classification: release-blocking.
+- CLI capability records: CLI-TOOLS-011, CLI-TOOL-EVENTS-012, CLI-DIAGNOSTICS-029.
+- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/tools/`, `/Volumes/EVO/repos/pi-mono/packages/agent/src/types.ts`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/json.md`.
+- Desktop evidence: `src/renderer/right-panel/right-panel-body.tsx`, `src/renderer/right-panel/right-panel-workspace.tsx`, `src/main/workspace-files/workspace-files-service.ts`, `src/renderer/file-workspace/file-workspace-panel.tsx`, `docs/pi-desktop-high-level-roadmap.md`.
+- Rationale: the roadmap states that users should inspect file changes and diffs. S001 evidence shows the current right panel has real Files support and mock Diffs support, so live diff review is the next traceable release blocker.
+- Verification: `docs/pi-desktop-high-level-roadmap.md` now contains M07C Diff and Patch Review with deliverables and acceptance criteria.
+
+### Priority R002: M07D Right Panel - Terminal and Command Output
+
+- Roadmap decision: follow diff review with a dedicated command/tool output surface.
+- Requirement: AUDIT-05, AUDIT-06.
+- Gap classification: release-blocking.
+- CLI capability records: CLI-BASH-010, CLI-TOOL-EVENTS-012, CLI-DIAGNOSTICS-029.
+- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `/Volumes/EVO/repos/pi-mono/packages/agent/src/types.ts`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/tools/`.
+- Desktop evidence: `src/main/pi-session/pi-session-event-normalizer.ts`, `src/renderer/session/session-state.ts`, `src/renderer/components/live-session-transcript.tsx`, `src/renderer/right-panel/right-panel-body.tsx`, `docs/pi-desktop-high-level-roadmap.md`.
+- Rationale: Desktop already normalizes and renders tool events in the transcript, but the MVP needs first-class output visibility. A dedicated right-panel surface turns existing event evidence into inspectable command output.
+- Verification: `docs/pi-desktop-high-level-roadmap.md` now contains M07D Terminal and Command Output with deliverables and acceptance criteria.
+
+### Priority R003: M0X Settings and Auth
+
+- Roadmap decision: keep Settings/Auth as a release-blocking post-panel milestone before extensibility.
+- Requirement: AUDIT-05, AUDIT-06.
+- Gap classification: release-blocking.
+- CLI capability records: CLI-AUTH-016, CLI-MODELS-017, CLI-THINKING-018, CLI-SETTINGS-019, CLI-DIAGNOSTICS-029.
+- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/providers.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/models.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/settings.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/settings-manager.ts`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/auth-guidance.ts`.
+- Desktop evidence: `src/main/pi-session/pi-session-settings.ts`, `src/renderer/chat/composer-view-model.ts`, `src/renderer/components/composer.tsx`, `docs/pi-desktop-high-level-roadmap.md`.
+- Rationale: Desktop has model/thinking session controls and visible runtime-disabled reasons, but provider/auth setup, persistent defaults, and diagnostics remain planned work.
+- Verification: `docs/pi-desktop-high-level-roadmap.md` Current Planning Targets now places M0X Settings and Auth after M07D.
+
+### Priority R004: M0X Extensibility
+
+- Roadmap decision: defer extension, skills, prompt template, and package-resource management until after the release-blocking local core path.
+- Requirement: AUDIT-05, AUDIT-06.
+- Gap classification: deferred.
+- CLI capability records: CLI-EXTENSIONS-023, CLI-SKILLS-024, CLI-TEMPLATES-025, CLI-PACKAGES-027, CLI-SAFETY-031.
+- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/extensions.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/skills.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/prompt-templates.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/packages.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/examples/extensions/`.
+- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility, `src/shared/app-transport.ts`, `src/main/app-backend.ts`.
+- Rationale: Pi remains the source of extensions and resources. Desktop should expose management and inspection after the core observability and settings/auth surfaces are complete.
+- Verification: `docs/pi-desktop-high-level-roadmap.md` Current Planning Targets now places M0X Extensibility after Settings/Auth.
+
+### Deferred and out-of-scope decision trace
+
+- Session tree, compaction, export/share, updates, and help surfaces stay deferred because their capability records have lower release impact than M07C, M07D, and Settings/Auth.
+- Print mode, JSON mode, RPC mode, terminal compatibility docs, TUI theme parity, and Pi tool/provider internals stay out of scope for Desktop UI parity. Their capability records cite the CLI/runtime evidence and record the product disposition.
+- Desktop-native equivalent records stay tied to existing implementation paths under `src/` so future audits can distinguish implemented GUI equivalents from planned gaps.
+
 ## T005 verification notes
 
 - Every T002 capability row from `docs/specs/2026-05-25-cli-parity-source-inventory.md` has one capability record above.
 - Each release-blocking or deferred item includes a release impact statement and disposition.
 - Desktop-native equivalents cite implementation paths under `src/` when available.
+
+## T007 verification notes
+
+- Roadmap priority records R001 through R004 trace each planned roadmap target to CLI evidence, Desktop evidence, requirement IDs, and verification notes.
+- Deferred and out-of-scope decisions are recorded with capability-record links and product rationale.
