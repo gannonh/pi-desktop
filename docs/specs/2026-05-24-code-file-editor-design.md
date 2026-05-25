@@ -239,7 +239,8 @@ Approved design direction, pending final user review of this written spec:
 
 - Spec path: `docs/specs/2026-05-24-code-file-editor-design.md`
 - Base SHA: `67ffadd9e0dede0c582b3144b47fe815489e30e2`
-- Final head SHA: `a2248a3ca6856d3103a617f09183e0fdcaa8ed7c`
+- Implementation commit SHA: `f5ed7c704b7501ebb83f65ab7f0a90afd21fe1b9`
+- Final branch head SHA: recorded in the Build completion response because the committed report cannot self-reference its own resulting SHA.
 - Tasks completed:
   - Added direct CodeMirror dependencies used by product code.
   - Added deterministic code language detection and coverage.
