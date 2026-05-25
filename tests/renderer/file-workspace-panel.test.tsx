@@ -60,6 +60,8 @@ const project: ProjectRecord = {
 };
 
 const contextMenuLabels = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+const contextMenuIconIds = () =>
+	screen.getAllByRole("menuitem").map((item) => item.querySelector(".menu__item-icon")?.getAttribute("data-action-icon"));
 
 function getExplorerRowWrap(name: RegExp): HTMLElement {
 	const row = screen.getByRole("button", { name });
@@ -232,6 +234,23 @@ describe("FileWorkspacePanel", () => {
 		expect(menu.parentElement).toBe(document.body);
 		expect(menu.getAttribute("style")).toContain("position: fixed");
 		expect(explorer.contains(menu)).toBe(false);
+	});
+
+	it("shows icons for file context menu actions", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		expect(contextMenuIconIds()).toEqual([
+			"new-file",
+			"new-folder",
+			"copy-path",
+			"copy-relative-path",
+			"duplicate",
+			"reveal",
+			"rename",
+			"delete",
+		]);
 	});
 
 	it("shows creation actions on file explorer background right click", async () => {

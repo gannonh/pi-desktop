@@ -1,7 +1,20 @@
-import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
+import {
+	ChevronRight,
+	Copy,
+	ExternalLink,
+	FilePlus2,
+	Files,
+	Folder,
+	FolderOpen,
+	FolderPlus,
+	Loader2,
+	Pencil,
+	Trash2,
+	type LucideIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { MenuItem, MenuSurface } from "../components/menu";
+import { MenuItem, MenuItemIcon, MenuSurface } from "../components/menu";
 import { getExplorerFileIcon } from "./file-explorer-icons";
 import { useFileWorkspace } from "./file-workspace-context";
 
@@ -20,6 +33,7 @@ type ExplorerContextMenuActionId =
 type ExplorerContextMenuAction = {
 	id: ExplorerContextMenuActionId;
 	label: string;
+	Icon: LucideIcon;
 	tone?: "default" | "danger";
 };
 
@@ -30,19 +44,19 @@ type ExplorerContextMenuState = {
 } | null;
 
 const creationContextMenuItems = [
-	{ id: "new-file", label: "New File" },
-	{ id: "new-folder", label: "New Folder" },
+	{ id: "new-file", label: "New File", Icon: FilePlus2 },
+	{ id: "new-folder", label: "New Folder", Icon: FolderPlus },
 ] satisfies ExplorerContextMenuAction[];
 
 const pathContextMenuItems = [
-	{ id: "copy-path", label: "Copy Path" },
-	{ id: "copy-relative-path", label: "Copy Relative Path" },
+	{ id: "copy-path", label: "Copy Path", Icon: Copy },
+	{ id: "copy-relative-path", label: "Copy Relative Path", Icon: Copy },
 ] satisfies ExplorerContextMenuAction[];
 
 const manageContextMenuItems = [
-	{ id: "reveal", label: "Reveal in Finder" },
-	{ id: "rename", label: "Rename" },
-	{ id: "delete", label: "Delete", tone: "danger" },
+	{ id: "reveal", label: "Reveal in Finder", Icon: ExternalLink },
+	{ id: "rename", label: "Rename", Icon: Pencil },
+	{ id: "delete", label: "Delete", Icon: Trash2, tone: "danger" },
 ] satisfies ExplorerContextMenuAction[];
 
 const contextMenuItems: Record<ExplorerContextMenuKind, ExplorerContextMenuAction[]> = {
@@ -51,7 +65,7 @@ const contextMenuItems: Record<ExplorerContextMenuKind, ExplorerContextMenuActio
 	file: [
 		...creationContextMenuItems,
 		...pathContextMenuItems,
-		{ id: "duplicate", label: "Duplicate" },
+		{ id: "duplicate", label: "Duplicate", Icon: Files },
 		...manageContextMenuItems,
 	],
 };
@@ -203,8 +217,11 @@ export function FileExplorer() {
 					aria-label="File explorer actions"
 					style={{ position: "fixed", top: contextMenu.y, right: "auto", left: contextMenu.x } as CSSProperties}
 				>
-					{contextMenuItems[contextMenu.kind].map((item) => (
+					{contextMenuItems[contextMenu.kind].map(({ Icon, ...item }) => (
 						<MenuItem key={item.id} tone={item.tone ?? "default"} onClick={() => setContextMenu(null)}>
+							<MenuItemIcon data-action-icon={item.id}>
+								<Icon strokeWidth={1.75} />
+							</MenuItemIcon>
 							{item.label}
 						</MenuItem>
 					))}
