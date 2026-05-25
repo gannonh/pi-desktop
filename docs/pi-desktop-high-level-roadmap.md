@@ -409,25 +409,68 @@ Acceptance:
 - Existing chat, composer, session streaming, and right-panel tab interactions continue to work.
 - The implementation passes targeted unit/component tests and the repo check command.
 
-### M07C: Right Panel - Git/Github/PRs
+### M07B.1: CLI Parity Coverage and Roadmap Reconciliation
 
-Goal:
-
-Deliverables:
-
-Acceptance:
-
-### M07D: Right Panel - Terminal
-
-Goal:
+Goal: convert the CLI parity source inventory into an actionable Desktop coverage matrix and update milestone sequencing from evidence.
 
 Deliverables:
 
+- Coverage matrix that maps each CLI capability from `docs/specs/2026-05-25-cli-parity-source-inventory.md` to Desktop implementation evidence.
+- Explicit classification for each capability: release-blocking, deferred, desktop-native equivalent, or out of scope.
+- Gap disposition for every release-blocking or deferred capability.
+- Baseline note for CLI evidence when installed Pi and local `pi-mono` versions differ.
+- Roadmap updates for the next implementation milestones based on classified gaps.
+- Traceability evidence linking CLI source, Desktop source, coverage status, and planned roadmap target.
+
 Acceptance:
+
+- Every T002 CLI capability row has a coverage classification.
+- Every release-blocking or deferred capability has a target milestone, defer decision, or out-of-scope rationale.
+- Desktop implementation claims cite `src/` evidence first, then ADR/spec/roadmap evidence when needed.
+- The roadmap no longer contains stale current-planning statements.
+
+### M07C: Right Panel - Diff and Patch Review
+
+Goal: make file and code changes inspectable from the right panel before commit-oriented workflows.
+
+Deliverables:
+
+- Changed-file list for the active project where Git metadata is available.
+- Readable text diffs for modified files.
+- Clear states for untracked, binary, deleted, too-large, and unavailable files.
+- Open-in-files-workspace affordance for changed files.
+- Refresh and error handling for Git/runtime failures.
+- Tests for diff loading, empty state, unavailable repository state, and binary/unsupported file handling.
+
+Acceptance:
+
+- User can inspect changed project files from the right panel while chat remains active.
+- User can read diffs for supported text files.
+- Git or filesystem failures display visibly.
+- The feature does not expose arbitrary filesystem access outside the selected project root.
+
+### M07D: Right Panel - Terminal and Command Output
+
+Goal: expose shell-command and tool-output activity in a dedicated right-panel surface.
+
+Deliverables:
+
+- Live command/tool execution list for the active session.
+- Readable stdout, stderr, exit status, duration, and error display where Pi events expose them.
+- Linkage from transcript tool rows to detailed command output.
+- Copy output affordance.
+- Clear empty, running, completed, failed, and aborted states.
+- Tests for event rendering, active-session filtering, and failure display.
+
+Acceptance:
+
+- User can inspect shell/tool output without losing chat context.
+- Failed commands show the failure reason and output.
+- Output belongs to the selected session and does not leak across chats.
 
 ### M07E: Right Panel - Browser
 
-Goal:
+Goal: reserve browser or web-preview workflows for later work after local CLI parity gaps are closed or explicitly deferred.
 
 Deliverables:
 
@@ -555,8 +598,15 @@ Acceptance:
 
 ## Current Planning Targets
 
-Milestone 6 is complete. **M07A: Tool Timeline MVP** has built the tool execution event foundation. The next planning target is **M07A.2: Right Panel Tab Shell**: reshape that foundation into a UI-first right-side tab workspace with mock Terminal, Browser, Markdown/File, and Diffs/PR panels.
+M07A and M07B are complete. The current planning target is S002: CLI parity coverage and roadmap reconciliation.
 
-After M07A.2, **M07B: Right Panel - File Explorer + Viewer/Editor** turns the mock file surface into a real project file workspace. **M07C: Diff and Patch Review** then adds readable change review before commit workflows.
+S002 uses `docs/specs/2026-05-25-cli-parity-source-inventory.md` as source inventory, classifies Desktop coverage for each CLI capability, and updates this roadmap with explicit gap disposition.
 
-Milestone 3.2 is complete. M04 through M07C keep the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` for renderer chat state unless a later ADR revisits that decision.
+After S002, the recommended implementation sequence is:
+
+1. **M07C: Right Panel - Diff and Patch Review** for release-blocking change inspection.
+2. **M07D: Right Panel - Terminal and Command Output** for release-blocking tool and command observability.
+3. **M0X: Settings and Auth** for release-blocking provider/auth handoff, settings defaults, and diagnostics.
+4. **M0X: Extensibility** for deferred skills, prompt templates, extensions, and package-resource management.
+
+Milestone 3.2 remains the active renderer state decision: M04 through current milestones use the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` unless a later ADR revisits that decision.
