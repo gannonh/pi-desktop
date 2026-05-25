@@ -48,6 +48,7 @@
 		"@codemirror/state": "6.6.0",
 		"@codemirror/view": "6.43.0",
 		"@earendil-works/pi-coding-agent": "0.74.0",
+		"@lezer/highlight": "1.2.3",
 		"@mdxeditor/editor": "4.0.1",
 		"@mdxeditor/gurx": "1.2.4",
 		"@radix-ui/number": "1.1.1",
