@@ -36,12 +36,13 @@ Milestone M001, slice S001. This document records source evidence and inventorie
 | `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/keybindings.md`, `terminal-setup.md`, `tmux.md`, `windows.md`, `termux.md` | Terminal/platform docs | High-confidence source for keyboard shortcuts, keybinding customization, terminal compatibility, and platform notes. |
 | `/Volumes/EVO/repos/pi-mono/packages/coding-agent/examples/extensions/` | Extension examples | Evidence for extension API breadth and supported integration patterns. Use as example evidence, not as complete capability definition. |
 | `/Volumes/EVO/repos/pi-mono/packages/coding-agent/examples/sdk/` | SDK examples | Evidence for embedding and runtime integration patterns. Use with SDK docs and exported types. |
-| `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/README.md`, `docs/`, and `examples/` | Installed package docs and examples | Useful installed-reference mirror for user-facing docs. Local development repo remains primary when source and installed package differ. |
+| `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/package.json`, `dist/`, `README.md`, `docs/`, and `examples/` | Installed package runtime, docs, and examples | High-confidence source for the currently installed local `pi` executable. Use alongside `pi-mono` because the installed package may differ from the local source checkout. |
 
 ### Source confidence notes
 
-- The local `pi-mono` checkout is the primary implementation source for M001 because Desktop integrates against the Pi TypeScript SDK from that repo.
-- The installed package under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` is useful for currently installed docs and examples, but it should be treated as a mirror unless a task specifically audits installed runtime behavior.
+- The local `pi-mono` checkout is the primary readable TypeScript source for Desktop integration because Pi Desktop targets the Pi SDK from that repo.
+- The installed package under `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` is the primary source for the currently installed local `pi` executable. During this slice, the installed package reported version `0.75.5` while `/Volumes/EVO/repos/pi-mono/packages/coding-agent/package.json` reported `0.74.0`.
+- The next coverage-matrix slice should cite which source it uses when an installed-runtime fact and local-source fact differ.
 - User-facing docs summarize capabilities well, while source files and tests should settle command semantics, event shapes, settings precedence, and edge cases.
 - Example files demonstrate intended extension and SDK usage, but they do not define the full product surface.
 
@@ -132,4 +133,57 @@ Milestone M001, slice S001. This document records source evidence and inventorie
 
 ## T004 Synthesis for coverage-matrix slice
 
-Pending.
+### Durable output
+
+This file is the durable S001 source inventory output. It contains:
+
+- CLI source evidence in T001.
+- CLI capability inventory in T002.
+- Desktop implemented feature source inventory in T003.
+- Source confidence notes and open questions below.
+
+### How to use this in the coverage-matrix slice
+
+Use T002 rows as the left-side capability set for AUDIT-02. Use T003 source clusters as the Desktop evidence set for AUDIT-03. For each matrix row:
+
+1. Start from one CLI capability row in T002.
+2. Copy the cited CLI evidence paths into the matrix evidence field.
+3. Inspect the relevant T003 source cluster for Desktop implementation evidence.
+4. Classify coverage only after checking the cited implementation files.
+5. Record source confidence when evidence comes from docs/specs rather than implementation files.
+
+### Suggested matrix seeds
+
+- Startup/session start: T002 startup modes, SDK embedding, sessions; T003 app backend, Pi runtime adapter, project/session metadata, chat route view model.
+- Prompt delivery and queueing: T002 prompt delivery, abort/recovery; T003 runtime adapter, renderer session state, composer, queue controls.
+- Model and thinking controls: T002 model selection and thinking controls; T003 Pi session settings, composer view model, composer UI.
+- Tool visibility and transcript events: T002 built-in tools and tool events; T003 event normalizer, session state, transcript UI, right-panel workspace.
+- Session history and branching: T002 sessions, session tree/fork/clone, compaction; T003 Pi session history, project service, Pi session file actions, session index.
+- File and image inputs: T002 file/image inputs; T003 composer attachments, attachment conversion, shared Pi session image schemas.
+- Extensibility resources: T002 extensions, skills, prompt templates, themes, Pi packages; T003 shared contracts, app backend, Pi runtime adapter, roadmap non-goals.
+- Local file workspace: T002 built-in file tools and file arguments; T003 right-panel workspace, workspace file main services, file workspace renderer, Markdown/code editing.
+- Diagnostics and failure visibility: T002 diagnostics/errors, safety/approval patterns; T003 runtime event normalizer, project availability, workspace file error states, product safety docs.
+
+### Assumptions
+
+- Pi remains the source of agent behavior, providers, models, sessions, tools, skills, extensions, prompt templates, and themes.
+- Desktop implementation evidence should come from `src/` first, then ADRs/specs/roadmap for intent and completion context.
+- Terminal-specific CLI affordances can map to Desktop GUI equivalents in the matrix, but classification should explain the mapping.
+- This output is intentionally source inventory only; no parity gap status is assigned here.
+
+### Open questions for the next slice
+
+- Which Pi version should be the baseline for CLI parity classification when installed `pi` and `/Volumes/EVO/repos/pi-mono` differ? Current evidence: installed package `0.75.5`, local source checkout `0.74.0`.
+- Should extension/package management be classified as MVP parity, later milestone scope, or out-of-scope for the paused right-panel roadmap replacement?
+- Should terminal-only affordances such as `!!command`, Ctrl+G external editor, and terminal theme customization map to explicit Desktop UI requirements or remain CLI-only capabilities?
+- Should mock right-panel Terminal/Browser/Diffs tabs count as implemented Desktop sources only for shell/tab behavior, with live tool/terminal/browser parity deferred?
+
+### Verification
+
+- `grep -q '## T001 CLI source material audit' docs/specs/2026-05-25-cli-parity-source-inventory.md`
+- `grep -q '## T002 CLI capability inventory' docs/specs/2026-05-25-cli-parity-source-inventory.md`
+- `grep -q '## T003 Desktop implemented feature source inventory' docs/specs/2026-05-25-cli-parity-source-inventory.md`
+- `grep -q '### Open questions for the next slice' docs/specs/2026-05-25-cli-parity-source-inventory.md`
+- `node -e "const a=require('/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/package.json'); console.log(a.version)"`
+- `node -e "const a=require('/Volumes/EVO/repos/pi-mono/packages/coding-agent/package.json'); console.log(a.version)"`
+
