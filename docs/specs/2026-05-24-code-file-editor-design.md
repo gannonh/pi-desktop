@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft pending user review.
+Implemented.
 
 ## Goal
 
@@ -234,3 +234,42 @@ Approved design direction, pending final user review of this written spec:
 4. Replace only the plain textarea path in `FileEditor`.
 5. Preserve Markdown, save, dirty-state, tab, IPC, and blocked-state behavior.
 6. Verify with targeted tests, a visual review, and `pnpm check`.
+
+## Build completion report
+
+- Spec path: `docs/specs/2026-05-24-code-file-editor-design.md`
+- Base SHA: `67ffadd9e0dede0c582b3144b47fe815489e30e2`
+- Final head SHA: `a2248a3ca6856d3103a617f09183e0fdcaa8ed7c`
+- Tasks completed:
+  - Added direct CodeMirror dependencies used by product code.
+  - Added deterministic code language detection and coverage.
+  - Added a CodeMirror-backed `CodeFileEditor` with metadata, edit propagation, read-only handling, search/history/keymap support, line numbers, and Pi Desktop styling.
+  - Routed non-Markdown file workspace tabs through `CodeFileEditor` while preserving Markdown and blocked-state routing.
+  - Updated file workspace regression tests for dirty close and Cmd+S save behavior.
+- Files changed:
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `src/renderer/code-editor/code-editor-theme.ts`
+  - `src/renderer/code-editor/code-file-editor.tsx`
+  - `src/renderer/code-editor/code-language.ts`
+  - `src/renderer/file-workspace/file-editor.tsx`
+  - `src/renderer/styles.css`
+  - `tests/renderer/code-file-editor.test.tsx`
+  - `tests/renderer/code-language.test.ts`
+  - `tests/renderer/file-editor-routing.test.tsx`
+  - `tests/renderer/file-workspace-interactions.test.tsx`
+  - `tests/renderer/file-workspace-panel.test.tsx`
+- Tests and verification:
+  - `pnpm test tests/renderer/code-language.test.ts tests/renderer/code-file-editor.test.tsx tests/renderer/file-editor-routing.test.tsx tests/renderer/file-workspace-interactions.test.tsx`
+  - `pnpm test tests/renderer/file-workspace-panel.test.tsx`
+  - `pnpm check`
+  - Browser preview at `http://127.0.0.1:5174/`, screenshot saved to `/tmp/code-editor-preview-open.png`
+- Review gates completed:
+  - Spec compliance review: PASS.
+  - Code quality review: PASS after removing dead textarea CSS.
+  - Final whole-branch review: PASS.
+- Approved deviations:
+  - Built from a `Draft pending user review` spec by explicit user build request.
+- Known follow-up issues:
+  - None.
+- Independent subagent review used: Yes.

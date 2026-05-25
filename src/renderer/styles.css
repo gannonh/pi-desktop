@@ -1430,18 +1430,34 @@ body.file-workspace--resizing {
 	overflow: auto;
 }
 
-.file-editor--source {
-	width: 100%;
-	height: 100%;
-	min-height: 12rem;
-	resize: none;
-	border: 0;
-	padding: 0.75rem;
+.code-file-editor {
+	display: flex;
+	flex-direction: column;
 	background: var(--sidebar-background);
-	color: var(--color-foreground);
-	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-	font-size: 0.8125rem;
-	line-height: 1.45;
+}
+
+.code-file-editor__header {
+	display: flex;
+	min-height: 1.75rem;
+	align-items: center;
+	justify-content: flex-end;
+	border-bottom: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+	padding: 0 0.625rem;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.code-file-editor__language {
+	max-width: 10rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.code-file-editor__surface {
+	min-height: 0;
+	flex: 1;
+	overflow: hidden;
 }
 
 .file-editor--preview {

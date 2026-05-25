@@ -189,7 +189,7 @@ describe("FileWorkspacePanel", () => {
 		expect(screen.queryByText("Saved")).toBeNull();
 	});
 
-	it("keeps non-Markdown files on the existing source editor path without mode controls", async () => {
+	it("opens non-Markdown files in the code editor without mode controls", async () => {
 		window.piDesktop = {
 			...createUnavailablePiDesktopApi("test"),
 			workspaceFiles: {
@@ -216,7 +216,8 @@ describe("FileWorkspacePanel", () => {
 		await waitFor(() => expect(screen.getByRole("button", { name: /index\.ts/ })).toBeTruthy());
 		fireEvent.click(screen.getByRole("button", { name: /index\.ts/ }));
 
-		await waitFor(() => expect(screen.getByTestId("file-editor-source")).toBeTruthy());
+		await waitFor(() => expect(screen.getByTestId("code-file-editor")).toBeTruthy());
+		expect(screen.getByTestId("code-file-editor").getAttribute("data-language-id")).toBe("typescript");
 		expect(screen.queryByTestId("file-viewer-mode-toggle")).toBeNull();
 		expect(screen.queryByTestId("markdown-surface")).toBeNull();
 	});
