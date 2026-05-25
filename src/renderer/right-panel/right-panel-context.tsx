@@ -1,5 +1,4 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { RightPanelAddMenuItem } from "./right-panel-add-menu";
 import {
 	addOrActivateRightPanelTab,
 	addRightPanelTab,
@@ -10,7 +9,7 @@ import {
 	selectRightPanelTab,
 	setRightPanelCollapsed,
 } from "./right-panel-state";
-import type { RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
+import type { RightPanelAddMenuItem, RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
 import { useShellLayout } from "../shell/shell-layout-context";
 
 type RightPanelContextValue = {

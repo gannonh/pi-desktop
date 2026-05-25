@@ -1,24 +1,7 @@
+import { extractTextFromPiContent } from "../../shared/pi-session-content";
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textFromContent = (content: unknown): string => {
-	if (typeof content === "string") {
-		return content;
-	}
-
-	if (!Array.isArray(content)) {
-		return "";
-	}
-
-	return content
-		.map((part) => {
-			if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
-				return part.text;
-			}
-			return "";
-		})
-		.join("");
-};
 
 const commandFromArgs = (args: unknown): string | undefined => {
 	if (!isRecord(args) || typeof args.command !== "string") {
@@ -63,7 +46,7 @@ export const summarizeToolArgs = (_toolName: string, args: unknown): string => {
 
 export const summarizeToolResult = (_toolName: string, result: unknown, isError: boolean): string => {
 	if (isError) {
-		const text = textFromContent(isRecord(result) ? result.content : result).trim();
+		const text = extractTextFromPiContent(isRecord(result) ? result.content : result).trim();
 		return text ? truncate(text) : "Tool failed";
 	}
 
@@ -72,7 +55,7 @@ export const summarizeToolResult = (_toolName: string, result: unknown, isError:
 		return truncate(command);
 	}
 
-	const text = textFromContent(isRecord(result) ? result.content : result).trim();
+	const text = extractTextFromPiContent(isRecord(result) ? result.content : result).trim();
 	if (text) {
 		return truncate(text.split("\n")[0] ?? text);
 	}
@@ -90,7 +73,7 @@ export const getToolOutputText = (_toolName: string, result: unknown): string =>
 		return stringifyPayload(result);
 	}
 
-	const text = textFromContent(result.content).trim();
+	const text = extractTextFromPiContent(result.content).trim();
 	if (text) {
 		return text;
 	}

@@ -2,13 +2,7 @@ import { File, GitBranch, Globe, Layers, Terminal } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
 import { useRightPanel } from "./right-panel-context";
-import type { RightPanelKind } from "./right-panel-types";
-
-export type RightPanelAddMenuItem = {
-	id: string;
-	kind: RightPanelKind;
-	label: string;
-};
+import type { RightPanelAddMenuItem, RightPanelKind } from "./right-panel-types";
 
 export const rightPanelAddMenuItems: RightPanelAddMenuItem[] = [
 	{ id: "diffs", kind: "diffs", label: "Changes" },

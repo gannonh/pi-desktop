@@ -2,7 +2,7 @@
 
 `pi-desktop` is an open-source macOS desktop command center for the Pi coding agent CLI.
 
-Product context and roadmap live in [docs/superpowers/specs/2026-05-12-pi-desktop-prd-roadmap-design.md](docs/superpowers/specs/2026-05-12-pi-desktop-prd-roadmap-design.md).
+Product context and roadmap live in [docs/pi-desktop-high-level-roadmap.md](docs/pi-desktop-high-level-roadmap.md).
 
 ## Prerequisites
 
@@ -50,6 +50,8 @@ pnpm check
 `pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and Electron/web smoke tests.
 
 Smoke tests run headless by default so they do not steal focus while you work. To watch them locally, use `pnpm test:smoke:headed` or set `PI_DESKTOP_SMOKE_HEADED=1`.
+
+Run milestone UAT evidence checks with `pnpm test:uat`.
 
 ## Package Locally
 

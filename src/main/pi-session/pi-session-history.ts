@@ -3,6 +3,7 @@ import {
 	type SessionEntry,
 	type SessionManager as PiSessionManager,
 } from "@earendil-works/pi-coding-agent";
+import { extractTextFromPiContent } from "../../shared/pi-session-content";
 import type { PiSessionHistoryMessage, PiSessionHistoryPayload, PiSessionMessageRole } from "../../shared/pi-session";
 import { resolvePiSessionFilesDirForCwd } from "../app-paths";
 import { createDesktopSessionId } from "./pi-session-runtime";
@@ -23,25 +24,6 @@ export type LoadPiSessionHistoryInput = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
-
-const textFromContent = (content: unknown): string => {
-	if (typeof content === "string") {
-		return content;
-	}
-
-	if (!Array.isArray(content)) {
-		return "";
-	}
-
-	return content
-		.map((part) => {
-			if (isRecord(part) && part.type === "text" && typeof part.text === "string") {
-				return part.text;
-			}
-			return "";
-		})
-		.join("");
-};
 
 const roleFor = (role: unknown): PiSessionMessageRole => {
 	if (role === "assistant" || role === "tool" || role === "system") {
@@ -64,7 +46,7 @@ const contentForMessage = (message: unknown): string => {
 			.join("\n");
 	}
 
-	return "content" in message ? textFromContent(message.content) : "";
+	return "content" in message ? extractTextFromPiContent(message.content) : "";
 };
 
 const messageFromEntry = (entry: SessionEntry): PiSessionHistoryMessage | null => {
@@ -101,7 +83,7 @@ const messageFromEntry = (entry: SessionEntry): PiSessionHistoryMessage | null =
 	}
 
 	if (entry.type === "custom_message" && entry.display) {
-		const content = textFromContent(entry.content).trim();
+		const content = extractTextFromPiContent(entry.content).trim();
 		if (!content) {
 			return null;
 		}

@@ -5,7 +5,7 @@ import { parseAsync } from "docx-preview";
 import JSZip from "jszip";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import * as XLSX from "xlsx";
-import type { Attachment } from "./attachment-types";
+import { COMPOSER_MAX_ATTACHMENT_BYTES, type Attachment } from "./attachment-types";
 
 let pdfjsModulePromise: Promise<typeof import("pdfjs-dist")> | undefined;
 
@@ -32,8 +32,6 @@ const arrayBufferToBase64 = (arrayBuffer: ArrayBuffer): string => {
 	}
 	return btoa(binary);
 };
-
-const maxAttachmentBytes = 15 * 1024 * 1024;
 
 export async function loadAttachment(
 	source: string | File | Blob | ArrayBuffer,
@@ -72,8 +70,8 @@ export async function loadAttachment(
 		throw new Error("Invalid source type");
 	}
 
-	if (size > maxAttachmentBytes) {
-		throw new Error(`Attachment exceeds ${Math.floor(maxAttachmentBytes / (1024 * 1024))}MB limit.`);
+	if (size > COMPOSER_MAX_ATTACHMENT_BYTES) {
+		throw new Error(`Attachment exceeds ${Math.floor(COMPOSER_MAX_ATTACHMENT_BYTES / (1024 * 1024))}MB limit.`);
 	}
 
 	const base64Content = arrayBufferToBase64(arrayBuffer);

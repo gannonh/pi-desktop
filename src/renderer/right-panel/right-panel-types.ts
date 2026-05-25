@@ -13,3 +13,9 @@ export type RightPanelState = {
 	activeTabId: string | null;
 	collapsed: boolean;
 };
+
+export type RightPanelAddMenuItem = {
+	id: string;
+	kind: RightPanelKind;
+	label: string;
+};

@@ -28,7 +28,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 
 - Record durable architecture decisions as ADRs under `docs/adr`.
 - Keep diagrams under `docs/diagrams`.
-- Keep specs and execution plans under `docs/superpowers`.
+- Keep specs and execution plans under `docs/specs`.
 - Keep roadmap status and ADR decisions aligned when milestone direction changes.
 - Preserve spike outcomes in specs or ADRs; do not keep dead prototype code or dependencies in product branches unless explicitly adopted.
 
