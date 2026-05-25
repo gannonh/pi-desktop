@@ -223,6 +223,17 @@ describe("FileWorkspacePanel", () => {
 		]);
 	});
 
+	it("renders item context menus outside the scrolling explorer pane", async () => {
+		const explorer = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		const menu = screen.getByRole("menu", { name: "File explorer actions" });
+		expect(menu.parentElement).toBe(document.body);
+		expect(menu.getAttribute("style")).toContain("position: fixed");
+		expect(explorer.contains(menu)).toBe(false);
+	});
+
 	it("shows creation actions on file explorer background right click", async () => {
 		const explorer = await renderExplorerWithEntries();
 

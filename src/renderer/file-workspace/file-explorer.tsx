@@ -1,5 +1,6 @@
 import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { MenuItem, MenuSurface } from "../components/menu";
 import { getExplorerFileIcon } from "./file-explorer-icons";
 import { useFileWorkspace } from "./file-workspace-context";
@@ -193,6 +194,25 @@ export function FileExplorer() {
 		openContextMenu(kind === "directory" || kind === "file" ? kind : "background", event);
 	};
 
+	const contextMenuElement = contextMenu
+		? createPortal(
+				<MenuSurface
+					ref={contextMenuRef}
+					className="file-explorer__context-menu"
+					variant="context"
+					aria-label="File explorer actions"
+					style={{ position: "fixed", top: contextMenu.y, right: "auto", left: contextMenu.x } as CSSProperties}
+				>
+					{contextMenuItems[contextMenu.kind].map((item) => (
+						<MenuItem key={item.id} tone={item.tone ?? "default"} onClick={() => setContextMenu(null)}>
+							{item.label}
+						</MenuItem>
+					))}
+				</MenuSurface>,
+				document.body,
+			)
+		: null;
+
 	return (
 		<section
 			className="file-explorer"
@@ -234,21 +254,7 @@ export function FileExplorer() {
 						: null}
 				</ul>
 			</div>
-			{contextMenu ? (
-				<MenuSurface
-					ref={contextMenuRef}
-					className="file-explorer__context-menu"
-					variant="context"
-					aria-label="File explorer actions"
-					style={{ top: contextMenu.y, right: "auto", left: contextMenu.x } as CSSProperties}
-				>
-					{contextMenuItems[contextMenu.kind].map((item) => (
-						<MenuItem key={item.id} tone={item.tone ?? "default"} onClick={() => setContextMenu(null)}>
-							{item.label}
-						</MenuItem>
-					))}
-				</MenuSurface>
-			) : null}
+			{contextMenuElement}
 		</section>
 	);
 }

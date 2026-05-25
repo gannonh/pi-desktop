@@ -1313,10 +1313,6 @@ body.file-workspace--resizing {
 	text-underline-offset: 0.12em;
 }
 
-.file-explorer__context-menu {
-	position: fixed;
-}
-
 .file-viewer {
 	display: flex;
 	min-width: 0;
