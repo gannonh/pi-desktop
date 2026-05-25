@@ -15,13 +15,16 @@ import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
 import {
+	type SessionRequest,
 	type SessionScope,
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
+	isSessionRequestCurrent,
 	isSessionScopeSelected,
 	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
+	shouldDisposeStaleStartResult,
 	takeBufferedSessionEvents,
 } from "./session/session-scope";
 import {
@@ -42,12 +45,6 @@ import {
 type StatusMessage = {
 	source: "project" | "startup";
 	message: string;
-};
-
-type SessionRequest = {
-	id: number;
-	projectId: string | null;
-	chatId: string | null;
 };
 
 const createEmptyProjectStateView = (): ProjectStateView => ({
@@ -537,20 +534,34 @@ export function App() {
 						thinkingLevel: settingsForStart?.thinkingLevel,
 					});
 
-			const requestIsCurrent =
-				latestSessionRequestRef.current?.id === request.id &&
-				selectedProjectIdRef.current === requestProjectId &&
-				selectedChatIdRef.current === requestChatId &&
-				activeSessionProjectIdRef.current === requestProjectId &&
-				activeSessionChatIdRef.current === requestChatId &&
-				(reusableSessionId || pendingStartRequestRef.current?.id === request.id);
+			const requestIsCurrent = isSessionRequestCurrent({
+				request,
+				latestRequest: latestSessionRequestRef.current,
+				selection: {
+					projectId: selectedProjectIdRef.current,
+					chatId: selectedChatIdRef.current,
+				},
+				active: {
+					projectId: activeSessionProjectIdRef.current,
+					chatId: activeSessionChatIdRef.current,
+				},
+				pendingStart: pendingStartRequestRef.current,
+				reusableSessionId,
+			});
 
 			if (!requestIsCurrent) {
 				if (!reusableSessionId && pendingStartRequestRef.current?.id === request.id) {
 					pendingStartRequestRef.current = null;
 					pendingStartEventsRef.current.clear();
 				}
-				if (result.ok && !reusableSessionId) {
+				if (
+					shouldDisposeStaleStartResult({
+						requestIsCurrent,
+						resultOk: result.ok,
+						reusableSessionId,
+					}) &&
+					result.ok
+				) {
 					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
 				}
 				return false;

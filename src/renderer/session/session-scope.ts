@@ -6,10 +6,11 @@ export type SessionScope = {
 	chatId: string | null;
 };
 
-type PendingSessionScope = {
-	projectId: string | null;
-	chatId: string | null;
-} | null;
+export type SessionRequest = SessionScope & {
+	id: number;
+};
+
+type PendingSessionScope = SessionScope | null;
 
 type SessionEventWithSessionId = PiSessionEvent & { sessionId: string };
 
@@ -91,6 +92,38 @@ export const shouldBufferPendingStartEvent = ({
 	const sessionIdPrefix = pendingStart.projectId === null ? "standalone:" : `${pendingStart.projectId}:`;
 	return eventSessionId.startsWith(sessionIdPrefix);
 };
+
+export const isSessionRequestCurrent = ({
+	request,
+	latestRequest,
+	selection,
+	active,
+	pendingStart,
+	reusableSessionId,
+}: {
+	request: SessionRequest;
+	latestRequest: SessionRequest | null;
+	selection: SessionScope;
+	active: SessionScope;
+	pendingStart: SessionRequest | null;
+	reusableSessionId: string | null;
+}): boolean =>
+	latestRequest?.id === request.id &&
+	selection.projectId === request.projectId &&
+	selection.chatId === request.chatId &&
+	active.projectId === request.projectId &&
+	active.chatId === request.chatId &&
+	(reusableSessionId !== null || pendingStart?.id === request.id);
+
+export const shouldDisposeStaleStartResult = ({
+	requestIsCurrent,
+	resultOk,
+	reusableSessionId,
+}: {
+	requestIsCurrent: boolean;
+	resultOk: boolean;
+	reusableSessionId: string | null;
+}): boolean => !requestIsCurrent && resultOk && reusableSessionId === null;
 
 export const createPendingSessionEventBuffer = (): PendingSessionEventBuffer => new Map();
 
