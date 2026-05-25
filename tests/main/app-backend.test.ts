@@ -640,6 +640,59 @@ describe("app backend", () => {
 		await backend.dispose();
 	});
 
+	it("hydrates history and resumes follow-up prompts from the same selected session path", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValue({
+			projectId: "project:one",
+			chatId: "chat:one",
+			workspacePath: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+		});
+		const loadSessionHistory = vi.fn(() => ({
+			sessionId: "project:one:sdk-session:one",
+			status: "idle" as const,
+			statusLabel: "Idle",
+			messages: [{ id: "assistant:one", role: "assistant" as const, content: "Earlier answer", streaming: false }],
+		}));
+		const session = createSession();
+		const sessionManager = createSessionManager("/tmp/one-session.jsonl");
+		const createSessionManagerMock = vi.fn(() => sessionManager);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: createSessionManagerMock,
+			createAgentSession: vi.fn(async () => ({ session })),
+			loadSessionHistory,
+		});
+
+		const history = await backend.handle({
+			operation: "piSession.history",
+			input: { projectId: "project:one", chatId: "chat:one" },
+		});
+		const resumed = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", chatId: "chat:one", prompt: "Continue" },
+		});
+
+		expect(history).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:one:sdk-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "assistant:one", role: "assistant", content: "Earlier answer", streaming: false }],
+			},
+		});
+		expect(createSessionManagerMock).toHaveBeenCalledWith({
+			cwd: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+			env: undefined,
+		});
+		expect(resumed).toEqual(expect.objectContaining({ ok: true }));
+		expect(projectService.getSessionStartTarget).toHaveBeenCalledTimes(2);
+	});
+
 	it("syncs chat title when a Pi session becomes idle", async () => {
 		const projectService = createProjectService();
 		const session = createSession([{ type: "agent_end", messages: [] } as AgentSessionEvent]);

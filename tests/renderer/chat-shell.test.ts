@@ -5,7 +5,10 @@ import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
 import { ShellTestProviders } from "./shell-test-providers";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
-import { createIdleTranscriptHydration } from "../../src/renderer/session/transcript-hydration";
+import {
+	createIdleTranscriptHydration,
+	createLoadedTranscriptHydration,
+} from "../../src/renderer/session/transcript-hydration";
 import { createComposerContext, createComposerHost } from "./composer-fixtures";
 
 const composer = createComposerContext({
@@ -168,6 +171,32 @@ describe("ChatShell", () => {
 
 		expect(markup).toContain("chat-shell--session");
 		expect(markup).toContain("Loading conversation");
+		expect(markup).not.toContain("No messages yet.");
+		expect(markup).not.toContain("What should we build in pi-desktop?");
+	});
+
+	it("renders hydrated history in the session layout without an empty-state flash", () => {
+		const route = {
+			kind: "empty-chat",
+			title: "What is the today's date?",
+			startTitle: "What should we build in pi-desktop?",
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:session:one",
+			composer,
+			suggestions: ["Review my recent commits for correctness risks and maintainability concerns"],
+			resumeLabel: "Resume session",
+			metadataLabel: "idle · updated 5/17/2026, 8:46:05 AM",
+		} as Exclude<ChatShellRoute, { kind: "unavailable-project" }>;
+		const hydratedSession = {
+			...createInitialSessionState(),
+			sessionId: "project:/tmp/pi-desktop:sdk-session:one",
+			messages: [{ id: "assistant:one", role: "assistant" as const, content: "Earlier answer", streaming: false }],
+		};
+
+		const markup = renderChatShell(route, hydratedSession, createLoadedTranscriptHydration(scope));
+
+		expect(markup).toContain("chat-shell--session");
+		expect(markup).toContain("Earlier answer");
 		expect(markup).not.toContain("No messages yet.");
 		expect(markup).not.toContain("What should we build in pi-desktop?");
 	});
