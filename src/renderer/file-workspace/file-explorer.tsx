@@ -1,5 +1,5 @@
 import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
-import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { MenuItem, MenuSurface } from "../components/menu";
 import { getExplorerFileIcon } from "./file-explorer-icons";
 import { useFileWorkspace } from "./file-workspace-context";
@@ -12,19 +12,14 @@ type ExplorerContextMenuState = {
 	y: number;
 } | null;
 
+const creationContextMenuItems = ["New File", "New Folder"];
+const pathContextMenuItems = ["Copy Path", "Copy Relative Path"];
+const manageContextMenuItems = ["Reveal in Finder", "Rename", "Delete"];
+
 const contextMenuItems: Record<ExplorerContextMenuKind, string[]> = {
-	background: ["New File", "New Folder"],
-	directory: ["New File", "New Folder", "Copy Path", "Copy Relative Path", "Reveal in Finder", "Rename", "Delete"],
-	file: [
-		"New File",
-		"New Folder",
-		"Copy Path",
-		"Copy Relative Path",
-		"Duplicate",
-		"Reveal in Finder",
-		"Rename",
-		"Delete",
-	],
+	background: creationContextMenuItems,
+	directory: [...creationContextMenuItems, ...pathContextMenuItems, ...manageContextMenuItems],
+	file: [...creationContextMenuItems, ...pathContextMenuItems, "Duplicate", ...manageContextMenuItems],
 };
 
 interface ExplorerNodeProps {
@@ -125,7 +120,6 @@ export function FileExplorer() {
 	const { project, state, retryLoadDirectory } = useFileWorkspace();
 	const rootListing = state.directoryEntries[""];
 	const [contextMenu, setContextMenu] = useState<ExplorerContextMenuState>(null);
-	const contextMenuId = useId();
 	const contextMenuRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -207,7 +201,6 @@ export function FileExplorer() {
 			{contextMenu ? (
 				<MenuSurface
 					ref={contextMenuRef}
-					id={contextMenuId}
 					className="file-explorer__context-menu"
 					variant="context"
 					aria-label="File explorer actions"
