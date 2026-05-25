@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { EditorView } from "@codemirror/view";
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PanelBottom, PanelRight } from "lucide-react";
@@ -246,6 +247,25 @@ describe("MarkdownSurface", () => {
 		act(() => sourceActions?.replaceMarkdown("# Updated source"));
 
 		expect(onChange).toHaveBeenCalledWith("# Updated source");
+	});
+
+	it("uses the shared dark CodeMirror theme in source mode", async () => {
+		render(
+			<MarkdownSurface
+				value={representativeMarkdownFixture}
+				mode="source"
+				readOnly={false}
+				relativePath="docs/README.md"
+				onChange={vi.fn()}
+			/>,
+		);
+
+		const sourceEditor = await screen.findByTestId("markdown-source-editor");
+		await waitFor(() => {
+			const view = EditorView.findFromDOM(sourceEditor);
+			expect(view).not.toBeNull();
+			expect(view?.state.facet(EditorView.darkTheme)).toBe(true);
+		});
 	});
 
 	it("renders split mode with source and rich editors sharing the same value callback", async () => {

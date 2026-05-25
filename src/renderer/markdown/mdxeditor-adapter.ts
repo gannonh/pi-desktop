@@ -77,6 +77,7 @@ import {
 	X,
 } from "lucide-react";
 import { type ComponentProps, createElement, Fragment, type ReactElement } from "react";
+import { createCodeEditorAppearanceExtensions } from "../code-editor/code-editor-theme";
 import { MarkdownCodeBlockEditor } from "./markdown-code-block";
 import { markdownImagePreviewHandler } from "./markdown-image-policy";
 
@@ -260,6 +261,7 @@ const createBaseMarkdownPlugins = (): RealmPlugin[] => [
 	}),
 	codeMirrorPlugin({
 		codeBlockLanguages: { markdown: "Markdown", ts: "TypeScript", js: "JavaScript", bash: "Shell" },
+		codeMirrorExtensions: createCodeEditorAppearanceExtensions(),
 		autoLoadLanguageSupport: false,
 	}),
 	markdownShortcutPlugin(),
@@ -275,7 +277,13 @@ export function createMarkdownEditorAdapterConfig(
 	const plugins = createBaseMarkdownPlugins();
 
 	if (options.viewMode === "source") {
-		plugins.push(diffSourcePlugin({ viewMode: "source", readOnlyDiff: options.readOnlySource ?? false }));
+		plugins.push(
+			diffSourcePlugin({
+				viewMode: "source",
+				readOnlyDiff: options.readOnlySource ?? false,
+				codeMirrorExtensions: createCodeEditorAppearanceExtensions(),
+			}),
+		);
 	}
 
 	return {

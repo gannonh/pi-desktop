@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { type Extension, EditorState } from "@codemirror/state";
+import { type Extension, EditorState, Prec } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
 import {
 	drawSelection,
@@ -32,8 +32,7 @@ export function createCodeEditorBaseExtensions(options: { readOnly: boolean; ari
 			spellcheck: "false",
 		}),
 		keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-		syntaxHighlighting(codeEditorHighlightStyle, { fallback: true }),
-		codeEditorTheme,
+		...createCodeEditorAppearanceExtensions(),
 	];
 }
 
@@ -57,6 +56,11 @@ export const codeEditorHighlightStyle = HighlightStyle.define([
 	{ tag: [tags.heading, tags.link], color: "oklch(0.8 0.058 236)", fontWeight: "500" },
 	{ tag: tags.invalid, color: "oklch(0.82 0.12 24)", textDecoration: "underline" },
 ]);
+
+export const createCodeEditorAppearanceExtensions = (): Extension[] => [
+	Prec.highest(syntaxHighlighting(codeEditorHighlightStyle, { fallback: true })),
+	Prec.highest(codeEditorTheme),
+];
 
 export const codeEditorTheme = EditorView.theme(
 	{
