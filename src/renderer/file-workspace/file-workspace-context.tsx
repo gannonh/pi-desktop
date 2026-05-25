@@ -44,6 +44,7 @@ type FileWorkspaceContextValue = {
 export const FileWorkspaceContext = createContext<FileWorkspaceContextValue | null>(null);
 
 const errorMessageFor = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const SAVE_SUCCESS_VISIBLE_MS = 1800;
 
 interface FileWorkspaceProviderProps {
 	project: ProjectRecord | null;
@@ -85,6 +86,18 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 		loadGenerationRef.current += 1;
 		setState(resetFileWorkspaceState());
 	}, [project?.id]);
+
+	useEffect(() => {
+		if (state.saveStatus !== "saved") {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => {
+			setState((current) => (current.saveStatus === "saved" ? setSaveStatus(current, "idle") : current));
+		}, SAVE_SUCCESS_VISIBLE_MS);
+
+		return () => window.clearTimeout(timeout);
+	}, [state.saveStatus]);
 
 	const loadDirectory = useCallback(
 		async (relativePath: string) => {

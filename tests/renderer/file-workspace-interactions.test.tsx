@@ -192,5 +192,13 @@ describe("file workspace interactions", () => {
 				content: "notes\nedited\n",
 			});
 		});
+		await screen.findByText("Saved");
+
+		await waitFor(
+			() => {
+				expect(screen.queryByText("Saved")).toBeNull();
+			},
+			{ timeout: 2500 },
+		);
 	});
 });
