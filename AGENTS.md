@@ -2,11 +2,12 @@
 
 ## Project Map
 
-- Product context and high-level roadmap: [docs/superpowers/specs/2026-05-12-pi-desktop-high-level-roadmap.md](docs/superpowers/specs/2026-05-12-pi-desktop-high-level-roadmap.md)
+- Start with [docs/docs-map.md](docs/docs-map.md) for the current documentation index.
+- Product context and high-level roadmap: [docs/pi-desktop-high-level-roadmap.md](docs/pi-desktop-high-level-roadmap.md)
 - Architecture decisions: [docs/adr](docs/adr)
 - Diagrams: [docs/diagrams](docs/diagrams)
-- Specs and plans: [docs/superpowers](docs/superpowers)
-- Setup, run, test, and release commands belong in `README.md` when that file exists. Link to `README.md` instead of repeating those instructions here.
+- Specs and plans: [docs/specs](docs/specs)
+- Setup, run, test, and release commands belong in [README.md](README.md). Link to `README.md` instead of repeating those instructions here.
 - Pi runtime reference repo: `/Volumes/EVO/repos/pi-mono`
 
 ## Product Frame
@@ -40,6 +41,12 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 - **Prefer shadcn for new generic UI:** menus, dialogs, forms, confirmations, standard buttons, empty states. Add registry components via the shadcn CLI before inventing parallel primitives.
 - **Icons:** use `lucide-react` only in the renderer. Do not add other icon libraries for product UI.
 - **Existing custom menus:** `src/renderer/components/menu.tsx` is legacy shell chrome; new overflow and action menus should move toward `DropdownMenu` when touched, not extend the custom menu pattern without reason.
+
+## Agent Workflow
+
+- Use sub-agents when work can split into independent research, review, implementation, or verification tracks, especially architecture audits, UI reviews, documentation sweeps, broad test failure triage, and changes touching separable feature folders.
+- Keep one lead agent responsible for the final edit plan and integration. Have sub-agents return findings, diffs, or review notes, then reconcile conflicts before editing shared files.
+- Skip sub-agents for small single-file changes, tasks needing immediate user clarification, secret/account-specific work, or tightly coupled edits where coordination would cost more than it saves.
 
 ## Codebase Shape
 
