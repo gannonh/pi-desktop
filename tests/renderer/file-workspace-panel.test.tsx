@@ -70,12 +70,12 @@ const renderExplorerWithEntries = async () => {
 				data: {
 					entries: [
 						{ name: "src", relativePath: "src", kind: "directory" as const },
-						{ name: "index.ts", relativePath: "src/index.ts", kind: "file" as const },
+						{ name: "index.ts", relativePath: "index.ts", kind: "file" as const },
 					],
 				},
 			})),
 			readFile: vi.fn(async () => ({ ok: true as const, data: { kind: "text" as const, content: "", size: 0 } })),
-			writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "src/index.ts", size: 0 } })),
+			writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "index.ts", size: 0 } })),
 		},
 	};
 

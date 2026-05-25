@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { act, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { CodeFileEditor, type CodeFileEditorActions } from "../../src/renderer/code-editor/code-file-editor";
+import { CodeFileEditor } from "../../src/renderer/code-editor/code-file-editor";
 import { ensureRangeClientRects } from "./console-test-guard";
 
 beforeAll(ensureRangeClientRects);
+
+function getCodeMirrorView(): EditorView {
+	const editor = screen.getByTestId("code-file-editor");
+	const view = EditorView.findFromDOM(editor);
+	if (!view) {
+		throw new Error("CodeMirror editor view was not mounted.");
+	}
+	return view;
+}
 
 describe("CodeFileEditor", () => {
 	it("renders a CodeMirror editor with stable language metadata", async () => {
@@ -21,7 +32,6 @@ describe("CodeFileEditor", () => {
 
 	it("emits source changes from the editor document", async () => {
 		const onChange = vi.fn();
-		const actionsRef: { current: CodeFileEditorActions | null } = { current: null };
 
 		render(
 			<CodeFileEditor
@@ -29,50 +39,30 @@ describe("CodeFileEditor", () => {
 				relativePath="src/answer.ts"
 				readOnly={false}
 				onChange={onChange}
-				onEditorReady={(nextActions) => {
-					actionsRef.current = nextActions;
-				}}
 			/>,
 		);
 
-		await waitFor(() => expect(actionsRef.current).not.toBeNull());
-		const editorActions = actionsRef.current;
-		if (!editorActions) {
-			throw new Error("Code editor actions were not registered.");
-		}
-		act(() => editorActions.replaceSource('const answer = 43;\n'));
+		await screen.findByTestId("code-file-editor");
+		const view = getCodeMirrorView();
+		act(() => {
+			view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'const answer = 43;\n' } });
+		});
 
 		expect(onChange).toHaveBeenCalledWith('const answer = 43;\n');
-		expect(editorActions.getSource()).toBe('const answer = 43;\n');
+		expect(view.state.doc.toString()).toBe('const answer = 43;\n');
 	});
 
-	it("keeps read-only editor documents unchanged", async () => {
+	it("marks read-only editor documents as non-editable", async () => {
 		const onChange = vi.fn();
-		const actionsRef: { current: CodeFileEditorActions | null } = { current: null };
 
-		render(
-			<CodeFileEditor
-				value={"readonly\n"}
-				relativePath="README"
-				readOnly={true}
-				onChange={onChange}
-				onEditorReady={(nextActions) => {
-					actionsRef.current = nextActions;
-				}}
-			/>,
-		);
+		render(<CodeFileEditor value={"readonly\n"} relativePath="README" readOnly={true} onChange={onChange} />);
 
 		const editor = await screen.findByTestId("code-file-editor");
+		const view = getCodeMirrorView();
+
 		expect(editor.getAttribute("data-readonly")).toBe("true");
-
-		await waitFor(() => expect(actionsRef.current).not.toBeNull());
-		const editorActions = actionsRef.current;
-		if (!editorActions) {
-			throw new Error("Code editor actions were not registered.");
-		}
-		act(() => editorActions.replaceSource("mutated\n"));
-
+		expect(view.state.facet(EditorState.readOnly)).toBe(true);
+		expect(view.state.facet(EditorView.editable)).toBe(false);
 		expect(onChange).not.toHaveBeenCalled();
-		expect(editorActions.getSource()).toBe("readonly\n");
 	});
 });

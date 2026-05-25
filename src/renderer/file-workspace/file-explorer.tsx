@@ -6,20 +6,53 @@ import { useFileWorkspace } from "./file-workspace-context";
 
 type ExplorerContextMenuKind = "background" | "directory" | "file";
 
+type ExplorerContextMenuActionId =
+	| "new-file"
+	| "new-folder"
+	| "copy-path"
+	| "copy-relative-path"
+	| "duplicate"
+	| "reveal"
+	| "rename"
+	| "delete";
+
+type ExplorerContextMenuAction = {
+	id: ExplorerContextMenuActionId;
+	label: string;
+	tone?: "default" | "danger";
+};
+
 type ExplorerContextMenuState = {
 	kind: ExplorerContextMenuKind;
 	x: number;
 	y: number;
 } | null;
 
-const creationContextMenuItems = ["New File", "New Folder"];
-const pathContextMenuItems = ["Copy Path", "Copy Relative Path"];
-const manageContextMenuItems = ["Reveal in Finder", "Rename", "Delete"];
+const creationContextMenuItems = [
+	{ id: "new-file", label: "New File" },
+	{ id: "new-folder", label: "New Folder" },
+] satisfies ExplorerContextMenuAction[];
 
-const contextMenuItems: Record<ExplorerContextMenuKind, string[]> = {
+const pathContextMenuItems = [
+	{ id: "copy-path", label: "Copy Path" },
+	{ id: "copy-relative-path", label: "Copy Relative Path" },
+] satisfies ExplorerContextMenuAction[];
+
+const manageContextMenuItems = [
+	{ id: "reveal", label: "Reveal in Finder" },
+	{ id: "rename", label: "Rename" },
+	{ id: "delete", label: "Delete", tone: "danger" },
+] satisfies ExplorerContextMenuAction[];
+
+const contextMenuItems: Record<ExplorerContextMenuKind, ExplorerContextMenuAction[]> = {
 	background: creationContextMenuItems,
 	directory: [...creationContextMenuItems, ...pathContextMenuItems, ...manageContextMenuItems],
-	file: [...creationContextMenuItems, ...pathContextMenuItems, "Duplicate", ...manageContextMenuItems],
+	file: [
+		...creationContextMenuItems,
+		...pathContextMenuItems,
+		{ id: "duplicate", label: "Duplicate" },
+		...manageContextMenuItems,
+	],
 };
 
 interface ExplorerNodeProps {
@@ -206,13 +239,9 @@ export function FileExplorer() {
 					aria-label="File explorer actions"
 					style={{ top: contextMenu.y, right: "auto", left: contextMenu.x } as CSSProperties}
 				>
-					{contextMenuItems[contextMenu.kind].map((label) => (
-						<MenuItem
-							key={label}
-							tone={label === "Delete" ? "danger" : "default"}
-							onClick={() => setContextMenu(null)}
-						>
-							{label}
+					{contextMenuItems[contextMenu.kind].map((item) => (
+						<MenuItem key={item.id} tone={item.tone ?? "default"} onClick={() => setContextMenu(null)}>
+							{item.label}
 						</MenuItem>
 					))}
 				</MenuSurface>
