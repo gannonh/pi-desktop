@@ -1563,6 +1563,138 @@ describe("project service", () => {
 		);
 	});
 
+	it("clones a Pi-backed chat into the same project", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const sourcePath = "/tmp/pi-desktop/source.jsonl";
+		const clonedPath = "/tmp/pi-desktop/cloned.jsonl";
+		const sourceChat = createChat(project, {
+			id: "chat:session:source",
+			source: "pi-session",
+			sessionId: "source",
+			sessionPath: sourcePath,
+			title: "Source session",
+		});
+		const { cloneSession, memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				chatsByProject: {
+					[project.id]: [sourceChat],
+				},
+			},
+			now: () => secondNow,
+			cloneSession: async () => clonedPath,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sourcePath,
+					id: "source",
+					cwd: project.path,
+					name: "Source session",
+				}),
+				createSessionInfo({
+					path: clonedPath,
+					id: "cloned",
+					cwd: project.path,
+					name: "Cloned session",
+					parentSessionPath: sourcePath,
+				}),
+			],
+		});
+
+		const view = await service.cloneChat({ projectId: project.id, chatId: sourceChat.id });
+
+		expect(cloneSession).toHaveBeenCalledWith(sourcePath, project.path);
+		expect(memoryStore.read().sessionUiByPath[clonedPath]).toEqual({
+			chatId: `chat:${secondNow}:2`,
+			sessionId: null,
+			sessionPath: clonedPath,
+			projectId: project.id,
+			lastOpenedAt: secondNow,
+			status: "idle",
+			attention: false,
+		});
+		expect(view.selectedProject?.chats).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: `chat:${secondNow}:2`,
+					projectId: project.id,
+					sessionPath: clonedPath,
+					title: "Cloned session",
+					status: "idle",
+					attention: false,
+					lastOpenedAt: secondNow,
+				}),
+			]),
+		);
+	});
+
+	it("branches a Pi-backed chat from the selected entry into the same project", async () => {
+		const project = createProject("/tmp/pi-desktop");
+		const sourcePath = "/tmp/pi-desktop/source.jsonl";
+		const branchedPath = "/tmp/pi-desktop/branched.jsonl";
+		const sourceChat = createChat(project, {
+			id: "chat:session:source",
+			source: "pi-session",
+			sessionId: "source",
+			sessionPath: sourcePath,
+			title: "Source session",
+		});
+		const { branchSession, memoryStore, service } = await createService({
+			initialStore: {
+				...createEmptyProjectStore(),
+				projects: [project],
+				selectedProjectId: project.id,
+				chatsByProject: {
+					[project.id]: [sourceChat],
+				},
+			},
+			now: () => secondNow,
+			branchSession: async () => branchedPath,
+			listProjectSessions: async () => [
+				createSessionInfo({
+					path: sourcePath,
+					id: "source",
+					cwd: project.path,
+					name: "Source session",
+				}),
+				createSessionInfo({
+					path: branchedPath,
+					id: "branched",
+					cwd: project.path,
+					name: "Branched session",
+					parentSessionPath: sourcePath,
+				}),
+			],
+		});
+
+		const view = await service.branchChat({ projectId: project.id, chatId: sourceChat.id, entryId: "entry-one" });
+
+		expect(branchSession).toHaveBeenCalledWith(sourcePath, project.path, "entry-one");
+		expect(memoryStore.read().sessionUiByPath[branchedPath]).toEqual({
+			chatId: `chat:${secondNow}:2`,
+			sessionId: null,
+			sessionPath: branchedPath,
+			projectId: project.id,
+			lastOpenedAt: secondNow,
+			status: "idle",
+			attention: false,
+		});
+		expect(view.selectedProject?.chats).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: `chat:${secondNow}:2`,
+					projectId: project.id,
+					sessionPath: branchedPath,
+					title: "Branched session",
+					status: "idle",
+					attention: false,
+					lastOpenedAt: secondNow,
+				}),
+			]),
+		);
+	});
+
 	it("rejects clone for a draft chat without Pi session path", async () => {
 		const project = createProject("/tmp/pi-desktop");
 		const chat = createChat(project);
