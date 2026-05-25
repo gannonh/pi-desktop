@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { EditorView } from "@codemirror/view";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { useFileWorkspace } from "../../src/renderer/file-workspace/file-workspace-context";
@@ -35,6 +36,18 @@ beforeEach(() => {
 afterEach(() => {
 	expectNoUnexpectedConsoleMessages(consoleMessages, isKnownFileWorkspaceSelectionWarning);
 });
+
+const replaceCodeEditorSource = async (source: string) => {
+	const editor = await screen.findByTestId("code-file-editor");
+	const view = EditorView.findFromDOM(editor);
+	if (!view) {
+		throw new Error("CodeMirror editor view was not mounted.");
+	}
+
+	act(() => {
+		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source } });
+	});
+};
 
 const project: ProjectRecord = {
 	id: "project:/tmp/pi-desktop",
@@ -124,12 +137,11 @@ describe("file workspace interactions", () => {
 
 		const explorer = screen.getByTestId("file-explorer");
 		fireEvent.click(within(explorer).getByRole("button", { name: /notes\.txt/ }));
-		const editor = await screen.findByTestId("file-editor-source");
-		fireEvent.change(editor, { target: { value: "notes\nedited\n" } });
+		await replaceCodeEditorSource("notes\nedited\n");
 
 		fireEvent.click(screen.getByRole("button", { name: "Close notes.txt" }));
 
-		expect(screen.getByTestId("file-editor-source")).toBeTruthy();
+		expect(screen.getByTestId("code-file-editor")).toBeTruthy();
 		expect(confirm).toHaveBeenCalled();
 		confirm.mockRestore();
 	});
@@ -170,8 +182,7 @@ describe("file workspace interactions", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: /notes\.txt/ }));
 
-		const editor = await screen.findByTestId("file-editor-source");
-		fireEvent.change(editor, { target: { value: "notes\nedited\n" } });
+		await replaceCodeEditorSource("notes\nedited\n");
 		fireEvent.keyDown(window, { key: "s", metaKey: true });
 
 		await waitFor(() => {
@@ -181,5 +192,6 @@ describe("file workspace interactions", () => {
 				content: "notes\nedited\n",
 			});
 		});
+		expect(screen.queryByText("Saved")).toBeNull();
 	});
 });

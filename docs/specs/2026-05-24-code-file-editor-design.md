@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft pending user review.
+Implemented.
 
 ## Goal
 
@@ -15,14 +15,14 @@ Finish the File Explorer and Viewer work by replacing the plain non-Markdown tex
 - Renderer design boundary: [`../adr/0003-shadcn-ui-boundary.md`](../adr/0003-shadcn-ui-boundary.md)
 - Visual tokens: [`../../DESIGN.md`](../../DESIGN.md) and `src/renderer/styles.css`
 
-## Verified current state
+## Implemented state
 
 - The right-panel file workspace opens project-scoped files through typed `workspaceFiles` IPC with path confinement.
-- `src/renderer/file-workspace/file-editor.tsx` routes Markdown files to `MarkdownSurface` and all other supported text files to a plain `<textarea>`.
-- Markdown source mode already uses a CodeMirror-backed editor through `@mdxeditor/editor`.
-- `@mdxeditor/editor` currently brings CodeMirror packages into the lockfile, including language packages for JavaScript/TypeScript, HTML, CSS, JSON, YAML, Rust, Python, Go, SQL, XML, and shell-related support.
-- `prismjs` is already a direct dependency, but it is better suited for read-only highlighting than editable code editing.
-- The main-process text file policy already supports common source extensions such as `.ts`, `.tsx`, `.js`, `.jsx`, `.html`, `.css`, `.yml`, `.yaml`, `.rs`, `.py`, `.go`, `.sql`, and related config files.
+- `src/renderer/file-workspace/file-editor.tsx` routes Markdown files to `MarkdownSurface` and all other supported text files to `CodeFileEditor`.
+- Markdown source mode uses a CodeMirror-backed editor through `@mdxeditor/editor`.
+- Product code declares direct CodeMirror dependencies for the packages imported by the generic code editor.
+- `prismjs` remains available for read-only highlighting use cases.
+- The main-process text file policy supports common source extensions such as `.ts`, `.tsx`, `.js`, `.jsx`, `.html`, `.css`, `.yml`, `.yaml`, `.rs`, `.py`, `.go`, `.sql`, and related config files.
 
 ## Requirements
 
@@ -226,7 +226,7 @@ Build is complete when:
 
 ## Build handoff
 
-Approved design direction, pending final user review of this written spec:
+Implemented design direction used for the build:
 
 1. Implement CodeMirror 6 as the generic non-Markdown code editor.
 2. Declare direct CodeMirror dependencies for imported packages.
@@ -234,3 +234,43 @@ Approved design direction, pending final user review of this written spec:
 4. Replace only the plain textarea path in `FileEditor`.
 5. Preserve Markdown, save, dirty-state, tab, IPC, and blocked-state behavior.
 6. Verify with targeted tests, a visual review, and `pnpm check`.
+
+## Build completion report
+
+- Spec path: `docs/specs/2026-05-24-code-file-editor-design.md`
+- Base SHA: `67ffadd9e0dede0c582b3144b47fe815489e30e2`
+- Implementation commit SHA: `f5ed7c704b7501ebb83f65ab7f0a90afd21fe1b9`
+- Final branch head SHA: recorded in the Build completion response because the committed report cannot self-reference its own resulting SHA.
+- Tasks completed:
+  - Added direct CodeMirror dependencies used by product code.
+  - Added deterministic code language detection and coverage.
+  - Added a CodeMirror-backed `CodeFileEditor` with metadata, edit propagation, read-only handling, search/history/keymap support, line numbers, and Pi Desktop styling.
+  - Routed non-Markdown file workspace tabs through `CodeFileEditor` while preserving Markdown and blocked-state routing.
+  - Updated file workspace regression tests for dirty close and Cmd+S save behavior.
+- Files changed:
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `src/renderer/code-editor/code-editor-theme.ts`
+  - `src/renderer/code-editor/code-file-editor.tsx`
+  - `src/renderer/code-editor/code-language.ts`
+  - `src/renderer/file-workspace/file-editor.tsx`
+  - `src/renderer/styles.css`
+  - `tests/renderer/code-file-editor.test.tsx`
+  - `tests/renderer/code-language.test.ts`
+  - `tests/renderer/file-editor-routing.test.tsx`
+  - `tests/renderer/file-workspace-interactions.test.tsx`
+  - `tests/renderer/file-workspace-panel.test.tsx`
+- Tests and verification:
+  - `pnpm test tests/renderer/code-language.test.ts tests/renderer/code-file-editor.test.tsx tests/renderer/file-editor-routing.test.tsx tests/renderer/file-workspace-interactions.test.tsx`
+  - `pnpm test tests/renderer/file-workspace-panel.test.tsx`
+  - `pnpm check`
+  - Browser preview at `http://127.0.0.1:5174/`
+- Review gates completed:
+  - Spec compliance review: PASS.
+  - Code quality review: PASS after removing dead textarea CSS.
+  - Final whole-branch review: PASS.
+- Approved deviations:
+  - Built from a `Draft pending user review` spec by explicit user build request.
+- Known follow-up issues:
+  - None.
+- Independent subagent review used: Yes.

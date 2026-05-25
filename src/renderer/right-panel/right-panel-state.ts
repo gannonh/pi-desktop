@@ -1,6 +1,5 @@
 import { createDefaultMockTabs, createMockTab } from "./right-panel-mock-data";
-import type { RightPanelAddMenuItem } from "./right-panel-add-menu";
-import type { RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
+import type { RightPanelAddMenuItem, RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
 import { FILE_WORKSPACE_VIEW_ID, isWorkspaceFileTabId } from "./workspace-tab-ids";
 
 export const WORKSPACE_TOOL_KINDS = ["diffs", "terminal", "browser"] as const satisfies readonly RightPanelKind[];

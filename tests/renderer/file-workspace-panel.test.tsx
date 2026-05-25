@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
@@ -57,6 +57,49 @@ const project: ProjectRecord = {
 	lastOpenedAt: "2026-05-12T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
+};
+
+const contextMenuItems = () => screen.getAllByRole("menuitem") as HTMLButtonElement[];
+const contextMenuLabels = () => contextMenuItems().map((item) => item.textContent);
+const contextMenuIconIds = () =>
+	contextMenuItems().map((item) => item.querySelector(".menu__item-icon")?.getAttribute("data-action-icon"));
+
+function getExplorerRowWrap(name: RegExp): HTMLElement {
+	const row = screen.getByRole("button", { name });
+	const rowWrap = row.closest(".file-explorer__row-wrap");
+	if (!(rowWrap instanceof HTMLElement)) {
+		throw new Error(`Explorer row wrapper for ${name} was not found.`);
+	}
+	return rowWrap;
+}
+
+const renderExplorerWithEntries = async () => {
+	const clipboardWriteText = vi.fn(async () => ({ ok: true as const, data: { written: true as const } }));
+	window.piDesktop = {
+		...createUnavailablePiDesktopApi("test"),
+		workspaceFiles: {
+			listDirectory: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{ name: "src", relativePath: "src", kind: "directory" as const },
+						{ name: "index.ts", relativePath: "index.ts", kind: "file" as const },
+					],
+				},
+			})),
+			readFile: vi.fn(async () => ({ ok: true as const, data: { kind: "text" as const, content: "", size: 0 } })),
+			writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "index.ts", size: 0 } })),
+		},
+		clipboard: { writeText: clipboardWriteText },
+	};
+
+	render(
+		<ShellTestProviders project={project}>
+			<FileWorkspacePanel project={project} />
+		</ShellTestProviders>,
+	);
+
+	return { explorer: await screen.findByTestId("file-explorer"), clipboardWriteText };
 };
 
 describe("FileWorkspacePanel", () => {
@@ -152,6 +195,162 @@ describe("FileWorkspacePanel", () => {
 		expect(document.body.classList.contains("file-workspace--resizing")).toBe(false);
 	});
 
+	it("shows folder context menu actions on folder right click", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+
+		expect(contextMenuLabels()).toEqual([
+			"New File",
+			"New Folder",
+			"Copy Path",
+			"Copy Relative Path",
+			"Reveal in Finder",
+			"Rename",
+			"Delete",
+		]);
+	});
+
+	it("shows file context menu actions when right clicking across the file row", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		expect(contextMenuLabels()).toEqual([
+			"New File",
+			"New Folder",
+			"Copy Path",
+			"Copy Relative Path",
+			"Duplicate",
+			"Reveal in Finder",
+			"Rename",
+			"Delete",
+		]);
+	});
+
+	it("renders item context menus outside the scrolling explorer pane", async () => {
+		const { explorer } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		const menu = screen.getByRole("menu", { name: "File explorer actions" });
+		expect(menu.parentElement).toBe(document.body);
+		expect(menu.getAttribute("style")).toContain("position: fixed");
+		expect(explorer.contains(menu)).toBe(false);
+	});
+
+	it("keeps context menus inside the viewport edge padding", async () => {
+		Object.defineProperty(window, "innerWidth", { configurable: true, value: 100 });
+		Object.defineProperty(window, "innerHeight", { configurable: true, value: 80 });
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 160, clientY: 120 });
+
+		const menu = screen.getByRole("menu", { name: "File explorer actions" });
+		expect(menu.getAttribute("style")).toContain("top: 72px");
+		expect(menu.getAttribute("style")).toContain("left: 92px");
+	});
+
+	it("shows icons for file context menu actions", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		expect(contextMenuIconIds()).toEqual([
+			"new-file",
+			"new-folder",
+			"copy-path",
+			"copy-relative-path",
+			"duplicate",
+			"reveal",
+			"rename",
+			"delete",
+		]);
+	});
+
+	it("copies the clicked file relative path through the desktop clipboard", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+		fireEvent.click(screen.getByRole("menuitem", { name: "Copy Relative Path" }));
+
+		await waitFor(() => expect(clipboardWriteText).toHaveBeenCalledWith({ text: "index.ts" }));
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+		expect(screen.getByRole("status").textContent).toBe("Copied relative path.");
+	});
+
+	it("copies the clicked folder absolute path through the desktop clipboard", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+		fireEvent.click(screen.getByRole("menuitem", { name: "Copy Path" }));
+
+		await waitFor(() => expect(clipboardWriteText).toHaveBeenCalledWith({ text: "/tmp/pi-desktop/src" }));
+		expect(screen.getByRole("status").textContent).toBe("Copied path.");
+	});
+
+	it("auto-dismisses copied path status feedback", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+		vi.useFakeTimers();
+		try {
+			fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+			fireEvent.click(screen.getByRole("menuitem", { name: "Copy Path" }));
+
+			await act(async () => {
+				await Promise.resolve();
+			});
+
+			expect(clipboardWriteText).toHaveBeenCalledWith({ text: "/tmp/pi-desktop/src" });
+			expect(screen.getByRole("status").textContent).toBe("Copied path.");
+
+			act(() => {
+				vi.advanceTimersByTime(3000);
+			});
+
+			expect(screen.queryByRole("status")).toBeNull();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("disables file actions that are not implemented yet", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		expect((screen.getByRole("menuitem", { name: "Copy Path" }) as HTMLButtonElement).disabled).toBe(false);
+		expect((screen.getByRole("menuitem", { name: "Copy Relative Path" }) as HTMLButtonElement).disabled).toBe(false);
+		expect((screen.getByRole("menuitem", { name: "New File" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "New Folder" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Duplicate" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Reveal in Finder" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Rename" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(true);
+	});
+
+	it("dismisses the context menu from Escape and outside clicks", async () => {
+		const { explorer } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+		expect(screen.getByRole("menu", { name: "File explorer actions" })).toBeTruthy();
+		fireEvent.keyDown(document, { key: "Escape" });
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+		expect(screen.getByRole("menu", { name: "File explorer actions" })).toBeTruthy();
+		fireEvent.pointerDown(document.body);
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+	});
+
+	it("shows creation actions on file explorer background right click", async () => {
+		const { explorer } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+
+		expect(contextMenuLabels()).toEqual(["New File", "New Folder"]);
+		expect(contextMenuItems().every((item) => item.disabled)).toBe(true);
+	});
+
 	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {
 		window.piDesktop = {
 			...createUnavailablePiDesktopApi("test"),
@@ -189,7 +388,7 @@ describe("FileWorkspacePanel", () => {
 		expect(screen.queryByText("Saved")).toBeNull();
 	});
 
-	it("keeps non-Markdown files on the existing source editor path without mode controls", async () => {
+	it("opens non-Markdown files in the code editor without mode controls", async () => {
 		window.piDesktop = {
 			...createUnavailablePiDesktopApi("test"),
 			workspaceFiles: {
@@ -216,7 +415,8 @@ describe("FileWorkspacePanel", () => {
 		await waitFor(() => expect(screen.getByRole("button", { name: /index\.ts/ })).toBeTruthy());
 		fireEvent.click(screen.getByRole("button", { name: /index\.ts/ }));
 
-		await waitFor(() => expect(screen.getByTestId("file-editor-source")).toBeTruthy());
+		await waitFor(() => expect(screen.getByTestId("code-file-editor")).toBeTruthy());
+		expect(screen.getByTestId("code-file-editor").getAttribute("data-language-id")).toBe("typescript");
 		expect(screen.queryByTestId("file-viewer-mode-toggle")).toBeNull();
 		expect(screen.queryByTestId("markdown-surface")).toBeNull();
 	});

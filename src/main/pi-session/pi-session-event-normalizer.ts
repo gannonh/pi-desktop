@@ -1,4 +1,5 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import { extractTextFromPiContent } from "../../shared/pi-session-content";
 import type { PiSessionEvent, PiSessionMessageRole } from "../../shared/pi-session";
 
 type AgentMessage = Extract<AgentSessionEvent, { type: "message_start" }>["message"];
@@ -14,25 +15,6 @@ type RuntimeErrorInput = {
 	code: string;
 	error: unknown;
 	now: () => string;
-};
-
-const textFromContent = (content: unknown): string => {
-	if (typeof content === "string") {
-		return content;
-	}
-
-	if (!Array.isArray(content)) {
-		return "";
-	}
-
-	return content
-		.map((part) => {
-			if (part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
-				return typeof part.text === "string" ? part.text : "";
-			}
-			return "";
-		})
-		.join("");
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
@@ -126,7 +108,7 @@ const contentFor = (message: AgentMessage): string => {
 	if (!hasContent(message)) {
 		return "";
 	}
-	const text = textFromContent(message.content);
+	const text = extractTextFromPiContent(message.content);
 	if (isRecord(message) && message.role === "user" && hasImageContent(message.content)) {
 		return text.length > 0 ? `${text}\n[Image attached]` : "[Image attached]";
 	}

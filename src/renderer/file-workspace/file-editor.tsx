@@ -1,3 +1,4 @@
+import { CodeFileEditor } from "../code-editor/code-file-editor";
 import { MarkdownSurface } from "../markdown/markdown-surface";
 import { isMarkdownRelativePath } from "./file-workspace-paths";
 import type { FileEditorTab } from "./file-workspace-types";
@@ -52,13 +53,6 @@ export function FileEditor({ tab, onChange }: FileEditorProps) {
 	}
 
 	return (
-		<textarea
-			className="file-editor file-editor--source"
-			data-testid="file-editor-source"
-			value={tab.buffer}
-			readOnly={tab.readOnly}
-			onChange={(event) => onChange(event.target.value)}
-			spellCheck={false}
-		/>
+		<CodeFileEditor value={tab.buffer} relativePath={tab.relativePath} readOnly={tab.readOnly} onChange={onChange} />
 	);
 }

@@ -126,9 +126,6 @@ export function FileViewer() {
 			{state.saveStatus === "error" && state.saveMessage ? (
 				<p className="file-viewer__save-error">{state.saveMessage}</p>
 			) : null}
-			{state.saveStatus === "saved" && state.saveMessage ? (
-				<p className="file-viewer__save-success">{state.saveMessage}</p>
-			) : null}
 			<FileEditor tab={activeTab} onChange={(value) => updateBuffer(activeTab.id, value)} />
 		</section>
 	);

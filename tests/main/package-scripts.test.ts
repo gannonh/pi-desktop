@@ -7,6 +7,7 @@ describe("package scripts", () => {
 		expect(packageJson.scripts["dev:web"]).toBe(
 			"node --env-file-if-exists=.env.development --import tsx src/main/dev-server/start-dev-web.ts",
 		);
+		expect(packageJson.scripts["test:uat"]).toBe("playwright test --config playwright.uat.config.ts");
 		expect(JSON.stringify(packageJson.scripts)).not.toContain("@electron-forge/cli/dist");
 	});
 });

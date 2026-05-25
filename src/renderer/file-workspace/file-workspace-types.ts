@@ -26,6 +26,6 @@ export type FileWorkspaceState = {
 	>;
 	tabs: FileEditorTab[];
 	activeTabId: string | null;
-	saveStatus: "idle" | "saving" | "saved" | "error";
+	saveStatus: "idle" | "saving" | "error";
 	saveMessage?: string;
 };

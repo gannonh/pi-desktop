@@ -76,6 +76,7 @@ describe("file workspace state", () => {
 		expect(state.tabs[0]?.savedContent).toBe("save payload");
 		expect(state.tabs[0]?.dirty).toBe(true);
 		expect(state.saveStatus).toBe("idle");
+		expect(state.saveMessage).toBeUndefined();
 	});
 
 	it("records non-text load results as read-only tabs", () => {
