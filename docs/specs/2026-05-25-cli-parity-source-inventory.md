@@ -186,4 +186,3 @@ Use T002 rows as the left-side capability set for AUDIT-02. Use T003 source clus
 - `grep -q '### Open questions for the next slice' docs/specs/2026-05-25-cli-parity-source-inventory.md`
 - `node -e "const a=require('/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/package.json'); console.log(a.version)"`
 - `node -e "const a=require('/Volumes/EVO/repos/pi-mono/packages/coding-agent/package.json'); console.log(a.version)"`
-
