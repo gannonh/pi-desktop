@@ -1155,6 +1155,14 @@ body.file-workspace--resizing {
 	white-space: nowrap;
 }
 
+.file-explorer__context-status {
+	margin: 0;
+	padding: 0.35rem 0.75rem 0;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+	line-height: 1.3;
+}
+
 .file-explorer__tree-root,
 .file-explorer__tree,
 .file-explorer__children {

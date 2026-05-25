@@ -15,14 +15,14 @@ Finish the File Explorer and Viewer work by replacing the plain non-Markdown tex
 - Renderer design boundary: [`../adr/0003-shadcn-ui-boundary.md`](../adr/0003-shadcn-ui-boundary.md)
 - Visual tokens: [`../../DESIGN.md`](../../DESIGN.md) and `src/renderer/styles.css`
 
-## Verified current state
+## Implemented state
 
 - The right-panel file workspace opens project-scoped files through typed `workspaceFiles` IPC with path confinement.
-- `src/renderer/file-workspace/file-editor.tsx` routes Markdown files to `MarkdownSurface` and all other supported text files to a plain `<textarea>`.
-- Markdown source mode already uses a CodeMirror-backed editor through `@mdxeditor/editor`.
-- `@mdxeditor/editor` currently brings CodeMirror packages into the lockfile, including language packages for JavaScript/TypeScript, HTML, CSS, JSON, YAML, Rust, Python, Go, SQL, XML, and shell-related support.
-- `prismjs` is already a direct dependency, but it is better suited for read-only highlighting than editable code editing.
-- The main-process text file policy already supports common source extensions such as `.ts`, `.tsx`, `.js`, `.jsx`, `.html`, `.css`, `.yml`, `.yaml`, `.rs`, `.py`, `.go`, `.sql`, and related config files.
+- `src/renderer/file-workspace/file-editor.tsx` routes Markdown files to `MarkdownSurface` and all other supported text files to `CodeFileEditor`.
+- Markdown source mode uses a CodeMirror-backed editor through `@mdxeditor/editor`.
+- Product code declares direct CodeMirror dependencies for the packages imported by the generic code editor.
+- `prismjs` remains available for read-only highlighting use cases.
+- The main-process text file policy supports common source extensions such as `.ts`, `.tsx`, `.js`, `.jsx`, `.html`, `.css`, `.yml`, `.yaml`, `.rs`, `.py`, `.go`, `.sql`, and related config files.
 
 ## Requirements
 
@@ -226,7 +226,7 @@ Build is complete when:
 
 ## Build handoff
 
-Approved design direction, pending final user review of this written spec:
+Implemented design direction used for the build:
 
 1. Implement CodeMirror 6 as the generic non-Markdown code editor.
 2. Declare direct CodeMirror dependencies for imported packages.
@@ -264,7 +264,7 @@ Approved design direction, pending final user review of this written spec:
   - `pnpm test tests/renderer/code-language.test.ts tests/renderer/code-file-editor.test.tsx tests/renderer/file-editor-routing.test.tsx tests/renderer/file-workspace-interactions.test.tsx`
   - `pnpm test tests/renderer/file-workspace-panel.test.tsx`
   - `pnpm check`
-  - Browser preview at `http://127.0.0.1:5174/`, screenshot saved to `/tmp/code-editor-preview-open.png`
+  - Browser preview at `http://127.0.0.1:5174/`
 - Review gates completed:
   - Spec compliance review: PASS.
   - Code quality review: PASS after removing dead textarea CSS.

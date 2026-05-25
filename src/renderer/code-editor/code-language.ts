@@ -32,12 +32,17 @@ export type CodeLanguage = {
 	label: string;
 };
 
-type CodeLanguageDescriptor = CodeLanguage & {
+type CodeLanguageDescriptor<K extends CodeLanguageId = CodeLanguageId> = CodeLanguage & {
+	id: K;
 	extensions: readonly string[];
 	createExtensions: (relativePath: string) => Extension[];
 };
 
-const codeLanguageDescriptors: Record<CodeLanguageId, CodeLanguageDescriptor> = {
+type CodeLanguageDescriptorMap = {
+	[K in CodeLanguageId]: CodeLanguageDescriptor<K>;
+};
+
+const codeLanguageDescriptors: CodeLanguageDescriptorMap = {
 	typescript: {
 		id: "typescript",
 		label: "TypeScript",

@@ -59,9 +59,10 @@ const project: ProjectRecord = {
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
 };
 
-const contextMenuLabels = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+const contextMenuItems = () => screen.getAllByRole("menuitem") as HTMLButtonElement[];
+const contextMenuLabels = () => contextMenuItems().map((item) => item.textContent);
 const contextMenuIconIds = () =>
-	screen.getAllByRole("menuitem").map((item) => item.querySelector(".menu__item-icon")?.getAttribute("data-action-icon"));
+	contextMenuItems().map((item) => item.querySelector(".menu__item-icon")?.getAttribute("data-action-icon"));
 
 function getExplorerRowWrap(name: RegExp): HTMLElement {
 	const row = screen.getByRole("button", { name });
@@ -73,6 +74,7 @@ function getExplorerRowWrap(name: RegExp): HTMLElement {
 }
 
 const renderExplorerWithEntries = async () => {
+	const clipboardWriteText = vi.fn(async () => ({ ok: true as const, data: { written: true as const } }));
 	window.piDesktop = {
 		...createUnavailablePiDesktopApi("test"),
 		workspaceFiles: {
@@ -88,6 +90,7 @@ const renderExplorerWithEntries = async () => {
 			readFile: vi.fn(async () => ({ ok: true as const, data: { kind: "text" as const, content: "", size: 0 } })),
 			writeFile: vi.fn(async () => ({ ok: true as const, data: { relativePath: "index.ts", size: 0 } })),
 		},
+		clipboard: { writeText: clipboardWriteText },
 	};
 
 	render(
@@ -96,7 +99,7 @@ const renderExplorerWithEntries = async () => {
 		</ShellTestProviders>,
 	);
 
-	return screen.findByTestId("file-explorer");
+	return { explorer: await screen.findByTestId("file-explorer"), clipboardWriteText };
 };
 
 describe("FileWorkspacePanel", () => {
@@ -226,7 +229,7 @@ describe("FileWorkspacePanel", () => {
 	});
 
 	it("renders item context menus outside the scrolling explorer pane", async () => {
-		const explorer = await renderExplorerWithEntries();
+		const { explorer } = await renderExplorerWithEntries();
 
 		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
 
@@ -253,12 +256,63 @@ describe("FileWorkspacePanel", () => {
 		]);
 	});
 
+	it("copies the clicked file relative path through the desktop clipboard", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+		fireEvent.click(screen.getByRole("menuitem", { name: "Copy Relative Path" }));
+
+		await waitFor(() => expect(clipboardWriteText).toHaveBeenCalledWith({ text: "index.ts" }));
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+		expect(screen.getByRole("status").textContent).toBe("Copied relative path.");
+	});
+
+	it("copies the clicked folder absolute path through the desktop clipboard", async () => {
+		const { clipboardWriteText } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(screen.getByRole("button", { name: /^src$/ }), { clientX: 80, clientY: 120 });
+		fireEvent.click(screen.getByRole("menuitem", { name: "Copy Path" }));
+
+		await waitFor(() => expect(clipboardWriteText).toHaveBeenCalledWith({ text: "/tmp/pi-desktop/src" }));
+		expect(screen.getByRole("status").textContent).toBe("Copied path.");
+	});
+
+	it("disables file actions that are not implemented yet", async () => {
+		await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(getExplorerRowWrap(/index\.ts/), { clientX: 80, clientY: 146 });
+
+		expect((screen.getByRole("menuitem", { name: "Copy Path" }) as HTMLButtonElement).disabled).toBe(false);
+		expect((screen.getByRole("menuitem", { name: "Copy Relative Path" }) as HTMLButtonElement).disabled).toBe(false);
+		expect((screen.getByRole("menuitem", { name: "New File" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "New Folder" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Duplicate" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Reveal in Finder" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Rename" }) as HTMLButtonElement).disabled).toBe(true);
+		expect((screen.getByRole("menuitem", { name: "Delete" }) as HTMLButtonElement).disabled).toBe(true);
+	});
+
+	it("dismisses the context menu from Escape and outside clicks", async () => {
+		const { explorer } = await renderExplorerWithEntries();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+		expect(screen.getByRole("menu", { name: "File explorer actions" })).toBeTruthy();
+		fireEvent.keyDown(document, { key: "Escape" });
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+
+		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
+		expect(screen.getByRole("menu", { name: "File explorer actions" })).toBeTruthy();
+		fireEvent.pointerDown(document.body);
+		expect(screen.queryByRole("menu", { name: "File explorer actions" })).toBeNull();
+	});
+
 	it("shows creation actions on file explorer background right click", async () => {
-		const explorer = await renderExplorerWithEntries();
+		const { explorer } = await renderExplorerWithEntries();
 
 		fireEvent.contextMenu(explorer, { clientX: 40, clientY: 240 });
 
 		expect(contextMenuLabels()).toEqual(["New File", "New Folder"]);
+		expect(contextMenuItems().every((item) => item.disabled)).toBe(true);
 	});
 
 	it("opens Markdown files with preview, source, and split modes backed by the Markdown surface", async () => {

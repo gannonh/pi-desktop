@@ -15,7 +15,9 @@ export type RightPanelState = {
 };
 
 export type RightPanelAddMenuItem = {
-	id: string;
-	kind: RightPanelKind;
-	label: string;
-};
+	[K in RightPanelKind]: {
+		id: K;
+		kind: K;
+		label: string;
+	};
+}[RightPanelKind];

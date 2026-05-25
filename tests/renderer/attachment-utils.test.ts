@@ -13,4 +13,14 @@ describe("loadAttachment", () => {
 		expect(attachment.size).toBe(sizeOverLegacyLimit);
 		expect(attachment.fileName).toBe("large.txt");
 	});
+
+	it("rejects attachments above the shared composer size policy", async () => {
+		const file = new File([new Uint8Array(COMPOSER_MAX_ATTACHMENT_BYTES + 1)], "too-large.txt", {
+			type: "text/plain",
+		});
+
+		await expect(loadAttachment(file)).rejects.toThrow(
+			`Attachment exceeds ${Math.floor(COMPOSER_MAX_ATTACHMENT_BYTES / (1024 * 1024))}MB limit.`,
+		);
+	});
 });

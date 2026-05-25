@@ -51,7 +51,7 @@ pnpm check
 
 Smoke tests run headless by default so they do not steal focus while you work. To watch them locally, use `pnpm test:smoke:headed` or set `PI_DESKTOP_SMOKE_HEADED=1`.
 
-Run milestone UAT evidence checks with `pnpm test:uat`.
+Run the current UAT evidence check with `pnpm test:uat`.
 
 ## Package Locally
 

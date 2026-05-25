@@ -52,6 +52,24 @@ describe("CodeFileEditor", () => {
 		expect(view.state.doc.toString()).toBe('const answer = 43;\n');
 	});
 
+	it("syncs parent-driven value updates without emitting editor changes", async () => {
+		const onChange = vi.fn();
+		const { rerender } = render(
+			<CodeFileEditor value={"first\n"} relativePath="src/first.ts" readOnly={false} onChange={onChange} />,
+		);
+
+		await screen.findByTestId("code-file-editor");
+		let view = getCodeMirrorView();
+		expect(view.state.doc.toString()).toBe("first\n");
+
+		rerender(<CodeFileEditor value={"second\n"} relativePath="src/second.ts" readOnly={false} onChange={onChange} />);
+
+		view = getCodeMirrorView();
+		expect(view.state.doc.toString()).toBe("second\n");
+		expect(screen.getByTestId("code-file-editor").getAttribute("data-language-id")).toBe("typescript");
+		expect(onChange).not.toHaveBeenCalled();
+	});
+
 	it("marks read-only editor documents as non-editable", async () => {
 		const onChange = vi.fn();
 

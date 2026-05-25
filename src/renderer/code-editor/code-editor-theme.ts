@@ -41,7 +41,7 @@ const editorForeground = "oklch(0.86 0.014 255)";
 const editorMuted = "oklch(0.62 0.018 255)";
 const editorSubtle = "oklch(0.46 0.014 255)";
 
-export const codeEditorHighlightStyle = HighlightStyle.define([
+const codeEditorHighlightStyle = HighlightStyle.define([
 	{ tag: [tags.keyword, tags.modifier, tags.controlKeyword], color: "oklch(0.75 0.09 292)", fontWeight: "500" },
 	{ tag: [tags.name, tags.variableName], color: editorForeground },
 	{ tag: [tags.definition(tags.variableName), tags.function(tags.variableName)], color: "oklch(0.78 0.062 236)" },
@@ -62,7 +62,7 @@ export const createCodeEditorAppearanceExtensions = (): Extension[] => [
 	Prec.highest(codeEditorTheme),
 ];
 
-export const codeEditorTheme = EditorView.theme(
+const codeEditorTheme = EditorView.theme(
 	{
 		"&": {
 			height: "100%",
