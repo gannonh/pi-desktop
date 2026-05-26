@@ -559,8 +559,7 @@ export function App() {
 						requestIsCurrent,
 						resultOk: result.ok,
 						reusableSessionId,
-					}) &&
-					result.ok
+					})
 				) {
 					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
 				}
