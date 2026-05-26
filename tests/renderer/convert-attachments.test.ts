@@ -48,4 +48,22 @@ describe("convertAttachments", () => {
 			images: undefined,
 		});
 	});
+
+	it("builds runtime image payloads so image-only prompts reach Pi", async () => {
+		const attachments: Attachment[] = [
+			{
+				id: "1",
+				type: "image",
+				fileName: "screenshot.png",
+				mimeType: "image/png",
+				size: 24,
+				content: "aW1hZ2U=",
+			},
+		];
+
+		await expect(buildPromptFromAttachments("", attachments)).resolves.toEqual({
+			prompt: "",
+			images: [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }],
+		});
+	});
 });
