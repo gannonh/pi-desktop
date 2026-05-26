@@ -763,6 +763,81 @@ describe("app backend", () => {
 		}
 	});
 
+	it("returns a visible failure when an active follow-up prompt is rejected", async () => {
+		const projectService = createProjectService();
+		let listener: ((event: AgentSessionEvent) => void) | undefined;
+		const rejection = new Error("worker rejected prompt");
+		const session: PiSdkSession = {
+			sessionId: "sdk-session:one",
+			bindExtensions: vi.fn(async () => undefined),
+			prompt: vi.fn(async (_prompt, options) => {
+				if (options?.streamingBehavior === "followUp") {
+					throw rejection;
+				}
+				listener?.({ type: "agent_start" });
+				await new Promise(() => undefined);
+			}),
+			abort: vi.fn(async () => undefined),
+			dispose: vi.fn(() => undefined),
+			subscribe: vi.fn((nextListener) => {
+				listener = nextListener;
+				return () => {
+					listener = undefined;
+				};
+			}),
+			getSteeringMessages: vi.fn(() => []),
+			getFollowUpMessages: vi.fn(() => []),
+		};
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		try {
+			await backend.handle({
+				operation: "piSession.start",
+				input: { projectId: "project:one", prompt: "Work on this" },
+			});
+			await waitForScheduledPrompt(events);
+
+			const submitted = await backend.handle({
+				operation: "piSession.submit",
+				input: {
+					sessionId: "project:one:sdk-session:one",
+					prompt: "Rejected follow-up",
+					delivery: "followUp",
+				},
+			});
+
+			expect(submitted).toEqual({
+				ok: false,
+				error: { code: PiSessionOperationFailedCode, message: "worker rejected prompt" },
+			});
+			expect(events).toContainEqual({
+				type: "runtime_error",
+				sessionId: "project:one:sdk-session:one",
+				code: "pi.prompt_failed",
+				message: "worker rejected prompt",
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+			expect(events).toContainEqual({
+				type: "status",
+				sessionId: "project:one:sdk-session:one",
+				status: "failed",
+				label: "Failed",
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+		} finally {
+			unsubscribe();
+			await backend.dispose();
+		}
+	});
+
 	it("syncs chat title when a Pi session becomes idle", async () => {
 		const projectService = createProjectService();
 		const session = createSession([{ type: "agent_end", messages: [] } as AgentSessionEvent]);
