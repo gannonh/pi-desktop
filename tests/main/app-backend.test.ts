@@ -778,7 +778,10 @@ describe("app backend", () => {
 				ok: true,
 				data: { sessionId: "project:one:sdk-session:one", status: "running" },
 			});
-			expect(session.prompt).toHaveBeenCalledWith("Add this next", { streamingBehavior: "steer", images: undefined });
+			expect(session.prompt).toHaveBeenCalledWith("Add this next", {
+				streamingBehavior: "steer",
+				images: undefined,
+			});
 			expect(events).toContainEqual({
 				type: "queue_update",
 				sessionId: "project:one:sdk-session:one",
