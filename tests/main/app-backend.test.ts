@@ -838,6 +838,94 @@ describe("app backend", () => {
 		}
 	});
 
+	it("clears queued prompts on abort and accepts a recovery prompt", async () => {
+		const projectService = createProjectService();
+		let listener: ((event: AgentSessionEvent) => void) | undefined;
+		const steeringMessages: string[] = [];
+		const session: PiSdkSession = {
+			sessionId: "sdk-session:one",
+			bindExtensions: vi.fn(async () => undefined),
+			prompt: vi.fn(async (prompt, options) => {
+				if (options?.streamingBehavior === "steer") {
+					steeringMessages.push(prompt);
+					return;
+				}
+				listener?.({ type: "agent_start" });
+				await new Promise(() => undefined);
+			}),
+			abort: vi.fn(async () => undefined),
+			dispose: vi.fn(() => undefined),
+			subscribe: vi.fn((nextListener) => {
+				listener = nextListener;
+				return () => {
+					listener = undefined;
+				};
+			}),
+			getSteeringMessages: vi.fn(() => steeringMessages),
+			getFollowUpMessages: vi.fn(() => []),
+			clearQueue: vi.fn(() => {
+				steeringMessages.splice(0, steeringMessages.length);
+				return { steering: [], followUp: [] };
+			}),
+		};
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		try {
+			await backend.handle({
+				operation: "piSession.start",
+				input: { projectId: "project:one", prompt: "Work on this" },
+			});
+			await waitForScheduledPrompt(events);
+			await backend.handle({
+				operation: "piSession.submit",
+				input: {
+					sessionId: "project:one:sdk-session:one",
+					prompt: "Queued before abort",
+					delivery: "steer",
+				},
+			});
+
+			const aborted = await backend.handle({
+				operation: "piSession.abort",
+				input: { sessionId: "project:one:sdk-session:one" },
+			});
+			const recovered = await backend.handle({
+				operation: "piSession.submit",
+				input: { sessionId: "project:one:sdk-session:one", prompt: "Recover now" },
+			});
+
+			expect(aborted).toEqual({ ok: true, data: { sessionId: "project:one:sdk-session:one", status: "idle" } });
+			expect(recovered).toEqual({ ok: true, data: { sessionId: "project:one:sdk-session:one", status: "running" } });
+			expect(session.abort).toHaveBeenCalledTimes(1);
+			expect(session.clearQueue).toHaveBeenCalledTimes(1);
+			expect(session.prompt).toHaveBeenLastCalledWith("Recover now", { images: undefined });
+			expect(events).toContainEqual({
+				type: "status",
+				sessionId: "project:one:sdk-session:one",
+				status: "aborting",
+				label: "Aborting",
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+			expect(events).toContainEqual({
+				type: "queue_update",
+				sessionId: "project:one:sdk-session:one",
+				messages: [],
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+		} finally {
+			unsubscribe();
+			await backend.dispose();
+		}
+	});
+
 	it("syncs chat title when a Pi session becomes idle", async () => {
 		const projectService = createProjectService();
 		const session = createSession([{ type: "agent_end", messages: [] } as AgentSessionEvent]);

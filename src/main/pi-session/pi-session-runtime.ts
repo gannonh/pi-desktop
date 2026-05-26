@@ -331,6 +331,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		followUp: [...(entry.session.getFollowUpMessages?.() ?? [])],
 	});
 
+	const clearQueues = (entry: RuntimeEntry) => {
+		if (entry.session.clearQueue) {
+			entry.session.clearQueue();
+			return;
+		}
+		entry.agentSession?.clearQueue();
+	};
+
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
 			let created: CreateAgentSessionResult | undefined;
@@ -436,6 +444,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			entry.status = "aborting";
 			emitStatus(input.sessionId, "aborting", "Aborting");
 			if (entry.activePromptToken) {
+				const abortedPromptToken = entry.activePromptToken;
 				try {
 					await entry.session.abort();
 				} catch (error) {
@@ -451,8 +460,10 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					emitStatus(input.sessionId, "failed", "Failed");
 					throw error;
 				}
-				entry.abortedPromptToken = entry.activePromptToken;
+				entry.abortedPromptToken = abortedPromptToken;
+				entry.activePromptToken = null;
 			}
+			clearQueues(entry);
 			entry.status = "idle";
 			emitStatus(input.sessionId, "idle", "Idle");
 			emitQueueUpdate(input.sessionId, entry);
