@@ -359,6 +359,52 @@ describe("app backend", () => {
 		});
 	});
 
+	it("preserves start prompt images, model, and thinking context at the runtime boundary", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
+			projectId: "project:one",
+			chatId: "chat:one",
+			workspacePath: "/tmp/one",
+			sessionPath: null,
+		});
+		const session = createSession();
+		const sessionManager = createSessionManager();
+		const createAgentSession = vi.fn(async () => ({ session }));
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: vi.fn(() => sessionManager),
+			createAgentSession,
+		});
+		const images = [{ type: "image" as const, data: "aGVsbG8=", mimeType: "image/png" }];
+
+		const result = await backend.handle({
+			operation: "piSession.start",
+			input: {
+				projectId: "project:one",
+				chatId: "chat:one",
+				prompt: "Describe this screenshot",
+				images,
+				modelProvider: "anthropic",
+				modelId: "claude-sonnet-4",
+				thinkingLevel: "high",
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(session.prompt).toHaveBeenCalledWith("Describe this screenshot", { images });
+		});
+		expect(result.ok).toBe(true);
+		expect(createAgentSession).toHaveBeenCalledWith({
+			cwd: "/tmp/one",
+			sessionManager,
+			modelProvider: "anthropic",
+			modelId: "claude-sonnet-4",
+			thinkingLevel: "high",
+		});
+	});
+
 	it("persists retrying session status as running chat metadata", async () => {
 		const projectService = createProjectService();
 		const session = createSession([
@@ -592,6 +638,59 @@ describe("app backend", () => {
 			status: "running",
 		});
 		await backend.dispose();
+	});
+
+	it("hydrates history and resumes follow-up prompts from the same selected session path", async () => {
+		const projectService = createProjectService();
+		vi.mocked(projectService.getSessionStartTarget).mockResolvedValue({
+			projectId: "project:one",
+			chatId: "chat:one",
+			workspacePath: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+		});
+		const loadSessionHistory = vi.fn(() => ({
+			sessionId: "project:one:sdk-session:one",
+			status: "idle" as const,
+			statusLabel: "Idle",
+			messages: [{ id: "assistant:one", role: "assistant" as const, content: "Earlier answer", streaming: false }],
+		}));
+		const session = createSession();
+		const sessionManager = createSessionManager("/tmp/one-session.jsonl");
+		const createSessionManagerMock = vi.fn(() => sessionManager);
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: createSessionManagerMock,
+			createAgentSession: vi.fn(async () => ({ session })),
+			loadSessionHistory,
+		});
+
+		const history = await backend.handle({
+			operation: "piSession.history",
+			input: { projectId: "project:one", chatId: "chat:one" },
+		});
+		const resumed = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", chatId: "chat:one", prompt: "Continue" },
+		});
+
+		expect(history).toEqual({
+			ok: true,
+			data: {
+				sessionId: "project:one:sdk-session:one",
+				status: "idle",
+				statusLabel: "Idle",
+				messages: [{ id: "assistant:one", role: "assistant", content: "Earlier answer", streaming: false }],
+			},
+		});
+		expect(createSessionManagerMock).toHaveBeenCalledWith({
+			cwd: "/tmp/one",
+			sessionPath: "/tmp/one-session.jsonl",
+			env: undefined,
+		});
+		expect(resumed).toEqual(expect.objectContaining({ ok: true }));
+		expect(projectService.getSessionStartTarget).toHaveBeenCalledTimes(2);
 	});
 
 	it("syncs chat title when a Pi session becomes idle", async () => {

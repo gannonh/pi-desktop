@@ -6,10 +6,7 @@ export type SessionScope = {
 	chatId: string | null;
 };
 
-type PendingSessionScope = {
-	projectId: string | null;
-	chatId: string | null;
-} | null;
+type PendingSessionScope = SessionScope | null;
 
 type SessionEventWithSessionId = PiSessionEvent & { sessionId: string };
 

@@ -28,4 +28,22 @@ describe("LiveSessionTranscript", () => {
 		expect(markup).toContain("Retrying after rate limit");
 		expect(markup).toContain("live-session__tool-details");
 	});
+
+	it("renders start failures as visible alerts", () => {
+		const markup = renderToStaticMarkup(
+			createElement(LiveSessionTranscript, {
+				session: {
+					...session,
+					status: "failed",
+					statusLabel: "Failed",
+					messages: [],
+					retryMessage: "",
+					errorMessage: "No API key found",
+				},
+			}),
+		);
+
+		expect(markup).toContain('role="alert"');
+		expect(markup).toContain("No API key found");
+	});
 });

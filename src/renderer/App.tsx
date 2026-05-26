@@ -44,10 +44,8 @@ type StatusMessage = {
 	message: string;
 };
 
-type SessionRequest = {
+type SessionRequest = SessionScope & {
 	id: number;
-	projectId: string | null;
-	chatId: string | null;
 };
 
 const createEmptyProjectStateView = (): ProjectStateView => ({
@@ -70,6 +68,23 @@ const isPiSessionStartPayload = (payload: unknown): payload is PiSessionStartPay
 
 const toProjectChatStatus = (status: LiveSessionState["status"]): ChatStatus =>
 	status === "failed" ? "failed" : status === "idle" ? "idle" : "running";
+
+const isSelectedActiveRequest = ({
+	request,
+	latestRequest,
+	selection,
+	active,
+}: {
+	request: SessionRequest;
+	latestRequest: SessionRequest | null;
+	selection: SessionScope;
+	active: SessionScope;
+}): boolean =>
+	latestRequest?.id === request.id &&
+	selection.projectId === request.projectId &&
+	selection.chatId === request.chatId &&
+	active.projectId === request.projectId &&
+	active.chatId === request.chatId;
 
 const chatMatchesScope = (chat: SessionChat, scope: SessionScope): boolean =>
 	chat.id === scope.chatId && ("projectId" in chat ? chat.projectId === scope.projectId : scope.projectId === null);
@@ -537,13 +552,21 @@ export function App() {
 						thinkingLevel: settingsForStart?.thinkingLevel,
 					});
 
+			const requestIsSelectedAndActive = isSelectedActiveRequest({
+				request,
+				latestRequest: latestSessionRequestRef.current,
+				selection: {
+					projectId: selectedProjectIdRef.current,
+					chatId: selectedChatIdRef.current,
+				},
+				active: {
+					projectId: activeSessionProjectIdRef.current,
+					chatId: activeSessionChatIdRef.current,
+				},
+			});
 			const requestIsCurrent =
-				latestSessionRequestRef.current?.id === request.id &&
-				selectedProjectIdRef.current === requestProjectId &&
-				selectedChatIdRef.current === requestChatId &&
-				activeSessionProjectIdRef.current === requestProjectId &&
-				activeSessionChatIdRef.current === requestChatId &&
-				(reusableSessionId || pendingStartRequestRef.current?.id === request.id);
+				requestIsSelectedAndActive &&
+				(reusableSessionId !== null || pendingStartRequestRef.current?.id === request.id);
 
 			if (!requestIsCurrent) {
 				if (!reusableSessionId && pendingStartRequestRef.current?.id === request.id) {
