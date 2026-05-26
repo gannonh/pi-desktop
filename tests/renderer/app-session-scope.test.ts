@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
-	isSessionRequestCurrent,
 	isSessionScopeSelected,
 	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
-	shouldDisposeStaleStartResult,
 	takeBufferedSessionEvents,
 } from "../../src/renderer/session/session-scope";
 import { createInitialSessionState, reduceSessionEvent } from "../../src/renderer/session/session-state";
@@ -244,54 +242,6 @@ describe("shouldAcceptSessionEvent", () => {
 				acceptedSessionId: null,
 				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
 				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
-			}),
-		).toBe(false);
-	});
-});
-
-describe("session start response routing", () => {
-	it("keeps the selected start request current until the matching response returns", () => {
-		const request = { id: 1, projectId: "project:/tmp/pi-desktop", chatId: "chat:one" };
-
-		expect(
-			isSessionRequestCurrent({
-				request,
-				latestRequest: request,
-				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
-				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
-				pendingStart: request,
-				reusableSessionId: null,
-			}),
-		).toBe(true);
-	});
-
-	it("rejects stale start responses after the selected chat changes", () => {
-		const request = { id: 1, projectId: "project:/tmp/pi-desktop", chatId: "chat:one" };
-
-		expect(
-			isSessionRequestCurrent({
-				request,
-				latestRequest: request,
-				selection: { projectId: "project:/tmp/pi-desktop", chatId: "chat:two" },
-				active: { projectId: "project:/tmp/pi-desktop", chatId: "chat:one" },
-				pendingStart: request,
-				reusableSessionId: null,
-			}),
-		).toBe(false);
-	});
-
-	it("disposes only successful stale starts that created a new runtime session", () => {
-		expect(
-			shouldDisposeStaleStartResult({ requestIsCurrent: false, resultOk: true, reusableSessionId: null }),
-		).toBe(true);
-		expect(
-			shouldDisposeStaleStartResult({ requestIsCurrent: false, resultOk: false, reusableSessionId: null }),
-		).toBe(false);
-		expect(
-			shouldDisposeStaleStartResult({
-				requestIsCurrent: false,
-				resultOk: true,
-				reusableSessionId: "project:/tmp/pi-desktop:session:one",
 			}),
 		).toBe(false);
 	});

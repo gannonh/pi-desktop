@@ -74,6 +74,11 @@ describe("pi session file actions", () => {
 			}),
 		).resolves.toBe("/tmp/session-clone.jsonl");
 
+		expect(sessionManagerMock.open).toHaveBeenCalledWith(
+			"/tmp/source.jsonl",
+			"/tmp/pi-sessions/--%2Ftmp%2Fworkspace--",
+			"/tmp/workspace",
+		);
 		expect(manager.createBranchedSession).toHaveBeenCalledWith("leaf-one");
 	});
 
@@ -98,6 +103,11 @@ describe("pi session file actions", () => {
 			}),
 		).resolves.toBe("/tmp/session-branch.jsonl");
 
+		expect(sessionManagerMock.open).toHaveBeenCalledWith(
+			"/tmp/source.jsonl",
+			"/tmp/pi-sessions/--%2Ftmp%2Fworkspace--",
+			"/tmp/workspace",
+		);
 		expect(manager.branch).not.toHaveBeenCalled();
 		expect(manager.createBranchedSession).toHaveBeenCalledWith("entry-one");
 	});

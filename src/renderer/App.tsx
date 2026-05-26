@@ -15,16 +15,13 @@ import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
 import {
-	type SessionRequest,
 	type SessionScope,
 	bufferPendingSessionEvent,
 	createPendingSessionEventBuffer,
-	isSessionRequestCurrent,
 	isSessionScopeSelected,
 	resolvePromptSessionStartSelection,
 	shouldAcceptSessionEvent,
 	shouldBufferPendingStartEvent,
-	shouldDisposeStaleStartResult,
 	takeBufferedSessionEvents,
 } from "./session/session-scope";
 import {
@@ -47,6 +44,10 @@ type StatusMessage = {
 	message: string;
 };
 
+type SessionRequest = SessionScope & {
+	id: number;
+};
+
 const createEmptyProjectStateView = (): ProjectStateView => ({
 	projects: [],
 	standaloneChats: [],
@@ -67,6 +68,23 @@ const isPiSessionStartPayload = (payload: unknown): payload is PiSessionStartPay
 
 const toProjectChatStatus = (status: LiveSessionState["status"]): ChatStatus =>
 	status === "failed" ? "failed" : status === "idle" ? "idle" : "running";
+
+const isSelectedActiveRequest = ({
+	request,
+	latestRequest,
+	selection,
+	active,
+}: {
+	request: SessionRequest;
+	latestRequest: SessionRequest | null;
+	selection: SessionScope;
+	active: SessionScope;
+}): boolean =>
+	latestRequest?.id === request.id &&
+	selection.projectId === request.projectId &&
+	selection.chatId === request.chatId &&
+	active.projectId === request.projectId &&
+	active.chatId === request.chatId;
 
 const chatMatchesScope = (chat: SessionChat, scope: SessionScope): boolean =>
 	chat.id === scope.chatId && ("projectId" in chat ? chat.projectId === scope.projectId : scope.projectId === null);
@@ -534,7 +552,7 @@ export function App() {
 						thinkingLevel: settingsForStart?.thinkingLevel,
 					});
 
-			const requestIsCurrent = isSessionRequestCurrent({
+			const requestIsSelectedAndActive = isSelectedActiveRequest({
 				request,
 				latestRequest: latestSessionRequestRef.current,
 				selection: {
@@ -545,22 +563,17 @@ export function App() {
 					projectId: activeSessionProjectIdRef.current,
 					chatId: activeSessionChatIdRef.current,
 				},
-				pendingStart: pendingStartRequestRef.current,
-				reusableSessionId,
 			});
+			const requestIsCurrent =
+				requestIsSelectedAndActive &&
+				(reusableSessionId !== null || pendingStartRequestRef.current?.id === request.id);
 
 			if (!requestIsCurrent) {
 				if (!reusableSessionId && pendingStartRequestRef.current?.id === request.id) {
 					pendingStartRequestRef.current = null;
 					pendingStartEventsRef.current.clear();
 				}
-				if (
-					shouldDisposeStaleStartResult({
-						requestIsCurrent,
-						resultOk: result.ok,
-						reusableSessionId,
-					})
-				) {
+				if (result.ok && !reusableSessionId) {
 					void window.piDesktop.piSession.dispose({ sessionId: result.data.sessionId });
 				}
 				return false;
