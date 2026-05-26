@@ -54,7 +54,14 @@ const createFakeSession = () => {
 	return { session };
 };
 
-const createControlledSession = () => {
+type ControlledSessionOptions = {
+	handleQueuedPrompt?: (prompt: string, streamingBehavior: "steer" | "followUp") => void | Promise<void>;
+	getSteeringMessages?: () => readonly string[];
+	getFollowUpMessages?: () => readonly string[];
+	clearQueue?: () => { steering: string[]; followUp: string[] };
+};
+
+const createControlledSession = (options: ControlledSessionOptions = {}) => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	const promptResult = createDeferred();
 	const session: PiSdkSession = {
@@ -66,12 +73,17 @@ const createControlledSession = () => {
 			};
 		}),
 		bindExtensions: vi.fn(async () => undefined),
-		prompt: vi.fn((_prompt: string, options?: { streamingBehavior?: "steer" | "followUp" }) =>
-			options?.streamingBehavior ? Promise.resolve() : promptResult.promise,
-		),
-		getSteeringMessages: vi.fn(() => []),
-		getFollowUpMessages: vi.fn(() => []),
-		clearQueue: vi.fn(() => ({ steering: [], followUp: [] })),
+		prompt: vi.fn(async (prompt: string, promptOptions?: { streamingBehavior?: "steer" | "followUp" }) => {
+			const streamingBehavior = promptOptions?.streamingBehavior;
+			if (streamingBehavior) {
+				await options.handleQueuedPrompt?.(prompt, streamingBehavior);
+				return;
+			}
+			return promptResult.promise;
+		}),
+		getSteeringMessages: vi.fn(options.getSteeringMessages ?? (() => [])),
+		getFollowUpMessages: vi.fn(options.getFollowUpMessages ?? (() => [])),
+		clearQueue: vi.fn(options.clearQueue ?? (() => ({ steering: [], followUp: [] }))),
 		abort: vi.fn(async () => undefined),
 		dispose: vi.fn(() => undefined),
 	};
@@ -430,6 +442,154 @@ describe("createPiSessionRuntime", () => {
 			sessionId: result.sessionId,
 			status: "failed",
 			label: "Failed",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
+
+	it("reports accepted steering prompts in the queue before active submit returns", async () => {
+		const events: PiSessionEvent[] = [];
+		const steeringMessages: string[] = [];
+		const { session } = createControlledSession({
+			handleQueuedPrompt(prompt, streamingBehavior) {
+				if (streamingBehavior === "steer") {
+					steeringMessages.push(prompt);
+				}
+			},
+			getSteeringMessages: () => steeringMessages,
+		});
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Work on this",
+		});
+		await waitForScheduledPrompt();
+
+		const submitted = await runtime.submit({
+			sessionId: result.sessionId,
+			prompt: "Add this next",
+			delivery: "steer",
+		});
+
+		expect(submitted).toEqual({ sessionId: result.sessionId, status: "running" });
+		expect(session.prompt).toHaveBeenCalledWith(
+			"Add this next",
+			expect.objectContaining({ streamingBehavior: "steer" }),
+		);
+		expect(events).toContainEqual({
+			type: "queue_update",
+			sessionId: result.sessionId,
+			messages: [{ id: { queue: "steer", index: 0 }, text: "Add this next", delivery: "steer" }],
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
+
+	it("returns a visible failure when an active follow-up prompt is rejected", async () => {
+		const events: PiSessionEvent[] = [];
+		const rejection = new Error("worker rejected prompt");
+		const { session } = createControlledSession({
+			handleQueuedPrompt(_prompt, streamingBehavior) {
+				if (streamingBehavior === "followUp") {
+					throw rejection;
+				}
+			},
+		});
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Work on this",
+		});
+		await waitForScheduledPrompt();
+
+		await expect(
+			runtime.submit({
+				sessionId: result.sessionId,
+				prompt: "Rejected follow-up",
+				delivery: "followUp",
+			}),
+		).rejects.toThrow("worker rejected prompt");
+		expect(events).toContainEqual({
+			type: "runtime_error",
+			sessionId: result.sessionId,
+			code: "pi.prompt_failed",
+			message: "worker rejected prompt",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events).toContainEqual({
+			type: "status",
+			sessionId: result.sessionId,
+			status: "failed",
+			label: "Failed",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
+
+	it("clears queued prompts on abort and accepts a recovery prompt", async () => {
+		const events: PiSessionEvent[] = [];
+		const steeringMessages: string[] = [];
+		const clearQueue = vi.fn(() => {
+			steeringMessages.splice(0, steeringMessages.length);
+			return { steering: [], followUp: [] };
+		});
+		const { session } = createControlledSession({
+			handleQueuedPrompt(prompt, streamingBehavior) {
+				if (streamingBehavior === "steer") {
+					steeringMessages.push(prompt);
+				}
+			},
+			getSteeringMessages: () => steeringMessages,
+			clearQueue,
+		});
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Work on this",
+		});
+		await waitForScheduledPrompt();
+		await runtime.submit({ sessionId: result.sessionId, prompt: "Queued before abort", delivery: "steer" });
+
+		await expect(runtime.abort({ sessionId: result.sessionId })).resolves.toEqual({
+			sessionId: result.sessionId,
+			status: "idle",
+		});
+		await expect(runtime.submit({ sessionId: result.sessionId, prompt: "Recover now" })).resolves.toEqual({
+			sessionId: result.sessionId,
+			status: "running",
+		});
+		expect(session.abort).toHaveBeenCalledTimes(1);
+		expect(clearQueue).toHaveBeenCalledTimes(1);
+		expect(session.prompt).toHaveBeenLastCalledWith("Recover now", { images: undefined });
+		expect(events).toContainEqual({
+			type: "status",
+			sessionId: result.sessionId,
+			status: "aborting",
+			label: "Aborting",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events).toContainEqual({
+			type: "queue_update",
+			sessionId: result.sessionId,
+			messages: [],
 			receivedAt: "2026-05-14T12:00:00.000Z",
 		});
 	});

@@ -308,18 +308,25 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		});
 	};
 
-	const rebuildQueue = async (entry: RuntimeEntry, steering: string[], followUp: string[]) => {
-		if (!entry.agentSession) {
+	type QueueManagedSession = PiSdkSession & { clearQueue: NonNullable<PiSdkSession["clearQueue"]> };
+
+	const getQueueManagedSession = (entry: RuntimeEntry): QueueManagedSession => {
+		if (!entry.session.clearQueue) {
 			throw new Error("Queue management is unavailable for this session.");
 		}
+		return entry.session as QueueManagedSession;
+	};
+
+	const rebuildQueue = async (entry: RuntimeEntry, steering: string[], followUp: string[]) => {
+		const queueSession = getQueueManagedSession(entry);
 		entry.suppressQueueUpdates = true;
 		try {
-			entry.agentSession.clearQueue();
+			queueSession.clearQueue();
 			for (const text of steering) {
-				await entry.agentSession.prompt(text, { streamingBehavior: "steer" });
+				await queueSession.prompt(text, { streamingBehavior: "steer" });
 			}
 			for (const text of followUp) {
-				await entry.agentSession.prompt(text, { streamingBehavior: "followUp" });
+				await queueSession.prompt(text, { streamingBehavior: "followUp" });
 			}
 		} finally {
 			entry.suppressQueueUpdates = false;
@@ -332,11 +339,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	});
 
 	const clearQueues = (entry: RuntimeEntry) => {
-		if (entry.session.clearQueue) {
-			entry.session.clearQueue();
-			return;
-		}
-		entry.agentSession?.clearQueue();
+		getQueueManagedSession(entry).clearQueue();
 	};
 
 	return {
