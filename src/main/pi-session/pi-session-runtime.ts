@@ -496,16 +496,30 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async setModel(input: PiSessionSetModelInput) {
 			const entry = getEntry(input.sessionId);
-			if (!entry.agentSession) {
-				throw new Error("Model selection is unavailable for this session.");
+			try {
+				if (!entry.agentSession) {
+					throw new Error("Model selection is unavailable for this session.");
+				}
+				const model = entry.agentSession.modelRegistry.find(input.provider, input.modelId);
+				if (!model) {
+					throw new Error(`Model not found: ${input.provider}/${input.modelId}`);
+				}
+				await entry.agentSession.setModel(model);
+				await emitSessionSettings(input.sessionId, entry);
+				return buildSettingsFromAgentSession(entry.agentSession);
+			} catch (error) {
+				entry.status = "failed";
+				deps.emit(
+					createRuntimeErrorEvent({
+						sessionId: input.sessionId,
+						code: "pi.model_selection_failed",
+						error,
+						now: deps.now,
+					}),
+				);
+				emitStatus(input.sessionId, "failed", "Failed");
+				throw error;
 			}
-			const model = entry.agentSession.modelRegistry.find(input.provider, input.modelId);
-			if (!model) {
-				throw new Error(`Model not found: ${input.provider}/${input.modelId}`);
-			}
-			await entry.agentSession.setModel(model);
-			await emitSessionSettings(input.sessionId, entry);
-			return buildSettingsFromAgentSession(entry.agentSession);
 		},
 
 		async setThinkingLevel(input: PiSessionSetThinkingLevelInput) {

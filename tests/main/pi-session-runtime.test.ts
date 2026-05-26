@@ -1,4 +1,4 @@
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentSession, AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 import { createPiSessionRuntime, type PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
 import type { PiSessionEvent } from "../../src/shared/pi-session";
@@ -179,6 +179,53 @@ describe("createPiSessionRuntime", () => {
 			modelProvider: "anthropic",
 			modelId: "claude-sonnet-4",
 			thinkingLevel: "high",
+		});
+	});
+
+	it("emits a session-scoped failure when active model selection is invalid", async () => {
+		const events: PiSessionEvent[] = [];
+		const { session } = createFakeSession();
+		const agentSession = {
+			model: { provider: "openai", id: "gpt-5.5", name: "5.5 High" },
+			thinkingLevel: "off",
+			getAvailableThinkingLevels: vi.fn(() => ["off", "high"]),
+			modelRegistry: {
+				getAvailable: vi.fn(async () => [{ provider: "openai", id: "gpt-5.5", name: "5.5 High" }]),
+				find: vi.fn(() => undefined),
+			},
+		} as unknown as AgentSession;
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session, agentSession })),
+		});
+
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: "chat:one",
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await runtime.whenIdle(started.sessionId);
+		events.length = 0;
+
+		await expect(runtime.setModel({ sessionId: started.sessionId, provider: "openai", modelId: "missing" })).rejects.toThrow(
+			"Model not found: openai/missing",
+		);
+
+		expect(events).toContainEqual({
+			type: "runtime_error",
+			sessionId: started.sessionId,
+			code: "pi.model_selection_failed",
+			message: "Model not found: openai/missing",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events).toContainEqual({
+			type: "status",
+			sessionId: started.sessionId,
+			status: "failed",
+			label: "Failed",
+			receivedAt: "2026-05-14T12:00:00.000Z",
 		});
 	});
 
