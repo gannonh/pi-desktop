@@ -693,6 +693,76 @@ describe("app backend", () => {
 		expect(projectService.getSessionStartTarget).toHaveBeenCalledTimes(2);
 	});
 
+	it("reports accepted steering prompts in the queue before active submit returns", async () => {
+		const projectService = createProjectService();
+		let listener: ((event: AgentSessionEvent) => void) | undefined;
+		const steeringMessages: string[] = [];
+		const session: PiSdkSession = {
+			sessionId: "sdk-session:one",
+			bindExtensions: vi.fn(async () => undefined),
+			prompt: vi.fn(async (prompt, options) => {
+				if (options?.streamingBehavior === "steer") {
+					steeringMessages.push(prompt);
+					return;
+				}
+				listener?.({ type: "agent_start" });
+				await new Promise(() => undefined);
+			}),
+			abort: vi.fn(async () => undefined),
+			dispose: vi.fn(() => undefined),
+			subscribe: vi.fn((nextListener) => {
+				listener = nextListener;
+				return () => {
+					listener = undefined;
+				};
+			}),
+			getSteeringMessages: vi.fn(() => steeringMessages),
+			getFollowUpMessages: vi.fn(() => []),
+		};
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: () => createSessionManager(),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const events: unknown[] = [];
+		const unsubscribe = backend.onPiSessionEvent((event) => events.push(event));
+
+		try {
+			const started = await backend.handle({
+				operation: "piSession.start",
+				input: { projectId: "project:one", prompt: "Work on this" },
+			});
+			expect(started).toEqual(expect.objectContaining({ ok: true }));
+			await waitForScheduledPrompt(events);
+
+			const submitted = await backend.handle({
+				operation: "piSession.submit",
+				input: {
+					sessionId: "project:one:sdk-session:one",
+					prompt: "Add this next",
+					delivery: "steer",
+				},
+			});
+
+			expect(submitted).toEqual({
+				ok: true,
+				data: { sessionId: "project:one:sdk-session:one", status: "running" },
+			});
+			expect(session.prompt).toHaveBeenCalledWith("Add this next", { streamingBehavior: "steer", images: undefined });
+			expect(events).toContainEqual({
+				type: "queue_update",
+				sessionId: "project:one:sdk-session:one",
+				messages: [{ id: { queue: "steer", index: 0 }, text: "Add this next", delivery: "steer" }],
+				receivedAt: "2026-05-15T12:00:00.000Z",
+			});
+		} finally {
+			unsubscribe();
+			await backend.dispose();
+		}
+	});
+
 	it("syncs chat title when a Pi session becomes idle", async () => {
 		const projectService = createProjectService();
 		const session = createSession([{ type: "agent_end", messages: [] } as AgentSessionEvent]);

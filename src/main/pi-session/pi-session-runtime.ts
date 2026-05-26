@@ -229,15 +229,24 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		if (shouldQueueDelivery(entry) && streamingBehavior) {
 			emitQueueUpdate(sessionId, entry);
-			return entry.session.prompt(prompt, { streamingBehavior, images: imageContent }).catch((error) => {
-				const currentEntry = sessions.get(sessionId);
-				if (currentEntry !== entry || entry.disposed) {
-					return;
-				}
-				entry.status = "failed";
-				deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
-				emitStatus(sessionId, "failed", "Failed");
-			});
+			return entry.session
+				.prompt(prompt, { streamingBehavior, images: imageContent })
+				.then(() => {
+					const currentEntry = sessions.get(sessionId);
+					if (currentEntry === entry && !entry.disposed) {
+						emitQueueUpdate(sessionId, entry);
+					}
+				})
+				.catch((error) => {
+					const currentEntry = sessions.get(sessionId);
+					if (currentEntry !== entry || entry.disposed) {
+						return;
+					}
+					entry.status = "failed";
+					deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
+					emitStatus(sessionId, "failed", "Failed");
+					throw error;
+				});
 		}
 
 		const promptToken = Symbol("pi-session-prompt");
@@ -409,8 +418,12 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			const delivery = input.delivery ?? (shouldQueueDelivery(entry) ? "steer" : "prompt");
-			runPrompt(input.sessionId, input.prompt, delivery, input.images);
+			const shouldQueue = shouldQueueDelivery(entry);
+			const delivery = input.delivery ?? (shouldQueue ? "steer" : "prompt");
+			const promptRun = runPrompt(input.sessionId, input.prompt, delivery, input.images);
+			if (shouldQueue && delivery !== "prompt") {
+				await promptRun;
+			}
 			return { sessionId: input.sessionId, status: "running" };
 		},
 
