@@ -537,6 +537,79 @@ describe("createPiSessionRuntime", () => {
 		});
 	});
 
+	it("returns idle from abort when queue clearing is unavailable", async () => {
+		const events: PiSessionEvent[] = [];
+		const { session } = createControlledSession();
+		delete session.clearQueue;
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		const result = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Work on this",
+		});
+		await waitForScheduledPrompt();
+
+		await expect(runtime.abort({ sessionId: result.sessionId })).resolves.toEqual({
+			sessionId: result.sessionId,
+			status: "idle",
+		});
+		expect(session.abort).toHaveBeenCalledTimes(1);
+		expect(events).toContainEqual({
+			type: "status",
+			sessionId: result.sessionId,
+			status: "idle",
+			label: "Idle",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
+
+	it("returns idle from abort when queue clearing fails", async () => {
+		const events: PiSessionEvent[] = [];
+		const clearError = new Error("clear failed");
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const { session } = createControlledSession({
+			clearQueue: () => {
+				throw clearError;
+			},
+		});
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+
+		try {
+			const result = await runtime.start({
+				projectId: "project:/tmp/pi-desktop",
+				chatId: null,
+				workspacePath: "/tmp/pi-desktop",
+				prompt: "Work on this",
+			});
+			await waitForScheduledPrompt();
+
+			await expect(runtime.abort({ sessionId: result.sessionId })).resolves.toEqual({
+				sessionId: result.sessionId,
+				status: "idle",
+			});
+			expect(consoleError).toHaveBeenCalledWith("Failed to clear Pi session queues.", clearError);
+			expect(events).toContainEqual({
+				type: "status",
+				sessionId: result.sessionId,
+				status: "idle",
+				label: "Idle",
+				receivedAt: "2026-05-14T12:00:00.000Z",
+			});
+		} finally {
+			consoleError.mockRestore();
+		}
+	});
+
 	it("clears queued prompts on abort and accepts a recovery prompt", async () => {
 		const events: PiSessionEvent[] = [];
 		const steeringMessages: string[] = [];

@@ -311,7 +311,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	type QueueManagedSession = PiSdkSession & { clearQueue: NonNullable<PiSdkSession["clearQueue"]> };
 
 	const getQueueManagedSession = (entry: RuntimeEntry): QueueManagedSession => {
-		if (!entry.session.clearQueue) {
+		if (typeof entry.session.clearQueue !== "function") {
 			throw new Error("Queue management is unavailable for this session.");
 		}
 		return entry.session as QueueManagedSession;
@@ -339,7 +339,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 	});
 
 	const clearQueues = (entry: RuntimeEntry) => {
-		getQueueManagedSession(entry).clearQueue();
+		try {
+			entry.session.clearQueue?.();
+		} catch (error) {
+			console.error("Failed to clear Pi session queues.", error);
+		}
 	};
 
 	return {
