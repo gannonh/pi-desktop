@@ -229,15 +229,24 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		if (shouldQueueDelivery(entry) && streamingBehavior) {
 			emitQueueUpdate(sessionId, entry);
-			return entry.session.prompt(prompt, { streamingBehavior, images: imageContent }).catch((error) => {
-				const currentEntry = sessions.get(sessionId);
-				if (currentEntry !== entry || entry.disposed) {
-					return;
-				}
-				entry.status = "failed";
-				deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
-				emitStatus(sessionId, "failed", "Failed");
-			});
+			return entry.session
+				.prompt(prompt, { streamingBehavior, images: imageContent })
+				.then(() => {
+					const currentEntry = sessions.get(sessionId);
+					if (currentEntry === entry && !entry.disposed) {
+						emitQueueUpdate(sessionId, entry);
+					}
+				})
+				.catch((error) => {
+					const currentEntry = sessions.get(sessionId);
+					if (currentEntry !== entry || entry.disposed) {
+						return;
+					}
+					entry.status = "failed";
+					deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
+					emitStatus(sessionId, "failed", "Failed");
+					throw error;
+				});
 		}
 
 		const promptToken = Symbol("pi-session-prompt");
@@ -299,18 +308,25 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		});
 	};
 
-	const rebuildQueue = async (entry: RuntimeEntry, steering: string[], followUp: string[]) => {
-		if (!entry.agentSession) {
+	type QueueManagedSession = PiSdkSession & { clearQueue: NonNullable<PiSdkSession["clearQueue"]> };
+
+	const getQueueManagedSession = (entry: RuntimeEntry): QueueManagedSession => {
+		if (typeof entry.session.clearQueue !== "function") {
 			throw new Error("Queue management is unavailable for this session.");
 		}
+		return entry.session as QueueManagedSession;
+	};
+
+	const rebuildQueue = async (entry: RuntimeEntry, steering: string[], followUp: string[]) => {
+		const queueSession = getQueueManagedSession(entry);
 		entry.suppressQueueUpdates = true;
 		try {
-			entry.agentSession.clearQueue();
+			queueSession.clearQueue();
 			for (const text of steering) {
-				await entry.agentSession.prompt(text, { streamingBehavior: "steer" });
+				await queueSession.prompt(text, { streamingBehavior: "steer" });
 			}
 			for (const text of followUp) {
-				await entry.agentSession.prompt(text, { streamingBehavior: "followUp" });
+				await queueSession.prompt(text, { streamingBehavior: "followUp" });
 			}
 		} finally {
 			entry.suppressQueueUpdates = false;
@@ -321,6 +337,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		steering: [...(entry.session.getSteeringMessages?.() ?? [])],
 		followUp: [...(entry.session.getFollowUpMessages?.() ?? [])],
 	});
+
+	const clearQueues = (entry: RuntimeEntry) => {
+		try {
+			entry.session.clearQueue?.();
+		} catch (error) {
+			console.error("Failed to clear Pi session queues.", error);
+		}
+	};
 
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
@@ -409,8 +433,12 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
-			const delivery = input.delivery ?? (shouldQueueDelivery(entry) ? "steer" : "prompt");
-			runPrompt(input.sessionId, input.prompt, delivery, input.images);
+			const shouldQueue = shouldQueueDelivery(entry);
+			const delivery = input.delivery ?? (shouldQueue ? "steer" : "prompt");
+			const promptRun = runPrompt(input.sessionId, input.prompt, delivery, input.images);
+			if (shouldQueue && delivery !== "prompt") {
+				await promptRun;
+			}
 			return { sessionId: input.sessionId, status: "running" };
 		},
 
@@ -423,6 +451,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			entry.status = "aborting";
 			emitStatus(input.sessionId, "aborting", "Aborting");
 			if (entry.activePromptToken) {
+				const abortedPromptToken = entry.activePromptToken;
 				try {
 					await entry.session.abort();
 				} catch (error) {
@@ -438,8 +467,10 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					emitStatus(input.sessionId, "failed", "Failed");
 					throw error;
 				}
-				entry.abortedPromptToken = entry.activePromptToken;
+				entry.abortedPromptToken = abortedPromptToken;
+				entry.activePromptToken = null;
 			}
+			clearQueues(entry);
 			entry.status = "idle";
 			emitStatus(input.sessionId, "idle", "Idle");
 			emitQueueUpdate(input.sessionId, entry);
