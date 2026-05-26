@@ -210,6 +210,48 @@ const createSession = (promptEvents: AgentSessionEvent[] = [{ type: "agent_start
 	};
 };
 
+type ActivePromptSessionOptions = {
+	handleQueuedPrompt?: (prompt: string, streamingBehavior: "steer" | "followUp") => void | Promise<void>;
+	getSteeringMessages?: PiSdkSession["getSteeringMessages"];
+	getFollowUpMessages?: PiSdkSession["getFollowUpMessages"];
+	clearQueue?: PiSdkSession["clearQueue"];
+};
+
+function createActivePromptSession(options: ActivePromptSessionOptions = {}): PiSdkSession {
+	let listener: ((event: AgentSessionEvent) => void) | undefined;
+	const session: PiSdkSession = {
+		sessionId: "sdk-session:one",
+		bindExtensions: vi.fn(async () => undefined),
+		prompt: vi.fn(async (prompt, promptOptions) => {
+			const streamingBehavior = promptOptions?.streamingBehavior;
+			if (streamingBehavior) {
+				await options.handleQueuedPrompt?.(prompt, streamingBehavior);
+				return;
+			}
+			listener?.({ type: "agent_start" });
+			await new Promise<void>(() => undefined);
+		}),
+		abort: vi.fn(async () => undefined),
+		dispose: vi.fn(() => undefined),
+		subscribe: vi.fn((nextListener) => {
+			listener = nextListener;
+			return () => {
+				listener = undefined;
+			};
+		}),
+	};
+	if (options.getSteeringMessages) {
+		session.getSteeringMessages = options.getSteeringMessages;
+	}
+	if (options.getFollowUpMessages) {
+		session.getFollowUpMessages = options.getFollowUpMessages;
+	}
+	if (options.clearQueue) {
+		session.clearQueue = options.clearQueue;
+	}
+	return session;
+}
+
 describe("app backend", () => {
 	it("wraps project operation failures in structured results", async () => {
 		const projectService = createProjectService();
@@ -695,30 +737,16 @@ describe("app backend", () => {
 
 	it("reports accepted steering prompts in the queue before active submit returns", async () => {
 		const projectService = createProjectService();
-		let listener: ((event: AgentSessionEvent) => void) | undefined;
 		const steeringMessages: string[] = [];
-		const session: PiSdkSession = {
-			sessionId: "sdk-session:one",
-			bindExtensions: vi.fn(async () => undefined),
-			prompt: vi.fn(async (prompt, options) => {
-				if (options?.streamingBehavior === "steer") {
+		const session = createActivePromptSession({
+			handleQueuedPrompt(prompt, streamingBehavior) {
+				if (streamingBehavior === "steer") {
 					steeringMessages.push(prompt);
-					return;
 				}
-				listener?.({ type: "agent_start" });
-				await new Promise(() => undefined);
-			}),
-			abort: vi.fn(async () => undefined),
-			dispose: vi.fn(() => undefined),
-			subscribe: vi.fn((nextListener) => {
-				listener = nextListener;
-				return () => {
-					listener = undefined;
-				};
-			}),
-			getSteeringMessages: vi.fn(() => steeringMessages),
-			getFollowUpMessages: vi.fn(() => []),
-		};
+			},
+			getSteeringMessages: () => steeringMessages,
+			getFollowUpMessages: () => [],
+		});
 		const backend = createAppBackend({
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
@@ -765,29 +793,16 @@ describe("app backend", () => {
 
 	it("returns a visible failure when an active follow-up prompt is rejected", async () => {
 		const projectService = createProjectService();
-		let listener: ((event: AgentSessionEvent) => void) | undefined;
 		const rejection = new Error("worker rejected prompt");
-		const session: PiSdkSession = {
-			sessionId: "sdk-session:one",
-			bindExtensions: vi.fn(async () => undefined),
-			prompt: vi.fn(async (_prompt, options) => {
-				if (options?.streamingBehavior === "followUp") {
+		const session = createActivePromptSession({
+			handleQueuedPrompt(_prompt, streamingBehavior) {
+				if (streamingBehavior === "followUp") {
 					throw rejection;
 				}
-				listener?.({ type: "agent_start" });
-				await new Promise(() => undefined);
-			}),
-			abort: vi.fn(async () => undefined),
-			dispose: vi.fn(() => undefined),
-			subscribe: vi.fn((nextListener) => {
-				listener = nextListener;
-				return () => {
-					listener = undefined;
-				};
-			}),
-			getSteeringMessages: vi.fn(() => []),
-			getFollowUpMessages: vi.fn(() => []),
-		};
+			},
+			getSteeringMessages: () => [],
+			getFollowUpMessages: () => [],
+		});
 		const backend = createAppBackend({
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
@@ -840,34 +855,21 @@ describe("app backend", () => {
 
 	it("clears queued prompts on abort and accepts a recovery prompt", async () => {
 		const projectService = createProjectService();
-		let listener: ((event: AgentSessionEvent) => void) | undefined;
 		const steeringMessages: string[] = [];
-		const session: PiSdkSession = {
-			sessionId: "sdk-session:one",
-			bindExtensions: vi.fn(async () => undefined),
-			prompt: vi.fn(async (prompt, options) => {
-				if (options?.streamingBehavior === "steer") {
+		const clearQueue = vi.fn(() => {
+			steeringMessages.splice(0, steeringMessages.length);
+			return { steering: [], followUp: [] };
+		});
+		const session = createActivePromptSession({
+			handleQueuedPrompt(prompt, streamingBehavior) {
+				if (streamingBehavior === "steer") {
 					steeringMessages.push(prompt);
-					return;
 				}
-				listener?.({ type: "agent_start" });
-				await new Promise(() => undefined);
-			}),
-			abort: vi.fn(async () => undefined),
-			dispose: vi.fn(() => undefined),
-			subscribe: vi.fn((nextListener) => {
-				listener = nextListener;
-				return () => {
-					listener = undefined;
-				};
-			}),
-			getSteeringMessages: vi.fn(() => steeringMessages),
-			getFollowUpMessages: vi.fn(() => []),
-			clearQueue: vi.fn(() => {
-				steeringMessages.splice(0, steeringMessages.length);
-				return { steering: [], followUp: [] };
-			}),
-		};
+			},
+			getSteeringMessages: () => steeringMessages,
+			getFollowUpMessages: () => [],
+			clearQueue,
+		});
 		const backend = createAppBackend({
 			appInfo: { name: "pi-desktop", version: "dev" },
 			projectService,
@@ -905,7 +907,7 @@ describe("app backend", () => {
 			expect(aborted).toEqual({ ok: true, data: { sessionId: "project:one:sdk-session:one", status: "idle" } });
 			expect(recovered).toEqual({ ok: true, data: { sessionId: "project:one:sdk-session:one", status: "running" } });
 			expect(session.abort).toHaveBeenCalledTimes(1);
-			expect(session.clearQueue).toHaveBeenCalledTimes(1);
+			expect(clearQueue).toHaveBeenCalledTimes(1);
 			expect(session.prompt).toHaveBeenLastCalledWith("Recover now", { images: undefined });
 			expect(events).toContainEqual({
 				type: "status",
