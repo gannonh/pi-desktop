@@ -524,12 +524,26 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async setThinkingLevel(input: PiSessionSetThinkingLevelInput) {
 			const entry = getEntry(input.sessionId);
-			if (!entry.agentSession) {
-				throw new Error("Thinking level selection is unavailable for this session.");
+			try {
+				if (!entry.agentSession) {
+					throw new Error("Thinking level selection is unavailable for this session.");
+				}
+				entry.agentSession.setThinkingLevel(input.level);
+				await emitSessionSettings(input.sessionId, entry);
+				return buildSettingsFromAgentSession(entry.agentSession);
+			} catch (error) {
+				entry.status = "failed";
+				deps.emit(
+					createRuntimeErrorEvent({
+						sessionId: input.sessionId,
+						code: "pi.thinking_level_selection_failed",
+						error,
+						now: deps.now,
+					}),
+				);
+				emitStatus(input.sessionId, "failed", "Failed");
+				throw error;
 			}
-			entry.agentSession.setThinkingLevel(input.level);
-			await emitSessionSettings(input.sessionId, entry);
-			return buildSettingsFromAgentSession(entry.agentSession);
 		},
 
 		setDefaultModel(input: PiSessionSetDefaultModelInput) {
