@@ -66,7 +66,9 @@ const createControlledSession = () => {
 			};
 		}),
 		bindExtensions: vi.fn(async () => undefined),
-		prompt: vi.fn((_prompt: string, _options?: { streamingBehavior?: "steer" | "followUp" }) => promptResult.promise),
+		prompt: vi.fn((_prompt: string, options?: { streamingBehavior?: "steer" | "followUp" }) =>
+			options?.streamingBehavior ? Promise.resolve() : promptResult.promise,
+		),
 		getSteeringMessages: vi.fn(() => []),
 		getFollowUpMessages: vi.fn(() => []),
 		clearQueue: vi.fn(() => ({ steering: [], followUp: [] })),
