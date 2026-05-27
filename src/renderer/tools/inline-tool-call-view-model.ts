@@ -125,11 +125,12 @@ const renderRead = (execution: LiveToolExecution): InlineToolCallRenderModel => 
 const renderEdit = (execution: LiveToolExecution): InlineToolCallRenderModel => {
 	const path = stringField(execution.args, "path") ?? "<unknown>";
 	const details = detailsFrom(execution.result);
+	const hasDiff = typeof details.diff === "string";
 	return {
 		title: `edit ${path}`,
 		metadata: [],
-		output: typeof details.diff === "string" ? details.diff : outputFor(execution),
-		outputKind: "diff",
+		output: hasDiff ? (details.diff as string) : outputFor(execution),
+		outputKind: hasDiff ? "diff" : "text",
 		warnings: warningsFor(details),
 	};
 };
@@ -217,13 +218,14 @@ export const renderInlineToolCallModel = (execution: LiveToolExecution): InlineT
 	}
 };
 
-export const previewForInlineToolOutput = (output: string): string => {
-	const firstLine = output
+export const previewForInlineToolOutput = (output: string, edge: "head" | "tail" = "head"): string => {
+	const lines = output
 		.split(/\r?\n/)
 		.map((line) => line.trim())
-		.find(Boolean);
-	if (!firstLine) {
+		.filter(Boolean);
+	const line = edge === "tail" ? lines.at(-1) : lines[0];
+	if (!line) {
 		return "";
 	}
-	return firstLine.length > 160 ? `${firstLine.slice(0, 159)}…` : firstLine;
+	return line.length > 160 ? `${line.slice(0, 159)}…` : line;
 };

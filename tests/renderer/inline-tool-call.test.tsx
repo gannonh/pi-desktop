@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { LiveToolExecution } from "../../src/renderer/session/session-state";
 import { InlineToolCall } from "../../src/renderer/tools/inline-tool-call";
+import {
+	previewForInlineToolOutput,
+	renderInlineToolCallModel,
+} from "../../src/renderer/tools/inline-tool-call-view-model";
 
 const execution = (overrides: Partial<LiveToolExecution>): LiveToolExecution => ({
 	id: "call_1",
@@ -74,6 +78,19 @@ describe("InlineToolCall", () => {
 		expect(markup).toContain("+new");
 	});
 
+	it("renders edit fallback output as plain text", () => {
+		const model = renderInlineToolCallModel(
+			execution({
+				toolName: "edit",
+				args: { path: "src/app.ts" },
+				result: { content: [{ type: "text", text: "Edited src/app.ts" }] },
+			}),
+		);
+
+		expect(model.output).toBe("Edited src/app.ts");
+		expect(model.outputKind).toBe("text");
+	});
+
 	it("renders write with content preview", () => {
 		const markup = renderTool(
 			execution({
@@ -117,7 +134,7 @@ describe("InlineToolCall", () => {
 		).toContain("ls src");
 	});
 
-	it("shows a compact output preview before the expansion details", () => {
+	it("shows a compact bash tail preview before the expansion details", () => {
 		const markup = renderTool(
 			execution({
 				toolName: "bash",
@@ -126,8 +143,9 @@ describe("InlineToolCall", () => {
 			}),
 		);
 
+		expect(previewForInlineToolOutput("first line\nsecond line", "tail")).toBe("second line");
 		expect(markup).toContain("live-session__tool-call-preview");
-		expect(markup.indexOf("first line")).toBeLessThan(markup.indexOf("Show output"));
+		expect(markup.indexOf(">second line<")).toBeLessThan(markup.indexOf("Show output"));
 	});
 
 	it("keeps full output behind an accessible expansion summary", () => {

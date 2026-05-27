@@ -2922,7 +2922,7 @@ body.file-workspace--resizing {
 }
 
 .live-session__tool-call-output--diff {
-	background: color-mix(in oklch, var(--sidebar-info-color) 10%, var(--color-background));
+	background: color-mix(in oklch, var(--sidebar-attention-color) 10%, var(--color-background));
 }
 
 .live-session__cursor {

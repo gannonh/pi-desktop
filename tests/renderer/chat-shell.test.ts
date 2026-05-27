@@ -32,6 +32,7 @@ const liveSession: LiveSessionState = {
 	retryMessage: "",
 	settings: null,
 	queuedMessages: [],
+	nextSequence: 1,
 };
 
 const renderChatShell = (

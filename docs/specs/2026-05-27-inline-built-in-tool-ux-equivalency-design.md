@@ -24,9 +24,9 @@ Desktop must show these tool calls chronologically in the conversation transcrip
 
 Verified files:
 
-- Built-in tool list: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/tools/index.ts`
-- CLI tool renderers: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/tools/*.ts`
-- CLI tool execution shell: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/components/tool-execution.ts`
+- Built-in tool list: `<pi-mono-root>/packages/coding-agent/src/core/tools/index.ts`
+- CLI tool renderers: `<pi-mono-root>/packages/coding-agent/src/core/tools/*.ts`
+- CLI tool execution shell: `<pi-mono-root>/packages/coding-agent/src/modes/interactive/components/tool-execution.ts`
 - Desktop transcript rendering: `src/renderer/components/live-session-transcript.tsx`
 - Desktop generic tool rendering: `src/renderer/components/message-content.tsx`
 - Desktop tool lifecycle state: `src/renderer/session/session-state.ts`

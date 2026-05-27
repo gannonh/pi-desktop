@@ -14,7 +14,8 @@ const statusLabels: Record<LiveToolExecution["status"], string> = {
 
 export function InlineToolCall({ execution }: InlineToolCallProps) {
 	const model = renderInlineToolCallModel(execution);
-	const preview = model.output ? previewForInlineToolOutput(model.output) : "";
+	const previewEdge = execution.toolName === "bash" ? "tail" : "head";
+	const preview = model.output ? previewForInlineToolOutput(model.output, previewEdge) : "";
 
 	return (
 		<article

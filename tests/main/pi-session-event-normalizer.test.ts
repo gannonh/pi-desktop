@@ -224,6 +224,32 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
+	it("maps tool result message_start events with tool call ids", () => {
+		expect(
+			normalizeAndParse({
+				type: "message_start",
+				message: {
+					role: "toolResult",
+					toolCallId: "call_123",
+					toolName: "bash",
+					content: [{ type: "text", text: "partial" }],
+					isError: false,
+					timestamp: 4,
+				},
+			}),
+		).toEqual([
+			{
+				type: "message_start",
+				sessionId: "pi-session:one",
+				messageId: "toolResult:call_123:4",
+				role: "tool",
+				content: "partial",
+				toolCallId: "call_123",
+				receivedAt,
+			},
+		]);
+	});
+
 	it("normalizes timestamped custom messages", () => {
 		expect(
 			normalizeAndParse({

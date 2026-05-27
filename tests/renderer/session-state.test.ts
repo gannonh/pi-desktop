@@ -27,6 +27,7 @@ describe("session history result", () => {
 			retryMessage: "",
 			settings: null,
 			queuedMessages: [],
+			nextSequence: 1,
 		});
 	});
 });
@@ -419,6 +420,37 @@ describe("session state reducer", () => {
 
 		expect(state.messages[0]?.sequence).toBe(0);
 		expect(state.toolExecutions[0]?.sequence).toBe(1);
+		expect(state.nextSequence).toBe(2);
+	});
+
+	it("allocates new sequences from the monotonic counter", () => {
+		const state = reduceSessionEvent(
+			{
+				...createInitialSessionState(),
+				nextSequence: 1,
+				messages: [
+					{
+						id: "historical:1",
+						role: "user",
+						content: "Earlier",
+						streaming: false,
+						receivedAt,
+						sequence: 99,
+					},
+				],
+			},
+			{
+				type: "message_start",
+				sessionId: "pi-session:one",
+				messageId: "assistant:2",
+				role: "assistant",
+				content: "Next",
+				receivedAt,
+			},
+		);
+
+		expect(state.messages[1]?.sequence).toBe(1);
+		expect(state.nextSequence).toBe(2);
 	});
 
 	it("tracks tool execution lifecycle events by tool call id", () => {
