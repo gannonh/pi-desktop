@@ -91,6 +91,41 @@ const createControlledSession = (options: ControlledSessionOptions = {}) => {
 	return { emitSdkEvent: (event: AgentSessionEvent) => listener?.(event), promptResult, session };
 };
 
+type RuntimeFailureExpectation = {
+	events: PiSessionEvent[];
+	sessionId: string;
+	code: string;
+	message: string;
+};
+
+const createSettingsAgentSession = (overrides: Record<string, unknown> = {}): AgentSession =>
+	({
+		model: { provider: "openai", id: "gpt-5.5", name: "5.5 High" },
+		thinkingLevel: "off",
+		getAvailableThinkingLevels: vi.fn(() => ["off", "high"]),
+		modelRegistry: {
+			getAvailable: vi.fn(async () => [{ provider: "openai", id: "gpt-5.5", name: "5.5 High" }]),
+		},
+		...overrides,
+	}) as unknown as AgentSession;
+
+const expectRuntimeFailure = ({ events, sessionId, code, message }: RuntimeFailureExpectation): void => {
+	expect(events).toContainEqual({
+		type: "runtime_error",
+		sessionId,
+		code,
+		message,
+		receivedAt: "2026-05-14T12:00:00.000Z",
+	});
+	expect(events).toContainEqual({
+		type: "status",
+		sessionId,
+		status: "failed",
+		label: "Failed",
+		receivedAt: "2026-05-14T12:00:00.000Z",
+	});
+};
+
 describe("createPiSessionRuntime", () => {
 	it("starts a session and streams normalized events", async () => {
 		const events: PiSessionEvent[] = [];
@@ -185,15 +220,12 @@ describe("createPiSessionRuntime", () => {
 	it("emits a session-scoped failure when active model selection is invalid", async () => {
 		const events: PiSessionEvent[] = [];
 		const { session } = createFakeSession();
-		const agentSession = {
-			model: { provider: "openai", id: "gpt-5.5", name: "5.5 High" },
-			thinkingLevel: "off",
-			getAvailableThinkingLevels: vi.fn(() => ["off", "high"]),
+		const agentSession = createSettingsAgentSession({
 			modelRegistry: {
 				getAvailable: vi.fn(async () => [{ provider: "openai", id: "gpt-5.5", name: "5.5 High" }]),
 				find: vi.fn(() => undefined),
 			},
-		} as unknown as AgentSession;
+		});
 		const runtime = createPiSessionRuntime({
 			now,
 			emit: (event) => events.push(event),
@@ -213,36 +245,23 @@ describe("createPiSessionRuntime", () => {
 			runtime.setModel({ sessionId: started.sessionId, provider: "openai", modelId: "missing" }),
 		).rejects.toThrow("Model not found: openai/missing");
 
-		expect(events).toContainEqual({
-			type: "runtime_error",
+		expectRuntimeFailure({
+			events,
 			sessionId: started.sessionId,
 			code: "pi.model_selection_failed",
 			message: "Model not found: openai/missing",
-			receivedAt: "2026-05-14T12:00:00.000Z",
-		});
-		expect(events).toContainEqual({
-			type: "status",
-			sessionId: started.sessionId,
-			status: "failed",
-			label: "Failed",
-			receivedAt: "2026-05-14T12:00:00.000Z",
 		});
 	});
 
 	it("emits a session-scoped failure when active thinking selection fails", async () => {
 		const events: PiSessionEvent[] = [];
 		const { session } = createFakeSession();
-		const agentSession = {
-			model: { provider: "openai", id: "gpt-5.5", name: "5.5 High" },
-			thinkingLevel: "off",
+		const agentSession = createSettingsAgentSession({
 			getAvailableThinkingLevels: vi.fn(() => ["off", "high", "xhigh"]),
-			modelRegistry: {
-				getAvailable: vi.fn(async () => [{ provider: "openai", id: "gpt-5.5", name: "5.5 High" }]),
-			},
 			setThinkingLevel: vi.fn(() => {
 				throw new Error("Thinking level is unavailable for this model");
 			}),
-		} as unknown as AgentSession;
+		});
 		const runtime = createPiSessionRuntime({
 			now,
 			emit: (event) => events.push(event),
@@ -262,19 +281,11 @@ describe("createPiSessionRuntime", () => {
 			"Thinking level is unavailable for this model",
 		);
 
-		expect(events).toContainEqual({
-			type: "runtime_error",
+		expectRuntimeFailure({
+			events,
 			sessionId: started.sessionId,
 			code: "pi.thinking_level_selection_failed",
 			message: "Thinking level is unavailable for this model",
-			receivedAt: "2026-05-14T12:00:00.000Z",
-		});
-		expect(events).toContainEqual({
-			type: "status",
-			sessionId: started.sessionId,
-			status: "failed",
-			label: "Failed",
-			receivedAt: "2026-05-14T12:00:00.000Z",
 		});
 	});
 

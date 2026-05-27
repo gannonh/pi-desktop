@@ -1,10 +1,10 @@
 import {
-	createAgentSessionFromServices,
-	createAgentSessionServices,
-	SessionManager,
 	type AgentSession,
 	type AgentSessionEvent,
+	createAgentSessionFromServices,
+	createAgentSessionServices,
 	type SessionManager as PiSessionManager,
+	SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type {
 	PiSessionAbortInput,
@@ -152,6 +152,12 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 	const emitStatus = (sessionId: string, status: PiSessionStatus, label: string) => {
 		deps.emit({ type: "status", sessionId, status, label, receivedAt: deps.now() });
+	};
+
+	const failSession = (sessionId: string, entry: RuntimeEntry, code: string, error: unknown): void => {
+		entry.status = "failed";
+		deps.emit(createRuntimeErrorEvent({ sessionId, code, error, now: deps.now }));
+		emitStatus(sessionId, "failed", "Failed");
 	};
 
 	const getEntry = (sessionId: string): RuntimeEntry => {
@@ -508,16 +514,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				await emitSessionSettings(input.sessionId, entry);
 				return buildSettingsFromAgentSession(entry.agentSession);
 			} catch (error) {
-				entry.status = "failed";
-				deps.emit(
-					createRuntimeErrorEvent({
-						sessionId: input.sessionId,
-						code: "pi.model_selection_failed",
-						error,
-						now: deps.now,
-					}),
-				);
-				emitStatus(input.sessionId, "failed", "Failed");
+				failSession(input.sessionId, entry, "pi.model_selection_failed", error);
 				throw error;
 			}
 		},
@@ -532,16 +529,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				await emitSessionSettings(input.sessionId, entry);
 				return buildSettingsFromAgentSession(entry.agentSession);
 			} catch (error) {
-				entry.status = "failed";
-				deps.emit(
-					createRuntimeErrorEvent({
-						sessionId: input.sessionId,
-						code: "pi.thinking_level_selection_failed",
-						error,
-						now: deps.now,
-					}),
-				);
-				emitStatus(input.sessionId, "failed", "Failed");
+				failSession(input.sessionId, entry, "pi.thinking_level_selection_failed", error);
 				throw error;
 			}
 		},
