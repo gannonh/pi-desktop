@@ -8,8 +8,6 @@ export const canAddAttachments = (currentCount: number, incomingCount: number): 
 export const removeAttachment = (attachments: Attachment[], id: string): Attachment[] =>
 	attachments.filter((attachment) => attachment.id !== id);
 
-const attachmentErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
-
 export const processFilesForComposer = async (
 	files: File[],
 	currentAttachments: Attachment[],
@@ -32,9 +30,10 @@ export const processFilesForComposer = async (
 		try {
 			newAttachments.push(await loadAttachment(file));
 		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			return {
 				attachments: currentAttachments,
-				error: `Failed to process ${file.name}: ${attachmentErrorMessage(error)}`,
+				error: `Failed to process ${file.name}: ${message}`,
 			};
 		}
 	}

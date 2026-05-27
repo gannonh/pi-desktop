@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPromptFromAttachments, convertAttachments } from "../../src/renderer/attachments/convert-attachments";
 import type { Attachment } from "../../src/renderer/attachments/attachment-types";
+import { buildPromptFromAttachments, convertAttachments } from "../../src/renderer/attachments/convert-attachments";
 
 describe("convertAttachments", () => {
 	it("maps images and document text to content blocks", () => {
