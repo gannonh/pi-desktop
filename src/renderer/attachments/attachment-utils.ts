@@ -147,6 +147,9 @@ export async function loadAttachment(
 	}
 
 	if (mimeType.startsWith("image/")) {
+		if (size === 0) {
+			throw new Error("Image attachment is empty.");
+		}
 		return {
 			id,
 			type: "image",
