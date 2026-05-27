@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented.
+Implemented and verified pending user sign-off.
 
 ## Goal
 
@@ -405,5 +405,7 @@ Required verification:
   - TDD used for panel removal, metadata preservation, transcript merge, inline tool rendering, accessibility/preview behavior, warnings, and ordering fixes.
   - Independent reviewer subagent found no Critical or Important issues after final review.
 - Approved deviations: none.
-- Known follow-up issues: UAT evidence for all 7 inline tool renderers remains for the Verify phase.
+- Verify phase evidence: `uat-evidence/mixed-20260527-225300/evidence.md`
+- UAT result: all slices passed; recommendation remains pending user sign-off.
+- Known follow-up issues: none from implementation verification.
 - Independent subagent review: used.
