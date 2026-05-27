@@ -194,6 +194,14 @@ export const createRuntimeErrorEvent = ({ sessionId, code, error, now }: Runtime
 	receivedAt: now(),
 });
 
+const createMalformedToolEvent = (sessionId: string, receivedAt: string): PiSessionEvent => ({
+	type: "runtime_error",
+	sessionId,
+	code: "pi.tool_event_malformed",
+	message: "Pi runtime emitted malformed tool activity event.",
+	receivedAt,
+});
+
 export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInput): PiSessionEvent[] => {
 	const receivedAt = now();
 
@@ -292,12 +300,18 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_start") {
+		const toolCallId = stringValue(event.toolCallId);
+		const toolName = stringValue(event.toolName);
+		if (!toolCallId || !toolName) {
+			return [createMalformedToolEvent(sessionId, receivedAt)];
+		}
+
 		return [
 			{
 				type: "tool_execution_start",
 				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
+				toolCallId,
+				toolName,
 				args: serializePiSessionPayload(event.args),
 				receivedAt,
 			},
@@ -305,12 +319,18 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_update") {
+		const toolCallId = stringValue(event.toolCallId);
+		const toolName = stringValue(event.toolName);
+		if (!toolCallId || !toolName) {
+			return [createMalformedToolEvent(sessionId, receivedAt)];
+		}
+
 		return [
 			{
 				type: "tool_execution_update",
 				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
+				toolCallId,
+				toolName,
 				args: serializePiSessionPayload(event.args),
 				partialResult: serializePiSessionPayload(event.partialResult),
 				receivedAt,
@@ -319,12 +339,18 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_end") {
+		const toolCallId = stringValue(event.toolCallId);
+		const toolName = stringValue(event.toolName);
+		if (!toolCallId || !toolName) {
+			return [createMalformedToolEvent(sessionId, receivedAt)];
+		}
+
 		return [
 			{
 				type: "tool_execution_end",
 				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
+				toolCallId,
+				toolName,
 				result: serializePiSessionPayload(event.result),
 				isError: event.isError,
 				receivedAt,

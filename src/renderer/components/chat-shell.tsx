@@ -6,6 +6,7 @@ import type { ProjectRecord } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
+import { CodingPanel } from "./coding-panel";
 import { Composer } from "./composer";
 import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { TranscriptPanel } from "./transcript-panel";
@@ -77,6 +78,7 @@ export function ChatShell({
 								scope={scope}
 								expectHistory={expectHistory}
 							/>
+							<CodingPanel toolExecutions={session.toolExecutions} />
 						</div>
 					</div>
 					{showJumpToLatest ? (

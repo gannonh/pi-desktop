@@ -462,6 +462,25 @@ describe("pi session event normalizer", () => {
 		]);
 	});
 
+	it("surfaces malformed tool lifecycle events as session runtime errors", () => {
+		expect(
+			normalizeAndParse({
+				type: "tool_execution_start",
+				toolCallId: "",
+				toolName: "bash",
+				args: { command: "ls" },
+			} as AgentSessionEvent),
+		).toEqual([
+			{
+				type: "runtime_error",
+				sessionId: "pi-session:one",
+				code: "pi.tool_event_malformed",
+				message: "Pi runtime emitted malformed tool activity event.",
+				receivedAt,
+			},
+		]);
+	});
+
 	it("serializes unsupported payload values without dropping the event", () => {
 		expect(serializePiSessionPayload(new Error("boom"))).toEqual({ name: "Error", message: "boom" });
 		expect(serializePiSessionPayload(() => undefined)).toBe("[Function]");

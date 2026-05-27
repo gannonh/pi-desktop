@@ -964,6 +964,10 @@ button:disabled {
 	color: var(--color-destructive);
 }
 
+.tool-timeline-item--canceled .tool-timeline-item__status {
+	color: var(--color-muted-foreground);
+}
+
 .tool-timeline-item__timestamp {
 	color: var(--color-muted-foreground);
 	font-size: var(--type-caption);

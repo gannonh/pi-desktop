@@ -91,6 +91,23 @@ const markRunningToolsFailed = (
 			: execution,
 	);
 
+const markRunningToolsCanceled = (
+	toolExecutions: readonly LiveToolExecution[],
+	receivedAt: string,
+): LiveToolExecution[] =>
+	toolExecutions.map((execution) =>
+		execution.status === "running"
+			? {
+					...execution,
+					status: "canceled",
+					result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
+					isError: false,
+					updatedAt: receivedAt,
+					endedAt: receivedAt,
+				}
+			: execution,
+	);
+
 export const applySessionHistoryResult = (
 	result: PiSessionHistoryPayload,
 	settings: PiSessionSettingsPayload | null = null,
@@ -133,6 +150,10 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			sessionId: event.sessionId,
 			status: event.status,
 			statusLabel: event.label,
+			toolExecutions:
+				state.status === "aborting" && event.status === "idle"
+					? markRunningToolsCanceled(state.toolExecutions, event.receivedAt)
+					: state.toolExecutions,
 			errorMessage: event.status === "failed" ? state.errorMessage : "",
 			retryMessage: event.status === "retrying" ? state.retryMessage : "",
 		};

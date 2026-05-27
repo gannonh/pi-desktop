@@ -153,7 +153,7 @@ export const PiSessionHistoryPayloadSchema = z.strictObject({
 	messages: z.array(PiSessionHistoryMessageSchema),
 });
 
-export const PiSessionToolExecutionStatusSchema = z.enum(["running", "completed", "failed"]);
+export const PiSessionToolExecutionStatusSchema = z.enum(["running", "completed", "failed", "canceled"]);
 
 export const PiSessionSerializablePayloadSchema = z.unknown();
 

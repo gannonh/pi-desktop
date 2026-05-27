@@ -34,6 +34,11 @@ describe("CodingPanel", () => {
 						isError: true,
 						result: { content: [{ type: "text", text: "command failed" }] },
 					}),
+					execution({
+						id: "call_3",
+						status: "canceled",
+						result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
+					}),
 				],
 			}),
 		);
@@ -42,6 +47,7 @@ describe("CodingPanel", () => {
 		expect(markup).toContain("bash");
 		expect(markup).toContain("Completed");
 		expect(markup).toContain("Failed");
+		expect(markup).toContain("Canceled");
 		expect(markup).toContain("ls -la");
 		expect(markup).toContain("Show details");
 	});

@@ -454,4 +454,36 @@ describe("session state reducer", () => {
 			endedAt: "2026-05-14T12:00:03.000Z",
 		});
 	});
+
+	it("marks running tools canceled when an abort settles idle", () => {
+		let state = reduceSessionEvent(createInitialSessionState(), {
+			type: "tool_execution_start",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "pnpm test" },
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "status",
+			sessionId: "pi-session:one",
+			status: "aborting",
+			label: "Aborting",
+			receivedAt: "2026-05-14T12:00:01.000Z",
+		});
+		state = reduceSessionEvent(state, {
+			type: "status",
+			sessionId: "pi-session:one",
+			status: "idle",
+			label: "Idle",
+			receivedAt: "2026-05-14T12:00:02.000Z",
+		});
+
+		expect(state.toolExecutions[0]).toMatchObject({
+			status: "canceled",
+			isError: false,
+			result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
+			endedAt: "2026-05-14T12:00:02.000Z",
+		});
+	});
 });

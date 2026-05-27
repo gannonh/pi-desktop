@@ -18,6 +18,7 @@ const statusLabels: Record<LiveToolExecution["status"], string> = {
 	running: "Running",
 	completed: "Completed",
 	failed: "Failed",
+	canceled: "Canceled",
 };
 
 export function ToolTimelineItem({ execution }: ToolTimelineItemProps) {
