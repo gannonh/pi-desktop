@@ -9,15 +9,7 @@ export const isNearScrollBottom = (
 	threshold = PIN_THRESHOLD_PX,
 ) => scrollHeight - scrollTop - clientHeight <= threshold;
 
-export type StickToBottomScrollTrigger = {
-	messageCount: number;
-	streamingMessageCount: number;
-	lastMessageKey: string;
-	sessionStatus: string;
-	hydrationStatus: string;
-};
-
-export const useStickToBottomScroll = (trigger: StickToBottomScrollTrigger) => {
+export const useStickToBottomScroll = (scrollTriggerKey: string) => {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const isPinnedRef = useRef(true);
 	const [showJumpToLatest, setShowJumpToLatest] = useState(false);
@@ -44,9 +36,7 @@ export const useStickToBottomScroll = (trigger: StickToBottomScrollTrigger) => {
 		setShowJumpToLatest(!pinned);
 	}, []);
 
-	const scrollTriggerKey = `${trigger.messageCount}:${trigger.streamingMessageCount}:${trigger.lastMessageKey}:${trigger.sessionStatus}:${trigger.hydrationStatus}`;
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: scrollTriggerKey encodes transcript changes that should re-pin scroll.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scrollTriggerKey intentionally reruns the pinned scroll effect.
 	useLayoutEffect(() => {
 		if (!isPinnedRef.current) {
 			return;

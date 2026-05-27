@@ -201,7 +201,7 @@ describe("ChatShell", () => {
 		expect(markup).not.toContain("What should we build in pi-desktop?");
 	});
 
-	it("renders the right panel workspace in the session layout without exposing raw tool calls", () => {
+	it("renders the right panel workspace and tool timeline in the session layout", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "empty-chat",
 			title: "Milestone transcript",
@@ -236,8 +236,8 @@ describe("ChatShell", () => {
 		expect(markup).toContain('aria-label="Workspace panel"');
 		expect(markup).toContain("M07A.2 right panel tab shell");
 		expect(markup).not.toContain("workspace-tab-strip");
-		expect(markup).not.toContain('aria-label="Tool timeline"');
-		expect(markup).not.toContain("pnpm test");
+		expect(markup).toContain('aria-label="Tool timeline"');
+		expect(markup).toContain("pnpm test");
 	});
 
 	it("renders an empty selected draft chat as the centered project start state before the first message", () => {

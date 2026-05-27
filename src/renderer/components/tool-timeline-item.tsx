@@ -18,22 +18,17 @@ const statusLabels: Record<LiveToolExecution["status"], string> = {
 	running: "Running",
 	completed: "Completed",
 	failed: "Failed",
+	canceled: "Canceled",
 };
 
 export function ToolTimelineItem({ execution }: ToolTimelineItemProps) {
 	const [expanded, setExpanded] = useState(false);
 	const inputSummary = summarizeToolArgs(execution.toolName, execution.args);
-	const resultSource = execution.result ?? execution.partialResult;
-	const resultSummary = summarizeToolResult(execution.toolName, resultSource, execution.isError);
-	const showTerminal =
-		expanded && isTerminalTool(execution.toolName, execution.args, execution.result ?? execution.partialResult);
-	const terminalText = showTerminal
-		? getTerminalOutputText(execution.args, execution.result ?? execution.partialResult)
-		: "";
-	const rawOutput =
-		expanded && !showTerminal
-			? getToolOutputText(execution.toolName, execution.result ?? execution.partialResult)
-			: "";
+	const output = execution.result ?? execution.partialResult;
+	const resultSummary = summarizeToolResult(execution.toolName, output, execution.isError, execution.status);
+	const showTerminal = expanded && isTerminalTool(execution.toolName, execution.args, output);
+	const terminalText = showTerminal ? getTerminalOutputText(execution.args, output) : "";
+	const rawOutput = expanded && !showTerminal ? getToolOutputText(execution.toolName, output) : "";
 
 	return (
 		<article className={`tool-timeline-item tool-timeline-item--${execution.status}`}>

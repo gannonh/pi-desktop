@@ -75,6 +75,9 @@ const upsertToolExecution = (
 	return toolExecutions.map((execution) => (execution.id === next.id ? next : execution));
 };
 
+const isTerminalToolStatus = (status: PiSessionToolExecutionStatus): boolean =>
+	status === "completed" || status === "failed" || status === "canceled";
+
 const markRunningToolsFailed = (
 	toolExecutions: readonly LiveToolExecution[],
 	receivedAt: string,
@@ -85,6 +88,22 @@ const markRunningToolsFailed = (
 					...execution,
 					status: "failed",
 					isError: true,
+					updatedAt: receivedAt,
+					endedAt: receivedAt,
+				}
+			: execution,
+	);
+
+const markRunningToolsCanceled = (
+	toolExecutions: readonly LiveToolExecution[],
+	receivedAt: string,
+): LiveToolExecution[] =>
+	toolExecutions.map((execution) =>
+		execution.status === "running"
+			? {
+					...execution,
+					status: "canceled",
+					isError: false,
 					updatedAt: receivedAt,
 					endedAt: receivedAt,
 				}
@@ -128,11 +147,17 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 	}
 
 	if (event.type === "status") {
+		const toolExecutions =
+			state.status === "aborting" && event.status === "idle"
+				? markRunningToolsCanceled(state.toolExecutions, event.receivedAt)
+				: state.toolExecutions;
+
 		return {
 			...state,
 			sessionId: event.sessionId,
 			status: event.status,
 			statusLabel: event.label,
+			toolExecutions,
 			errorMessage: event.status === "failed" ? state.errorMessage : "",
 			retryMessage: event.status === "retrying" ? state.retryMessage : "",
 		};
@@ -214,7 +239,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
-				status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "running",
+				status: existing && isTerminalToolStatus(existing.status) ? existing.status : "running",
 				args: existing?.args ?? event.args,
 				partialResult: event.partialResult,
 				result: existing?.result ?? null,
@@ -228,20 +253,21 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 
 	if (event.type === "tool_execution_end") {
 		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		const terminalExisting = existing && isTerminalToolStatus(existing.status) ? existing : null;
 		return {
 			...state,
 			sessionId: event.sessionId,
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
-				status: event.isError ? "failed" : "completed",
+				status: terminalExisting?.status ?? (event.isError ? "failed" : "completed"),
 				args: existing?.args ?? event.args ?? null,
 				partialResult: existing?.partialResult ?? null,
 				result: event.result,
-				isError: event.isError,
+				isError: terminalExisting?.isError ?? event.isError,
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
-				endedAt: event.receivedAt,
+				endedAt: terminalExisting?.endedAt ?? event.receivedAt,
 			}),
 		};
 	}

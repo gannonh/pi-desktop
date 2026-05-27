@@ -25,25 +25,13 @@ describe("useStickToBottomScroll", () => {
 			configurable: true,
 		});
 
-		const { result, rerender } = renderHook((props) => useStickToBottomScroll(props), {
-			initialProps: {
-				messageCount: 1,
-				streamingMessageCount: 0,
-				lastMessageKey: "msg:1:0:5",
-				sessionStatus: "running",
-				hydrationStatus: "loaded",
-			},
+		const { result, rerender } = renderHook((scrollTriggerKey) => useStickToBottomScroll(scrollTriggerKey), {
+			initialProps: "messages:1:msg:1:0:5:running:loaded:tools:none",
 		});
 
 		result.current.scrollRef.current = element;
 		act(() => {
-			rerender({
-				messageCount: 2,
-				streamingMessageCount: 1,
-				lastMessageKey: "msg:2:1:12",
-				sessionStatus: "running",
-				hydrationStatus: "loaded",
-			});
+			rerender("messages:2:msg:2:1:12:running:loaded:tools:none");
 		});
 
 		expect(scrollTop).toBe(400);
@@ -62,25 +50,38 @@ describe("useStickToBottomScroll", () => {
 			configurable: true,
 		});
 
-		const { result, rerender } = renderHook((props) => useStickToBottomScroll(props), {
-			initialProps: {
-				messageCount: 1,
-				streamingMessageCount: 1,
-				lastMessageKey: "assistant:1:1:3",
-				sessionStatus: "running",
-				hydrationStatus: "loaded",
-			},
+		const { result, rerender } = renderHook((scrollTriggerKey) => useStickToBottomScroll(scrollTriggerKey), {
+			initialProps: "messages:1:assistant:1:1:3:running:loaded:tools:none",
 		});
 
 		result.current.scrollRef.current = element;
 		act(() => {
-			rerender({
-				messageCount: 1,
-				streamingMessageCount: 1,
-				lastMessageKey: "assistant:1:1:24",
-				sessionStatus: "running",
-				hydrationStatus: "loaded",
-			});
+			rerender("messages:1:assistant:1:1:24:running:loaded:tools:none");
+		});
+
+		expect(scrollTop).toBe(400);
+	});
+
+	it("scrolls to the bottom when tool timeline content changes while pinned", () => {
+		const element = document.createElement("div");
+		Object.defineProperty(element, "scrollHeight", { value: 400, configurable: true });
+		Object.defineProperty(element, "clientHeight", { value: 200, configurable: true });
+		let scrollTop = 0;
+		Object.defineProperty(element, "scrollTop", {
+			get: () => scrollTop,
+			set: (value: number) => {
+				scrollTop = value;
+			},
+			configurable: true,
+		});
+
+		const { result, rerender } = renderHook((scrollTriggerKey) => useStickToBottomScroll(scrollTriggerKey), {
+			initialProps: "messages:1:assistant:1:0:24:running:loaded:tools:none",
+		});
+
+		result.current.scrollRef.current = element;
+		act(() => {
+			rerender("messages:1:assistant:1:0:24:running:loaded:tools:call_1:running:2026-05-14T12:00:00.000Z");
 		});
 
 		expect(scrollTop).toBe(400);
@@ -96,15 +97,7 @@ describe("useStickToBottomScroll", () => {
 			configurable: true,
 		});
 
-		const { result } = renderHook(() =>
-			useStickToBottomScroll({
-				messageCount: 1,
-				streamingMessageCount: 0,
-				lastMessageKey: "msg:1:0:5",
-				sessionStatus: "idle",
-				hydrationStatus: "loaded",
-			}),
-		);
+		const { result } = renderHook(() => useStickToBottomScroll("messages:1:msg:1:0:5:idle:loaded:tools:none"));
 
 		result.current.scrollRef.current = element;
 		act(() => {

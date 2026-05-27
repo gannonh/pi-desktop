@@ -3,9 +3,10 @@ import { formatComposerFocusKey } from "../chat/composer-focus-key";
 import { useStickToBottomScroll } from "../chat/use-stick-to-bottom-scroll";
 import type { ComposerHostProps } from "../chat/composer-host";
 import type { ProjectRecord } from "../../shared/project-state";
-import type { LiveSessionState } from "../session/session-state";
+import type { LiveSessionState, LiveToolExecution } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatStartState } from "./chat-start-state";
+import { CodingPanel } from "./coding-panel";
 import { Composer } from "./composer";
 import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
 import { TranscriptPanel } from "./transcript-panel";
@@ -19,6 +20,14 @@ interface ChatShellProps {
 	onAbortSession: () => void;
 	workspaceColumnDetached?: boolean;
 	selectedProject?: ProjectRecord | null;
+}
+
+function formatToolExecutionsKey(toolExecutions: readonly LiveToolExecution[]): string {
+	if (toolExecutions.length === 0) {
+		return "none";
+	}
+
+	return toolExecutions.map((execution) => `${execution.id}:${execution.status}:${execution.updatedAt}`).join("|");
 }
 
 export function ChatShell({
@@ -45,13 +54,15 @@ export function ChatShell({
 		: "none";
 
 	const composerFocusKey = formatComposerFocusKey(scope);
-	const { scrollRef, showJumpToLatest, scrollToBottom, onScroll } = useStickToBottomScroll({
-		messageCount: session.messages.length,
+	const scrollTriggerKey = [
+		session.messages.length,
 		streamingMessageCount,
 		lastMessageKey,
-		sessionStatus: session.status,
-		hydrationStatus: hydration.status,
-	});
+		session.status,
+		hydration.status,
+		formatToolExecutionsKey(session.toolExecutions),
+	].join(":");
+	const { scrollRef, showJumpToLatest, scrollToBottom, onScroll } = useStickToBottomScroll(scrollTriggerKey);
 
 	if (shouldUseChatStartLayout(route, session)) {
 		return (
@@ -77,6 +88,7 @@ export function ChatShell({
 								scope={scope}
 								expectHistory={expectHistory}
 							/>
+							<CodingPanel toolExecutions={session.toolExecutions} />
 						</div>
 					</div>
 					{showJumpToLatest ? (

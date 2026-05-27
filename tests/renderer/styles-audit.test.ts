@@ -167,6 +167,13 @@ describe("renderer style audit rules", () => {
 		expect(toolbar).toContain("overflow-y: hidden");
 	});
 
+	it("stacks session transcript and tool timeline vertically", () => {
+		const sessionScrollInner = ruleBody(styles(), ".chat-shell--session .chat-shell__scroll-inner");
+
+		expect(sessionScrollInner).toContain("flex-direction: column");
+		expect(sessionScrollInner).toContain("align-items: center");
+	});
+
 	it("keeps the Markdown block-type selector visually compact", () => {
 		const css = styles();
 		const triggerWrapper = ruleBody(css, ".markdown-surface__toolbar-contents > span");

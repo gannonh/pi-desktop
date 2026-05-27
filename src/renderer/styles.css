@@ -879,6 +879,7 @@ button:disabled {
 
 .coding-panel {
 	display: flex;
+	width: min(100%, 46rem);
 	min-height: 0;
 	max-height: 40vh;
 	flex-direction: column;
@@ -963,6 +964,7 @@ button:disabled {
 .tool-timeline-item--failed .tool-timeline-item__status {
 	color: var(--color-destructive);
 }
+
 
 .tool-timeline-item__timestamp {
 	color: var(--color-muted-foreground);
@@ -2097,6 +2099,9 @@ body.file-workspace--resizing {
 }
 
 .chat-shell--session .chat-shell__scroll-inner {
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
 	padding-bottom: 2.25rem;
 }
 

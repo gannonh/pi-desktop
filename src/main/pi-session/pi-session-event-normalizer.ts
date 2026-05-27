@@ -17,6 +17,16 @@ type RuntimeErrorInput = {
 	now: () => string;
 };
 
+type ToolExecutionEvent = Extract<
+	AgentSessionEvent,
+	{ type: "tool_execution_start" | "tool_execution_update" | "tool_execution_end" }
+>;
+
+type ToolIdentity = {
+	toolCallId: string;
+	toolName: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
 
 const hasContent = (message: AgentMessage): message is AgentMessage & { content: unknown } =>
@@ -24,6 +34,16 @@ const hasContent = (message: AgentMessage): message is AgentMessage & { content:
 
 const stringValue = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined;
+
+const toolIdentityFor = (event: ToolExecutionEvent): ToolIdentity | undefined => {
+	const toolCallId = stringValue(event.toolCallId);
+	const toolName = stringValue(event.toolName);
+	if (!toolCallId || !toolName) {
+		return undefined;
+	}
+
+	return { toolCallId, toolName };
+};
 
 const messageStableIdFor = (message: AgentMessage): number | string | undefined => {
 	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
@@ -194,6 +214,56 @@ export const createRuntimeErrorEvent = ({ sessionId, code, error, now }: Runtime
 	receivedAt: now(),
 });
 
+const createMalformedToolEvent = (sessionId: string, receivedAt: string): PiSessionEvent => ({
+	type: "runtime_error",
+	sessionId,
+	code: "pi.tool_event_malformed",
+	message: "Pi runtime emitted malformed tool activity event.",
+	receivedAt,
+});
+
+const isToolExecutionEvent = (event: AgentSessionEvent): event is ToolExecutionEvent =>
+	event.type === "tool_execution_start" ||
+	event.type === "tool_execution_update" ||
+	event.type === "tool_execution_end";
+
+const normalizeToolExecutionEvent = (
+	sessionId: string,
+	event: ToolExecutionEvent,
+	receivedAt: string,
+): PiSessionEvent[] => {
+	const toolIdentity = toolIdentityFor(event);
+	if (!toolIdentity) {
+		return [createMalformedToolEvent(sessionId, receivedAt)];
+	}
+	const { toolCallId, toolName } = toolIdentity;
+	const base = { sessionId, toolCallId, toolName, receivedAt };
+
+	if (event.type === "tool_execution_start") {
+		return [{ type: "tool_execution_start", ...base, args: serializePiSessionPayload(event.args) }];
+	}
+
+	if (event.type === "tool_execution_update") {
+		return [
+			{
+				type: "tool_execution_update",
+				...base,
+				args: serializePiSessionPayload(event.args),
+				partialResult: serializePiSessionPayload(event.partialResult),
+			},
+		];
+	}
+
+	return [
+		{
+			type: "tool_execution_end",
+			...base,
+			result: serializePiSessionPayload(event.result),
+			isError: event.isError,
+		},
+	];
+};
+
 export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInput): PiSessionEvent[] => {
 	const receivedAt = now();
 
@@ -291,45 +361,8 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 		];
 	}
 
-	if (event.type === "tool_execution_start") {
-		return [
-			{
-				type: "tool_execution_start",
-				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
-				args: serializePiSessionPayload(event.args),
-				receivedAt,
-			},
-		];
-	}
-
-	if (event.type === "tool_execution_update") {
-		return [
-			{
-				type: "tool_execution_update",
-				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
-				args: serializePiSessionPayload(event.args),
-				partialResult: serializePiSessionPayload(event.partialResult),
-				receivedAt,
-			},
-		];
-	}
-
-	if (event.type === "tool_execution_end") {
-		return [
-			{
-				type: "tool_execution_end",
-				sessionId,
-				toolCallId: event.toolCallId,
-				toolName: event.toolName,
-				result: serializePiSessionPayload(event.result),
-				isError: event.isError,
-				receivedAt,
-			},
-		];
+	if (isToolExecutionEvent(event)) {
+		return normalizeToolExecutionEvent(sessionId, event, receivedAt);
 	}
 
 	return [];

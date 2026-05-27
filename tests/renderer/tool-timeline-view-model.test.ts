@@ -19,8 +19,13 @@ describe("tool timeline view model", () => {
 				"read",
 				{ content: [{ type: "text", text: "first line\nsecond line" }], details: {} },
 				false,
+				"completed",
 			),
 		).toBe("first line");
+	});
+
+	it("summarizes canceled tools without requiring a synthetic result", () => {
+		expect(summarizeToolResult("bash", null, false, "canceled")).toBe("Tool activity canceled by abort.");
 	});
 
 	it("marks bash tools as terminal output", () => {
