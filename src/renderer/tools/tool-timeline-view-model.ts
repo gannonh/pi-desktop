@@ -1,3 +1,4 @@
+import type { PiSessionToolExecutionStatus } from "../../shared/pi-session";
 import { extractTextFromPiContent } from "../../shared/pi-session-content";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -44,7 +45,16 @@ export const summarizeToolArgs = (_toolName: string, args: unknown): string => {
 	return truncate(serialized.replace(/\s+/g, " "));
 };
 
-export const summarizeToolResult = (_toolName: string, result: unknown, isError: boolean): string => {
+export const summarizeToolResult = (
+	_toolName: string,
+	result: unknown,
+	isError: boolean,
+	status: PiSessionToolExecutionStatus,
+): string => {
+	if (status === "canceled") {
+		return "Tool activity canceled by abort.";
+	}
+
 	if (isError) {
 		const text = extractTextFromPiContent(isRecord(result) ? result.content : result).trim();
 		return text ? truncate(text) : "Tool failed";

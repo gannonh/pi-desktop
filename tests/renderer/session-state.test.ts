@@ -482,7 +482,47 @@ describe("session state reducer", () => {
 		expect(state.toolExecutions[0]).toMatchObject({
 			status: "canceled",
 			isError: false,
-			result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
+			result: null,
+			endedAt: "2026-05-14T12:00:02.000Z",
+		});
+	});
+
+	it("keeps canceled tools terminal when late updates arrive", () => {
+		let state = reduceSessionEvent(createInitialSessionState(), {
+			type: "tool_execution_start",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "pnpm test" },
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "status",
+			sessionId: "pi-session:one",
+			status: "aborting",
+			label: "Aborting",
+			receivedAt: "2026-05-14T12:00:01.000Z",
+		});
+		state = reduceSessionEvent(state, {
+			type: "status",
+			sessionId: "pi-session:one",
+			status: "idle",
+			label: "Idle",
+			receivedAt: "2026-05-14T12:00:02.000Z",
+		});
+		state = reduceSessionEvent(state, {
+			type: "tool_execution_update",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "pnpm test" },
+			partialResult: { content: [{ type: "text", text: "late output" }] },
+			receivedAt: "2026-05-14T12:00:03.000Z",
+		});
+
+		expect(state.toolExecutions[0]).toMatchObject({
+			status: "canceled",
+			partialResult: { content: [{ type: "text", text: "late output" }] },
 			endedAt: "2026-05-14T12:00:02.000Z",
 		});
 	});

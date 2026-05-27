@@ -201,7 +201,7 @@ describe("ChatShell", () => {
 		expect(markup).not.toContain("What should we build in pi-desktop?");
 	});
 
-	it("renders the right panel workspace in the session layout without exposing raw tool calls", () => {
+	it("renders the right panel workspace and tool timeline in the session layout", () => {
 		const route: Exclude<ChatShellRoute, { kind: "unavailable-project" }> = {
 			kind: "empty-chat",
 			title: "Milestone transcript",

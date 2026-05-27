@@ -75,6 +75,9 @@ const upsertToolExecution = (
 	return toolExecutions.map((execution) => (execution.id === next.id ? next : execution));
 };
 
+const isTerminalToolStatus = (status: PiSessionToolExecutionStatus): boolean =>
+	status === "completed" || status === "failed" || status === "canceled";
+
 const markRunningToolsFailed = (
 	toolExecutions: readonly LiveToolExecution[],
 	receivedAt: string,
@@ -100,7 +103,6 @@ const markRunningToolsCanceled = (
 			? {
 					...execution,
 					status: "canceled",
-					result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
 					isError: false,
 					updatedAt: receivedAt,
 					endedAt: receivedAt,
@@ -237,7 +239,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
-				status: existing?.status === "completed" || existing?.status === "failed" ? existing.status : "running",
+				status: existing && isTerminalToolStatus(existing.status) ? existing.status : "running",
 				args: existing?.args ?? event.args,
 				partialResult: event.partialResult,
 				result: existing?.result ?? null,

@@ -37,7 +37,7 @@ describe("CodingPanel", () => {
 					execution({
 						id: "call_3",
 						status: "canceled",
-						result: { content: [{ type: "text", text: "Tool activity canceled by abort." }] },
+						result: null,
 					}),
 				],
 			}),

@@ -25,7 +25,7 @@ export function ToolTimelineItem({ execution }: ToolTimelineItemProps) {
 	const [expanded, setExpanded] = useState(false);
 	const inputSummary = summarizeToolArgs(execution.toolName, execution.args);
 	const output = execution.result ?? execution.partialResult;
-	const resultSummary = summarizeToolResult(execution.toolName, output, execution.isError);
+	const resultSummary = summarizeToolResult(execution.toolName, output, execution.isError, execution.status);
 	const showTerminal = expanded && isTerminalTool(execution.toolName, execution.args, output);
 	const terminalText = showTerminal ? getTerminalOutputText(execution.args, output) : "";
 	const rawOutput = expanded && !showTerminal ? getToolOutputText(execution.toolName, output) : "";
