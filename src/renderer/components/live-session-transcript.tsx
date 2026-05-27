@@ -47,11 +47,27 @@ const sortTimestamp = (value: string | undefined): number | undefined => {
 	return Number.isNaN(parsed) ? undefined : parsed;
 };
 
+const sequenceOrderFor = (item: TranscriptItem): number => item.sequence ?? item.order;
+
+const compareTranscriptItems = (left: TranscriptItem, right: TranscriptItem): number => {
+	const leftTimestamp = sortTimestamp(left.sortAt);
+	const rightTimestamp = sortTimestamp(right.sortAt);
+	const bothTimestamped = leftTimestamp !== undefined && rightTimestamp !== undefined;
+
+	if (bothTimestamped && leftTimestamp !== rightTimestamp) {
+		return leftTimestamp - rightTimestamp;
+	}
+	if (bothTimestamped && left.sequence !== right.sequence) {
+		return sequenceOrderFor(left) - sequenceOrderFor(right);
+	}
+	return left.order - right.order;
+};
+
 const buildTranscriptItems = (session: LiveSessionState): TranscriptItem[] => {
-	const matchedToolCallIds = new Set(session.toolExecutions.map((execution) => execution.id));
+	const renderedToolCallIds = new Set(session.toolExecutions.map((execution) => execution.id));
 	const messages: TranscriptItem[] = session.messages
 		.filter(
-			(message) => !(message.role === "tool" && message.toolCallId && matchedToolCallIds.has(message.toolCallId)),
+			(message) => !(message.role === "tool" && message.toolCallId && renderedToolCallIds.has(message.toolCallId)),
 		)
 		.map((message, index) => ({
 			kind: "message",
@@ -68,17 +84,7 @@ const buildTranscriptItems = (session: LiveSessionState): TranscriptItem[] => {
 		sortAt: execution.startedAt,
 	}));
 
-	return [...messages, ...tools].sort((left, right) => {
-		const leftTimestamp = sortTimestamp(left.sortAt);
-		const rightTimestamp = sortTimestamp(right.sortAt);
-		if (leftTimestamp !== undefined && rightTimestamp !== undefined && leftTimestamp !== rightTimestamp) {
-			return leftTimestamp - rightTimestamp;
-		}
-		if (leftTimestamp !== undefined && rightTimestamp !== undefined && left.sequence !== right.sequence) {
-			return (left.sequence ?? left.order) - (right.sequence ?? right.order);
-		}
-		return left.order - right.order;
-	});
+	return [...messages, ...tools].sort(compareTranscriptItems);
 };
 
 export function LiveSessionTranscript({ session }: LiveSessionTranscriptProps) {
@@ -118,18 +124,19 @@ export function LiveSessionTranscript({ session }: LiveSessionTranscriptProps) {
 					}
 
 					const { message } = item;
+					const showRoleLabel = shouldShowRoleLabel(transcriptItems, index);
 					return (
 						<article
 							className={[
 								"live-session__message",
 								`live-session__message--${message.role}`,
-								shouldShowRoleLabel(transcriptItems, index) ? "" : "live-session__message--grouped",
+								showRoleLabel ? "" : "live-session__message--grouped",
 							]
 								.filter(Boolean)
 								.join(" ")}
 							key={message.id}
 						>
-							{shouldShowRoleLabel(transcriptItems, index) ? (
+							{showRoleLabel ? (
 								<div className="live-session__message-role">{roleLabels[message.role]}</div>
 							) : null}
 							<MessageContent content={message.content} role={message.role} streaming={message.streaming} />

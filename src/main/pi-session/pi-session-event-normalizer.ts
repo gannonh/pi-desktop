@@ -73,16 +73,12 @@ const messageIdFor = (message: AgentMessage): string | undefined => {
 		return undefined;
 	}
 
-	const role = roleLabelForId(message);
-
-	if (role === "toolResult") {
-		const toolCallId = toolCallIdForMessage(message);
-		if (toolCallId) {
-			return `toolResult:${toolCallId}:${stableId}`;
-		}
+	const toolCallId = toolCallIdForMessage(message);
+	if (toolCallId) {
+		return `toolResult:${toolCallId}:${stableId}`;
 	}
 
-	return `${role}:${stableId}`;
+	return `${roleLabelForId(message)}:${stableId}`;
 };
 
 const terminalAssistantErrorFor = (message: AgentMessage): string | undefined => {

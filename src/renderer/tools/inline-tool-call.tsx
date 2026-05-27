@@ -9,8 +9,8 @@ type ToolRenderModel = {
 	title: string;
 	metadata: string[];
 	output: string;
-	outputKind?: "diff" | "terminal" | "text";
-	warnings?: string[];
+	outputKind: "diff" | "terminal" | "text";
+	warnings: string[];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -102,19 +102,23 @@ const renderBash = (execution: LiveToolExecution): ToolRenderModel => {
 	};
 };
 
+const readRangeFor = (offset: number | undefined, limit: number | undefined): string => {
+	const start = offset ?? (limit !== undefined ? 1 : undefined);
+	if (start === undefined) {
+		return "";
+	}
+	if (limit === undefined) {
+		return `:${start}`;
+	}
+	return `:${start}-${start + limit - 1}`;
+};
+
 const renderRead = (execution: LiveToolExecution): ToolRenderModel => {
 	const path = stringField(execution.args, "path") ?? "<unknown>";
 	const offset = numberField(execution.args, "offset");
 	const limit = numberField(execution.args, "limit");
-	const start = offset ?? (limit !== undefined ? 1 : undefined);
-	const range =
-		start !== undefined && limit !== undefined
-			? `:${start}-${start + limit - 1}`
-			: start !== undefined
-				? `:${start}`
-				: "";
 	return {
-		title: `read ${path}${range}`,
+		title: `read ${path}${readRangeFor(offset, limit)}`,
 		metadata: [],
 		output: outputFor(execution),
 		outputKind: "text",
@@ -257,14 +261,12 @@ export function InlineToolCall({ execution }: InlineToolCallProps) {
 					<summary className="live-session__tool-call-summary">
 						{execution.isError || execution.status === "failed" ? "Show error output" : "Show output"}
 					</summary>
-					<pre
-						className={`live-session__tool-call-output live-session__tool-call-output--${model.outputKind ?? "text"}`}
-					>
+					<pre className={`live-session__tool-call-output live-session__tool-call-output--${model.outputKind}`}>
 						{model.output}
 					</pre>
 				</details>
 			) : null}
-			{model.warnings?.length ? (
+			{model.warnings.length > 0 ? (
 				<div className="live-session__tool-call-warning">{model.warnings.join(" · ")}</div>
 			) : null}
 		</article>

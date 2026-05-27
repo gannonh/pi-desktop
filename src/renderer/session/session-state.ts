@@ -67,13 +67,15 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 const findToolExecution = (toolExecutions: readonly LiveToolExecution[], toolCallId: string) =>
 	toolExecutions.find((execution) => execution.id === toolCallId);
 
-const nextSequenceFor = (state: LiveSessionState): number => {
-	const messageSequences = state.messages.map((message) => message.sequence).filter((value) => value !== undefined);
-	const toolSequences = state.toolExecutions
-		.map((execution) => execution.sequence)
-		.filter((value) => value !== undefined);
-	return Math.max(-1, ...messageSequences, ...toolSequences) + 1;
-};
+const existingSequencesFor = (state: LiveSessionState): number[] => [
+	...state.messages.map((message) => message.sequence).filter((value) => value !== undefined),
+	...state.toolExecutions.map((execution) => execution.sequence).filter((value) => value !== undefined),
+];
+
+const nextSequenceFor = (state: LiveSessionState): number => Math.max(-1, ...existingSequencesFor(state)) + 1;
+
+const sequenceFor = (state: LiveSessionState, existingSequence: number | undefined): number =>
+	existingSequence ?? nextSequenceFor(state);
 
 const upsertToolExecution = (
 	toolExecutions: readonly LiveToolExecution[],
@@ -224,7 +226,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				content: event.content,
 				streaming: false,
 				receivedAt: existing?.receivedAt ?? event.receivedAt,
-				sequence: existing?.sequence ?? nextSequenceFor(state),
+				sequence: sequenceFor(state, existing?.sequence),
 				...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
 			}),
 		};
@@ -246,7 +248,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: null,
-				sequence: existing?.sequence ?? nextSequenceFor(state),
+				sequence: sequenceFor(state, existing?.sequence),
 			}),
 		};
 	}
@@ -267,7 +269,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: existing?.endedAt ?? null,
-				sequence: existing?.sequence ?? nextSequenceFor(state),
+				sequence: sequenceFor(state, existing?.sequence),
 			}),
 		};
 	}
@@ -289,7 +291,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: terminalExisting?.endedAt ?? event.receivedAt,
-				sequence: existing?.sequence ?? nextSequenceFor(state),
+				sequence: sequenceFor(state, existing?.sequence),
 			}),
 		};
 	}
