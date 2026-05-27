@@ -30,9 +30,10 @@ export const processFilesForComposer = async (
 		try {
 			newAttachments.push(await loadAttachment(file));
 		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			return {
 				attachments: currentAttachments,
-				error: `Failed to process ${file.name}: ${String(error)}`,
+				error: `Failed to process ${file.name}: ${message}`,
 			};
 		}
 	}

@@ -5,7 +5,7 @@ import { parseAsync } from "docx-preview";
 import JSZip from "jszip";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import * as XLSX from "xlsx";
-import { COMPOSER_MAX_ATTACHMENT_BYTES, type Attachment } from "./attachment-types";
+import { type Attachment, COMPOSER_MAX_ATTACHMENT_BYTES } from "./attachment-types";
 
 let pdfjsModulePromise: Promise<typeof import("pdfjs-dist")> | undefined;
 
@@ -72,6 +72,10 @@ export async function loadAttachment(
 
 	if (size > COMPOSER_MAX_ATTACHMENT_BYTES) {
 		throw new Error(`Attachment exceeds ${Math.floor(COMPOSER_MAX_ATTACHMENT_BYTES / (1024 * 1024))}MB limit.`);
+	}
+
+	if (mimeType.startsWith("image/") && size === 0) {
+		throw new Error("Image attachment is empty.");
 	}
 
 	const base64Content = arrayBufferToBase64(arrayBuffer);
