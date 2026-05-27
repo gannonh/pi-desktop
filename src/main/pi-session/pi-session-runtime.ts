@@ -248,9 +248,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 					if (currentEntry !== entry || entry.disposed) {
 						return;
 					}
-					entry.status = "failed";
-					deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
-					emitStatus(sessionId, "failed", "Failed");
+					failSession(sessionId, entry, "pi.prompt_failed", error);
 					throw error;
 				});
 		}
@@ -283,9 +281,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				if (entry.status === "aborting" || entry.abortedPromptToken === promptToken) {
 					return;
 				}
-				entry.status = "failed";
-				deps.emit(createRuntimeErrorEvent({ sessionId, code: "pi.prompt_failed", error, now: deps.now }));
-				emitStatus(sessionId, "failed", "Failed");
+				failSession(sessionId, entry, "pi.prompt_failed", error);
 			})
 			.finally(() => {
 				const currentEntry = sessions.get(sessionId);
@@ -461,16 +457,7 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				try {
 					await entry.session.abort();
 				} catch (error) {
-					entry.status = "failed";
-					deps.emit(
-						createRuntimeErrorEvent({
-							sessionId: input.sessionId,
-							code: "pi.abort_failed",
-							error,
-							now: deps.now,
-						}),
-					);
-					emitStatus(input.sessionId, "failed", "Failed");
+					failSession(input.sessionId, entry, "pi.abort_failed", error);
 					throw error;
 				}
 				entry.abortedPromptToken = abortedPromptToken;
