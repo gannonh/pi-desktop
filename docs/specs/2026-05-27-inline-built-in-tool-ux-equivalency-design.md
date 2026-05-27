@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented and verified pending user sign-off.
+Implemented, verified, and accepted.
 
 ## Goal
 
@@ -406,6 +406,6 @@ Required verification:
   - Independent reviewer subagent found no Critical or Important issues after final review.
 - Approved deviations: none.
 - Verify phase evidence: `uat-evidence/mixed-20260527-225300/evidence.md`
-- UAT result: all slices passed; recommendation remains pending user sign-off.
+- UAT result: all slices passed; user accepted the verification.
 - Known follow-up issues: none from implementation verification.
 - Independent subagent review: used.
