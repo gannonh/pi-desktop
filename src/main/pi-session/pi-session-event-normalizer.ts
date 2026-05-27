@@ -17,6 +17,16 @@ type RuntimeErrorInput = {
 	now: () => string;
 };
 
+type ToolExecutionEvent = Extract<
+	AgentSessionEvent,
+	{ type: "tool_execution_start" | "tool_execution_update" | "tool_execution_end" }
+>;
+
+type ToolIdentity = {
+	toolCallId: string;
+	toolName: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
 
 const hasContent = (message: AgentMessage): message is AgentMessage & { content: unknown } =>
@@ -24,6 +34,16 @@ const hasContent = (message: AgentMessage): message is AgentMessage & { content:
 
 const stringValue = (value: unknown): string | undefined =>
 	typeof value === "string" && value.length > 0 ? value : undefined;
+
+const toolIdentityFor = (event: ToolExecutionEvent): ToolIdentity | undefined => {
+	const toolCallId = stringValue(event.toolCallId);
+	const toolName = stringValue(event.toolName);
+	if (!toolCallId || !toolName) {
+		return undefined;
+	}
+
+	return { toolCallId, toolName };
+};
 
 const messageStableIdFor = (message: AgentMessage): number | string | undefined => {
 	if (isRecord(message) && (typeof message.timestamp === "number" || typeof message.timestamp === "string")) {
@@ -300,11 +320,11 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_start") {
-		const toolCallId = stringValue(event.toolCallId);
-		const toolName = stringValue(event.toolName);
-		if (!toolCallId || !toolName) {
+		const toolIdentity = toolIdentityFor(event);
+		if (!toolIdentity) {
 			return [createMalformedToolEvent(sessionId, receivedAt)];
 		}
+		const { toolCallId, toolName } = toolIdentity;
 
 		return [
 			{
@@ -319,11 +339,11 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_update") {
-		const toolCallId = stringValue(event.toolCallId);
-		const toolName = stringValue(event.toolName);
-		if (!toolCallId || !toolName) {
+		const toolIdentity = toolIdentityFor(event);
+		if (!toolIdentity) {
 			return [createMalformedToolEvent(sessionId, receivedAt)];
 		}
+		const { toolCallId, toolName } = toolIdentity;
 
 		return [
 			{
@@ -339,11 +359,11 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 	}
 
 	if (event.type === "tool_execution_end") {
-		const toolCallId = stringValue(event.toolCallId);
-		const toolName = stringValue(event.toolName);
-		if (!toolCallId || !toolName) {
+		const toolIdentity = toolIdentityFor(event);
+		if (!toolIdentity) {
 			return [createMalformedToolEvent(sessionId, receivedAt)];
 		}
+		const { toolCallId, toolName } = toolIdentity;
 
 		return [
 			{

@@ -145,15 +145,17 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 	}
 
 	if (event.type === "status") {
+		const toolExecutions =
+			state.status === "aborting" && event.status === "idle"
+				? markRunningToolsCanceled(state.toolExecutions, event.receivedAt)
+				: state.toolExecutions;
+
 		return {
 			...state,
 			sessionId: event.sessionId,
 			status: event.status,
 			statusLabel: event.label,
-			toolExecutions:
-				state.status === "aborting" && event.status === "idle"
-					? markRunningToolsCanceled(state.toolExecutions, event.receivedAt)
-					: state.toolExecutions,
+			toolExecutions,
 			errorMessage: event.status === "failed" ? state.errorMessage : "",
 			retryMessage: event.status === "retrying" ? state.retryMessage : "",
 		};
