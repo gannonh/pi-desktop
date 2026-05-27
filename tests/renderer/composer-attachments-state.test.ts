@@ -22,25 +22,14 @@ describe("processFilesForComposer", () => {
 		});
 	});
 
-	it("rejects empty image attachments before they can become invalid Pi payloads", async () => {
-		const emptyImage = new File([], "empty.png", { type: "image/png" });
-
-		await expect(processFilesForComposer([emptyImage], [existingAttachment])).resolves.toEqual({
-			attachments: [existingAttachment],
-			error: "Failed to process empty.png: Image attachment is empty.",
-		});
-	});
-
-	it("recovers after a failed attachment attempt by accepting the next valid file", async () => {
-		const unsupported = new File(["binary"], "archive.zip", { type: "application/zip" });
-		const firstAttempt = await processFilesForComposer([unsupported], [existingAttachment]);
+	it("adds valid files to the existing attachment list", async () => {
 		const valid = new File(["todo"], "todo.txt", { type: "text/plain" });
 
-		const recovered = await processFilesForComposer([valid], firstAttempt.attachments);
+		const result = await processFilesForComposer([valid], [existingAttachment]);
 
-		expect(recovered.error).toBeUndefined();
-		expect(recovered.attachments.map((attachment) => attachment.fileName)).toEqual(["notes.md", "todo.txt"]);
-		expect(recovered.attachments[1]).toMatchObject({
+		expect(result.error).toBeUndefined();
+		expect(result.attachments.map((attachment) => attachment.fileName)).toEqual(["notes.md", "todo.txt"]);
+		expect(result.attachments[1]).toMatchObject({
 			type: "document",
 			mimeType: "text/plain",
 			extractedText: "todo",

@@ -23,4 +23,10 @@ describe("loadAttachment", () => {
 			`Attachment exceeds ${Math.floor(COMPOSER_MAX_ATTACHMENT_BYTES / (1024 * 1024))}MB limit.`,
 		);
 	});
+
+	it("rejects empty images before they can become invalid Pi payloads", async () => {
+		const file = new File([], "empty.png", { type: "image/png" });
+
+		await expect(loadAttachment(file)).rejects.toThrow("Image attachment is empty.");
+	});
 });
