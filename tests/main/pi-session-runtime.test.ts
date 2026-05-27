@@ -209,9 +209,9 @@ describe("createPiSessionRuntime", () => {
 		await runtime.whenIdle(started.sessionId);
 		events.length = 0;
 
-		await expect(runtime.setModel({ sessionId: started.sessionId, provider: "openai", modelId: "missing" })).rejects.toThrow(
-			"Model not found: openai/missing",
-		);
+		await expect(
+			runtime.setModel({ sessionId: started.sessionId, provider: "openai", modelId: "missing" }),
+		).rejects.toThrow("Model not found: openai/missing");
 
 		expect(events).toContainEqual({
 			type: "runtime_error",
