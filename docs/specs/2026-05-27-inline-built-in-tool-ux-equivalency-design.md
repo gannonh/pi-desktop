@@ -1,5 +1,9 @@
 # Inline built-in tool UX equivalency design
 
+## Status
+
+Implemented.
+
 ## Goal
 
 Render every built-in Pi tool inline in the Desktop transcript with the same information hierarchy as the CLI TUI.
@@ -376,3 +380,30 @@ Required verification:
 - Focused renderer/session tests pass.
 - `pnpm check` passes before merge readiness.
 - UAT evidence demonstrates inline rendering for all 7 built-in tools and absence of the separate timeline.
+
+## Build completion report
+
+- Base SHA: `9d1107bc9f52ae1f673f8d7da9c0323918ddb492`
+- Implementation commit: `3d2040be`
+- Completed tasks:
+  - Removed the product-visible `CodingPanel` and `ToolTimeline` path.
+  - Preserved `toolCallId`, `receivedAt`, and renderer insertion `sequence` for session messages and tool executions.
+  - Merged messages and tool executions into one transcript stream with duplicate tool-result suppression.
+  - Added inline renderers for `bash`, `read`, `edit`, `write`, `grep`, `find`, `ls`, plus a generic fallback.
+  - Added compact previews, expandable full output, status labels, and truncation/full-output warnings.
+- Main files changed:
+  - `src/renderer/components/live-session-transcript.tsx`
+  - `src/renderer/tools/inline-tool-call.tsx`
+  - `src/renderer/session/session-state.ts`
+  - `src/main/pi-session/pi-session-event-normalizer.ts`
+  - `src/shared/pi-session.ts`
+  - `src/renderer/styles.css`
+- Verification:
+  - `pnpm vitest run tests/renderer/inline-tool-call.test.tsx tests/renderer/live-session-transcript.test.ts tests/renderer/chat-shell.test.ts tests/renderer/session-state.test.ts tests/renderer/app-session-scope.test.ts tests/main/pi-session-event-normalizer.test.ts tests/shared/pi-session.test.ts` passed, 102 tests.
+  - `pnpm check` passed, including format, lint, typecheck, coverage tests, build, and smoke tests.
+- Review gates:
+  - TDD used for panel removal, metadata preservation, transcript merge, inline tool rendering, accessibility/preview behavior, warnings, and ordering fixes.
+  - Independent reviewer subagent found no Critical or Important issues after final review.
+- Approved deviations: none.
+- Known follow-up issues: UAT evidence for all 7 inline tool renderers remains for the Verify phase.
+- Independent subagent review: used.
