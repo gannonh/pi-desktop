@@ -145,4 +145,58 @@ describe("createPiSessionRuntime settings selection", () => {
 			message: error.message,
 		});
 	});
+
+	it("does not mark the session failed when model settings emission fails after selection", async () => {
+		const error = new Error("settings unavailable");
+		const agentSession = createSettingsAgentSession();
+		const { events, runtime, sessionId } = await startSettingsRuntime(agentSession);
+		vi.mocked(agentSession.modelRegistry.getAvailable).mockImplementationOnce(() => {
+			throw error;
+		});
+
+		await expect(runtime.setModel({ sessionId, provider: "openai", modelId: "gpt-5.5" })).rejects.toThrow(
+			error.message,
+		);
+
+		expect(events).not.toContainEqual({
+			type: "runtime_error",
+			sessionId,
+			code: "pi.model_selection_failed",
+			message: error.message,
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events).not.toContainEqual({
+			type: "status",
+			sessionId,
+			status: "failed",
+			label: "Failed",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
+
+	it("does not mark the session failed when thinking settings emission fails after selection", async () => {
+		const error = new Error("settings unavailable");
+		const agentSession = createSettingsAgentSession();
+		const { events, runtime, sessionId } = await startSettingsRuntime(agentSession);
+		vi.mocked(agentSession.modelRegistry.getAvailable).mockImplementationOnce(() => {
+			throw error;
+		});
+
+		await expect(runtime.setThinkingLevel({ sessionId, level: "high" })).rejects.toThrow(error.message);
+
+		expect(events).not.toContainEqual({
+			type: "runtime_error",
+			sessionId,
+			code: "pi.thinking_level_selection_failed",
+			message: error.message,
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+		expect(events).not.toContainEqual({
+			type: "status",
+			sessionId,
+			status: "failed",
+			label: "Failed",
+			receivedAt: "2026-05-14T12:00:00.000Z",
+		});
+	});
 });

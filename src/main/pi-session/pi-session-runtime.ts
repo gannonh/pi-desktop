@@ -19,6 +19,7 @@ import type {
 	PiSessionSetDefaultThinkingLevelInput,
 	PiSessionSetModelInput,
 	PiSessionSetThinkingLevelInput,
+	PiSessionSettingsPayload,
 	PiSessionStartPayload,
 	PiSessionStatus,
 	PiSessionSubmitInput,
@@ -160,6 +161,11 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		emitStatus(sessionId, "failed", "Failed");
 	};
 
+	const failSessionAndThrow = (sessionId: string, entry: RuntimeEntry, code: string, error: unknown): never => {
+		failSession(sessionId, entry, code, error);
+		throw error;
+	};
+
 	const getEntry = (sessionId: string): RuntimeEntry => {
 		const entry = sessions.get(sessionId);
 		if (!entry) {
@@ -172,16 +178,29 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 	const shouldQueueDelivery = (entry: RuntimeEntry) => isActivelyPrompting(entry) || busyStatuses.has(entry.status);
 
-	const emitSessionSettings = async (sessionId: string, entry: RuntimeEntry) => {
-		if (!entry.agentSession) {
-			return;
-		}
+	const emitSettings = (sessionId: string, settings: PiSessionSettingsPayload): void => {
 		deps.emit({
 			type: "session_settings",
 			sessionId,
-			settings: await buildSettingsFromAgentSession(entry.agentSession),
+			settings,
 			receivedAt: deps.now(),
 		});
+	};
+
+	const emitAgentSessionSettings = async (
+		sessionId: string,
+		agentSession: AgentSession,
+	): Promise<PiSessionSettingsPayload> => {
+		const settings = await buildSettingsFromAgentSession(agentSession);
+		emitSettings(sessionId, settings);
+		return settings;
+	};
+
+	const emitSessionSettings = async (sessionId: string, entry: RuntimeEntry): Promise<void> => {
+		if (!entry.agentSession) {
+			return;
+		}
+		await emitAgentSessionSettings(sessionId, entry.agentSession);
 	};
 
 	const emitQueueUpdate = (sessionId: string, entry: RuntimeEntry) => {
@@ -489,36 +508,49 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 
 		async setModel(input: PiSessionSetModelInput) {
 			const entry = getEntry(input.sessionId);
-			try {
-				if (!entry.agentSession) {
-					throw new Error("Model selection is unavailable for this session.");
-				}
-				const model = entry.agentSession.modelRegistry.find(input.provider, input.modelId);
-				if (!model) {
-					throw new Error(`Model not found: ${input.provider}/${input.modelId}`);
-				}
-				await entry.agentSession.setModel(model);
-				await emitSessionSettings(input.sessionId, entry);
-				return buildSettingsFromAgentSession(entry.agentSession);
-			} catch (error) {
-				failSession(input.sessionId, entry, "pi.model_selection_failed", error);
-				throw error;
+			const agentSession = entry.agentSession;
+			if (!agentSession) {
+				return failSessionAndThrow(
+					input.sessionId,
+					entry,
+					"pi.model_selection_failed",
+					new Error("Model selection is unavailable for this session."),
+				);
 			}
+			const model = agentSession.modelRegistry.find(input.provider, input.modelId);
+			if (!model) {
+				return failSessionAndThrow(
+					input.sessionId,
+					entry,
+					"pi.model_selection_failed",
+					new Error(`Model not found: ${input.provider}/${input.modelId}`),
+				);
+			}
+			try {
+				await agentSession.setModel(model);
+			} catch (error) {
+				failSessionAndThrow(input.sessionId, entry, "pi.model_selection_failed", error);
+			}
+			return emitAgentSessionSettings(input.sessionId, agentSession);
 		},
 
 		async setThinkingLevel(input: PiSessionSetThinkingLevelInput) {
 			const entry = getEntry(input.sessionId);
-			try {
-				if (!entry.agentSession) {
-					throw new Error("Thinking level selection is unavailable for this session.");
-				}
-				entry.agentSession.setThinkingLevel(input.level);
-				await emitSessionSettings(input.sessionId, entry);
-				return buildSettingsFromAgentSession(entry.agentSession);
-			} catch (error) {
-				failSession(input.sessionId, entry, "pi.thinking_level_selection_failed", error);
-				throw error;
+			const agentSession = entry.agentSession;
+			if (!agentSession) {
+				return failSessionAndThrow(
+					input.sessionId,
+					entry,
+					"pi.thinking_level_selection_failed",
+					new Error("Thinking level selection is unavailable for this session."),
+				);
 			}
+			try {
+				agentSession.setThinkingLevel(input.level);
+			} catch (error) {
+				failSessionAndThrow(input.sessionId, entry, "pi.thinking_level_selection_failed", error);
+			}
+			return emitAgentSessionSettings(input.sessionId, agentSession);
 		},
 
 		setDefaultModel(input: PiSessionSetDefaultModelInput) {
