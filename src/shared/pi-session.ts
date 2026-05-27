@@ -144,6 +144,8 @@ export const PiSessionHistoryMessageSchema = z.strictObject({
 	role: PiSessionMessageRoleSchema,
 	content: z.string(),
 	streaming: z.boolean(),
+	receivedAt: z.string().datetime().optional(),
+	toolCallId: z.string().min(1).optional(),
 });
 
 export const PiSessionHistoryPayloadSchema = z.strictObject({
@@ -172,6 +174,7 @@ export const PiSessionEventSchema = z.discriminatedUnion("type", [
 		role: PiSessionMessageRoleSchema,
 		content: z.string(),
 		receivedAt: z.string().datetime(),
+		toolCallId: z.string().min(1).optional(),
 	}),
 	z.strictObject({
 		type: z.literal("assistant_delta"),
@@ -187,6 +190,7 @@ export const PiSessionEventSchema = z.discriminatedUnion("type", [
 		role: PiSessionMessageRoleSchema,
 		content: z.string(),
 		receivedAt: z.string().datetime(),
+		toolCallId: z.string().min(1).optional(),
 	}),
 	z.strictObject({
 		type: z.literal("runtime_error"),

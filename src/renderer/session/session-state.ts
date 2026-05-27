@@ -13,6 +13,9 @@ export type LiveSessionMessage = {
 	role: PiSessionMessageRole;
 	content: string;
 	streaming: boolean;
+	receivedAt?: string;
+	toolCallId?: string;
+	sequence?: number;
 };
 
 export type LiveToolExecution = {
@@ -26,6 +29,7 @@ export type LiveToolExecution = {
 	startedAt: string;
 	updatedAt: string;
 	endedAt: string | null;
+	sequence?: number;
 };
 
 export type LiveSessionState = {
@@ -62,6 +66,14 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 
 const findToolExecution = (toolExecutions: readonly LiveToolExecution[], toolCallId: string) =>
 	toolExecutions.find((execution) => execution.id === toolCallId);
+
+const nextSequenceFor = (state: LiveSessionState): number => {
+	const messageSequences = state.messages.map((message) => message.sequence).filter((value) => value !== undefined);
+	const toolSequences = state.toolExecutions
+		.map((execution) => execution.sequence)
+		.filter((value) => value !== undefined);
+	return Math.max(-1, ...messageSequences, ...toolSequences) + 1;
+};
 
 const upsertToolExecution = (
 	toolExecutions: readonly LiveToolExecution[],
@@ -178,6 +190,9 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 					role: event.role,
 					content: event.content,
 					streaming: event.role === "assistant",
+					receivedAt: event.receivedAt,
+					sequence: nextSequenceFor(state),
+					...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
 				},
 			],
 		};
@@ -199,6 +214,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 	}
 
 	if (event.type === "message_end") {
+		const existing = findMessage(state.messages, event.messageId);
 		return {
 			...state,
 			sessionId: event.sessionId,
@@ -207,6 +223,9 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				role: event.role,
 				content: event.content,
 				streaming: false,
+				receivedAt: existing?.receivedAt ?? event.receivedAt,
+				sequence: existing?.sequence ?? nextSequenceFor(state),
+				...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
 			}),
 		};
 	}
@@ -227,6 +246,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: null,
+				sequence: existing?.sequence ?? nextSequenceFor(state),
 			}),
 		};
 	}
@@ -247,6 +267,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: existing?.endedAt ?? null,
+				sequence: existing?.sequence ?? nextSequenceFor(state),
 			}),
 		};
 	}
@@ -268,6 +289,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: terminalExisting?.endedAt ?? event.receivedAt,
+				sequence: existing?.sequence ?? nextSequenceFor(state),
 			}),
 		};
 	}

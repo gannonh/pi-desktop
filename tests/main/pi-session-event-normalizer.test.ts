@@ -218,6 +218,7 @@ describe("pi session event normalizer", () => {
 				messageId: "toolResult:call_123:4",
 				role: "tool",
 				content: "output",
+				toolCallId: "call_123",
 				receivedAt,
 			},
 		]);

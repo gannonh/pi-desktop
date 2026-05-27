@@ -264,6 +264,18 @@ describe("Pi session contracts", () => {
 
 		expect(
 			PiSessionEventSchema.parse({
+				type: "message_end",
+				sessionId: "pi-session:one",
+				messageId: "toolResult:call_1:4",
+				role: "tool",
+				content: "done",
+				toolCallId: "call_1",
+				receivedAt,
+			}),
+		).toMatchObject({ type: "message_end", toolCallId: "call_1" });
+
+		expect(
+			PiSessionEventSchema.parse({
 				type: "tool_execution_start",
 				sessionId: "pi-session:one",
 				toolCallId: "call_1",
