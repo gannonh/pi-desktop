@@ -13,6 +13,9 @@ export type LiveSessionMessage = {
 	role: PiSessionMessageRole;
 	content: string;
 	streaming: boolean;
+	receivedAt?: string;
+	toolCallId?: string;
+	sequence?: number;
 };
 
 export type LiveToolExecution = {
@@ -26,6 +29,7 @@ export type LiveToolExecution = {
 	startedAt: string;
 	updatedAt: string;
 	endedAt: string | null;
+	sequence?: number;
 };
 
 export type LiveSessionState = {
@@ -38,6 +42,7 @@ export type LiveSessionState = {
 	retryMessage: string;
 	settings: PiSessionSettingsPayload | null;
 	queuedMessages: PiSessionQueuedMessage[];
+	nextSequence: number;
 };
 
 export const createInitialSessionState = (): LiveSessionState => ({
@@ -50,6 +55,7 @@ export const createInitialSessionState = (): LiveSessionState => ({
 	retryMessage: "",
 	settings: null,
 	queuedMessages: [],
+	nextSequence: 0,
 });
 
 const findMessage = (messages: readonly LiveSessionMessage[], messageId: string) =>
@@ -62,6 +68,14 @@ const finalizeMessage = (messages: readonly LiveSessionMessage[], next: LiveSess
 
 const findToolExecution = (toolExecutions: readonly LiveToolExecution[], toolCallId: string) =>
 	toolExecutions.find((execution) => execution.id === toolCallId);
+
+const allocateSequence = (
+	state: LiveSessionState,
+	existingSequence?: number,
+): { sequence: number; nextSequence: number } =>
+	existingSequence !== undefined
+		? { sequence: existingSequence, nextSequence: state.nextSequence }
+		: { sequence: state.nextSequence, nextSequence: state.nextSequence + 1 };
 
 const upsertToolExecution = (
 	toolExecutions: readonly LiveToolExecution[],
@@ -123,6 +137,7 @@ export const applySessionHistoryResult = (
 	retryMessage: "",
 	settings,
 	queuedMessages: [],
+	nextSequence: result.messages.length,
 });
 
 export const applySessionStartResult = (
@@ -168,9 +183,11 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 			return state;
 		}
 
+		const allocation = allocateSequence(state);
 		return {
 			...state,
 			sessionId: event.sessionId,
+			nextSequence: allocation.nextSequence,
 			messages: [
 				...state.messages,
 				{
@@ -178,6 +195,9 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 					role: event.role,
 					content: event.content,
 					streaming: event.role === "assistant",
+					receivedAt: event.receivedAt,
+					sequence: allocation.sequence,
+					...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
 				},
 			],
 		};
@@ -199,23 +219,31 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 	}
 
 	if (event.type === "message_end") {
+		const existing = findMessage(state.messages, event.messageId);
+		const allocation = allocateSequence(state, existing?.sequence);
 		return {
 			...state,
 			sessionId: event.sessionId,
+			nextSequence: allocation.nextSequence,
 			messages: finalizeMessage(state.messages, {
 				id: event.messageId,
 				role: event.role,
 				content: event.content,
 				streaming: false,
+				receivedAt: existing?.receivedAt ?? event.receivedAt,
+				sequence: allocation.sequence,
+				...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
 			}),
 		};
 	}
 
 	if (event.type === "tool_execution_start") {
 		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		const allocation = allocateSequence(state, existing?.sequence);
 		return {
 			...state,
 			sessionId: event.sessionId,
+			nextSequence: allocation.nextSequence,
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
@@ -227,15 +255,18 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: null,
+				sequence: allocation.sequence,
 			}),
 		};
 	}
 
 	if (event.type === "tool_execution_update") {
 		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
+		const allocation = allocateSequence(state, existing?.sequence);
 		return {
 			...state,
 			sessionId: event.sessionId,
+			nextSequence: allocation.nextSequence,
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
@@ -247,6 +278,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: existing?.endedAt ?? null,
+				sequence: allocation.sequence,
 			}),
 		};
 	}
@@ -254,9 +286,11 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 	if (event.type === "tool_execution_end") {
 		const existing = findToolExecution(state.toolExecutions, event.toolCallId);
 		const terminalExisting = existing && isTerminalToolStatus(existing.status) ? existing : null;
+		const allocation = allocateSequence(state, existing?.sequence);
 		return {
 			...state,
 			sessionId: event.sessionId,
+			nextSequence: allocation.nextSequence,
 			toolExecutions: upsertToolExecution(state.toolExecutions, {
 				id: event.toolCallId,
 				toolName: event.toolName,
@@ -268,6 +302,7 @@ export const reduceSessionEvent = (state: LiveSessionState, event: PiSessionEven
 				startedAt: existing?.startedAt ?? event.receivedAt,
 				updatedAt: event.receivedAt,
 				endedAt: terminalExisting?.endedAt ?? event.receivedAt,
+				sequence: allocation.sequence,
 			}),
 		};
 	}

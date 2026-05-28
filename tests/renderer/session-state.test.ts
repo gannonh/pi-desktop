@@ -27,6 +27,7 @@ describe("session history result", () => {
 			retryMessage: "",
 			settings: null,
 			queuedMessages: [],
+			nextSequence: 1,
 		});
 	});
 });
@@ -98,7 +99,7 @@ describe("session start result", () => {
 });
 
 describe("session state reducer", () => {
-	it("adds user messages and streams assistant deltas", () => {
+	it("adds user messages with received timestamps and streams assistant deltas", () => {
 		let state = createInitialSessionState();
 		state = reduceSessionEvent(state, {
 			type: "message_start",
@@ -125,8 +126,8 @@ describe("session state reducer", () => {
 		});
 
 		expect(state.messages).toEqual([
-			{ id: "user:1", role: "user", content: "Hello", streaming: false },
-			{ id: "assistant:2", role: "assistant", content: "Hi", streaming: true },
+			{ id: "user:1", role: "user", content: "Hello", streaming: false, receivedAt, sequence: 0 },
+			{ id: "assistant:2", role: "assistant", content: "Hi", streaming: true, receivedAt, sequence: 1 },
 		]);
 	});
 
@@ -168,7 +169,9 @@ describe("session state reducer", () => {
 			receivedAt,
 		});
 
-		expect(state.messages).toEqual([{ id: "assistant:1", role: "assistant", content: "Partial", streaming: false }]);
+		expect(state.messages).toEqual([
+			{ id: "assistant:1", role: "assistant", content: "Partial", streaming: false, receivedAt, sequence: 0 },
+		]);
 		expect(state.status).toBe("failed");
 	});
 
@@ -231,6 +234,30 @@ describe("session state reducer", () => {
 		expect(state.errorMessage).toBe("No API key");
 	});
 
+	it("stores tool result identity on finalized messages", () => {
+		const state = reduceSessionEvent(createInitialSessionState(), {
+			type: "message_end",
+			sessionId: "pi-session:one",
+			messageId: "toolResult:call_1:4",
+			role: "tool",
+			content: "done",
+			toolCallId: "call_1",
+			receivedAt,
+		});
+
+		expect(state.messages).toEqual([
+			{
+				id: "toolResult:call_1:4",
+				role: "tool",
+				content: "done",
+				streaming: false,
+				toolCallId: "call_1",
+				receivedAt,
+				sequence: 0,
+			},
+		]);
+	});
+
 	it("does not replace streamed or finalized content for duplicate message starts", () => {
 		let state = createInitialSessionState();
 		state = reduceSessionEvent(state, {
@@ -265,7 +292,9 @@ describe("session state reducer", () => {
 			receivedAt,
 		});
 
-		expect(state.messages).toEqual([{ id: "assistant:1", role: "assistant", content: "Hi", streaming: false }]);
+		expect(state.messages).toEqual([
+			{ id: "assistant:1", role: "assistant", content: "Hi", streaming: false, receivedAt, sequence: 0 },
+		]);
 	});
 
 	it("ignores late assistant deltas after message end", () => {
@@ -286,7 +315,9 @@ describe("session state reducer", () => {
 			receivedAt,
 		});
 
-		expect(state.messages).toEqual([{ id: "assistant:1", role: "assistant", content: "Complete", streaming: false }]);
+		expect(state.messages).toEqual([
+			{ id: "assistant:1", role: "assistant", content: "Complete", streaming: false, receivedAt, sequence: 0 },
+		]);
 	});
 
 	it("clears retry messages when retrying stops or a runtime error occurs", () => {
@@ -368,6 +399,60 @@ describe("session state reducer", () => {
 		expect(state.queuedMessages).toHaveLength(1);
 	});
 
+	it("assigns insertion sequence to message and tool execution events", () => {
+		let state = createInitialSessionState();
+		state = reduceSessionEvent(state, {
+			type: "message_start",
+			sessionId: "pi-session:one",
+			messageId: "assistant:1",
+			role: "assistant",
+			content: "Thinking",
+			receivedAt,
+		});
+		state = reduceSessionEvent(state, {
+			type: "tool_execution_start",
+			sessionId: "pi-session:one",
+			toolCallId: "call_1",
+			toolName: "bash",
+			args: { command: "pwd" },
+			receivedAt,
+		});
+
+		expect(state.messages[0]?.sequence).toBe(0);
+		expect(state.toolExecutions[0]?.sequence).toBe(1);
+		expect(state.nextSequence).toBe(2);
+	});
+
+	it("allocates new sequences from the monotonic counter", () => {
+		const state = reduceSessionEvent(
+			{
+				...createInitialSessionState(),
+				nextSequence: 1,
+				messages: [
+					{
+						id: "historical:1",
+						role: "user",
+						content: "Earlier",
+						streaming: false,
+						receivedAt,
+						sequence: 99,
+					},
+				],
+			},
+			{
+				type: "message_start",
+				sessionId: "pi-session:one",
+				messageId: "assistant:2",
+				role: "assistant",
+				content: "Next",
+				receivedAt,
+			},
+		);
+
+		expect(state.messages[1]?.sequence).toBe(1);
+		expect(state.nextSequence).toBe(2);
+	});
+
 	it("tracks tool execution lifecycle events by tool call id", () => {
 		let state = createInitialSessionState();
 		state = reduceSessionEvent(state, {
@@ -409,6 +494,7 @@ describe("session state reducer", () => {
 				startedAt: receivedAt,
 				updatedAt: "2026-05-14T12:00:02.000Z",
 				endedAt: "2026-05-14T12:00:02.000Z",
+				sequence: 0,
 			},
 		]);
 	});

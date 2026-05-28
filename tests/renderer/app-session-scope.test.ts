@@ -381,6 +381,8 @@ describe("pending start event buffering", () => {
 				role: "assistant",
 				content: "Pi session streaming is connected.",
 				streaming: true,
+				receivedAt: "2026-05-14T12:00:01.000Z",
+				sequence: 0,
 			},
 		]);
 		expect(takeBufferedSessionEvents(buffer, "project:/tmp/pi-desktop:session:stale")).toEqual([]);

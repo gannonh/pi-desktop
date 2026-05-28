@@ -59,6 +59,13 @@ const roleLabelForId = (message: AgentMessage): string => {
 	return "message";
 };
 
+const toolCallIdForMessage = (message: AgentMessage): string | undefined => {
+	if (!isRecord(message) || message.role !== "toolResult") {
+		return undefined;
+	}
+	return stringValue(message.toolCallId);
+};
+
 const messageIdFor = (message: AgentMessage): string | undefined => {
 	const stableId = messageStableIdFor(message);
 	// SDK stream messages carry timestamps; ignore malformed timestamp-less messages to avoid unstable renderer IDs.
@@ -66,16 +73,12 @@ const messageIdFor = (message: AgentMessage): string | undefined => {
 		return undefined;
 	}
 
-	const role = roleLabelForId(message);
-
-	if (role === "toolResult" && isRecord(message)) {
-		const toolCallId = stringValue(message.toolCallId);
-		if (toolCallId) {
-			return `toolResult:${toolCallId}:${stableId}`;
-		}
+	const toolCallId = toolCallIdForMessage(message);
+	if (toolCallId) {
+		return `toolResult:${toolCallId}:${stableId}`;
 	}
 
-	return `${role}:${stableId}`;
+	return `${roleLabelForId(message)}:${stableId}`;
 };
 
 const terminalAssistantErrorFor = (message: AgentMessage): string | undefined => {
@@ -107,6 +110,8 @@ const createMessageEndEvent = (
 		};
 	}
 
+	const toolCallId = toolCallIdForMessage(message);
+
 	return {
 		type: "message_end",
 		sessionId,
@@ -114,6 +119,7 @@ const createMessageEndEvent = (
 		role: roleFor(message.role),
 		content: contentFor(message),
 		receivedAt,
+		...(toolCallId ? { toolCallId } : {}),
 	};
 };
 
@@ -287,6 +293,8 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 			return [];
 		}
 
+		const toolCallId = toolCallIdForMessage(event.message);
+
 		return [
 			{
 				type: "message_start",
@@ -295,6 +303,7 @@ export const normalizePiSessionEvent = ({ sessionId, event, now }: NormalizeInpu
 				role: roleFor(event.message.role),
 				content: contentFor(event.message),
 				receivedAt,
+				...(toolCallId ? { toolCallId } : {}),
 			},
 		];
 	}
