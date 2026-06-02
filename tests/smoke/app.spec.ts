@@ -171,7 +171,7 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByLabel("Pi composer")).toBeVisible();
 		await expect(window.getByLabel("Message Pi")).toHaveAttribute(
 			"placeholder",
-			"Ask Pi anything. @ to use skills or mention files",
+			"Ask Pi anything. / opens commands. @ mentions are planned",
 		);
 		await expect(window.getByRole("button", { name: "Work in a project" })).toBeVisible();
 		await expect(window.locator(".composer__action-row .composer__control")).toBeVisible();
