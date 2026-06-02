@@ -11,12 +11,22 @@ import {
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
+import {
+	createCommandPaletteRegistry,
+	getDefaultCommandPaletteEntries,
+	type CommandPaletteEntry,
+} from "../chat/command-palette-registry";
+import {
+	filterCommandPaletteEntries,
+	getCommandPaletteTrigger,
+	isCommandPaletteNavigationKey,
+} from "../chat/command-palette-state";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
@@ -32,6 +42,7 @@ import type {
 	PiSessionQueuedMessageId,
 } from "../../shared/pi-session";
 import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
+import { CommandPalettePopover } from "./command-palette-popover";
 
 interface ComposerProps {
 	context: ComposerContext;
@@ -89,6 +100,9 @@ export function Composer({
 	const formRef = useRef<HTMLFormElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [text, setText] = useState("");
+	const [selectionStart, setSelectionStart] = useState(0);
+	const [activeCommandEntryId, setActiveCommandEntryId] = useState("");
+	const [paletteDismissedForText, setPaletteDismissedForText] = useState("");
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -111,6 +125,24 @@ export function Composer({
 		: defaultInputHint;
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
 	const visibleQueuedMessages = queuedMessages.slice(0, 3);
+	const commandRegistry = useMemo(
+		() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()),
+		[],
+	);
+	const commandTrigger = getCommandPaletteTrigger(text, selectionStart);
+	const commandPaletteOpen = commandTrigger.open && paletteDismissedForText !== text;
+	const filteredCommandEntries = filterCommandPaletteEntries(
+		commandRegistry.getEntries(),
+		commandTrigger.query,
+	);
+	const commandPaletteGroups = useMemo(
+		() => createCommandPaletteRegistry(filteredCommandEntries).getEntriesBySection(),
+		[filteredCommandEntries],
+	);
+	const visibleCommandEntries = useMemo(
+		() => commandPaletteGroups.flatMap((group) => group.entries),
+		[commandPaletteGroups],
+	);
 
 	const focusTextarea = useCallback(() => {
 		textareaRef.current?.focus({ preventScroll: true });
@@ -128,9 +160,20 @@ export function Composer({
 			return;
 		}
 		setText(draftText);
+		setSelectionStart(draftText.length);
 		onDraftApplied?.();
 		focusTextarea();
 	}, [draftText, onDraftApplied, focusTextarea]);
+
+	useEffect(() => {
+		if (!commandPaletteOpen) {
+			setActiveCommandEntryId("");
+			return;
+		}
+		if (!visibleCommandEntries.some((entry) => entry.id === activeCommandEntryId)) {
+			setActiveCommandEntryId(visibleCommandEntries[0]?.id ?? "");
+		}
+	}, [activeCommandEntryId, commandPaletteOpen, visibleCommandEntries]);
 
 	useEffect(() => {
 		const handlePointerDown = (event: MouseEvent) => {
@@ -163,6 +206,44 @@ export function Composer({
 		}
 	};
 
+	const replaceCommandTrigger = (prompt: string) => {
+		const nextText = `${text.slice(0, commandTrigger.start)}${prompt}${text.slice(commandTrigger.end)}`;
+		setText(nextText);
+		setSelectionStart(commandTrigger.start + prompt.length);
+		setPaletteDismissedForText(nextText);
+		focusTextarea();
+	};
+
+	const selectCommandEntry = (entry: CommandPaletteEntry) => {
+		const action = entry.handler();
+		if (action.type === "insertPrompt") {
+			replaceCommandTrigger(action.prompt);
+			return;
+		}
+		setPaletteDismissedForText(text);
+		focusTextarea();
+	};
+
+	const moveActiveCommandEntry = (delta: number) => {
+		if (visibleCommandEntries.length === 0) {
+			return;
+		}
+		const currentIndex = Math.max(
+			0,
+			visibleCommandEntries.findIndex((entry) => entry.id === activeCommandEntryId),
+		);
+		const nextIndex = (currentIndex + delta + visibleCommandEntries.length) % visibleCommandEntries.length;
+		setActiveCommandEntryId(visibleCommandEntries[nextIndex]?.id ?? "");
+	};
+
+	const selectActiveCommandEntry = () => {
+		const selectedEntry =
+			visibleCommandEntries.find((entry) => entry.id === activeCommandEntryId) ?? visibleCommandEntries[0];
+		if (selectedEntry) {
+			selectCommandEntry(selectedEntry);
+		}
+	};
+
 	const submitPrompt = async (delivery?: PiSessionDelivery) => {
 		if (state.sendDisabled || processingFiles) {
 			return;
@@ -175,6 +256,7 @@ export function Composer({
 			const submitted = await onSubmit?.(prompt, delivery, images);
 			if (submitted) {
 				setText("");
+				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
 				focusTextarea();
@@ -294,6 +376,15 @@ export function Composer({
 						.filter(Boolean)
 						.join(" ")}
 				>
+					<CommandPalettePopover
+						open={commandPaletteOpen}
+						query={commandTrigger.query}
+						groups={commandPaletteGroups}
+						activeEntryId={activeCommandEntryId}
+						onActiveEntryIdChange={setActiveCommandEntryId}
+						onSelectEntry={selectCommandEntry}
+						onDismiss={() => setPaletteDismissedForText(text)}
+					/>
 					{isDragging ? <div className="composer__drop-overlay">Drop files here</div> : null}
 					<ComposerAttachmentTiles
 						attachments={attachments}
@@ -305,7 +396,12 @@ export function Composer({
 							className="composer__textarea"
 							aria-label="Message Pi"
 							value={text}
-							onChange={(event) => setText(event.target.value)}
+							onChange={(event) => {
+								setText(event.target.value);
+								setSelectionStart(event.target.selectionStart ?? event.target.value.length);
+								setPaletteDismissedForText("");
+							}}
+							onSelect={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
 							onPaste={(event) => {
 								const items = event.clipboardData?.items;
 								if (!items) {
@@ -327,6 +423,23 @@ export function Composer({
 								void addFiles(imageFiles);
 							}}
 							onKeyDown={(event) => {
+								if (commandPaletteOpen && isCommandPaletteNavigationKey(event.key)) {
+									event.preventDefault();
+									if (event.key === "ArrowDown") {
+										moveActiveCommandEntry(1);
+										return;
+									}
+									if (event.key === "ArrowUp") {
+										moveActiveCommandEntry(-1);
+										return;
+									}
+									if (event.key === "Enter") {
+										selectActiveCommandEntry();
+										return;
+									}
+									setPaletteDismissedForText(text);
+									return;
+								}
 								const action = resolveComposerEnterAction({
 									key: event.key,
 									shiftKey: event.shiftKey,
