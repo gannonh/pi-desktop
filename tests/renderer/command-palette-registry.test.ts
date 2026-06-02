@@ -10,12 +10,7 @@ describe("command palette registry", () => {
 		const registry = createCommandPaletteRegistry(getDefaultCommandPaletteEntries());
 		const entriesBySection = registry.getEntriesBySection();
 
-		expect(COMMAND_PALETTE_SECTIONS.map((section) => section.id)).toEqual([
-			"session",
-			"config",
-			"output",
-			"meta",
-		]);
+		expect(COMMAND_PALETTE_SECTIONS.map((section) => section.id)).toEqual(["session", "config", "output", "meta"]);
 		expect(Object.fromEntries(entriesBySection.map((group) => [group.section.id, group.entries.length]))).toEqual({
 			session: 1,
 			config: 1,

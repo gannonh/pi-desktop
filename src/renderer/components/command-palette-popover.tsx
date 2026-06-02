@@ -1,23 +1,8 @@
-import {
-	CircleHelp,
-	FileOutput,
-	Settings,
-	SquarePen,
-	type LucideIcon,
-} from "lucide-react";
+import { CircleHelp, FileOutput, Settings, SquarePen, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type {
-	CommandPaletteEntry,
-	CommandPaletteEntryGroup,
-} from "../chat/command-palette-registry";
+import type { CommandPaletteEntry, CommandPaletteEntryGroup } from "../chat/command-palette-registry";
 import { Badge } from "./ui/badge";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandItem,
-	CommandList,
-} from "./ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "./ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
 
 interface CommandPalettePopoverProps {
@@ -135,7 +120,9 @@ export function CommandPalettePopover({
 										>
 											<Icon className="composer__command-icon" />
 											<span className="composer__command-copy">
-												<span className="composer__command-title">{highlightMatch(entry.title, query)}</span>
+												<span className="composer__command-title">
+													{highlightMatch(entry.title, query)}
+												</span>
 												<span className="composer__command-description">{entry.description}</span>
 											</span>
 											{entry.scopeTag ? <Badge variant="secondary">{entry.scopeTag}</Badge> : null}

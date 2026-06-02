@@ -38,9 +38,7 @@ describe("command palette state", () => {
 	it("filters entries by title, description, or entry id", () => {
 		expect(filterCommandPaletteEntries(entries, "model").map((entry) => entry.id)).toEqual(["config.model"]);
 		expect(filterCommandPaletteEntries(entries, "fresh").map((entry) => entry.id)).toEqual(["session.new"]);
-		expect(filterCommandPaletteEntries(entries, "session.new").map((entry) => entry.id)).toEqual([
-			"session.new",
-		]);
+		expect(filterCommandPaletteEntries(entries, "session.new").map((entry) => entry.id)).toEqual(["session.new"]);
 	});
 
 	it("captures palette navigation keys so they do not submit prompts", () => {

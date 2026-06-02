@@ -41,10 +41,7 @@ export function getCommandPaletteTrigger(text: string, selectionStart = text.len
 	};
 }
 
-export function filterCommandPaletteEntries(
-	entries: CommandPaletteEntry[],
-	query: string,
-): CommandPaletteEntry[] {
+export function filterCommandPaletteEntries(entries: CommandPaletteEntry[], query: string): CommandPaletteEntry[] {
 	const normalizedQuery = query.trim().toLowerCase();
 	if (!normalizedQuery) {
 		return entries;

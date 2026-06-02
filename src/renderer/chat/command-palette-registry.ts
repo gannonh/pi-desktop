@@ -5,9 +5,7 @@ export interface CommandPaletteSection {
 	label: string;
 }
 
-export type CommandPaletteAction =
-	| { type: "insertPrompt"; prompt: string }
-	| { type: "handled" };
+export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { type: "handled" };
 
 export interface CommandPaletteEntry {
 	id: string;
@@ -39,13 +37,9 @@ export const COMMAND_PALETTE_SECTIONS: CommandPaletteSection[] = [
 
 const sectionIds = new Set(COMMAND_PALETTE_SECTIONS.map((section) => section.id));
 
-const sectionOrder = new Map(
-	COMMAND_PALETTE_SECTIONS.map((section, index) => [section.id, index]),
-);
+const sectionOrder = new Map(COMMAND_PALETTE_SECTIONS.map((section, index) => [section.id, index]));
 
-export function createCommandPaletteRegistry(
-	initialEntries: CommandPaletteEntry[] = [],
-): CommandPaletteRegistry {
+export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry[] = []): CommandPaletteRegistry {
 	const entries = new Map<string, CommandPaletteEntry>();
 
 	const register = (entry: CommandPaletteEntry) => {

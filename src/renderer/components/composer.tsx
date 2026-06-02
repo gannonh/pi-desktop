@@ -70,7 +70,7 @@ interface ComposerProps {
 
 type ComposerMenu = "project" | "mode" | "model" | null;
 
-const defaultInputHint = "Ask Pi anything. @ to use skills or mention files";
+const defaultInputHint = "Ask Pi anything. / opens commands. @ mentions are planned";
 const runningSteerHint = "Steering message — queued at the next turn";
 const runningFollowUpHint = "Follow-up message — Option+Enter to queue as follow-up";
 
@@ -125,16 +125,10 @@ export function Composer({
 		: defaultInputHint;
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
 	const visibleQueuedMessages = queuedMessages.slice(0, 3);
-	const commandRegistry = useMemo(
-		() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()),
-		[],
-	);
+	const commandRegistry = useMemo(() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()), []);
 	const commandTrigger = getCommandPaletteTrigger(text, selectionStart);
 	const commandPaletteOpen = commandTrigger.open && paletteDismissedForText !== text;
-	const filteredCommandEntries = filterCommandPaletteEntries(
-		commandRegistry.getEntries(),
-		commandTrigger.query,
-	);
+	const filteredCommandEntries = filterCommandPaletteEntries(commandRegistry.getEntries(), commandTrigger.query);
 	const commandPaletteGroups = useMemo(
 		() => createCommandPaletteRegistry(filteredCommandEntries).getEntriesBySection(),
 		[filteredCommandEntries],
