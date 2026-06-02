@@ -1,6 +1,7 @@
 import { CircleHelp, FileOutput, Settings, SquarePen, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import type { CommandPaletteEntry, CommandPaletteEntryGroup } from "../chat/command-palette-registry";
+import { getNextCommandPaletteEntryId } from "../chat/command-palette-state";
 import { Badge } from "./ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "./ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
@@ -44,21 +45,39 @@ export function CommandPalettePopover({
 	};
 
 	const moveActiveEntry = (delta: number) => {
-		if (entries.length === 0) {
-			return;
+		const nextEntryId = getNextCommandPaletteEntryId(entries, internalActiveEntryId, delta);
+		if (nextEntryId !== undefined) {
+			setActiveEntryId(nextEntryId);
 		}
-		const currentIndex = Math.max(
-			0,
-			entries.findIndex((entry) => entry.id === internalActiveEntryId),
-		);
-		const nextIndex = (currentIndex + delta + entries.length) % entries.length;
-		setActiveEntryId(entries[nextIndex]?.id ?? entries[0]?.id ?? "");
 	};
 
 	const selectActiveEntry = () => {
 		const selectedEntry = entries.find((entry) => entry.id === internalActiveEntryId) ?? entries[0];
 		if (selectedEntry) {
 			onSelectEntry(selectedEntry);
+		}
+	};
+
+	const handleCommandKeyDown = (event: KeyboardEvent) => {
+		switch (event.key) {
+			case "ArrowDown":
+				event.preventDefault();
+				moveActiveEntry(1);
+				return;
+			case "ArrowUp":
+				event.preventDefault();
+				moveActiveEntry(-1);
+				return;
+			case "Enter":
+				event.preventDefault();
+				selectActiveEntry();
+				return;
+			case "Escape":
+				event.preventDefault();
+				onDismiss();
+				return;
+			default:
+				return;
 		}
 	};
 
@@ -80,27 +99,7 @@ export function CommandPalettePopover({
 						role="listbox"
 						aria-label="Command palette"
 						className="composer__command-list"
-						onKeyDown={(event) => {
-							if (event.key === "ArrowDown") {
-								event.preventDefault();
-								moveActiveEntry(1);
-								return;
-							}
-							if (event.key === "ArrowUp") {
-								event.preventDefault();
-								moveActiveEntry(-1);
-								return;
-							}
-							if (event.key === "Enter") {
-								event.preventDefault();
-								selectActiveEntry();
-								return;
-							}
-							if (event.key === "Escape") {
-								event.preventDefault();
-								onDismiss();
-							}
-						}}
+						onKeyDown={handleCommandKeyDown}
 					>
 						<CommandEmpty>No commands found.</CommandEmpty>
 						{groups.map((group) => (

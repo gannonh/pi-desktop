@@ -25,6 +25,7 @@ import {
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteTrigger,
+	getNextCommandPaletteEntryId,
 	isCommandPaletteNavigationKey,
 } from "../chat/command-palette-state";
 import { createComposerState } from "../chat/composer-state";
@@ -219,15 +220,10 @@ export function Composer({
 	};
 
 	const moveActiveCommandEntry = (delta: number) => {
-		if (visibleCommandEntries.length === 0) {
-			return;
+		const nextEntryId = getNextCommandPaletteEntryId(visibleCommandEntries, activeCommandEntryId, delta);
+		if (nextEntryId !== undefined) {
+			setActiveCommandEntryId(nextEntryId);
 		}
-		const currentIndex = Math.max(
-			0,
-			visibleCommandEntries.findIndex((entry) => entry.id === activeCommandEntryId),
-		);
-		const nextIndex = (currentIndex + delta + visibleCommandEntries.length) % visibleCommandEntries.length;
-		setActiveCommandEntryId(visibleCommandEntries[nextIndex]?.id ?? "");
 	};
 
 	const selectActiveCommandEntry = () => {
@@ -419,20 +415,20 @@ export function Composer({
 							onKeyDown={(event) => {
 								if (commandPaletteOpen && isCommandPaletteNavigationKey(event.key)) {
 									event.preventDefault();
-									if (event.key === "ArrowDown") {
-										moveActiveCommandEntry(1);
-										return;
+									switch (event.key) {
+										case "ArrowDown":
+											moveActiveCommandEntry(1);
+											return;
+										case "ArrowUp":
+											moveActiveCommandEntry(-1);
+											return;
+										case "Enter":
+											selectActiveCommandEntry();
+											return;
+										default:
+											setPaletteDismissedForText(text);
+											return;
 									}
-									if (event.key === "ArrowUp") {
-										moveActiveCommandEntry(-1);
-										return;
-									}
-									if (event.key === "Enter") {
-										selectActiveCommandEntry();
-										return;
-									}
-									setPaletteDismissedForText(text);
-									return;
 								}
 								const action = resolveComposerEnterAction({
 									key: event.key,

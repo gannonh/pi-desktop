@@ -3,6 +3,7 @@ import type { CommandPaletteEntry } from "../../src/renderer/chat/command-palett
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteTrigger,
+	getNextCommandPaletteEntryId,
 	isCommandPaletteNavigationKey,
 } from "../../src/renderer/chat/command-palette-state";
 
@@ -39,6 +40,12 @@ describe("command palette state", () => {
 		expect(filterCommandPaletteEntries(entries, "model").map((entry) => entry.id)).toEqual(["config.model"]);
 		expect(filterCommandPaletteEntries(entries, "fresh").map((entry) => entry.id)).toEqual(["session.new"]);
 		expect(filterCommandPaletteEntries(entries, "session.new").map((entry) => entry.id)).toEqual(["session.new"]);
+	});
+
+	it("wraps keyboard navigation across filtered entries", () => {
+		expect(getNextCommandPaletteEntryId(entries, "session.new", 1)).toBe("config.model");
+		expect(getNextCommandPaletteEntryId(entries, "session.new", -1)).toBe("config.model");
+		expect(getNextCommandPaletteEntryId([], "session.new", 1)).toBeUndefined();
 	});
 
 	it("captures palette navigation keys so they do not submit prompts", () => {

@@ -9,7 +9,7 @@ export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { 
 
 export interface CommandPaletteEntry {
 	id: string;
-	sectionId: CommandPaletteSectionId | string;
+	sectionId: string;
 	icon: string;
 	title: string;
 	description: string;
@@ -35,15 +35,15 @@ export const COMMAND_PALETTE_SECTIONS: CommandPaletteSection[] = [
 	{ id: "meta", label: "Meta/Skills" },
 ];
 
-const sectionIds = new Set(COMMAND_PALETTE_SECTIONS.map((section) => section.id));
+const sectionIds = new Set<string>(COMMAND_PALETTE_SECTIONS.map((section) => section.id));
 
-const sectionOrder = new Map(COMMAND_PALETTE_SECTIONS.map((section, index) => [section.id, index]));
+const sectionOrder = new Map<string, number>(COMMAND_PALETTE_SECTIONS.map((section, index) => [section.id, index]));
 
 export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry[] = []): CommandPaletteRegistry {
 	const entries = new Map<string, CommandPaletteEntry>();
 
 	const register = (entry: CommandPaletteEntry) => {
-		if (!sectionIds.has(entry.sectionId as CommandPaletteSectionId)) {
+		if (!sectionIds.has(entry.sectionId)) {
 			throw new Error(`Unknown command palette section: ${entry.sectionId}`);
 		}
 		entries.set(entry.id, entry);
@@ -53,22 +53,22 @@ export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry
 		register(entry);
 	}
 
+	const getEntries = () =>
+		Array.from(entries.values()).sort((left, right) => {
+			const sectionDelta = (sectionOrder.get(left.sectionId) ?? 0) - (sectionOrder.get(right.sectionId) ?? 0);
+			return sectionDelta || left.title.localeCompare(right.title);
+		});
+
 	return {
 		register,
-		getEntries: () =>
-			Array.from(entries.values()).sort((left, right) => {
-				const sectionDelta =
-					(sectionOrder.get(left.sectionId as CommandPaletteSectionId) ?? 0) -
-					(sectionOrder.get(right.sectionId as CommandPaletteSectionId) ?? 0);
-				return sectionDelta || left.title.localeCompare(right.title);
-			}),
-		getEntriesBySection: () =>
-			COMMAND_PALETTE_SECTIONS.map((section) => ({
+		getEntries,
+		getEntriesBySection: () => {
+			const sortedEntries = getEntries();
+			return COMMAND_PALETTE_SECTIONS.map((section) => ({
 				section,
-				entries: Array.from(entries.values())
-					.filter((entry) => entry.sectionId === section.id)
-					.sort((left, right) => left.title.localeCompare(right.title)),
-			})).filter((group) => group.entries.length > 0),
+				entries: sortedEntries.filter((entry) => entry.sectionId === section.id),
+			})).filter((group) => group.entries.length > 0);
+		},
 	};
 }
 

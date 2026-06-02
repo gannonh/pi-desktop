@@ -53,6 +53,21 @@ export function filterCommandPaletteEntries(entries: CommandPaletteEntry[], quer
 	});
 }
 
+export function getNextCommandPaletteEntryId(
+	entries: CommandPaletteEntry[],
+	activeEntryId: string,
+	delta: number,
+): string | undefined {
+	if (entries.length === 0) {
+		return undefined;
+	}
+
+	const currentIndex = entries.findIndex((entry) => entry.id === activeEntryId);
+	const safeCurrentIndex = currentIndex === -1 ? 0 : currentIndex;
+	const nextIndex = (safeCurrentIndex + delta + entries.length) % entries.length;
+	return entries[nextIndex]?.id;
+}
+
 export function isCommandPaletteNavigationKey(key: string): boolean {
 	return key === "ArrowDown" || key === "ArrowUp" || key === "Enter" || key === "Escape";
 }
