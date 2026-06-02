@@ -2496,6 +2496,71 @@ body.file-workspace--resizing {
 	font-size: var(--type-caption);
 }
 
+.composer__command-anchor {
+	position: absolute;
+	inset-inline: var(--composer-padding);
+	top: 0;
+	height: 1px;
+}
+
+.composer__command-popover {
+	width: min(38rem, calc(100vw - 2rem));
+	border-color: color-mix(in oklch, var(--color-border) 72%, transparent);
+	background: var(--composer-surface);
+	padding: 0.375rem;
+	box-shadow: 0 1.25rem 2.5rem rgb(0 0 0 / 32%);
+}
+
+.composer__command {
+	background: transparent;
+}
+
+.composer__command-list {
+	max-height: min(22rem, 52vh);
+}
+
+.composer__command-item {
+	align-items: flex-start;
+	gap: 0.625rem;
+	padding-block: 0.625rem;
+}
+
+.composer__command-item[data-active="true"],
+.composer__command-item[aria-selected="true"] {
+	background: var(--color-accent);
+	color: var(--color-accent-foreground);
+}
+
+.composer__command-icon {
+	width: 1rem;
+	height: 1rem;
+	margin-top: 0.125rem;
+	color: var(--color-muted-foreground);
+}
+
+.composer__command-copy {
+	display: flex;
+	min-width: 0;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 0.125rem;
+}
+
+.composer__command-title {
+	font-weight: 600;
+}
+
+.composer__command-title mark {
+	border-radius: 0.25rem;
+	background: color-mix(in oklch, var(--color-primary) 18%, transparent);
+	color: inherit;
+}
+
+.composer__command-description {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
 .composer__model-menu {
 	position: absolute;
 	bottom: calc(100% + 0.375rem);
