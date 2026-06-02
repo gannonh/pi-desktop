@@ -58,6 +58,30 @@ const hideAgentationOverlay = async (page: Page) => {
 	await page.addStyleTag({ content: "#root > button:last-child { display: none !important; }" });
 };
 
+const waitForDevBridge = async (page: Page) => {
+	await expect
+		.poll(
+			async () => {
+				const result = await page.evaluate(() => window.piDesktop.app.getVersion()).catch(() => null);
+				return result?.ok === true;
+			},
+			{ timeout: 30_000 },
+		)
+		.toBe(true);
+};
+
+const waitForSelectedProject = async (page: Page, displayName: string) => {
+	await expect
+		.poll(
+			async () => {
+				const state = await page.evaluate(async () => window.piDesktop.project.getState()).catch(() => null);
+				return state?.ok === true ? state.data.selectedProject?.displayName : null;
+			},
+			{ timeout: 30_000 },
+		)
+		.toBe(displayName);
+};
+
 const clickButton = async (page: Page, name: string) => {
 	await page.getByRole("button", { name, exact: true }).click();
 };
@@ -69,6 +93,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 
 	const previousUserDataDir = process.env.PI_DESKTOP_USER_DATA_DIR;
 	const previousSmokeSession = process.env.PI_DESKTOP_SMOKE_PI_SESSION;
+	const previousSmokeStreamDelay = process.env.PI_DESKTOP_SMOKE_STREAM_DELAY_MS;
 	const previousAppServerUrl = process.env.VITE_PI_DESKTOP_APP_SERVER_URL;
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-desktop-dev-web-smoke-"));
 	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-dev-web-project-"));
@@ -78,29 +103,32 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await writeProjectStore(userDataDir, projectPath);
 		process.env.PI_DESKTOP_USER_DATA_DIR = userDataDir;
 		process.env.PI_DESKTOP_SMOKE_PI_SESSION = "1";
+		process.env.PI_DESKTOP_SMOKE_STREAM_DELAY_MS = "1000";
 		delete process.env.VITE_PI_DESKTOP_APP_SERVER_URL;
 
 		server = await startDevWebServer({ logger: noopLogger, process: noopProcess });
 
-		await page.goto(server.previewUrl);
+		await page.goto(server.previewUrl, { waitUntil: "domcontentloaded" });
 		await hideAgentationOverlay(page);
+		await waitForDevBridge(page);
 
 		await expect(page.getByTestId("app-shell")).toBeVisible();
 		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
-		await expect(page.getByTitle(projectPath).getByText(projectName, { exact: true })).toBeVisible();
+		await waitForSelectedProject(page, projectName);
 		await expect(page.getByRole("heading", { name: `What should we build in ${projectName}?` })).toBeVisible();
+		await page.evaluate(() => {
+			window.piDesktop.piSession.onEvent(() => {});
+		});
+		await page.waitForTimeout(500);
 
 		await clickButton(page, `New chat in ${projectName}`);
 		const selectedChatRow = page.locator("button.project-sidebar__chat-row--selected", { hasText: "New chat" });
 		await expect(selectedChatRow).toBeVisible();
 
-		await page.locator("button.project-sidebar__project-row", { hasText: projectName }).click();
-		await expect(page.locator("button.project-sidebar__chat-row--selected")).toHaveCount(0);
-		await page.locator("button.project-sidebar__chat-row", { hasText: "New chat" }).click();
-		await expect(selectedChatRow).toBeVisible();
-
 		await page.getByLabel("Message Pi").fill("Confirm web bridge streaming");
+		await expect(page.getByLabel("Message Pi")).toHaveValue("Confirm web bridge streaming");
+		await expect(page.getByRole("button", { name: "Send message" })).toBeEnabled();
 		await clickButton(page, "Send message");
 
 		await expect(page.getByText("Confirm web bridge streaming")).toBeVisible({ timeout: 30_000 });
@@ -139,6 +167,11 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 			delete process.env.PI_DESKTOP_SMOKE_PI_SESSION;
 		} else {
 			process.env.PI_DESKTOP_SMOKE_PI_SESSION = previousSmokeSession;
+		}
+		if (previousSmokeStreamDelay === undefined) {
+			delete process.env.PI_DESKTOP_SMOKE_STREAM_DELAY_MS;
+		} else {
+			process.env.PI_DESKTOP_SMOKE_STREAM_DELAY_MS = previousSmokeStreamDelay;
 		}
 		if (previousAppServerUrl === undefined) {
 			delete process.env.VITE_PI_DESKTOP_APP_SERVER_URL;

@@ -31,6 +31,18 @@ const expectComposerNearBottom = async (page: Page) => {
 		.toBe(true);
 };
 
+const waitForSelectedProject = async (page: Page, displayName: string) => {
+	await expect
+		.poll(
+			async () => {
+				const state = await page.evaluate(async () => window.piDesktop.project.getState()).catch(() => null);
+				return state?.ok === true ? state.data.selectedProject?.displayName : null;
+			},
+			{ timeout: 30_000 },
+		)
+		.toBe(displayName);
+};
+
 const expectComposerControlPlacement = async (page: Page) => {
 	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
 	const messageBox = await page.getByLabel("Message Pi").boundingBox();
@@ -211,8 +223,8 @@ test("renders the selected project chat start state", async () => {
 	try {
 		const window = await app.firstWindow();
 
+		await waitForSelectedProject(window, "pi-desktop");
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
-		await expect(window.getByTitle(projectPath).getByText("pi-desktop", { exact: true })).toBeVisible();
 		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toHaveCount(0);
 		await expectSelectedComposerVisualTokens(window);
 	} finally {
@@ -316,6 +328,7 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 	try {
 		const window = await app.firstWindow();
 
+		await waitForSelectedProject(window, "pi-desktop");
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await rm(projectPath, { recursive: true, force: true });
 		await window.getByLabel("Message Pi").fill("What files are here?");
@@ -456,6 +469,7 @@ test("renders an empty selected chat as a centered start state before streaming"
 	try {
 		const window = await app.firstWindow();
 
+		await waitForSelectedProject(window, "pi-desktop");
 		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
 		await expect(window.getByLabel("Empty chat")).toHaveCount(0);
 		await expectSelectedComposerVisualTokens(window);

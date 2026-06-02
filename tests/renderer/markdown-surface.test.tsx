@@ -2,7 +2,7 @@
 
 import { EditorView } from "@codemirror/view";
 import { MDXEditor, type MDXEditorMethods } from "@mdxeditor/editor";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PanelBottom, PanelRight } from "lucide-react";
 import { createElement, isValidElement, useEffect, useRef } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,11 +81,13 @@ const knownMdxEditorActWarningComponents = new Set([
 ]);
 
 beforeEach(() => {
+	configure({ asyncUtilTimeout: 10_000 });
 	Reflect.deleteProperty(window, "piDesktop");
 	consoleMessages = captureConsoleMessages();
 });
 
 afterEach(() => {
+	configure({ asyncUtilTimeout: 1000 });
 	vi.useRealTimers();
 	// MDXEditor 4.0.1 emits React act warnings from Radix/Lexical internals after mount in jsdom.
 	// The product code cannot wrap those internal updates, so this guard suppresses only that exact

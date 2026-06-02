@@ -99,7 +99,13 @@ const renderExplorerWithEntries = async () => {
 		</ShellTestProviders>,
 	);
 
-	return { explorer: await screen.findByTestId("file-explorer"), clipboardWriteText };
+	const explorer = await screen.findByTestId("file-explorer");
+	await waitFor(() => {
+		expect(screen.getByRole("button", { name: /^src$/ })).toBeTruthy();
+		expect(screen.getByRole("button", { name: /index\.ts/ })).toBeTruthy();
+	});
+
+	return { explorer, clipboardWriteText };
 };
 
 describe("FileWorkspacePanel", () => {
