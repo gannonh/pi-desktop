@@ -1,7 +1,11 @@
 import { CircleHelp, FileOutput, Settings, SquarePen, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import type { CommandPaletteEntry, CommandPaletteEntryGroup } from "../chat/command-palette-registry";
-import { getNextCommandPaletteEntryId } from "../chat/command-palette-state";
+import { useMemo, type KeyboardEvent } from "react";
+import type {
+	CommandPaletteEntry,
+	CommandPaletteEntryGroup,
+	CommandPaletteIconName,
+} from "../chat/command-palette-registry";
+import { getCommandPaletteKeyAction, getNextCommandPaletteEntryId } from "../chat/command-palette-state";
 import { Badge } from "./ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "./ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
@@ -10,13 +14,13 @@ interface CommandPalettePopoverProps {
 	open: boolean;
 	query: string;
 	groups: CommandPaletteEntryGroup[];
-	activeEntryId?: string;
+	activeEntryId: string;
 	onActiveEntryIdChange: (entryId: string) => void;
 	onSelectEntry: (entry: CommandPaletteEntry) => void;
 	onDismiss: () => void;
 }
 
-const iconByName: Record<string, LucideIcon> = {
+const iconByName: Record<CommandPaletteIconName, LucideIcon> = {
 	CircleHelp,
 	FileOutput,
 	Settings,
@@ -33,50 +37,41 @@ export function CommandPalettePopover({
 	onDismiss,
 }: CommandPalettePopoverProps) {
 	const entries = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
-	const [internalActiveEntryId, setInternalActiveEntryId] = useState(activeEntryId ?? entries[0]?.id ?? "");
-
-	useEffect(() => {
-		setInternalActiveEntryId(activeEntryId ?? entries[0]?.id ?? "");
-	}, [activeEntryId, entries]);
-
-	const setActiveEntryId = (entryId: string) => {
-		setInternalActiveEntryId(entryId);
-		onActiveEntryIdChange(entryId);
-	};
+	const selectedEntry = entries.find((entry) => entry.id === activeEntryId) ?? entries[0];
+	const selectedEntryId = selectedEntry?.id ?? "";
 
 	const moveActiveEntry = (delta: number) => {
-		const nextEntryId = getNextCommandPaletteEntryId(entries, internalActiveEntryId, delta);
+		const nextEntryId = getNextCommandPaletteEntryId(entries, selectedEntryId, delta);
 		if (nextEntryId !== undefined) {
-			setActiveEntryId(nextEntryId);
+			onActiveEntryIdChange(nextEntryId);
 		}
 	};
 
 	const selectActiveEntry = () => {
-		const selectedEntry = entries.find((entry) => entry.id === internalActiveEntryId) ?? entries[0];
 		if (selectedEntry) {
 			onSelectEntry(selectedEntry);
 		}
 	};
 
 	const handleCommandKeyDown = (event: KeyboardEvent) => {
-		switch (event.key) {
-			case "ArrowDown":
-				event.preventDefault();
+		const action = getCommandPaletteKeyAction(event.key);
+		if (action === undefined) {
+			return;
+		}
+
+		event.preventDefault();
+		switch (action) {
+			case "next":
 				moveActiveEntry(1);
 				return;
-			case "ArrowUp":
-				event.preventDefault();
+			case "previous":
 				moveActiveEntry(-1);
 				return;
-			case "Enter":
-				event.preventDefault();
+			case "select":
 				selectActiveEntry();
 				return;
-			case "Escape":
-				event.preventDefault();
+			case "dismiss":
 				onDismiss();
-				return;
-			default:
 				return;
 		}
 	};
@@ -105,8 +100,8 @@ export function CommandPalettePopover({
 						{groups.map((group) => (
 							<CommandGroup key={group.section.id} heading={group.section.label}>
 								{group.entries.map((entry) => {
-									const Icon = iconByName[entry.icon] ?? CircleHelp;
-									const active = entry.id === internalActiveEntryId;
+									const Icon = iconByName[entry.icon];
+									const active = entry.id === selectedEntryId;
 									return (
 										<CommandItem
 											key={entry.id}
@@ -114,7 +109,7 @@ export function CommandPalettePopover({
 											aria-selected={active}
 											data-active={active || undefined}
 											className="composer__command-item"
-											onMouseEnter={() => setActiveEntryId(entry.id)}
+											onMouseEnter={() => onActiveEntryIdChange(entry.id)}
 											onSelect={() => onSelectEntry(entry)}
 										>
 											<Icon className="composer__command-icon" />

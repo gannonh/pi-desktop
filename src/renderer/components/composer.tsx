@@ -11,23 +11,13 @@ import {
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
-import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
-	type CommandPaletteEntry,
-} from "../chat/command-palette-registry";
-import {
-	filterCommandPaletteEntries,
-	getCommandPaletteTrigger,
-	getNextCommandPaletteEntryId,
-	isCommandPaletteNavigationKey,
-} from "../chat/command-palette-state";
+import { useComposerCommandPalette } from "../chat/use-composer-command-palette";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
@@ -102,8 +92,6 @@ export function Composer({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [text, setText] = useState("");
 	const [selectionStart, setSelectionStart] = useState(0);
-	const [activeCommandEntryId, setActiveCommandEntryId] = useState("");
-	const [paletteDismissedForText, setPaletteDismissedForText] = useState("");
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -126,22 +114,17 @@ export function Composer({
 		: defaultInputHint;
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
 	const visibleQueuedMessages = queuedMessages.slice(0, 3);
-	const commandRegistry = useMemo(() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()), []);
-	const commandTrigger = getCommandPaletteTrigger(text, selectionStart);
-	const commandPaletteOpen = commandTrigger.open && paletteDismissedForText !== text;
-	const filteredCommandEntries = filterCommandPaletteEntries(commandRegistry.getEntries(), commandTrigger.query);
-	const commandPaletteGroups = useMemo(
-		() => createCommandPaletteRegistry(filteredCommandEntries).getEntriesBySection(),
-		[filteredCommandEntries],
-	);
-	const visibleCommandEntries = useMemo(
-		() => commandPaletteGroups.flatMap((group) => group.entries),
-		[commandPaletteGroups],
-	);
 
 	const focusTextarea = useCallback(() => {
 		textareaRef.current?.focus({ preventScroll: true });
 	}, [textareaRef]);
+	const commandPalette = useComposerCommandPalette({
+		text,
+		selectionStart,
+		setText,
+		setSelectionStart,
+		focusTextarea,
+	});
 
 	useEffect(() => {
 		if (!focusKey) {
@@ -159,16 +142,6 @@ export function Composer({
 		onDraftApplied?.();
 		focusTextarea();
 	}, [draftText, onDraftApplied, focusTextarea]);
-
-	useEffect(() => {
-		if (!commandPaletteOpen) {
-			setActiveCommandEntryId("");
-			return;
-		}
-		if (!visibleCommandEntries.some((entry) => entry.id === activeCommandEntryId)) {
-			setActiveCommandEntryId(visibleCommandEntries[0]?.id ?? "");
-		}
-	}, [activeCommandEntryId, commandPaletteOpen, visibleCommandEntries]);
 
 	useEffect(() => {
 		const handlePointerDown = (event: MouseEvent) => {
@@ -198,39 +171,6 @@ export function Composer({
 			setAttachmentError(error instanceof Error ? error.message : "Failed to process attachments.");
 		} finally {
 			setProcessingFiles(false);
-		}
-	};
-
-	const replaceCommandTrigger = (prompt: string) => {
-		const nextText = `${text.slice(0, commandTrigger.start)}${prompt}${text.slice(commandTrigger.end)}`;
-		setText(nextText);
-		setSelectionStart(commandTrigger.start + prompt.length);
-		setPaletteDismissedForText(nextText);
-		focusTextarea();
-	};
-
-	const selectCommandEntry = (entry: CommandPaletteEntry) => {
-		const action = entry.handler();
-		if (action.type === "insertPrompt") {
-			replaceCommandTrigger(action.prompt);
-			return;
-		}
-		setPaletteDismissedForText(text);
-		focusTextarea();
-	};
-
-	const moveActiveCommandEntry = (delta: number) => {
-		const nextEntryId = getNextCommandPaletteEntryId(visibleCommandEntries, activeCommandEntryId, delta);
-		if (nextEntryId !== undefined) {
-			setActiveCommandEntryId(nextEntryId);
-		}
-	};
-
-	const selectActiveCommandEntry = () => {
-		const selectedEntry =
-			visibleCommandEntries.find((entry) => entry.id === activeCommandEntryId) ?? visibleCommandEntries[0];
-		if (selectedEntry) {
-			selectCommandEntry(selectedEntry);
 		}
 	};
 
@@ -367,13 +307,13 @@ export function Composer({
 						.join(" ")}
 				>
 					<CommandPalettePopover
-						open={commandPaletteOpen}
-						query={commandTrigger.query}
-						groups={commandPaletteGroups}
-						activeEntryId={activeCommandEntryId}
-						onActiveEntryIdChange={setActiveCommandEntryId}
-						onSelectEntry={selectCommandEntry}
-						onDismiss={() => setPaletteDismissedForText(text)}
+						open={commandPalette.open}
+						query={commandPalette.trigger.query}
+						groups={commandPalette.groups}
+						activeEntryId={commandPalette.activeEntryId}
+						onActiveEntryIdChange={commandPalette.setActiveEntryId}
+						onSelectEntry={commandPalette.selectEntry}
+						onDismiss={commandPalette.dismiss}
 					/>
 					{isDragging ? <div className="composer__drop-overlay">Drop files here</div> : null}
 					<ComposerAttachmentTiles
@@ -387,9 +327,10 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => {
-								setText(event.target.value);
-								setSelectionStart(event.target.selectionStart ?? event.target.value.length);
-								setPaletteDismissedForText("");
+								commandPalette.noteTextChanged(
+									event.target.value,
+									event.target.selectionStart ?? event.target.value.length,
+								);
 							}}
 							onSelect={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
 							onPaste={(event) => {
@@ -413,22 +354,9 @@ export function Composer({
 								void addFiles(imageFiles);
 							}}
 							onKeyDown={(event) => {
-								if (commandPaletteOpen && isCommandPaletteNavigationKey(event.key)) {
+								if (commandPalette.handleNavigationKey(event.key)) {
 									event.preventDefault();
-									switch (event.key) {
-										case "ArrowDown":
-											moveActiveCommandEntry(1);
-											return;
-										case "ArrowUp":
-											moveActiveCommandEntry(-1);
-											return;
-										case "Enter":
-											selectActiveCommandEntry();
-											return;
-										default:
-											setPaletteDismissedForText(text);
-											return;
-									}
+									return;
 								}
 								const action = resolveComposerEnterAction({
 									key: event.key,

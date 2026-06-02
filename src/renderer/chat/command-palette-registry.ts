@@ -1,5 +1,7 @@
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
+export type CommandPaletteIconName = "CircleHelp" | "FileOutput" | "Settings" | "SquarePen";
+
 export interface CommandPaletteSection {
 	id: CommandPaletteSectionId;
 	label: string;
@@ -9,8 +11,8 @@ export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { 
 
 export interface CommandPaletteEntry {
 	id: string;
-	sectionId: string;
-	icon: string;
+	sectionId: CommandPaletteSectionId;
+	icon: CommandPaletteIconName;
 	title: string;
 	description: string;
 	scopeTag?: string;
@@ -35,9 +37,23 @@ export const COMMAND_PALETTE_SECTIONS: CommandPaletteSection[] = [
 	{ id: "meta", label: "Meta/Skills" },
 ];
 
-const sectionIds = new Set<string>(COMMAND_PALETTE_SECTIONS.map((section) => section.id));
+export const COMMAND_PALETTE_ICON_NAMES: CommandPaletteIconName[] = [
+	"CircleHelp",
+	"FileOutput",
+	"Settings",
+	"SquarePen",
+];
 
-const sectionOrder = new Map<string, number>(COMMAND_PALETTE_SECTIONS.map((section, index) => [section.id, index]));
+const sectionIds = new Set<CommandPaletteSectionId>(COMMAND_PALETTE_SECTIONS.map((section) => section.id));
+
+const iconNames = new Set<CommandPaletteIconName>(COMMAND_PALETTE_ICON_NAMES);
+
+const sectionOrder: Record<CommandPaletteSectionId, number> = {
+	session: 0,
+	config: 1,
+	output: 2,
+	meta: 3,
+};
 
 export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry[] = []): CommandPaletteRegistry {
 	const entries = new Map<string, CommandPaletteEntry>();
@@ -46,6 +62,9 @@ export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry
 		if (!sectionIds.has(entry.sectionId)) {
 			throw new Error(`Unknown command palette section: ${entry.sectionId}`);
 		}
+		if (!iconNames.has(entry.icon)) {
+			throw new Error(`Unknown command palette icon: ${entry.icon}`);
+		}
 		entries.set(entry.id, entry);
 	};
 
@@ -53,23 +72,38 @@ export function createCommandPaletteRegistry(initialEntries: CommandPaletteEntry
 		register(entry);
 	}
 
-	const getEntries = () =>
-		Array.from(entries.values()).sort((left, right) => {
-			const sectionDelta = (sectionOrder.get(left.sectionId) ?? 0) - (sectionOrder.get(right.sectionId) ?? 0);
-			return sectionDelta || left.title.localeCompare(right.title);
-		});
+	const getEntries = () => sortCommandPaletteEntries(Array.from(entries.values()));
 
 	return {
 		register,
 		getEntries,
-		getEntriesBySection: () => {
-			const sortedEntries = getEntries();
-			return COMMAND_PALETTE_SECTIONS.map((section) => ({
-				section,
-				entries: sortedEntries.filter((entry) => entry.sectionId === section.id),
-			})).filter((group) => group.entries.length > 0);
-		},
+		getEntriesBySection: () => groupCommandPaletteEntries(getEntries()),
 	};
+}
+
+export function groupCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPaletteEntryGroup[] {
+	const entriesBySection: Record<CommandPaletteSectionId, CommandPaletteEntry[]> = {
+		session: [],
+		config: [],
+		output: [],
+		meta: [],
+	};
+
+	for (const entry of sortCommandPaletteEntries(entries)) {
+		entriesBySection[entry.sectionId].push(entry);
+	}
+
+	return COMMAND_PALETTE_SECTIONS.map((section) => ({
+		section,
+		entries: entriesBySection[section.id],
+	})).filter((group) => group.entries.length > 0);
+}
+
+function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPaletteEntry[] {
+	return [...entries].sort((left, right) => {
+		const sectionDelta = sectionOrder[left.sectionId] - sectionOrder[right.sectionId];
+		return sectionDelta || left.title.localeCompare(right.title);
+	});
 }
 
 export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {

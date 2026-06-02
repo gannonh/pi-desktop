@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CommandPalettePopover } from "../../src/renderer/components/command-palette-popover";
@@ -7,6 +8,8 @@ import {
 	createCommandPaletteRegistry,
 	getDefaultCommandPaletteEntries,
 } from "../../src/renderer/chat/command-palette-registry";
+
+const groups = createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntriesBySection();
 
 describe("CommandPalettePopover", () => {
 	beforeEach(() => {
@@ -22,8 +25,6 @@ describe("CommandPalettePopover", () => {
 	});
 
 	it("renders grouped stub sections with highlighted title matches", () => {
-		const groups = createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntriesBySection();
-
 		render(
 			<CommandPalettePopover
 				open
@@ -44,21 +45,30 @@ describe("CommandPalettePopover", () => {
 	});
 
 	it("selects entries with keyboard-only navigation", () => {
-		const groups = createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntriesBySection();
 		const onSelectEntry = vi.fn();
 		const onActiveEntryIdChange = vi.fn();
 
-		render(
-			<CommandPalettePopover
-				open
-				query=""
-				groups={groups}
-				activeEntryId="session.stub"
-				onActiveEntryIdChange={onActiveEntryIdChange}
-				onSelectEntry={onSelectEntry}
-				onDismiss={() => {}}
-			/>,
-		);
+		function ControlledPopover() {
+			const [activeEntryId, setActiveEntryId] = useState("session.stub");
+			const handleActiveEntryIdChange = (entryId: string) => {
+				onActiveEntryIdChange(entryId);
+				setActiveEntryId(entryId);
+			};
+
+			return (
+				<CommandPalettePopover
+					open
+					query=""
+					groups={groups}
+					activeEntryId={activeEntryId}
+					onActiveEntryIdChange={handleActiveEntryIdChange}
+					onSelectEntry={onSelectEntry}
+					onDismiss={() => {}}
+				/>
+			);
+		}
+
+		render(<ControlledPopover />);
 
 		const palette = screen.getByRole("listbox", { name: "Suggestions" });
 		fireEvent.keyDown(palette, { key: "ArrowDown" });
@@ -68,7 +78,6 @@ describe("CommandPalettePopover", () => {
 	});
 
 	it("dismisses on Escape", () => {
-		const groups = createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntriesBySection();
 		const onDismiss = vi.fn();
 
 		render(

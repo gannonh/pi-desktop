@@ -3,6 +3,7 @@ import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
 	getDefaultCommandPaletteEntries,
+	type CommandPaletteEntry,
 } from "../../src/renderer/chat/command-palette-registry";
 
 describe("command palette registry", () => {
@@ -24,7 +25,7 @@ describe("command palette registry", () => {
 		registry.register({
 			id: "session.new",
 			sectionId: "session",
-			icon: "Plus",
+			icon: "SquarePen",
 			title: "New session",
 			description: "Start a new Pi session",
 			scopeTag: "Session",
@@ -47,16 +48,29 @@ describe("command palette registry", () => {
 
 	it("rejects entries for unknown sections", () => {
 		const registry = createCommandPaletteRegistry();
+		const invalidEntry = {
+			id: "unknown.entry",
+			sectionId: "unknown",
+			icon: "CircleHelp",
+			title: "Unknown",
+			description: "Invalid section",
+			handler: () => ({ type: "insertPrompt", prompt: "Unknown" }),
+		} as unknown as CommandPaletteEntry;
 
-		expect(() =>
-			registry.register({
-				id: "unknown.entry",
-				sectionId: "unknown",
-				icon: "CircleHelp",
-				title: "Unknown",
-				description: "Invalid section",
-				handler: () => ({ type: "insertPrompt", prompt: "Unknown" }),
-			}),
-		).toThrow("Unknown command palette section: unknown");
+		expect(() => registry.register(invalidEntry)).toThrow("Unknown command palette section: unknown");
+	});
+
+	it("rejects entries for unknown icons before the popover renders them", () => {
+		const registry = createCommandPaletteRegistry();
+		const invalidEntry = {
+			id: "session.bad-icon",
+			sectionId: "session",
+			icon: "MissingIcon",
+			title: "Bad icon",
+			description: "Invalid icon",
+			handler: () => ({ type: "insertPrompt", prompt: "Bad icon" }),
+		} as unknown as CommandPaletteEntry;
+
+		expect(() => registry.register(invalidEntry)).toThrow("Unknown command palette icon: MissingIcon");
 	});
 });

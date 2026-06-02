@@ -7,12 +7,21 @@ export interface CommandPaletteTrigger {
 	end: number;
 }
 
+export type CommandPaletteKeyAction = "next" | "previous" | "select" | "dismiss";
+
 const emptyTrigger = (end: number): CommandPaletteTrigger => ({
 	open: false,
 	query: "",
 	start: -1,
 	end,
 });
+
+const keyActions: Record<string, CommandPaletteKeyAction | undefined> = {
+	ArrowDown: "next",
+	ArrowUp: "previous",
+	Enter: "select",
+	Escape: "dismiss",
+};
 
 export function getCommandPaletteTrigger(text: string, selectionStart = text.length): CommandPaletteTrigger {
 	const end = Math.max(0, Math.min(selectionStart, text.length));
@@ -68,6 +77,10 @@ export function getNextCommandPaletteEntryId(
 	return entries[nextIndex]?.id;
 }
 
+export function getCommandPaletteKeyAction(key: string): CommandPaletteKeyAction | undefined {
+	return keyActions[key];
+}
+
 export function isCommandPaletteNavigationKey(key: string): boolean {
-	return key === "ArrowDown" || key === "ArrowUp" || key === "Enter" || key === "Escape";
+	return getCommandPaletteKeyAction(key) !== undefined;
 }
