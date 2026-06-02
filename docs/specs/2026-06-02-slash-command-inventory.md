@@ -78,9 +78,9 @@ Alphabetical by command name. CLI path column uses repo-relative paths under `pi
 
 The M001 source inventory slash-command row (2026-05-25) lists: `/login`, `/logout`, `/model`, `/scoped-models`, `/settings`, `/resume`, `/new`, `/name`, `/session`, `/tree`, `/fork`, `/clone`, `/compact`, `/copy`, `/export`, `/import`, `/share`, `/reload`, `/hotkeys`, `/changelog`, `/quit`.
 
-**Result:** All 20 M001-listed commands are present in this inventory. **`/import`** is included (listed in M001 and `BUILTIN_SLASH_COMMANDS`). No additional user-facing builtins were found in `interactive-mode.ts` beyond the three excluded debug/easter-egg handlers.
+**Result:** All 21 M001-listed commands are present in this inventory. **`/import`** is included (listed in M001 and `BUILTIN_SLASH_COMMANDS`). No additional user-facing builtins were found in `interactive-mode.ts` beyond the three excluded debug/easter-egg handlers.
 
-**Count:** 21 built-in commands (M001 prose listed 20 names but omitted none that exist in the registry; this inventory adds explicit `/import` alignment with `BUILTIN_SLASH_COMMANDS`).
+**Count:** 21 built-in commands.
 
 ## Handoff notes (S010 / family slices)
 
