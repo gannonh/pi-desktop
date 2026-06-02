@@ -93,8 +93,8 @@
 - Classification: Deferred.
 - Release impact: core commands map to GUI controls, but complete slash-command parity is a power-user layer.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `README.md`, `docs/usage.md`.
-- Desktop evidence: `src/renderer/components/composer.tsx`, `src/main/pi-session/pi-session-file-actions.ts`, `src/main/projects/project-service.ts`.
-- Disposition: cover commands through focused GUI milestones instead of adding a broad slash-command clone.
+- Desktop evidence: `src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`, `src/main/pi-session/pi-session-file-actions.ts`, `src/main/projects/project-service.ts`.
+- Disposition: M003 owns slash-command mapping. S009 records the built-in inventory and mapping matrix; S010 provides the composer palette shell and section stubs. Family slices classify and wire individual commands as palette entries, existing UI, deferred, or out of scope.
 
 ### CLI-DELIVERY-008: Prompt delivery while busy
 

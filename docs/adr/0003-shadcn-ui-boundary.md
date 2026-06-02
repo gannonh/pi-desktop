@@ -15,7 +15,7 @@ The renderer also ships substantial **custom shell UI**:
 - Workspace tab strip (tool tabs, open file tabs, add menu)
 - File workspace (explorer tree, viewer toolbar, editor)
 
-Those surfaces are implemented with feature-owned markup and BEM-style classes in `styles.css`, not with registry components such as `Sidebar`, `Tabs`, or `DropdownMenu`. Only a small set of shadcn primitives is installed today (`badge`, `button`, `card`, `scroll-area`, `separator`), and product usage of them is still minimal.
+Those surfaces are implemented with feature-owned markup and BEM-style classes in `styles.css`, not with registry components such as `Sidebar`, `Tabs`, or `DropdownMenu`. Installed shadcn primitives include `badge`, `button`, `card`, `command`, `dialog`, `popover`, `scroll-area`, and `separator`; product usage stays focused on generic controls such as the composer command palette.
 
 Visual and interaction tuning (Graphite Workbench, density, workspace tab model, file explorer) is intentional product work documented in `DESIGN.md` and milestone specs. It is not throwaway styling.
 

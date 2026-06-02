@@ -1,14 +1,14 @@
 # Slash-command mapping matrix
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  
-**Slice:** S009 — Command inventory and mapping baseline  
+**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell
 **Requirements:** COMMANDS-MAP-01 (`MAP-01`)  
 **Inventory:** [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md)  
 **Coverage parent:** [2026-05-25-cli-parity-coverage-matrix.md](./2026-05-25-cli-parity-coverage-matrix.md) (CLI-COMMANDS-007)
 
 ## Purpose
 
-Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. Family slices (Planned Slices 3–6) and S010 (palette shell) fill dispositions without changing this schema.
+Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S010 provides the composer palette shell and section stubs. Family slices (Planned Slices 3–6) fill command dispositions without changing this schema.
 
 ## Matrix schema
 
@@ -31,7 +31,7 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 | `existing UI` | Desktop already exposes equivalent GUI without palette registration. |
 | `deferred` | Intentionally later milestone; document rationale in notes. |
 | `out-of-scope` | Not targeted for Desktop parity (e.g. terminal-only quit). |
-| `Pending` | Scaffold default; family slice or S010 assigns final disposition. |
+| `Pending` | Scaffold default; family slice assigns final disposition. |
 
 ### Palette sections (M003 families)
 
@@ -46,14 +46,14 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 
 | CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/new` | Start a new session | `palette entry` | Session | `session.new` | — | Example: palette-first session affordance | S010 |
+| `/new` | Start a new session | `palette entry` | Session | `session.new` | — | Example: palette-first session affordance | Planned Slice 3 |
 | `/model` | Select model | `existing UI` | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | Example: composer model picker already ships | — |
 | `/hotkeys` | Show keyboard shortcuts | `deferred` | Meta/Skills | `meta.hotkeys` | — | Example: defer until Desktop keybindings milestone | — |
 | `/quit` | Quit pi | `out-of-scope` | Meta/Skills | `meta.quit` | — | Example: use OS/window close, not palette | — |
 
 ## Mapping matrix (built-in commands)
 
-Disposition is **`Pending`** until a family slice or S010 updates it. Palette columns are pre-filled for stable S010 registration.
+Disposition is **`Pending`** until a family slice updates it. Palette columns are pre-filled for stable registration. S010 established the palette shell and one stub per section; it did not classify or execute the 21 built-in commands.
 
 | CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by family slice |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -90,9 +90,19 @@ Disposition is **`Pending`** until a family slice or S010 updates it. Palette co
 | **Output family** | 3 |
 | **Meta/Skills family** | 3 |
 
-## Handoff to S010 (palette shell)
+## S010 implementation note (palette shell)
 
-S010 should import section names and `palette entry ID` values from this matrix. Stub handlers may register all Pending rows; family slices replace stubs with real actions without schema changes.
+S010 implemented the composer command-palette shell with these evidence paths:
+
+- `src/renderer/chat/command-palette-registry.ts`: section IDs, registry API, allowed Lucide icons, and one stub entry per section.
+- `src/renderer/chat/command-palette-state.ts`: slash trigger detection, query filtering, and keyboard action mapping.
+- `src/renderer/chat/use-composer-command-palette.ts`: composer integration state, dismissal, active entry movement, and selection handling.
+- `src/renderer/components/command-palette-popover.tsx`: grouped shadcn `Command`/`Popover` UI with keyboard and pointer selection.
+- `src/renderer/components/composer.tsx`: `/` hint, textarea trigger wiring, and navigation-key interception before prompt submit.
+
+Current behavior: typing `/` at the start of composer text or after whitespace opens the palette; whitespace closes the query; ArrowUp/ArrowDown move selection; Enter selects; Escape dismisses. Stub selection inserts section placeholder text into the draft and does not submit raw slash text.
+
+Family slices should register concrete entries using the `Palette entry ID` values in this matrix and replace section stubs with real handlers or existing-UI affordances.
 
 ## Handoff to family slices
 

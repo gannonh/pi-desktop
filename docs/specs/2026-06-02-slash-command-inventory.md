@@ -85,4 +85,5 @@ The M001 source inventory slash-command row (2026-05-25) lists: `/login`, `/logo
 ## Handoff notes (S010 / family slices)
 
 - Palette section names and stable entry IDs live in [2026-06-02-slash-command-mapping-matrix.md](./2026-06-02-slash-command-mapping-matrix.md).
+- S010 registers one composer command-palette stub per section. Family slices should use this inventory for concrete built-in command entries.
 - Do not re-audit `slash-commands.ts` per slice unless Pi CLI version bumps; refresh this spec instead.
