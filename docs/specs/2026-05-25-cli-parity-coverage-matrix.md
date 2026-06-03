@@ -90,14 +90,14 @@
 
 ### CLI-COMMANDS-007: Slash commands
 
-- Classification: Desktop-native equivalent (palette-first affordance with documented deferrals).
-- Release impact: M003 maps all 21 built-in slash commands to Desktop dispositions. Core session and output actions are wired through the composer command palette; auth, settings, export, and extensibility commands show visible deferrals rather than silent gaps.
+- Classification: Desktop-native equivalent (palette-first affordance with documented deferrals; partial until S011–S014 merge).
+- Release impact: M003 documents all 21 built-in slash commands with palette-first dispositions. Six commands wire real Desktop actions through the palette after S011–S013 merge; the remainder register visible deferral notices or existing UI aliases rather than silent gaps.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `README.md`, `docs/usage.md`.
 - Desktop evidence: composer palette shell (`src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`). Per-command registry paths and handlers: [mapping matrix](./2026-06-02-slash-command-mapping-matrix.md#family-evidence-index).
 - M003 mapping artifacts: [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md), [2026-06-02-slash-command-mapping-matrix.md](./2026-06-02-slash-command-mapping-matrix.md).
 - Disposition totals (21 built-in commands): [mapping matrix § Summary counts](./2026-06-02-slash-command-mapping-matrix.md#summary-counts).
 - Carry-forward (not M003 built-in parity): [mapping matrix § Carry-forward](./2026-06-02-slash-command-mapping-matrix.md#carry-forward-and-out-of-scope-not-in-built-in-matrix).
-- Disposition: M003 complete for built-in slash-command mapping. The composer `/` palette is the palette-first Desktop affordance; detail in the mapping matrix.
+- Disposition: M003 **mapping complete** for built-in slash commands (S015); **implementation** completes when S011–S014 merge to `main`. The composer `/` palette is the palette-first Desktop affordance; detail in the mapping matrix.
 
 ### CLI-DELIVERY-008: Prompt delivery while busy
 
