@@ -60,8 +60,8 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/changelog` | Show changelog entries | Pending | Meta/Skills | `meta.changelog` | — | | Planned Slice 6 |
 | `/clone` | Duplicate session at current position | Pending | Session | `session.clone` | — | | Planned Slice 3 |
 | `/compact` | Manually compact session context | Pending | Session | `session.compact` | — | Optional `[prompt]` in CLI | Planned Slice 3 |
-| `/copy` | Copy last agent message | Pending | Output | `output.copy` | — | | Planned Slice 5 |
-| `/export` | Export session to HTML/JSONL | Pending | Output | `output.export` | — | | Planned Slice 5 |
+| `/copy` | Copy last agent message | `palette entry` | Output | `output.copy` | `src/renderer/chat/output-command-palette.ts`, `src/renderer/App.tsx` | Copies the last assistant transcript message via clipboard IPC | — |
+| `/export` | Export session to HTML/JSONL | `deferred` | Output | `output.export` | `src/renderer/chat/output-command-palette.ts` | Visible deferral until export IPC ships | — |
 | `/fork` | Fork from previous user message | Pending | Session | `session.fork` | — | | Planned Slice 3 |
 | `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
 | `/import` | Import session from JSONL | Pending | Session | `session.import` | — | | Planned Slice 3 |
@@ -76,7 +76,7 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/scoped-models` | Scoped model cycling set | Pending | Config | `config.scoped-models` | — | | Planned Slice 4 |
 | `/session` | Show session info and stats | Pending | Session | `session.info` | — | | Planned Slice 3 |
 | `/settings` | Open settings menu | Pending | Config | `config.settings` | — | | Planned Slice 4 |
-| `/share` | Share session via gist | Pending | Output | `output.share` | — | | Planned Slice 5 |
+| `/share` | Share session via gist | `deferred` | Output | `output.share` | `src/renderer/chat/output-command-palette.ts` | Visible deferral until gist share IPC ships | — |
 | `/tree` | Navigate session tree | Pending | Session | `session.tree` | — | | Planned Slice 3 |
 
 ## Summary counts
@@ -84,11 +84,26 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 21 |
+| **Pending disposition** | 18 |
+| **S013 output rows finalized** | 3 |
 | **Session family** | 9 |
 | **Config family** | 6 |
 | **Output family** | 3 |
 | **Meta/Skills family** | 3 |
+
+> **Import/compact ownership:** `/import` and `/compact` remain Session-family commands assigned to S011 (Planned Slice 3). S013 does not reclassify them.
+
+## S013 implementation note (output family)
+
+S013 replaced the Output section stub with three concrete palette entries and wired copy through clipboard IPC:
+
+- `src/renderer/chat/output-command-palette.ts`: stable `output.*` entry IDs, labels, and handlers.
+- `src/renderer/chat/last-assistant-message.ts`: finds the last non-empty assistant transcript message for `/copy`.
+- `src/renderer/chat/build-command-palette-entries.ts`: merges output entries with remaining section stubs.
+- `src/renderer/chat/use-composer-command-palette.ts`: accepts optional palette actions to build the registry at runtime.
+- `src/renderer/App.tsx`: implements copy and visible deferrals for export/share.
+
+Verification: `tests/renderer/output-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and `tests/renderer/last-assistant-message.test.ts`.
 
 ## S010 implementation note (palette shell)
 
