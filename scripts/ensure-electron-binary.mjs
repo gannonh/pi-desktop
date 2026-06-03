@@ -10,7 +10,6 @@ const electronDir = path.dirname(require.resolve("electron/package.json"));
 const electronRequire = createRequire(path.join(electronDir, "package.json"));
 const { version } = electronRequire("./package.json");
 const checksums = electronRequire("./checksums.json");
-const extract = electronRequire("extract-zip");
 
 const pathTxt = path.join(electronDir, "path.txt");
 const distDir = path.join(electronDir, "dist");
@@ -24,7 +23,7 @@ const electronPath = process.env.ELECTRON_OVERRIDE_DIST_PATH
 if (!isInstalled()) {
 	fs.rmSync(distDir, { recursive: true, force: true });
 	fs.rmSync(pathTxt, { force: true });
-	await installElectronBinary();
+	installElectronBinary();
 }
 
 if (!isInstalled()) {
@@ -43,18 +42,18 @@ function isInstalled() {
 	}
 }
 
-async function installElectronBinary() {
+function installElectronBinary() {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-electron-"));
 	try {
 		const zipPath = downloadElectronZip(tempDir);
-		await extract(zipPath, { dir: distDir });
+		extractElectronZip(zipPath);
 
 		const typeDefinitionPath = path.join(distDir, "electron.d.ts");
 		if (fs.existsSync(typeDefinitionPath)) {
 			fs.renameSync(typeDefinitionPath, path.join(electronDir, "electron.d.ts"));
 		}
 
-		await fs.promises.writeFile(pathTxt, platformPath);
+		fs.writeFileSync(pathTxt, platformPath);
 	} finally {
 		fs.rmSync(tempDir, { recursive: true, force: true });
 	}
@@ -91,6 +90,16 @@ function downloadElectronZip(tempDir) {
 
 	fs.copyFileSync(downloadPath, cachePath);
 	return cachePath;
+}
+
+function extractElectronZip(zipPath) {
+	fs.mkdirSync(distDir, { recursive: true });
+	const command = process.platform === "darwin" ? "ditto" : "unzip";
+	const args = process.platform === "darwin" ? ["-x", "-k", zipPath, distDir] : ["-q", zipPath, "-d", distDir];
+	const result = spawnSync(command, args, { stdio: "inherit" });
+	if (result.status !== 0) {
+		throw new Error(`Failed to extract Electron from ${zipPath}`);
+	}
 }
 
 function checksumFile(filePath) {
