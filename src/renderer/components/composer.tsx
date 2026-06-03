@@ -97,7 +97,7 @@ export function Composer({
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
 	const [attachmentError, setAttachmentError] = useState("");
-	const [commandPaletteNotice, setCommandPaletteNotice] = useState("");
+	const [paletteNotice, setPaletteNotice] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export function Composer({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
-		onShowNotice: setCommandPaletteNotice,
+		onShowNotice: setPaletteNotice,
 	});
 
 	useLayoutEffect(() => {
@@ -205,6 +205,7 @@ export function Composer({
 				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
+				setPaletteNotice("");
 				focusTextarea();
 			}
 		} catch (error) {
@@ -343,7 +344,7 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => {
-								setCommandPaletteNotice("");
+								setPaletteNotice("");
 								commandPalette.noteTextChanged(
 									event.target.value,
 									event.target.selectionStart ?? event.target.value.length,
@@ -514,9 +515,9 @@ export function Composer({
 							{attachmentError}
 						</span>
 					) : null}
-					{commandPaletteNotice ? (
+					{paletteNotice ? (
 						<span className="composer__disabled-reason" role="status">
-							{commandPaletteNotice}
+							{paletteNotice}
 						</span>
 					) : null}
 					{state.statusLabel ? (

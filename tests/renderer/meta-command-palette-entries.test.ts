@@ -17,29 +17,14 @@ describe("meta command palette entries", () => {
 		]);
 	});
 
-	it("returns visible deferral or out-of-scope notices for discovery commands", () => {
-		const byId = Object.fromEntries(getMetaCommandPaletteEntries().map((entry) => [entry.id, entry]));
+	it.each([
+		["meta.hotkeys", META_HOTKEYS_DEFERRAL_MESSAGE],
+		["meta.changelog", META_CHANGELOG_DEFERRAL_MESSAGE],
+		["meta.reload", META_RELOAD_DEFERRAL_MESSAGE],
+		["meta.quit", META_QUIT_OUT_OF_SCOPE_MESSAGE],
+	] as const)("returns showNotice for %s", (entryId, message) => {
+		const entry = getMetaCommandPaletteEntries().find((candidate) => candidate.id === entryId);
 
-		expect(byId["meta.hotkeys"]?.handler()).toEqual({
-			type: "showNotice",
-			message: META_HOTKEYS_DEFERRAL_MESSAGE,
-		});
-		expect(byId["meta.changelog"]?.handler()).toEqual({
-			type: "showNotice",
-			message: META_CHANGELOG_DEFERRAL_MESSAGE,
-		});
-	});
-
-	it("returns visible deferral or out-of-scope notices for reload and quit", () => {
-		const byId = Object.fromEntries(getMetaCommandPaletteEntries().map((entry) => [entry.id, entry]));
-
-		expect(byId["meta.reload"]?.handler()).toEqual({
-			type: "showNotice",
-			message: META_RELOAD_DEFERRAL_MESSAGE,
-		});
-		expect(byId["meta.quit"]?.handler()).toEqual({
-			type: "showNotice",
-			message: META_QUIT_OUT_OF_SCOPE_MESSAGE,
-		});
+		expect(entry?.handler()).toEqual({ type: "showNotice", message });
 	});
 });

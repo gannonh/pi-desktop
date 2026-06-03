@@ -80,14 +80,14 @@ export function useComposerCommandPalette({
 		(entry: CommandPaletteEntry) => {
 			const action = entry.handler();
 			if (action.type === "insertPrompt") {
+				onShowNotice?.("");
 				replaceTrigger(action.prompt);
 				return;
 			}
 			if (action.type === "showNotice") {
 				onShowNotice?.(action.message);
-				dismiss();
-				focusTextarea();
-				return;
+			} else {
+				onShowNotice?.("");
 			}
 			dismiss();
 			focusTextarea();

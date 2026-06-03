@@ -3,10 +3,15 @@ import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
 	getDefaultCommandPaletteEntries,
+	showPaletteNoticeAction,
 	type CommandPaletteEntry,
 } from "../../src/renderer/chat/command-palette-registry";
 
 describe("command palette registry", () => {
+	it("builds showNotice actions for deferred palette handlers", () => {
+		expect(showPaletteNoticeAction("Deferred")).toEqual({ type: "showNotice", message: "Deferred" });
+	});
+
 	it("registers stub entries for every S009 matrix section", () => {
 		const registry = createCommandPaletteRegistry(getDefaultCommandPaletteEntries());
 		const entriesBySection = registry.getEntriesBySection();
@@ -30,7 +35,6 @@ describe("command palette registry", () => {
 			"meta.quit",
 			"meta.reload",
 		]);
-		expect(metaEntries[0]?.handler()).toEqual({ type: "showNotice", message: expect.any(String) });
 	});
 
 	it("lets family slices register stable entries without changing the API", () => {

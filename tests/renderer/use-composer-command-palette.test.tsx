@@ -136,6 +136,45 @@ describe("useComposerCommandPalette", () => {
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 
+	it("clears palette notice when selecting handled or insertPrompt actions", async () => {
+		const focusTextarea = vi.fn();
+		const onShowNotice = vi.fn();
+		const handledEntry: CommandPaletteEntry = {
+			id: "config.model",
+			sectionId: "config",
+			icon: "Settings",
+			title: "Model",
+			description: "Open model picker",
+			handler: () => ({ type: "handled" }),
+		};
+
+		function HandledHarness() {
+			const [text, setText] = useState("/");
+			const [selectionStart, setSelectionStart] = useState(1);
+			const palette = useComposerCommandPalette({
+				text,
+				selectionStart,
+				setText,
+				setSelectionStart,
+				setTextareaSelection: () => {},
+				focusTextarea,
+				onShowNotice,
+			});
+
+			return (
+				<button type="button" onClick={() => palette.selectEntry(handledEntry)}>
+					select handled
+				</button>
+			);
+		}
+
+		render(<HandledHarness />);
+		onShowNotice.mockClear();
+		fireEvent.click(screen.getByRole("button", { name: "select handled" }));
+
+		expect(onShowNotice).toHaveBeenCalledWith("");
+	});
+
 	it("dismisses handled actions and closed palette navigation without inserting prompt text", async () => {
 		const focusTextarea = vi.fn();
 		render(<CommandPaletteHookHarness initialText="hello" focusTextarea={focusTextarea} />);
