@@ -836,7 +836,6 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
-		commandPaletteActions,
 	};
 
 	useEffect(() => {
