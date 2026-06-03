@@ -116,6 +116,7 @@ export function ChatShell({
 					onToggleQueuedDelivery={composerHost.onToggleQueuedDelivery}
 					onRemoveQueuedMessage={composerHost.onRemoveQueuedMessage}
 					onEditQueuedMessage={composerHost.onEditQueuedMessage}
+					commandPaletteActions={composerHost.commandPaletteActions}
 				/>
 			</div>
 		</section>

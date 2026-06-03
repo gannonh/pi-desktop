@@ -16,6 +16,7 @@ import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
+import type { CommandPaletteEntryActions } from "../chat/build-command-palette-entries";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
 import { useComposerCommandPalette } from "../chat/use-composer-command-palette";
 import { createComposerState } from "../chat/composer-state";
@@ -57,6 +58,7 @@ interface ComposerProps {
 	draftText?: string;
 	onDraftApplied?: () => void;
 	focusKey?: string;
+	commandPaletteActions?: CommandPaletteEntryActions;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
@@ -85,6 +87,7 @@ export function Composer({
 	draftText = "",
 	onDraftApplied,
 	focusKey,
+	commandPaletteActions,
 }: ComposerProps) {
 	const statusId = useId();
 	const composerStackRef = useRef<HTMLDivElement>(null);
@@ -129,6 +132,7 @@ export function Composer({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
+		commandPaletteActions,
 	});
 
 	useLayoutEffect(() => {

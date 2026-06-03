@@ -20,6 +20,19 @@ describe("command palette registry", () => {
 		});
 	});
 
+	it("lets family slices replace section stubs through buildCommandPaletteEntries", async () => {
+		const { buildCommandPaletteEntries } = await import("../../src/renderer/chat/build-command-palette-entries");
+		const entries = buildCommandPaletteEntries({
+			output: {
+				onCopyLastAssistantMessage: () => {},
+				onDefer: () => {},
+			},
+		});
+
+		expect(entries.some((entry) => entry.id === "output.stub")).toBe(false);
+		expect(entries.some((entry) => entry.id === "output.copy")).toBe(true);
+	});
+
 	it("lets family slices register stable entries without changing the API", () => {
 		const registry = createCommandPaletteRegistry();
 		registry.register({

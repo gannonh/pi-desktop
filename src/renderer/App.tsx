@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type {
@@ -10,6 +10,8 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import { getLastAssistantMessageContent } from "./chat/last-assistant-message";
+import type { OutputCommandPaletteActions } from "./chat/output-command-palette";
 import { AppShell } from "./components/app-shell";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
@@ -655,6 +657,35 @@ export function App() {
 		],
 	);
 
+	const outputCommandPaletteActions = useMemo((): OutputCommandPaletteActions => {
+		const notify = (message: string) => {
+			setStatusMessage({ source: "project", message });
+		};
+
+		return {
+			onCopyLastAssistantMessage: () => {
+				const content = getLastAssistantMessageContent(sessionState.messages);
+				if (!content) {
+					notify("No assistant message to copy yet.");
+					return;
+				}
+				void window.piDesktop.clipboard
+					.writeText({ text: content })
+					.then((result) => {
+						if (result.ok) {
+							notify("Copied the last assistant message to the clipboard.");
+							return;
+						}
+						notify(result.error.message);
+					})
+					.catch((error) => {
+						notify(error instanceof Error ? error.message : "Unable to copy the last assistant message.");
+					});
+			},
+			onDefer: notify,
+		};
+	}, [sessionState.messages]);
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
 		onSelectProject: (projectId) => {
@@ -678,6 +709,9 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
+		commandPaletteActions: {
+			output: outputCommandPaletteActions,
+		},
 	};
 
 	useEffect(() => {
