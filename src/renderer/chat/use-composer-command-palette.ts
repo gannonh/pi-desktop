@@ -19,6 +19,7 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
+	onShowNotice?: (message: string) => void;
 }
 
 export function useComposerCommandPalette({
@@ -28,6 +29,7 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
+	onShowNotice,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
@@ -81,10 +83,16 @@ export function useComposerCommandPalette({
 				replaceTrigger(action.prompt);
 				return;
 			}
+			if (action.type === "showNotice") {
+				onShowNotice?.(action.message);
+				dismiss();
+				focusTextarea();
+				return;
+			}
 			dismiss();
 			focusTextarea();
 		},
-		[dismiss, focusTextarea, replaceTrigger],
+		[dismiss, focusTextarea, onShowNotice, replaceTrigger],
 	);
 
 	const moveActiveEntry = useCallback(

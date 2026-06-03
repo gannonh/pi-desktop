@@ -97,6 +97,7 @@ export function Composer({
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
 	const [attachmentError, setAttachmentError] = useState("");
+	const [commandPaletteNotice, setCommandPaletteNotice] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
@@ -129,6 +130,7 @@ export function Composer({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
+		onShowNotice: setCommandPaletteNotice,
 	});
 
 	useLayoutEffect(() => {
@@ -341,6 +343,7 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => {
+								setCommandPaletteNotice("");
 								commandPalette.noteTextChanged(
 									event.target.value,
 									event.target.selectionStart ?? event.target.value.length,
@@ -509,6 +512,11 @@ export function Composer({
 					{attachmentError ? (
 						<span className="composer__disabled-reason" role="alert">
 							{attachmentError}
+						</span>
+					) : null}
+					{commandPaletteNotice ? (
+						<span className="composer__disabled-reason" role="status">
+							{commandPaletteNotice}
 						</span>
 					) : null}
 					{state.statusLabel ? (

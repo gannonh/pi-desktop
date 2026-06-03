@@ -97,6 +97,45 @@ describe("useComposerCommandPalette", () => {
 		expect(screen.getByTestId("open").textContent).toBe("false");
 	});
 
+	it("surfaces showNotice actions without inserting prompt text", async () => {
+		const focusTextarea = vi.fn();
+		const onShowNotice = vi.fn();
+		const noticeEntry: CommandPaletteEntry = {
+			id: "meta.hotkeys",
+			sectionId: "meta",
+			icon: "CircleHelp",
+			title: "/hotkeys",
+			description: "Show keyboard shortcuts",
+			handler: () => ({ type: "showNotice", message: "Shortcuts deferred" }),
+		};
+
+		function NoticeHarness() {
+			const [text, setText] = useState("/");
+			const [selectionStart, setSelectionStart] = useState(1);
+			const palette = useComposerCommandPalette({
+				text,
+				selectionStart,
+				setText,
+				setSelectionStart,
+				setTextareaSelection: () => {},
+				focusTextarea,
+				onShowNotice,
+			});
+
+			return (
+				<button type="button" onClick={() => palette.selectEntry(noticeEntry)}>
+					select notice
+				</button>
+			);
+		}
+
+		render(<NoticeHarness />);
+		fireEvent.click(screen.getByRole("button", { name: "select notice" }));
+
+		expect(onShowNotice).toHaveBeenCalledWith("Shortcuts deferred");
+		expect(focusTextarea).toHaveBeenCalled();
+	});
+
 	it("dismisses handled actions and closed palette navigation without inserting prompt text", async () => {
 		const focusTextarea = vi.fn();
 		render(<CommandPaletteHookHarness initialText="hello" focusTextarea={focusTextarea} />);
