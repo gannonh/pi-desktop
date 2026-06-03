@@ -70,7 +70,7 @@ describe("Composer command palette integration", () => {
 
 	it("shows a visible deferral when selecting /hotkeys from the Meta/Skills section", () => {
 		render(<Composer context={context} />);
-		const textarea = screen.getByLabelText("Message Pi");
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
 
 		fireEvent.change(textarea, { target: { value: "/hot" } });
 		fireEvent.click(screen.getByRole("option", { name: /\/hotkeys/ }));
@@ -81,7 +81,7 @@ describe("Composer command palette integration", () => {
 
 	it("shows a visible deferral when selecting /changelog from the Meta/Skills section", () => {
 		render(<Composer context={context} />);
-		const textarea = screen.getByLabelText("Message Pi");
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
 
 		fireEvent.change(textarea, { target: { value: "/change" } });
 		fireEvent.click(screen.getByRole("option", { name: /\/changelog/ }));
@@ -92,7 +92,7 @@ describe("Composer command palette integration", () => {
 
 	it("shows reload and quit rationale when selecting meta palette entries", () => {
 		render(<Composer context={context} />);
-		const textarea = screen.getByLabelText("Message Pi");
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
 
 		fireEvent.change(textarea, { target: { value: "/rel" } });
 		fireEvent.click(screen.getByRole("option", { name: /\/reload/ }));

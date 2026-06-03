@@ -104,6 +104,16 @@ Current behavior: typing `/` at the start of composer text or after whitespace o
 
 Family slices should register concrete entries using the `Palette entry ID` values in this matrix and replace section stubs with real handlers or existing-UI affordances.
 
+## S014 implementation note (meta / discovery)
+
+S014 classified and registered Meta/Skills palette entries for `/hotkeys`, `/changelog`, `/reload`, and `/quit`:
+
+- `src/renderer/chat/meta-command-palette-entries.ts`: stable `meta.*` entry IDs and `showNotice` handlers for deferred or out-of-scope commands.
+- `src/renderer/chat/command-palette-registry.ts`: replaces the Meta/Skills section stub via `getMetaCommandPaletteEntries()`.
+- `src/renderer/chat/use-composer-command-palette.ts` and `src/renderer/components/composer.tsx`: show visible deferral/out-of-scope copy without inserting raw slash text.
+
+`/reload` palette ownership is `meta.reload` (Meta/Skills); S012 does not register `config.reload`.
+
 ## Handoff to family slices
 
 | Planned slice | Palette section | Commands (palette entry IDs) |
