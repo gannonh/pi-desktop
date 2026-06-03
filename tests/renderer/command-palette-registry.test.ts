@@ -30,7 +30,6 @@ describe("command palette registry", () => {
 			"meta.quit",
 			"meta.reload",
 		]);
-		expect(metaEntries[0]?.handler()).toEqual({ type: "showNotice", message: expect.any(String) });
 	});
 
 	it("lets family slices register stable entries without changing the API", () => {

@@ -205,6 +205,7 @@ export function Composer({
 				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
+				setCommandPaletteNotice("");
 				focusTextarea();
 			}
 		} catch (error) {
