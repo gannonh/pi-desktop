@@ -95,4 +95,26 @@ describe("CommandPalettePopover", () => {
 		fireEvent.keyDown(screen.getByRole("listbox", { name: "Suggestions" }), { key: "Escape" });
 		expect(onDismiss).toHaveBeenCalledOnce();
 	});
+
+	it("dismisses on outside interactions", () => {
+		const onDismiss = vi.fn();
+
+		render(
+			<>
+				<button type="button">Outside</button>
+				<CommandPalettePopover
+					open
+					query=""
+					groups={groups}
+					activeEntryId="session.stub"
+					onActiveEntryIdChange={() => {}}
+					onSelectEntry={() => {}}
+					onDismiss={onDismiss}
+				/>
+			</>,
+		);
+
+		fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+		expect(onDismiss).toHaveBeenCalledOnce();
+	});
 });

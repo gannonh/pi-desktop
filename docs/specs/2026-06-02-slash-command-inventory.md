@@ -13,9 +13,9 @@ Authoritative, deduplicated inventory of **built-in** Pi CLI interactive slash c
 
 | Source | Role |
 | --- | --- |
-| [`BUILTIN_SLASH_COMMANDS`](file:///Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/slash-commands.ts) | Canonical built-in command names and descriptions |
-| [`interactive-mode.ts`](file:///Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts) (`setupEditorSubmitHandler`, `createBaseAutocompleteProvider`) | Submit handlers and autocomplete registration |
-| [Pi `README.md`](file:///Volumes/EVO/repos/pi-mono/packages/coding-agent/README.md) | User-facing command table |
+| `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/slash-commands.ts` (`BUILTIN_SLASH_COMMANDS`) | Canonical built-in command names and descriptions |
+| `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts` (`setupEditorSubmitHandler`, `createBaseAutocompleteProvider`) | Submit handlers and autocomplete registration |
+| `/Volumes/EVO/repos/pi-mono/packages/coding-agent/README.md` | User-facing command table |
 | [M001 source inventory](./2026-05-25-cli-parity-source-inventory.md) | Prior slash-command row (2026-05-25) |
 
 ## Exclusion criteria

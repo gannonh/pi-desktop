@@ -46,6 +46,20 @@ describe("Composer command palette integration", () => {
 
 		expect(onSubmit).not.toHaveBeenCalled();
 		expect(textarea.value).toBe("Config command selected");
+		expect(textarea.selectionStart).toBe("Config command selected".length);
+	});
+
+	it("re-evaluates slash triggers after clicking to move the caret", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/co hello" } });
+		expect(screen.queryByRole("listbox", { name: "Suggestions" })).toBeNull();
+
+		textarea.setSelectionRange(3, 3);
+		fireEvent.click(textarea);
+
+		expect(screen.getByRole("option", { name: /Config command/ })).toBeTruthy();
 	});
 
 	it("preserves Enter submit behavior when the palette is closed", async () => {

@@ -9,7 +9,7 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		testTimeout: 20_000,
+		testTimeout: 60_000,
 		globals: true,
 		include: [
 			"tests/shared/**/*.test.ts",

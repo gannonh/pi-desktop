@@ -17,6 +17,7 @@ interface UseComposerCommandPaletteOptions {
 	selectionStart: number;
 	setText: Dispatch<SetStateAction<string>>;
 	setSelectionStart: (selectionStart: number) => void;
+	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
 }
 
@@ -25,6 +26,7 @@ export function useComposerCommandPalette({
 	selectionStart,
 	setText,
 	setSelectionStart,
+	setTextareaSelection,
 	focusTextarea,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
@@ -62,12 +64,14 @@ export function useComposerCommandPalette({
 	const replaceTrigger = useCallback(
 		(prompt: string) => {
 			const nextText = `${text.slice(0, trigger.start)}${prompt}${text.slice(trigger.end)}`;
+			const nextSelectionStart = trigger.start + prompt.length;
 			setText(nextText);
-			setSelectionStart(trigger.start + prompt.length);
+			setSelectionStart(nextSelectionStart);
+			setTextareaSelection(nextSelectionStart);
 			setDismissedForText(nextText);
 			focusTextarea();
 		},
-		[focusTextarea, setText, setSelectionStart, text, trigger.end, trigger.start],
+		[focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
 	);
 
 	const selectEntry = useCallback(

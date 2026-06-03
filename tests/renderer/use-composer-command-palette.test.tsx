@@ -9,9 +9,14 @@ import { useComposerCommandPalette } from "../../src/renderer/chat/use-composer-
 interface HarnessProps {
 	initialText?: string;
 	focusTextarea?: () => void;
+	setTextareaSelection?: (selectionStart: number) => void;
 }
 
-function CommandPaletteHookHarness({ initialText = "/", focusTextarea = () => {} }: HarnessProps) {
+function CommandPaletteHookHarness({
+	initialText = "/",
+	focusTextarea = () => {},
+	setTextareaSelection = () => {},
+}: HarnessProps) {
 	const [text, setText] = useState(initialText);
 	const [selectionStart, setSelectionStart] = useState(initialText.length);
 	const [lastHandled, setLastHandled] = useState("unset");
@@ -20,6 +25,7 @@ function CommandPaletteHookHarness({ initialText = "/", focusTextarea = () => {}
 		selectionStart,
 		setText,
 		setSelectionStart,
+		setTextareaSelection,
 		focusTextarea,
 	});
 	const handledEntry: CommandPaletteEntry = {
@@ -55,7 +61,8 @@ function CommandPaletteHookHarness({ initialText = "/", focusTextarea = () => {}
 describe("useComposerCommandPalette", () => {
 	it("handles command navigation actions from the composer", async () => {
 		const focusTextarea = vi.fn();
-		render(<CommandPaletteHookHarness focusTextarea={focusTextarea} />);
+		const setTextareaSelection = vi.fn();
+		render(<CommandPaletteHookHarness focusTextarea={focusTextarea} setTextareaSelection={setTextareaSelection} />);
 
 		await waitFor(() => expect(screen.getByTestId("active-entry").textContent).toBe("session.stub"));
 
@@ -71,6 +78,7 @@ describe("useComposerCommandPalette", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "select" }));
 		expect(screen.getByTestId("text").textContent).toBe("Session command selected");
+		expect(setTextareaSelection).toHaveBeenCalledWith("Session command selected".length);
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 

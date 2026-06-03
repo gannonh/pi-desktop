@@ -11,7 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
@@ -90,6 +90,7 @@ export function Composer({
 	const composerStackRef = useRef<HTMLDivElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const pendingTextareaSelectionRef = useRef<number | null>(null);
 	const [text, setText] = useState("");
 	const [selectionStart, setSelectionStart] = useState(0);
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -118,12 +119,25 @@ export function Composer({
 	const focusTextarea = useCallback(() => {
 		textareaRef.current?.focus({ preventScroll: true });
 	}, [textareaRef]);
+	const setTextareaSelection = useCallback((nextSelectionStart: number) => {
+		pendingTextareaSelectionRef.current = nextSelectionStart;
+	}, []);
 	const commandPalette = useComposerCommandPalette({
 		text,
 		selectionStart,
 		setText,
 		setSelectionStart,
+		setTextareaSelection,
 		focusTextarea,
+	});
+
+	useLayoutEffect(() => {
+		const nextSelectionStart = pendingTextareaSelectionRef.current;
+		if (nextSelectionStart === null) {
+			return;
+		}
+		pendingTextareaSelectionRef.current = null;
+		textareaRef.current?.setSelectionRange(nextSelectionStart, nextSelectionStart);
 	});
 
 	useEffect(() => {
@@ -333,6 +347,7 @@ export function Composer({
 								);
 							}}
 							onSelect={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
+							onClick={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
 							onPaste={(event) => {
 								const items = event.clipboardData?.items;
 								if (!items) {

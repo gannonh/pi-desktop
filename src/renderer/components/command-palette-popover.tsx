@@ -1,5 +1,5 @@
 import { CircleHelp, FileOutput, Settings, SquarePen, type LucideIcon } from "lucide-react";
-import { useMemo, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import type {
 	CommandPaletteEntry,
 	CommandPaletteEntryGroup,
@@ -36,6 +36,7 @@ export function CommandPalettePopover({
 	onSelectEntry,
 	onDismiss,
 }: CommandPalettePopoverProps) {
+	const popoverContentRef = useRef<HTMLDivElement>(null);
 	const entries = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
 	const selectedEntry = entries.find((entry) => entry.id === activeEntryId) ?? entries[0];
 	const selectedEntryId = selectedEntry?.id ?? "";
@@ -53,6 +54,21 @@ export function CommandPalettePopover({
 		}
 	};
 
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		const handlePointerDown = (event: PointerEvent) => {
+			if (!popoverContentRef.current?.contains(event.target as Node)) {
+				onDismiss();
+			}
+		};
+
+		document.addEventListener("pointerdown", handlePointerDown);
+		return () => document.removeEventListener("pointerdown", handlePointerDown);
+	}, [onDismiss, open]);
+
 	const handleCommandKeyDown = (event: KeyboardEvent) => {
 		const action = getCommandPaletteKeyAction(event.key);
 		if (action === undefined) {
@@ -60,6 +76,7 @@ export function CommandPalettePopover({
 		}
 
 		event.preventDefault();
+		event.stopPropagation();
 		switch (action) {
 			case "next":
 				moveActiveEntry(1);
@@ -82,20 +99,17 @@ export function CommandPalettePopover({
 				<span className="composer__command-anchor" aria-hidden="true" />
 			</PopoverAnchor>
 			<PopoverContent
+				ref={popoverContentRef}
 				align="start"
 				side="top"
 				sideOffset={12}
 				className="composer__command-popover"
 				onOpenAutoFocus={(event) => event.preventDefault()}
 				onCloseAutoFocus={(event) => event.preventDefault()}
+				onEscapeKeyDown={(event) => event.preventDefault()}
 			>
-				<Command shouldFilter={false} className="composer__command" aria-label="Command palette">
-					<CommandList
-						role="listbox"
-						aria-label="Command palette"
-						className="composer__command-list"
-						onKeyDown={handleCommandKeyDown}
-					>
+				<Command shouldFilter={false} className="composer__command">
+					<CommandList role="listbox" className="composer__command-list" onKeyDown={handleCommandKeyDown}>
 						<CommandEmpty>No commands found.</CommandEmpty>
 						{groups.map((group) => (
 							<CommandGroup key={group.section.id} heading={group.section.label}>
