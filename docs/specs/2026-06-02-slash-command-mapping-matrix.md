@@ -60,8 +60,8 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/changelog` | Show changelog entries | Pending | Meta/Skills | `meta.changelog` | — | | Planned Slice 6 |
 | `/clone` | Duplicate session at current position | `palette entry` | Session | `session.clone` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.clone` when the selected chat has a session file | — |
 | `/compact` | Manually compact session context | `deferred` | Session | `session.compact` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until `piSession.compact` IPC exists | — |
-| `/copy` | Copy last agent message | Pending | Output | `output.copy` | — | | Planned Slice 5 |
-| `/export` | Export session to HTML/JSONL | Pending | Output | `output.export` | — | | Planned Slice 5 |
+| `/copy` | Copy last agent message | `palette entry` | Output | `output.copy` | `src/renderer/chat/output-command-palette.ts`, `src/renderer/App.tsx` | Copies the last assistant transcript message via clipboard IPC | — |
+| `/export` | Export session to HTML/JSONL | `deferred` | Output | `output.export` | `src/renderer/chat/output-command-palette.ts` | Visible deferral until export IPC ships | — |
 | `/fork` | Fork from previous user message | `palette entry` | Session | `session.fork` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.fork` when the selected chat has a session file | — |
 | `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
 | `/import` | Import session from JSONL | `deferred` | Session | `session.import` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until JSONL import IPC exists | — |
@@ -76,7 +76,7 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/scoped-models` | Scoped model cycling set | `deferred` | Config | `config.scoped-models` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral; Ctrl+P cycling not implemented | — |
 | `/session` | Show session info and stats | `palette entry` | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message | — |
 | `/settings` | Open settings menu | `deferred` | Config | `config.settings` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral until Settings shell ships | — |
-| `/share` | Share session via gist | Pending | Output | `output.share` | — | | Planned Slice 5 |
+| `/share` | Share session via gist | `deferred` | Output | `output.share` | `src/renderer/chat/output-command-palette.ts` | Visible deferral until gist share IPC ships | — |
 | `/tree` | Navigate session tree | `deferred` | Session | `session.tree` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until session tree UI ships | — |
 
 ## Summary counts
@@ -84,10 +84,11 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 7 |
-| **Config family classified (S012)** | 6 |
-| **Session family** | 9 |
+| **Pending disposition** | 3 |
 | **S011 session rows finalized** | 9 |
+| **Config family classified (S012)** | 6 |
+| **S013 output rows finalized** | 3 |
+| **Session family** | 9 |
 | **Config family** | 6 |
 | **Output family** | 3 |
 | **Meta/Skills family** | 3 |
@@ -104,6 +105,18 @@ S011 replaced the Session section stub with nine concrete palette entries and wi
 - `src/renderer/components/project-sidebar.tsx`: registers `startChatRename`; pending rename via sidebar context.
 
 Verification: `tests/renderer/session-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and updated registry tests.
+
+## S013 implementation note (output family)
+
+S013 replaced the Output section stub with three concrete palette entries and wired copy through clipboard IPC:
+
+- `src/renderer/chat/output-command-palette.ts`: stable `output.*` entry IDs, labels, and handlers.
+- `src/renderer/chat/last-assistant-message.ts`: finds the last non-empty assistant transcript message for `/copy`.
+- `src/renderer/chat/build-command-palette-entries.ts`: merges output entries with remaining section stubs.
+- `src/renderer/chat/use-composer-command-palette.ts`: accepts optional palette actions to build the registry at runtime.
+- `src/renderer/App.tsx`: implements copy and visible deferrals for export/share.
+
+Verification: `tests/renderer/output-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and `tests/renderer/last-assistant-message.test.ts`.
 
 ## S010 implementation note (palette shell)
 
