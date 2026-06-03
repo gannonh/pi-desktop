@@ -409,7 +409,7 @@ Acceptance:
 - Existing chat, composer, session streaming, and right-panel tab interactions continue to work.
 - The implementation passes targeted unit/component tests and the repo check command.
 
-### M07B.1: CLI Parity Coverage and Roadmap Reconciliation
+### ✅ M07B.1: CLI Parity Coverage and Roadmap Reconciliation
 
 Goal: convert the CLI parity source inventory into an actionable Desktop coverage matrix and update milestone sequencing from evidence.
 
@@ -598,11 +598,15 @@ Acceptance:
 
 ## Current Planning Targets
 
-M07A and M07B are complete. The current planning target is S002: CLI parity coverage and roadmap reconciliation.
+M07A, M07B, and M07B.1/S002 are complete. S002 produced the CLI parity source inventory and coverage matrix in `docs/specs/`.
 
-S002 uses `docs/specs/2026-05-25-cli-parity-source-inventory.md` as source inventory, classifies Desktop coverage for each CLI capability, and updates this roadmap with explicit gap disposition.
+The current implementation target is M003 CLI Slash-Command Mapping and Affordance Parity:
 
-After S002, the recommended implementation sequence is:
+1. **S009 command inventory and mapping baseline** records the 21 built-in Pi CLI slash commands and stable Desktop palette entry IDs in `docs/specs/2026-06-02-slash-command-inventory.md` and `docs/specs/2026-06-02-slash-command-mapping-matrix.md`.
+2. **S010 composer command palette shell** adds the slash-triggered composer palette, grouped registry sections, keyboard navigation, and section stubs.
+3. **Family slices** should wire concrete commands by section: Session, Config, Output, and Meta/Skills.
+
+The S002 recommended implementation sequence remains:
 
 1. **M07C: Right Panel - Diff and Patch Review** for release-blocking change inspection.
 2. **M07D: Right Panel - Terminal and Command Output** for release-blocking tool and command observability.

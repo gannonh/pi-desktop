@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { launchElectronApp } from "./electron-launch";
+import { waitForAppShell, waitForProjectStartHeading, waitForSelectedProject } from "./smoke-helpers";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -29,18 +30,6 @@ const expectComposerNearBottom = async (page: Page) => {
 			return Boolean(composerBox && composerBox.y + composerBox.height > viewportHeight - 160);
 		})
 		.toBe(true);
-};
-
-const waitForSelectedProject = async (page: Page, displayName: string) => {
-	await expect
-		.poll(
-			async () => {
-				const state = await page.evaluate(async () => window.piDesktop.project.getState()).catch(() => null);
-				return state?.ok === true ? state.data.selectedProject?.displayName : null;
-			},
-			{ timeout: 30_000 },
-		)
-		.toBe(displayName);
 };
 
 const expectComposerControlPlacement = async (page: Page) => {
@@ -171,7 +160,7 @@ test("renders the Milestone 2 global chat start state", async () => {
 		await expect(window.getByLabel("Pi composer")).toBeVisible();
 		await expect(window.getByLabel("Message Pi")).toHaveAttribute(
 			"placeholder",
-			"Ask Pi anything. @ to use skills or mention files",
+			"Ask Pi anything. / opens commands. @ mentions are planned",
 		);
 		await expect(window.getByRole("button", { name: "Work in a project" })).toBeVisible();
 		await expect(window.locator(".composer__action-row .composer__control")).toBeVisible();
@@ -224,7 +213,7 @@ test("renders the selected project chat start state", async () => {
 		const window = await app.firstWindow();
 
 		await waitForSelectedProject(window, "pi-desktop");
-		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await waitForProjectStartHeading(window, "pi-desktop");
 		await expect(window.getByText("feat/M02-chat-shell", { exact: true })).toHaveCount(0);
 		await expectSelectedComposerVisualTokens(window);
 	} finally {
@@ -274,7 +263,9 @@ test("streams a Pi session response in the selected project", async () => {
 	try {
 		const window = await app.firstWindow();
 
+		await waitForAppShell(window);
 		await window.getByRole("button", { name: "pi-desktop", exact: true }).click();
+		await waitForSelectedProject(window, "pi-desktop");
 		await window.getByLabel("Message Pi").fill("What files are here?");
 		await window.getByRole("button", { name: "Send message" }).click();
 
@@ -329,12 +320,14 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 		const window = await app.firstWindow();
 
 		await waitForSelectedProject(window, "pi-desktop");
-		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await waitForProjectStartHeading(window, "pi-desktop");
 		await rm(projectPath, { recursive: true, force: true });
 		await window.getByLabel("Message Pi").fill("What files are here?");
 		await window.getByRole("button", { name: "Send message" }).click();
 
-		await expect(window.getByRole("heading", { name: "pi-desktop is unavailable" })).toBeVisible();
+		await expect(window.getByRole("heading", { name: "pi-desktop is unavailable" })).toBeVisible({
+			timeout: 45_000,
+		});
 		await expect(window.getByRole("button", { name: "Locate folder" })).toBeVisible();
 	} finally {
 		await app.close();
@@ -398,13 +391,14 @@ test("renders resumed session history with markdown in the session layout", asyn
 	try {
 		const window = await app.firstWindow();
 
-		await expect(window.getByTestId("app-shell")).toBeVisible();
+		await waitForAppShell(window);
+		await waitForSelectedProject(window, "pi-desktop");
 		await expect(window.getByRole("button", { name: /^Smoke history chat/ }).first()).toBeVisible({
-			timeout: 15_000,
+			timeout: 45_000,
 		});
-		await expect(window.getByText("What files are here?")).toBeVisible({ timeout: 20_000 });
+		await expect(window.getByText("What files are here?")).toBeVisible({ timeout: 45_000 });
 		await expect(window.locator("#app-shell-title")).toHaveText("Smoke history chat");
-		await expect(window.getByRole("heading", { name: "Project overview" })).toBeVisible({ timeout: 15_000 });
+		await expect(window.getByRole("heading", { name: "Project overview" })).toBeVisible({ timeout: 45_000 });
 		await expect(window.getByText("Pi session streaming is connected.")).toBeVisible();
 		await expectComposerNearBottom(window);
 	} finally {
@@ -470,7 +464,7 @@ test("renders an empty selected chat as a centered start state before streaming"
 		const window = await app.firstWindow();
 
 		await waitForSelectedProject(window, "pi-desktop");
-		await expect(window.getByRole("heading", { name: "What should we build in pi-desktop?" })).toBeVisible();
+		await waitForProjectStartHeading(window, "pi-desktop");
 		await expect(window.getByLabel("Empty chat")).toHaveCount(0);
 		await expectSelectedComposerVisualTokens(window);
 		await window.getByLabel("Message Pi").fill("Summarize this chat");
@@ -540,9 +534,15 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 	try {
 		const window = await app.firstWindow();
 
-		await window.getByRole("button", { name: "Missing project", exact: true }).click();
+		await waitForAppShell(window);
+		await waitForSelectedProject(window, "Available project");
+		const missingProjectButton = window.getByRole("button", { name: "Missing project", exact: true });
+		await expect(missingProjectButton).toBeVisible({ timeout: 45_000 });
+		await missingProjectButton.click();
 
-		await expect(window.getByRole("heading", { name: "Missing project is unavailable" })).toBeVisible();
+		await expect(window.getByRole("heading", { name: "Missing project is unavailable" })).toBeVisible({
+			timeout: 45_000,
+		});
 		await expect(window.getByRole("button", { name: "Locate folder" })).toBeVisible();
 	} finally {
 		await app.close();

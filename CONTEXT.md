@@ -8,6 +8,10 @@ A local graphical command center for Pi coding-agent sessions: projects, chats, 
 The chat input surface where the user chooses project context, model, thinking level, and sends messages to the active Pi session.
 _Avoid_: Input bar, prompt box
 
+**Command palette**:
+The slash-triggered composer popover for Desktop command affordances. Typing `/` at the start of composer text or after whitespace opens it; Arrow keys move, Enter selects, and Escape dismisses. The S010 shell has section stubs until family slices wire concrete command actions.
+_Avoid_: Slash-command clone, prompt command
+
 **Project start**:
 The composer state for starting new agent work in a selected project before the first prompt creates a session-backed chat.
 _Avoid_: Empty project chat, pre-session chat

@@ -9,6 +9,7 @@ import {
 } from "../../src/main/dev-server/start-dev-web";
 import { createProjectStore } from "../../src/main/projects/project-store";
 import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
+import { waitForAppShell, waitForDevBridge, waitForProjectStartHeading, waitForSelectedProject } from "./smoke-helpers";
 
 const projectName = "Smoke bridge project";
 
@@ -58,30 +59,6 @@ const hideAgentationOverlay = async (page: Page) => {
 	await page.addStyleTag({ content: "#root > button:last-child { display: none !important; }" });
 };
 
-const waitForDevBridge = async (page: Page) => {
-	await expect
-		.poll(
-			async () => {
-				const result = await page.evaluate(() => window.piDesktop.app.getVersion()).catch(() => null);
-				return result?.ok === true;
-			},
-			{ timeout: 30_000 },
-		)
-		.toBe(true);
-};
-
-const waitForSelectedProject = async (page: Page, displayName: string) => {
-	await expect
-		.poll(
-			async () => {
-				const state = await page.evaluate(async () => window.piDesktop.project.getState()).catch(() => null);
-				return state?.ok === true ? state.data.selectedProject?.displayName : null;
-			},
-			{ timeout: 30_000 },
-		)
-		.toBe(displayName);
-};
-
 const clickButton = async (page: Page, name: string) => {
 	await page.getByRole("button", { name, exact: true }).click();
 };
@@ -108,15 +85,15 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 
 		server = await startDevWebServer({ logger: noopLogger, process: noopProcess });
 
-		await page.goto(server.previewUrl, { waitUntil: "domcontentloaded" });
+		await page.goto(server.previewUrl, { waitUntil: "load" });
 		await hideAgentationOverlay(page);
 		await waitForDevBridge(page);
+		await waitForAppShell(page);
 
-		await expect(page.getByTestId("app-shell")).toBeVisible();
 		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "New quick-start chat" })).toBeEnabled();
 		await waitForSelectedProject(page, projectName);
-		await expect(page.getByRole("heading", { name: `What should we build in ${projectName}?` })).toBeVisible();
+		await waitForProjectStartHeading(page, projectName);
 		await page.evaluate(() => {
 			window.piDesktop.piSession.onEvent(() => {});
 		});

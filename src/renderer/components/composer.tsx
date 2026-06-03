@@ -11,12 +11,13 @@ import {
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
+import { useComposerCommandPalette } from "../chat/use-composer-command-palette";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
@@ -32,6 +33,7 @@ import type {
 	PiSessionQueuedMessageId,
 } from "../../shared/pi-session";
 import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
+import { CommandPalettePopover } from "./command-palette-popover";
 
 interface ComposerProps {
 	context: ComposerContext;
@@ -59,7 +61,7 @@ interface ComposerProps {
 
 type ComposerMenu = "project" | "mode" | "model" | null;
 
-const defaultInputHint = "Ask Pi anything. @ to use skills or mention files";
+const defaultInputHint = "Ask Pi anything. / opens commands. @ mentions are planned";
 const runningSteerHint = "Steering message — queued at the next turn";
 const runningFollowUpHint = "Follow-up message — Option+Enter to queue as follow-up";
 
@@ -88,7 +90,9 @@ export function Composer({
 	const composerStackRef = useRef<HTMLDivElement>(null);
 	const formRef = useRef<HTMLFormElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const pendingTextareaSelectionRef = useRef<number | null>(null);
 	const [text, setText] = useState("");
+	const [selectionStart, setSelectionStart] = useState(0);
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -115,6 +119,26 @@ export function Composer({
 	const focusTextarea = useCallback(() => {
 		textareaRef.current?.focus({ preventScroll: true });
 	}, [textareaRef]);
+	const setTextareaSelection = useCallback((nextSelectionStart: number) => {
+		pendingTextareaSelectionRef.current = nextSelectionStart;
+	}, []);
+	const commandPalette = useComposerCommandPalette({
+		text,
+		selectionStart,
+		setText,
+		setSelectionStart,
+		setTextareaSelection,
+		focusTextarea,
+	});
+
+	useLayoutEffect(() => {
+		const nextSelectionStart = pendingTextareaSelectionRef.current;
+		if (nextSelectionStart === null) {
+			return;
+		}
+		pendingTextareaSelectionRef.current = null;
+		textareaRef.current?.setSelectionRange(nextSelectionStart, nextSelectionStart);
+	});
 
 	useEffect(() => {
 		if (!focusKey) {
@@ -128,6 +152,7 @@ export function Composer({
 			return;
 		}
 		setText(draftText);
+		setSelectionStart(draftText.length);
 		onDraftApplied?.();
 		focusTextarea();
 	}, [draftText, onDraftApplied, focusTextarea]);
@@ -175,6 +200,7 @@ export function Composer({
 			const submitted = await onSubmit?.(prompt, delivery, images);
 			if (submitted) {
 				setText("");
+				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
 				focusTextarea();
@@ -294,6 +320,15 @@ export function Composer({
 						.filter(Boolean)
 						.join(" ")}
 				>
+					<CommandPalettePopover
+						open={commandPalette.open}
+						query={commandPalette.trigger.query}
+						groups={commandPalette.groups}
+						activeEntryId={commandPalette.activeEntryId}
+						onActiveEntryIdChange={commandPalette.setActiveEntryId}
+						onSelectEntry={commandPalette.selectEntry}
+						onDismiss={commandPalette.dismiss}
+					/>
 					{isDragging ? <div className="composer__drop-overlay">Drop files here</div> : null}
 					<ComposerAttachmentTiles
 						attachments={attachments}
@@ -305,7 +340,14 @@ export function Composer({
 							className="composer__textarea"
 							aria-label="Message Pi"
 							value={text}
-							onChange={(event) => setText(event.target.value)}
+							onChange={(event) => {
+								commandPalette.noteTextChanged(
+									event.target.value,
+									event.target.selectionStart ?? event.target.value.length,
+								);
+							}}
+							onSelect={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
+							onClick={(event) => setSelectionStart(event.currentTarget.selectionStart ?? text.length)}
 							onPaste={(event) => {
 								const items = event.clipboardData?.items;
 								if (!items) {
@@ -327,6 +369,10 @@ export function Composer({
 								void addFiles(imageFiles);
 							}}
 							onKeyDown={(event) => {
+								if (commandPalette.handleNavigationKey(event.key)) {
+									event.preventDefault();
+									return;
+								}
 								const action = resolveComposerEnterAction({
 									key: event.key,
 									shiftKey: event.shiftKey,

@@ -40,6 +40,14 @@ describe("Composer", () => {
 		expect(markup).not.toMatch(/composer__queue-toggle[^>]*>Steer</);
 	});
 
+	it("distinguishes slash commands from deferred mentions in the placeholder", () => {
+		const markup = renderToStaticMarkup(createElement(Composer, { context }));
+
+		expect(markup).toContain("/ opens commands");
+		expect(markup).toContain("@ mentions are planned");
+		expect(markup).not.toContain("@ to use skills or mention files");
+	});
+
 	it("declares menu semantics on composer disclosure controls", () => {
 		const markup = renderToStaticMarkup(createElement(Composer, { context }));
 		const labels = [context.projectSelectorLabel, context.thinkingLabel, context.modelLabel];
