@@ -93,15 +93,11 @@
 - Classification: Desktop-native equivalent (palette-first affordance with documented deferrals).
 - Release impact: M003 maps all 21 built-in slash commands to Desktop dispositions. Core session and output actions are wired through the composer command palette; auth, settings, export, and extensibility commands show visible deferrals rather than silent gaps.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `README.md`, `docs/usage.md`.
-- Desktop evidence: `src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`, `src/renderer/chat/session-command-palette.ts`, `src/renderer/chat/config-command-palette-entries.ts`, `src/renderer/chat/output-command-palette.ts`, `src/renderer/chat/meta-command-palette-entries.ts`, `src/main/pi-session/pi-session-file-actions.ts`, `src/main/projects/project-service.ts`.
+- Desktop evidence: composer palette shell (`src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`). Per-command registry paths and handlers: [mapping matrix](./2026-06-02-slash-command-mapping-matrix.md#family-evidence-index).
 - M003 mapping artifacts: [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md), [2026-06-02-slash-command-mapping-matrix.md](./2026-06-02-slash-command-mapping-matrix.md).
-- Disposition counts (21 built-in commands, S015 consolidated):
-  - `palette entry`: 9 — session lifecycle (6), config auth deferrals (2), output copy (1).
-  - `existing UI`: 1 — `/model` via composer model picker.
-  - `deferred`: 10 — compact, import, tree, scoped-models, settings, export, share, changelog, hotkeys, reload.
-  - `out-of-scope`: 1 — `/quit` (OS/window close).
-- Carry-forward (not counted as M003 parity): `@` mentions, prompt templates, extension commands, skills, bash shortcuts (`!`/`!!`). See mapping matrix carry-forward table.
-- Disposition: M003 complete for built-in slash-command mapping. The composer `/` palette is the primary Desktop affordance. Family slices S011–S014 wired or deferred individual commands; S015 consolidated final dispositions and updated this record.
+- Disposition totals (21 built-in commands): [mapping matrix § Summary counts](./2026-06-02-slash-command-mapping-matrix.md#summary-counts).
+- Carry-forward (not M003 built-in parity): [mapping matrix § Carry-forward](./2026-06-02-slash-command-mapping-matrix.md#carry-forward-and-out-of-scope-not-in-built-in-matrix).
+- Disposition: M003 complete for built-in slash-command mapping. The composer `/` palette is the palette-first Desktop affordance; detail in the mapping matrix.
 
 ### CLI-DELIVERY-008: Prompt delivery while busy
 
