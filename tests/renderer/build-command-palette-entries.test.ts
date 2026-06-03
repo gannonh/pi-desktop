@@ -12,11 +12,11 @@ describe("buildCommandPaletteEntries", () => {
 	});
 
 	it("replaces the session stub with concrete S011 entries when actions are provided", () => {
-		const entries = buildCommandPaletteEntries(createMockSessionCommandPaletteActions());
+		const entries = buildCommandPaletteEntries({ session: createMockSessionCommandPaletteActions() });
 		const sessionEntries = entries.filter((entry) => entry.sectionId === "session");
 
 		expect(sessionEntries).toHaveLength(9);
 		expect(sessionEntries.some((entry) => entry.id === "session.stub")).toBe(false);
-		expect(entries.filter((entry) => entry.sectionId === "config")).toHaveLength(1);
+		expect(entries.filter((entry) => entry.sectionId === "config")).toHaveLength(5);
 	});
 });

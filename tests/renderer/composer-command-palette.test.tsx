@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Composer } from "../../src/renderer/components/composer";
+import { CONFIG_PALETTE_DEFERRAL_MESSAGES } from "../../src/renderer/chat/config-command-palette-entries";
 import { createComposerContext } from "./composer-fixtures";
 
 const context = createComposerContext({
@@ -32,10 +33,10 @@ describe("Composer command palette integration", () => {
 		fireEvent.change(screen.getByLabelText("Message Pi"), { target: { value: "/co" } });
 
 		expect(screen.getByRole("group", { name: "Config" })).toBeTruthy();
-		expect(screen.getByRole("option", { name: /Config command/ })).toBeTruthy();
+		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
 	});
 
-	it("selects a stub entry into the draft without submitting raw slash text", () => {
+	it("selects the change model entry without submitting raw slash text", () => {
 		const onSubmit = vi.fn();
 		render(<Composer context={context} onSubmit={onSubmit} />);
 		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
@@ -45,8 +46,19 @@ describe("Composer command palette integration", () => {
 		fireEvent.keyDown(screen.getByRole("listbox", { name: "Suggestions" }), { key: "Enter" });
 
 		expect(onSubmit).not.toHaveBeenCalled();
-		expect(textarea.value).toBe("Config command selected");
-		expect(textarea.selectionStart).toBe("Config command selected".length);
+		expect(textarea.value).toBe("/");
+		expect(screen.getByRole("button", { name: context.modelLabel }).getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("shows a visible deferral when selecting settings from the palette", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/set" } });
+		fireEvent.click(screen.getByRole("option", { name: /Settings/ }));
+
+		expect(textarea.value).toBe("/set");
+		expect(screen.getByRole("status").textContent).toContain(CONFIG_PALETTE_DEFERRAL_MESSAGES.settings);
 	});
 
 	it("re-evaluates slash triggers after clicking to move the caret", () => {
@@ -59,7 +71,7 @@ describe("Composer command palette integration", () => {
 		textarea.setSelectionRange(3, 3);
 		fireEvent.click(textarea);
 
-		expect(screen.getByRole("option", { name: /Config command/ })).toBeTruthy();
+		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
 	});
 
 	it("preserves Enter submit behavior when the palette is closed", async () => {

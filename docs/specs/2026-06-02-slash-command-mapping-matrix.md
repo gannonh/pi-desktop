@@ -1,14 +1,16 @@
 # Slash-command mapping matrix
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  
-**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011 — Session and project command mapping
-**Requirements:** COMMANDS-MAP-01 (`MAP-01`)  
+**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011–S014 — Family command mapping; S015 — Gap closure consolidation  
+**Requirements:** COMMANDS-MAP-01 (`MAP-01`), COMMANDS-OUTCOME-01 (`OUTCOME-01`), COMMANDS-DECISION-01 (`DECISION-01`)  
 **Inventory:** [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md)  
 **Coverage parent:** [2026-05-25-cli-parity-coverage-matrix.md](./2026-05-25-cli-parity-coverage-matrix.md) (CLI-COMMANDS-007)
 
 ## Purpose
 
-Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S010 provides the composer palette shell and section stubs. Family slices (Planned Slices 3–6) fill command dispositions without changing this schema.
+Authoritative mapping of each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S015 consolidated family-slice outcomes (S011–S014) into final dispositions for all 21 built-in commands.
+
+> **Implementation status (2026-06-03):** Mapping and dispositions are final on this branch. Family-slice code (S011–S014) lands on branches `cursor/s011-session-command-mapping-bc1b` through `cursor/s014-meta-command-mapping-3e57`; `main` currently ships S010 palette stubs only until that stack merges.
 
 ## Matrix schema
 
@@ -16,112 +18,109 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 | --- | --- | --- |
 | **CLI command** | Yes | Slash command as typed in Pi TUI (e.g. `/model`). |
 | **Description** | Yes | Short user-facing summary (from builtin registry). |
-| **Disposition** | Yes | One of: `palette entry`, `existing UI`, `deferred`, `out-of-scope`, `Pending` (initial scaffold). |
-| **Palette section** | When disposition is `palette entry` or `Pending` | M003 family: `Session`, `Config`, `Output`, or `Meta/Skills`. |
-| **Palette entry ID** | When disposition is `palette entry` or `Pending` | Stable slug for S010 registry (e.g. `session.new`). Kebab-case segment after family prefix. |
-| **Desktop evidence path** | When known | Repo path(s) for existing UI or partial implementation. |
-| **M002/M003 notes** | No | Cross-milestone context, gaps, or slice ownership. |
-| **Blocked by family slice** | No | Planned Slice id when disposition cannot close until a family slice lands. |
+| **Disposition** | Yes | One of: `palette entry`, `existing UI`, `deferred`, `out-of-scope` (capability status; see rules below). |
+| **Palette UX** | Yes | `action` — handler mutates Desktop state or opens wired UI; `notice` — palette shows a deferral or guidance notice only; `n/a` — not registered in the palette. |
+| **Palette section** | When palette UX is `action` or `notice` | M003 family: `Session`, `Config`, `Output`, or `Meta/Skills`. |
+| **Palette entry ID** | When palette UX is `action` or `notice` | Stable slug for palette registry (e.g. `session.new`). |
+| **Additional evidence** | No | Repo path only when not covered by [§ Family evidence index](#family-evidence-index) (e.g. `App.tsx`, composer model picker). |
+| **M002/M003 notes** | No | Blockers, wiring, or slice ownership. |
+
+Disposition values map to M001 coverage vocabulary: `deferred` / `out-of-scope` here align with **Deferred** / **Out of scope** in the [coverage matrix](./2026-05-25-cli-parity-coverage-matrix.md#classification-vocabulary).
 
 ### Disposition definitions
 
-| Disposition | Meaning |
+Apply these rules in order:
+
+| Disposition | Rule |
 | --- | --- |
-| `palette entry` | Primary affordance is the composer command palette (S010+). |
-| `existing UI` | Desktop already exposes equivalent GUI without palette registration. |
-| `deferred` | Intentionally later milestone; document rationale in notes. |
-| `out-of-scope` | Not targeted for Desktop parity (e.g. terminal-only quit). |
-| `Pending` | Scaffold default; family slice assigns final disposition. |
+| `palette entry` | Palette UX is `action`: handler performs Desktop work (IPC, navigation, clipboard, or opens wired UI such as the model picker). |
+| `existing UI` | Primary affordance is outside the palette; palette may still register an alias (`action`) for discoverability (e.g. `/model`). |
+| `deferred` | Capability is a later milestone; palette UX is `notice` when a row is registered. |
+| `out-of-scope` | Not targeted for Desktop parity; palette UX may be `notice` to explain the equivalent (e.g. `/quit` → window close). |
+
+`deferred` rows are often still registered in the palette; disposition describes **capability** status, not whether a palette row exists.
 
 ### Palette sections (M003 families)
 
 | Section | Typical commands |
 | --- | --- |
 | **Session** | Lifecycle, tree, fork/clone, compact, import/resume |
-| **Config** | Auth, model, scoped models, settings, reload |
+| **Config** | Auth, model, scoped models, settings |
 | **Output** | Copy, export, share |
-| **Meta/Skills** | Help surfaces, changelog, app exit |
+| **Meta/Skills** | Help surfaces, changelog, resource reload, app exit |
 
-### Example rows (one per disposition type)
+## Family evidence index
 
-| CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `/new` | Start a new session | `palette entry` | Session | `session.new` | — | Example: palette-first session affordance | Planned Slice 3 |
-| `/model` | Select model | `existing UI` | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | Example: composer model picker already ships | — |
-| `/hotkeys` | Show keyboard shortcuts | `deferred` | Meta/Skills | `meta.hotkeys` | — | Example: defer until Desktop keybindings milestone | — |
-| `/quit` | Quit pi | `out-of-scope` | Meta/Skills | `meta.quit` | — | Example: use OS/window close, not palette | — |
+Paths below are introduced by S011–S014 (not on `main` until that stack merges). S010 shell: `command-palette-registry.ts`, `command-palette-state.ts`, `use-composer-command-palette.ts`, `command-palette-popover.tsx`, `composer.tsx`.
+
+| Section | Primary evidence | Slice |
+| --- | --- | --- |
+| **Session** | `src/renderer/chat/session-command-palette.ts`, `build-command-palette-entries.ts` | S011 |
+| **Config** | `src/renderer/chat/config-command-palette-entries.ts` | S012 |
+| **Output** | `src/renderer/chat/output-command-palette.ts`, `last-assistant-message.ts` | S013 |
+| **Meta/Skills** | `src/renderer/chat/meta-command-palette-entries.ts` | S014 |
+
+Wired Session and Output handlers also use `src/renderer/App.tsx`. Exceptions: `/model` → `src/renderer/components/composer-model-selector.tsx`; `/name` → `src/renderer/components/project-sidebar.tsx`. `/reload` is registered only under Meta/Skills (`meta.reload`); see [§ Cross-family ownership](#cross-family-ownership-decisions-s015).
 
 ## Mapping matrix (built-in commands)
 
-Disposition is **`Pending`** until a family slice updates it. Palette columns are pre-filled for stable registration. S010 established the palette shell and one stub per section; it did not classify or execute the 21 built-in commands.
-
-| CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by family slice |
+| CLI command | Description | Disposition | Palette UX | Palette section | Palette entry ID | Additional evidence | M002/M003 notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/changelog` | Show changelog entries | Pending | Meta/Skills | `meta.changelog` | — | | Planned Slice 6 |
-| `/clone` | Duplicate session at current position | `palette entry` | Session | `session.clone` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.clone` when the selected chat has a session file | — |
-| `/compact` | Manually compact session context | `deferred` | Session | `session.compact` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until `piSession.compact` IPC exists | — |
-| `/copy` | Copy last agent message | Pending | Output | `output.copy` | — | | Planned Slice 5 |
-| `/export` | Export session to HTML/JSONL | Pending | Output | `output.export` | — | | Planned Slice 5 |
-| `/fork` | Fork from previous user message | `palette entry` | Session | `session.fork` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.fork` when the selected chat has a session file | — |
-| `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
-| `/import` | Import session from JSONL | `deferred` | Session | `session.import` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until JSONL import IPC exists | — |
-| `/login` | Configure provider auth | Pending | Config | `config.login` | — | Secrets stay in main process | Planned Slice 4 |
-| `/logout` | Remove provider auth | Pending | Config | `config.logout` | — | | Planned Slice 4 |
-| `/model` | Select model | Pending | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | May remain `existing UI` after review | Planned Slice 4 |
-| `/name` | Set session display name | `palette entry` | Session | `session.name` | `src/renderer/components/project-sidebar.tsx`, `src/renderer/App.tsx` | Opens inline rename for the selected project chat | — |
-| `/new` | Start a new session | `palette entry` | Session | `session.new` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | `chat.create` or `chat.createStandalone` | — |
-| `/quit` | Quit pi | Pending | Meta/Skills | `meta.quit` | — | Likely `out-of-scope` | Planned Slice 6 |
-| `/reload` | Reload resources | Pending | Config | `config.reload` | — | Extensions/skills/themes | Planned Slice 4 |
-| `/resume` | Resume a different session | `palette entry` | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Status guidance to select a chat in the sidebar (existing resume path) | — |
-| `/scoped-models` | Scoped model cycling set | Pending | Config | `config.scoped-models` | — | | Planned Slice 4 |
-| `/session` | Show session info and stats | `palette entry` | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message | — |
-| `/settings` | Open settings menu | Pending | Config | `config.settings` | — | | Planned Slice 4 |
-| `/share` | Share session via gist | Pending | Output | `output.share` | — | | Planned Slice 5 |
-| `/tree` | Navigate session tree | `deferred` | Session | `session.tree` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until session tree UI ships | — |
+| `/changelog` | Show changelog entries | `deferred` | notice | Meta/Skills | `meta.changelog` | — | Defer; in-app changelog (S014) |
+| `/clone` | Duplicate session at current position | `palette entry` | action | Session | `session.clone` | `src/renderer/App.tsx` | Wired via `chat.clone` when session file present (S011) |
+| `/compact` | Manually compact session context | `deferred` | notice | Session | `session.compact` | — | Defer; `piSession.compact` IPC (S011) |
+| `/copy` | Copy last agent message | `palette entry` | action | Output | `output.copy` | `src/renderer/App.tsx` | Last assistant message via clipboard IPC (S013) |
+| `/export` | Export session to HTML/JSONL | `deferred` | notice | Output | `output.export` | — | Defer; export IPC (S013) |
+| `/fork` | Fork from previous user message | `palette entry` | action | Session | `session.fork` | `src/renderer/App.tsx` | Wired via `chat.fork` when session file present (S011) |
+| `/hotkeys` | Show all keyboard shortcuts | `deferred` | notice | Meta/Skills | `meta.hotkeys` | — | Defer; keybindings reference (S014) |
+| `/import` | Import session from JSONL | `deferred` | notice | Session | `session.import` | — | See § Cross-family ownership; defer JSONL import IPC (S011) |
+| `/login` | Configure provider auth | `deferred` | notice | Config | `config.login` | — | Defer; Settings/Auth; secrets in main (S012) |
+| `/logout` | Remove provider auth | `deferred` | notice | Config | `config.logout` | — | Defer; Settings/Auth (S012) |
+| `/model` | Select model | `existing UI` | action | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | Composer model picker; palette alias opens picker (S012) |
+| `/name` | Set session display name | `palette entry` | action | Session | `session.name` | `src/renderer/components/project-sidebar.tsx` | Inline rename for selected chat (S011) |
+| `/new` | Start a new session | `palette entry` | action | Session | `session.new` | `src/renderer/App.tsx` | `chat.create` / `chat.createStandalone` (S011) |
+| `/quit` | Quit pi | `out-of-scope` | notice | Meta/Skills | `meta.quit` | — | OS/window close; palette explains (S014) |
+| `/reload` | Reload resources | `deferred` | notice | Meta/Skills | `meta.reload` | — | Meta/Skills owns `meta.reload`; see § Cross-family ownership |
+| `/resume` | Resume a different session | `deferred` | notice | Session | `session.resume` | — | Sidebar chat selection guidance (S011) |
+| `/scoped-models` | Scoped model cycling set | `deferred` | notice | Config | `config.scoped-models` | — | Defer; Ctrl+P cycling (S012) |
+| `/session` | Show session info and stats | `palette entry` | action | Session | `session.info` | `src/renderer/App.tsx` | Chat metadata in project status (S011) |
+| `/settings` | Open settings menu | `deferred` | notice | Config | `config.settings` | — | Defer; Settings shell (S012) |
+| `/share` | Share session via gist | `deferred` | notice | Output | `output.share` | — | Defer; gist share IPC (S013) |
+| `/tree` | Navigate session tree | `deferred` | notice | Session | `session.tree` | — | Defer; session tree UI (S011) |
 
 ## Summary counts
 
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 12 |
-| **Session family** | 9 |
-| **S011 session rows finalized** | 9 |
-| **Config family** | 6 |
-| **Output family** | 3 |
-| **Meta/Skills family** | 3 |
+| **`palette entry` (capability wired)** | 6 |
+| **`existing UI`** | 1 |
+| **`deferred`** | 13 |
+| **`out-of-scope`** | 1 |
+| **Palette UX `action`** | 7 |
+| **Palette UX `notice`** | 14 |
+| **Commands in Session section** | 9 |
+| **Commands in Config section** | 5 |
+| **Commands in Output section** | 3 |
+| **Commands in Meta/Skills section** | 4 |
 
-## S011 implementation note (session family)
+Disposition counts describe **capability** status. Palette UX counts describe handler behavior (`action` includes `/model` palette alias). Section counts reflect palette **section** assignment. Inventory total (21) matches [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md).
 
-S011 replaced the Session section stub with nine concrete palette entries and wired supported actions through `SessionCommandPaletteActions` in `App.tsx`:
+## Cross-family ownership decisions (S015)
 
-- `src/renderer/chat/session-command-palette.ts`: stable `session.*` entry IDs, labels, and handlers.
-- `src/renderer/chat/build-command-palette-entries.ts`: merges session entries with remaining section stubs.
-- `src/renderer/chat/use-composer-command-palette.ts`: accepts optional session actions to build the registry at runtime.
-- `src/renderer/App.tsx`: implements new/fork/clone/resume/name/info and visible deferrals for tree/import/compact.
-- `src/renderer/components/project-sidebar.tsx`: palette-triggered inline rename for project chats.
-
-Verification: `tests/renderer/session-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and updated registry tests.
-
-## S010 implementation note (palette shell)
-
-S010 implemented the composer command-palette shell with these evidence paths:
-
-- `src/renderer/chat/command-palette-registry.ts`: section IDs, registry API, allowed Lucide icons, and one stub entry per section.
-- `src/renderer/chat/command-palette-state.ts`: slash trigger detection, query filtering, and keyboard action mapping.
-- `src/renderer/chat/use-composer-command-palette.ts`: composer integration state, dismissal, active entry movement, and selection handling.
-- `src/renderer/components/command-palette-popover.tsx`: grouped shadcn `Command`/`Popover` UI with keyboard and pointer selection.
-- `src/renderer/components/composer.tsx`: `/` hint, textarea trigger wiring, and navigation-key interception before prompt submit.
-
-Current behavior: typing `/` at the start of composer text or after whitespace opens the palette; whitespace closes the query; ArrowUp/ArrowDown move selection; Enter selects; Escape dismisses. Stub selection inserts section placeholder text into the draft and does not submit raw slash text.
-
-Family slices should register concrete entries using the `Palette entry ID` values in this matrix and replace section stubs with real handlers or existing-UI affordances.
-
-## Handoff to family slices
-
-| Planned slice | Palette section | Commands (palette entry IDs) |
+| Command | Decision | Rationale |
 | --- | --- | --- |
-| S011 / Planned Slice 3 (Session) | Session | `session.*` (9 rows) — complete |
-| Planned Slice 4 (Config) | Config | `config.*` (6 rows) |
-| Planned Slice 5 (Output) | Output | `output.*` (3 rows) |
-| Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (3 rows) |
+| `/import` | Session family (`session.import`) | JSONL import is a session lifecycle action; S011 owns disposition and deferral |
+| `/compact` | Session family (`session.compact`) | Context compaction is session-scoped; S011 owns disposition and deferral |
+| `/reload` | Meta/Skills only (`meta.reload`) | Config-family deferral in S012; S014 registers under Meta/Skills. No `config.reload` row; implementation deferred until extensibility milestone |
+
+## Carry-forward and out-of-scope (not in built-in matrix)
+
+| Surface | Disposition | Destination scope | Rationale |
+| --- | --- | --- | --- |
+| `@` mentions | Deferred | Later composer UX milestone | Not a slash command; composer hint documents planned support |
+| Prompt templates (`/<name>`) | Deferred | M0X Extensibility | Runtime-discovered; not fixed built-in rows |
+| Extension commands | Deferred | M0X Extensibility | Runtime-discovered via `extensionRunner` |
+| Skills (`/skill:<name>`) | Deferred | M0X Extensibility | Runtime-discovered when `enableSkillCommands` is on |
+| `!` / `!!` bash shortcuts | Deferred | M07D Terminal and Command Output | Terminal-specific; see CLI-BASH-010 |
+| `/debug`, easter eggs | Out of scope | — | Not user-facing builtins per S009 exclusion criteria |

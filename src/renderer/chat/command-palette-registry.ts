@@ -1,3 +1,9 @@
+import {
+	buildConfigCommandPaletteEntries,
+	NOOP_CONFIG_PALETTE_DEPS,
+	type ConfigCommandPaletteDeps,
+} from "./config-command-palette-entries";
+
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
 export type CommandPaletteIconName = "CircleHelp" | "FileOutput" | "Settings" | "SquarePen";
@@ -7,7 +13,10 @@ export interface CommandPaletteSection {
 	label: string;
 }
 
-export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { type: "handled" };
+export type CommandPaletteAction =
+	| { type: "insertPrompt"; prompt: string }
+	| { type: "handled" }
+	| { type: "showNotice"; message: string };
 
 export interface CommandPaletteEntry {
 	id: string;
@@ -106,7 +115,9 @@ function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPalet
 	});
 }
 
-export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
+export function getDefaultCommandPaletteEntries(
+	deps: ConfigCommandPaletteDeps = NOOP_CONFIG_PALETTE_DEPS,
+): CommandPaletteEntry[] {
 	return [
 		{
 			id: "session.stub",
@@ -117,15 +128,7 @@ export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
 		},
-		{
-			id: "config.stub",
-			sectionId: "config",
-			icon: "Settings",
-			title: "Config command",
-			description: "Config commands will be wired in the config slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Config command selected" }),
-		},
+		...buildConfigCommandPaletteEntries(deps),
 		{
 			id: "output.stub",
 			sectionId: "output",

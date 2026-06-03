@@ -1,16 +1,49 @@
+import { createCommandPaletteRegistry, type CommandPaletteEntry } from "./command-palette-registry";
 import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
-	type CommandPaletteEntry,
-} from "./command-palette-registry";
+	buildConfigCommandPaletteEntries,
+	NOOP_CONFIG_PALETTE_DEPS,
+	type ConfigCommandPaletteDeps,
+} from "./config-command-palette-entries";
 import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions } from "./session-command-palette";
 
-export function buildCommandPaletteEntries(sessionActions?: SessionCommandPaletteActions): CommandPaletteEntry[] {
-	const defaultEntries = getDefaultCommandPaletteEntries();
-	const nonSessionEntries = defaultEntries.filter((entry) => entry.sectionId !== "session");
-	const sessionEntries = sessionActions
-		? createSessionCommandPaletteEntries(sessionActions)
-		: defaultEntries.filter((entry) => entry.sectionId === "session");
+const SESSION_STUB: CommandPaletteEntry = {
+	id: "session.stub",
+	sectionId: "session",
+	icon: "SquarePen",
+	title: "Session command",
+	description: "Session commands will be wired in the session slice.",
+	scopeTag: "Stub",
+	handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
+};
 
-	return createCommandPaletteRegistry([...sessionEntries, ...nonSessionEntries]).getEntries();
+const OUTPUT_STUB: CommandPaletteEntry = {
+	id: "output.stub",
+	sectionId: "output",
+	icon: "FileOutput",
+	title: "Output command",
+	description: "Output commands will be wired in the output slice.",
+	scopeTag: "Stub",
+	handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
+};
+
+const META_STUB: CommandPaletteEntry = {
+	id: "meta.stub",
+	sectionId: "meta",
+	icon: "CircleHelp",
+	title: "Meta/Skills command",
+	description: "Meta and skill commands will be wired in the meta slice.",
+	scopeTag: "Stub",
+	handler: () => ({ type: "insertPrompt", prompt: "Meta/Skills command selected" }),
+};
+
+export interface CommandPaletteDeps {
+	session?: SessionCommandPaletteActions;
+	config?: ConfigCommandPaletteDeps;
+}
+
+export function buildCommandPaletteEntries(deps: CommandPaletteDeps = {}): CommandPaletteEntry[] {
+	const sessionEntries = deps.session ? createSessionCommandPaletteEntries(deps.session) : [SESSION_STUB];
+	const configEntries = buildConfigCommandPaletteEntries(deps.config ?? NOOP_CONFIG_PALETTE_DEPS);
+
+	return createCommandPaletteRegistry([...sessionEntries, ...configEntries, OUTPUT_STUB, META_STUB]).getEntries();
 }

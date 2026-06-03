@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { buildCommandPaletteEntries, type CommandPaletteDeps } from "./build-command-palette-entries";
 import { groupCommandPaletteEntries, type CommandPaletteEntry } from "./command-palette-registry";
-import { buildCommandPaletteEntries } from "./build-command-palette-entries";
-import type { SessionCommandPaletteActions } from "./session-command-palette";
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteKeyAction,
@@ -16,7 +15,8 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
-	sessionCommandPaletteActions?: SessionCommandPaletteActions;
+	commandPaletteDeps?: CommandPaletteDeps;
+	onShowPaletteNotice?: (message: string) => void;
 }
 
 export function useComposerCommandPalette({
@@ -26,14 +26,12 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
-	sessionCommandPaletteActions,
+	commandPaletteDeps,
+	onShowPaletteNotice,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(
-		() => buildCommandPaletteEntries(sessionCommandPaletteActions),
-		[sessionCommandPaletteActions],
-	);
+	const entries = useMemo(() => buildCommandPaletteEntries(commandPaletteDeps), [commandPaletteDeps]);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);
@@ -80,13 +78,19 @@ export function useComposerCommandPalette({
 		(entry: CommandPaletteEntry) => {
 			const action = entry.handler();
 			if (action.type === "insertPrompt") {
+				onShowPaletteNotice?.("");
 				replaceTrigger(action.prompt);
 				return;
+			}
+			if (action.type === "showNotice") {
+				onShowPaletteNotice?.(action.message);
+			} else {
+				onShowPaletteNotice?.("");
 			}
 			dismiss();
 			focusTextarea();
 		},
-		[dismiss, focusTextarea, replaceTrigger],
+		[dismiss, focusTextarea, onShowPaletteNotice, replaceTrigger],
 	);
 
 	const moveActiveEntry = useCallback(

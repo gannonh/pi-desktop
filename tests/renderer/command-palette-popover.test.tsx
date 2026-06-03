@@ -72,9 +72,9 @@ describe("CommandPalettePopover", () => {
 
 		const palette = screen.getByRole("listbox", { name: "Suggestions" });
 		fireEvent.keyDown(palette, { key: "ArrowDown" });
-		expect(onActiveEntryIdChange).toHaveBeenCalledWith("config.stub");
+		expect(onActiveEntryIdChange).toHaveBeenCalledWith("config.model");
 		fireEvent.keyDown(palette, { key: "Enter" });
-		expect(onSelectEntry).toHaveBeenCalledWith(expect.objectContaining({ id: "config.stub" }));
+		expect(onSelectEntry).toHaveBeenCalledWith(expect.objectContaining({ id: "config.model" }));
 	});
 
 	it("dismisses on Escape", () => {

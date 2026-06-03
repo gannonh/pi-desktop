@@ -32,3 +32,4 @@ docs/codex-screens/
 # Kata CLI generated files
 .agents/kata-setup-manifest.json
 .agents/skills/kata-*/
+
