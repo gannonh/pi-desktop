@@ -20,8 +20,11 @@ const outputEntry = (id: string, title: string, description: string, run: () => 
 
 export function createOutputCommandPaletteEntries(actions: OutputCommandPaletteActions): CommandPaletteEntry[] {
 	return [
-		outputEntry("output.copy", "Copy last message", "Copy the last assistant message to the clipboard", () =>
-			actions.onCopyLastAssistantMessage(),
+		outputEntry(
+			"output.copy",
+			"Copy last message",
+			"Copy the last assistant message to the clipboard",
+			actions.onCopyLastAssistantMessage,
 		),
 		outputEntry("output.export", "Export session", "Export the session to HTML or JSONL", () =>
 			actions.onDefer(

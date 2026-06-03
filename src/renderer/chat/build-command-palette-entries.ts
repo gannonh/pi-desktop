@@ -3,6 +3,8 @@ import { createCommandPaletteRegistry, type CommandPaletteEntry } from "./comman
 import { createOutputCommandPaletteEntries, type OutputCommandPaletteActions } from "./output-command-palette";
 import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions } from "./session-command-palette";
 
+const defaultCommandPaletteEntries = getDefaultCommandPaletteEntries();
+
 export type CommandPaletteEntryActions = {
 	session?: SessionCommandPaletteActions;
 	output?: OutputCommandPaletteActions;
@@ -11,11 +13,11 @@ export type CommandPaletteEntryActions = {
 export function buildCommandPaletteEntries(actions?: CommandPaletteEntryActions): CommandPaletteEntry[] {
 	const sessionEntries = actions?.session ? createSessionCommandPaletteEntries(actions.session) : undefined;
 	const outputEntries = actions?.output ? createOutputCommandPaletteEntries(actions.output) : undefined;
-	const baseEntries = getDefaultCommandPaletteEntries().filter((entry) => {
-		if (entry.sectionId === "session" && sessionEntries) {
+	const baseEntries = defaultCommandPaletteEntries.filter((entry) => {
+		if (entry.id === "session.stub" && sessionEntries) {
 			return false;
 		}
-		if (entry.sectionId === "output" && outputEntries) {
+		if (entry.id === "output.stub" && outputEntries) {
 			return false;
 		}
 		return true;
