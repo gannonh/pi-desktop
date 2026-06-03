@@ -4,6 +4,7 @@ import {
 	NOOP_CONFIG_PALETTE_DEPS,
 	type ConfigCommandPaletteDeps,
 } from "./config-command-palette-entries";
+import { createOutputCommandPaletteEntries, type OutputCommandPaletteActions } from "./output-command-palette";
 import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions } from "./session-command-palette";
 
 const SESSION_STUB: CommandPaletteEntry = {
@@ -39,11 +40,13 @@ const META_STUB: CommandPaletteEntry = {
 export interface CommandPaletteDeps {
 	session?: SessionCommandPaletteActions;
 	config?: ConfigCommandPaletteDeps;
+	output?: OutputCommandPaletteActions;
 }
 
 export function buildCommandPaletteEntries(deps: CommandPaletteDeps = {}): CommandPaletteEntry[] {
 	const sessionEntries = deps.session ? createSessionCommandPaletteEntries(deps.session) : [SESSION_STUB];
 	const configEntries = buildConfigCommandPaletteEntries(deps.config ?? NOOP_CONFIG_PALETTE_DEPS);
+	const outputEntries = deps.output ? createOutputCommandPaletteEntries(deps.output) : [OUTPUT_STUB];
 
-	return createCommandPaletteRegistry([...sessionEntries, ...configEntries, OUTPUT_STUB, META_STUB]).getEntries();
+	return createCommandPaletteRegistry([...sessionEntries, ...configEntries, ...outputEntries, META_STUB]).getEntries();
 }

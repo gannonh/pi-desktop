@@ -16,8 +16,8 @@ import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
+import type { CommandPaletteDeps } from "../chat/build-command-palette-entries";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
-import type { SessionCommandPaletteActions } from "../chat/session-command-palette";
 import { useComposerCommandPalette } from "../chat/use-composer-command-palette";
 import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
@@ -58,7 +58,7 @@ interface ComposerProps {
 	draftText?: string;
 	onDraftApplied?: () => void;
 	focusKey?: string;
-	sessionCommandPaletteActions?: SessionCommandPaletteActions;
+	commandPaletteDeps?: CommandPaletteDeps;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
@@ -87,7 +87,7 @@ export function Composer({
 	draftText = "",
 	onDraftApplied,
 	focusKey,
-	sessionCommandPaletteActions,
+	commandPaletteDeps: commandPaletteDepsFromHost,
 }: ComposerProps) {
 	const statusId = useId();
 	const composerStackRef = useRef<HTMLDivElement>(null);
@@ -140,10 +140,10 @@ export function Composer({
 	);
 	const commandPaletteDeps = useMemo(
 		() => ({
-			session: sessionCommandPaletteActions,
+			...commandPaletteDepsFromHost,
 			config: configPaletteDeps,
 		}),
-		[configPaletteDeps, sessionCommandPaletteActions],
+		[commandPaletteDepsFromHost, configPaletteDeps],
 	);
 	const commandPalette = useComposerCommandPalette({
 		text,

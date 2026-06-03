@@ -10,6 +10,8 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import { getLastAssistantMessageContent } from "./chat/last-assistant-message";
+import type { OutputCommandPaletteActions } from "./chat/output-command-palette";
 import type { SessionCommandPaletteActions } from "./chat/session-command-palette";
 import { AppShell } from "./components/app-shell";
 import type { RenameChatRequest } from "./projects/rename-chat-request";
@@ -207,6 +209,7 @@ export function App() {
 	const nextSessionRequestIdRef = useRef(0);
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const sessionMessagesRef = useRef(sessionState.messages);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -254,6 +257,10 @@ export function App() {
 		activeSessionProjectIdRef.current = activeSessionProjectId;
 		activeSessionChatIdRef.current = activeSessionChatId;
 	}, [activeSessionProjectId, activeSessionChatId]);
+
+	useEffect(() => {
+		sessionMessagesRef.current = sessionState.messages;
+	}, [sessionState.messages]);
 
 	useEffect(() => {
 		if (
@@ -768,9 +775,46 @@ export function App() {
 		};
 	}, [applyProjectStateViewResult, notifyProjectStatus, projectState.selectedChat, selectedChatId, selectedProjectId]);
 
+	const outputCommandPaletteActions = useMemo((): OutputCommandPaletteActions => {
+		const notify = (message: string) => {
+			setStatusMessage({ source: "project", message });
+		};
+
+		return {
+			onCopyLastAssistantMessage: () => {
+				const content = getLastAssistantMessageContent(sessionMessagesRef.current);
+				if (!content) {
+					notify("No assistant message to copy yet.");
+					return;
+				}
+				void window.piDesktop.clipboard
+					.writeText({ text: content })
+					.then((result) => {
+						if (result.ok) {
+							notify("Copied the last assistant message to the clipboard.");
+							return;
+						}
+						notify(result.error.message);
+					})
+					.catch((error) => {
+						notify(error instanceof Error ? error.message : "Unable to copy the last assistant message.");
+					});
+			},
+			onDefer: notify,
+		};
+	}, []);
+
+	const commandPaletteDeps = useMemo(
+		() => ({
+			session: sessionCommandPaletteActions,
+			output: outputCommandPaletteActions,
+		}),
+		[outputCommandPaletteActions, sessionCommandPaletteActions],
+	);
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
-		sessionCommandPaletteActions,
+		commandPaletteDeps,
 		onSelectProject: (projectId) => {
 			void selectComposerProject(projectId);
 		},
@@ -792,6 +836,7 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
+		commandPaletteActions,
 	};
 
 	useEffect(() => {

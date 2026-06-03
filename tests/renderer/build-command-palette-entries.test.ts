@@ -3,12 +3,15 @@ import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-comman
 import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 
 describe("buildCommandPaletteEntries", () => {
-	it("uses session stubs when session actions are not provided", () => {
+	it("uses section stubs when actions are not provided", () => {
 		const entries = buildCommandPaletteEntries();
 		const sessionEntries = entries.filter((entry) => entry.sectionId === "session");
+		const outputEntries = entries.filter((entry) => entry.sectionId === "output");
 
 		expect(sessionEntries).toHaveLength(1);
 		expect(sessionEntries[0]?.id).toBe("session.stub");
+		expect(outputEntries).toHaveLength(1);
+		expect(outputEntries[0]?.id).toBe("output.stub");
 	});
 
 	it("replaces the session stub with concrete S011 entries when actions are provided", () => {

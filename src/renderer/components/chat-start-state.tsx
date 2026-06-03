@@ -70,7 +70,7 @@ export function ChatStartState({ route, session, scope, composerHost, onAbortSes
 				onToggleQueuedDelivery={composerHost.onToggleQueuedDelivery}
 				onRemoveQueuedMessage={composerHost.onRemoveQueuedMessage}
 				onEditQueuedMessage={composerHost.onEditQueuedMessage}
-				sessionCommandPaletteActions={composerHost.sessionCommandPaletteActions}
+				commandPaletteDeps={composerHost.commandPaletteDeps}
 			/>
 			<section className="chat-shell__suggestions" aria-label="Suggested prompts">
 				{route.suggestions.map((suggestion, index) => {
