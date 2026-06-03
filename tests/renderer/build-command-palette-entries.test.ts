@@ -4,7 +4,7 @@ import { createMockSessionCommandPaletteActions } from "./session-command-palett
 
 const createMockOutputCommandPaletteActions = () => ({
 	onCopyLastAssistantMessage: vi.fn(),
-	onDefer: vi.fn(),
+	onNotify: vi.fn(),
 });
 
 describe("buildCommandPaletteEntries", () => {

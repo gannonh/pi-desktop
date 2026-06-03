@@ -35,7 +35,7 @@ describe("command palette registry", () => {
 		const entries = buildCommandPaletteEntries({
 			output: {
 				onCopyLastAssistantMessage: () => {},
-				onDefer: () => {},
+				onNotify: () => {},
 			},
 		});
 

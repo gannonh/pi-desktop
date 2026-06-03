@@ -10,8 +10,7 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
-import { getLastAssistantMessageContent } from "./chat/last-assistant-message";
-import type { OutputCommandPaletteActions } from "./chat/output-command-palette";
+import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
 import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
 import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
@@ -682,41 +681,16 @@ export function App() {
 		sidebarActionsRef,
 	});
 
-	const outputCommandPaletteActions = useMemo((): OutputCommandPaletteActions => {
-		const notify = (message: string) => {
-			setStatusMessage({ source: "project", message });
-		};
-
-		return {
-			onCopyLastAssistantMessage: () => {
-				const content = getLastAssistantMessageContent(sessionMessagesRef.current);
-				if (!content) {
-					notify("No assistant message to copy yet.");
-					return;
-				}
-				void window.piDesktop.clipboard
-					.writeText({ text: content })
-					.then((result) => {
-						if (result.ok) {
-							notify("Copied the last assistant message to the clipboard.");
-							return;
-						}
-						notify(result.error.message);
-					})
-					.catch((error) => {
-						notify(error instanceof Error ? error.message : "Unable to copy the last assistant message.");
-					});
-			},
-			onDefer: notify,
-		};
-	}, []);
-
 	const commandPaletteActions = useMemo(
 		() => ({
 			session: sessionCommandPaletteActions,
-			output: outputCommandPaletteActions,
+			output: createOutputCommandPaletteActions({
+				getMessages: () => sessionMessagesRef.current,
+				writeText: (input) => window.piDesktop.clipboard.writeText(input),
+				notify: (message) => setStatusMessage({ source: "project", message }),
+			}),
 		}),
-		[outputCommandPaletteActions, sessionCommandPaletteActions],
+		[sessionCommandPaletteActions],
 	);
 
 	const composerHost: ComposerHostProps = {

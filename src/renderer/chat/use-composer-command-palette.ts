@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { buildCommandPaletteEntries, type CommandPaletteEntryActions } from "./build-command-palette-entries";
-import { groupCommandPaletteEntries, type CommandPaletteAction, type CommandPaletteEntry } from "./command-palette-registry";
+import {
+	groupCommandPaletteEntries,
+	type CommandPaletteAction,
+	type CommandPaletteEntry,
+} from "./command-palette-registry";
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteKeyAction,
