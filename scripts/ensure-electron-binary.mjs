@@ -13,16 +13,17 @@ const checksums = electronRequire("./checksums.json");
 
 const pathTxt = path.join(electronDir, "path.txt");
 const distDir = path.join(electronDir, "dist");
+const installRoot = process.env.ELECTRON_OVERRIDE_DIST_PATH ?? distDir;
 const installPlatform = process.env.ELECTRON_INSTALL_PLATFORM || process.env.npm_config_platform || process.platform;
 const installArch = getInstallArch(installPlatform);
 const platformPath = getPlatformPath(installPlatform);
-const electronPath = process.env.ELECTRON_OVERRIDE_DIST_PATH
-	? path.join(process.env.ELECTRON_OVERRIDE_DIST_PATH, platformPath)
-	: path.join(distDir, platformPath);
+const electronPath = path.join(installRoot, platformPath);
 
 if (!isInstalled()) {
-	fs.rmSync(distDir, { recursive: true, force: true });
-	fs.rmSync(pathTxt, { force: true });
+	fs.rmSync(installRoot, { recursive: true, force: true });
+	if (installRoot === distDir) {
+		fs.rmSync(pathTxt, { force: true });
+	}
 	installElectronBinary();
 }
 
@@ -34,7 +35,7 @@ if (!isInstalled()) {
 
 function isInstalled() {
 	try {
-		const installedVersion = fs.readFileSync(path.join(distDir, "version"), "utf8").replace(/^v/, "");
+		const installedVersion = fs.readFileSync(path.join(installRoot, "version"), "utf8").replace(/^v/, "");
 		const installedPath = fs.readFileSync(pathTxt, "utf8");
 		return installedVersion === version && installedPath === platformPath && fs.existsSync(electronPath);
 	} catch {
@@ -48,7 +49,7 @@ function installElectronBinary() {
 		const zipPath = downloadElectronZip(tempDir);
 		extractElectronZip(zipPath);
 
-		const typeDefinitionPath = path.join(distDir, "electron.d.ts");
+		const typeDefinitionPath = path.join(installRoot, "electron.d.ts");
 		if (fs.existsSync(typeDefinitionPath)) {
 			fs.renameSync(typeDefinitionPath, path.join(electronDir, "electron.d.ts"));
 		}
@@ -93,9 +94,9 @@ function downloadElectronZip(tempDir) {
 }
 
 function extractElectronZip(zipPath) {
-	fs.mkdirSync(distDir, { recursive: true });
+	fs.mkdirSync(installRoot, { recursive: true });
 	const command = process.platform === "darwin" ? "ditto" : "unzip";
-	const args = process.platform === "darwin" ? ["-x", "-k", zipPath, distDir] : ["-q", zipPath, "-d", distDir];
+	const args = process.platform === "darwin" ? ["-x", "-k", zipPath, installRoot] : ["-q", zipPath, "-d", installRoot];
 	const result = spawnSync(command, args, { stdio: "inherit" });
 	if (result.status !== 0) {
 		throw new Error(`Failed to extract Electron from ${zipPath}`);
