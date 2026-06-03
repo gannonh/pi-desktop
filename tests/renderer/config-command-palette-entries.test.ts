@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	buildConfigCommandPaletteEntries,
 	CONFIG_PALETTE_DEFERRAL_MESSAGES,
+	NOOP_CONFIG_PALETTE_DEPS,
 } from "../../src/renderer/chat/config-command-palette-entries";
 import { getDefaultCommandPaletteEntries } from "../../src/renderer/chat/command-palette-registry";
 
@@ -51,10 +52,7 @@ describe("config command palette entries", () => {
 	});
 
 	it("does not embed provider secrets in palette entry data", () => {
-		const entries = buildConfigCommandPaletteEntries({
-			onOpenModelPicker: () => {},
-			onShowPaletteNotice: () => {},
-		});
+		const entries = buildConfigCommandPaletteEntries(NOOP_CONFIG_PALETTE_DEPS);
 		const serialized = JSON.stringify(entries);
 
 		expect(serialized).not.toMatch(/api[_-]?key|token|secret|password|bearer/i);
@@ -62,10 +60,7 @@ describe("config command palette entries", () => {
 	});
 
 	it("replaces the config section stub in the default registry", () => {
-		const entries = getDefaultCommandPaletteEntries({
-			onOpenModelPicker: () => {},
-			onShowPaletteNotice: () => {},
-		});
+		const entries = getDefaultCommandPaletteEntries(NOOP_CONFIG_PALETTE_DEPS);
 		const configEntries = entries.filter((entry) => entry.sectionId === "config");
 
 		expect(configEntries.some((entry) => entry.id === "config.stub")).toBe(false);

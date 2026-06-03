@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import type { ConfigCommandPaletteDeps } from "./config-command-palette-entries";
 import {
-	createCommandPaletteRegistry,
 	getDefaultCommandPaletteEntries,
 	groupCommandPaletteEntries,
 	type CommandPaletteEntry,
-	type ConfigCommandPaletteDeps,
 } from "./command-palette-registry";
 import {
 	filterCommandPaletteEntries,
@@ -34,10 +33,7 @@ export function useComposerCommandPalette({
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(
-		() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries(configPaletteDeps)).getEntries(),
-		[configPaletteDeps],
-	);
+	const entries = useMemo(() => getDefaultCommandPaletteEntries(configPaletteDeps), [configPaletteDeps]);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);

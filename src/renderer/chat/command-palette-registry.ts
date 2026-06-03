@@ -1,4 +1,8 @@
-import { buildConfigCommandPaletteEntries, type ConfigCommandPaletteDeps } from "./config-command-palette-entries";
+import {
+	buildConfigCommandPaletteEntries,
+	NOOP_CONFIG_PALETTE_DEPS,
+	type ConfigCommandPaletteDeps,
+} from "./config-command-palette-entries";
 
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
@@ -108,16 +112,9 @@ function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPalet
 	});
 }
 
-export type { ConfigCommandPaletteDeps };
-
-export function getDefaultCommandPaletteEntries(deps?: ConfigCommandPaletteDeps): CommandPaletteEntry[] {
-	const configEntries = deps
-		? buildConfigCommandPaletteEntries(deps)
-		: buildConfigCommandPaletteEntries({
-				onOpenModelPicker: () => {},
-				onShowPaletteNotice: () => {},
-			});
-
+export function getDefaultCommandPaletteEntries(
+	deps: ConfigCommandPaletteDeps = NOOP_CONFIG_PALETTE_DEPS,
+): CommandPaletteEntry[] {
 	return [
 		{
 			id: "session.stub",
@@ -128,7 +125,7 @@ export function getDefaultCommandPaletteEntries(deps?: ConfigCommandPaletteDeps)
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
 		},
-		...configEntries,
+		...buildConfigCommandPaletteEntries(deps),
 		{
 			id: "output.stub",
 			sectionId: "output",

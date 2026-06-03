@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Composer } from "../../src/renderer/components/composer";
+import { CONFIG_PALETTE_DEFERRAL_MESSAGES } from "../../src/renderer/chat/config-command-palette-entries";
 import { createComposerContext } from "./composer-fixtures";
 
 const context = createComposerContext({
@@ -57,7 +58,7 @@ describe("Composer command palette integration", () => {
 		fireEvent.click(screen.getByRole("option", { name: /Settings/ }));
 
 		expect(textarea.value).toBe("/set");
-		expect(screen.getByRole("status").textContent).toContain("Settings are not available in Desktop yet");
+		expect(screen.getByRole("status").textContent).toContain(CONFIG_PALETTE_DEFERRAL_MESSAGES.settings);
 	});
 
 	it("re-evaluates slash triggers after clicking to move the caret", () => {
