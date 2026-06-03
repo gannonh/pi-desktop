@@ -30,7 +30,7 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
@@ -53,7 +53,16 @@ import {
 	MenuSurface,
 } from "./menu";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
-import type { RenameChatRequest } from "../projects/rename-chat-request";
+import {
+	getProjectChatBranchActionDisabledTitle,
+	runProjectChatBranchActionForRow,
+} from "../projects/project-chat-branch-action";
+import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
+import {
+	ProjectSidebarPendingRenameContext,
+	useProjectSidebarPendingRename,
+	type PendingChatRename,
+} from "./project-sidebar-pending-rename-context";
 import { SidebarInlineRenameField } from "./sidebar-inline-rename";
 
 interface ProjectSidebarProps {
@@ -61,8 +70,7 @@ interface ProjectSidebarProps {
 	collapsed: boolean;
 	onToggleCollapsed: () => void;
 	onProjectState: (result: ProjectStateViewResult) => void;
-	renameChatRequest?: RenameChatRequest | null;
-	onRenameChatRequestHandled?: () => void;
+	onRegisterActions?: (actions: ProjectSidebarActions | null) => void;
 }
 
 type MenuState =
@@ -99,10 +107,10 @@ export function ProjectSidebar({
 	collapsed,
 	onToggleCollapsed,
 	onProjectState,
-	renameChatRequest = null,
-	onRenameChatRequestHandled,
+	onRegisterActions,
 }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
+	const [pendingRenameChat, setPendingRenameChat] = useState<PendingChatRename | null>(null);
 	const [closedProjectIds, setClosedProjectIds] = useState<Set<string>>(() => new Set());
 	const [pinnedCollapsed, setPinnedCollapsed] = useState(false);
 	const [projectsCollapsed, setProjectsCollapsed] = useState(false);
@@ -125,6 +133,27 @@ export function ProjectSidebar({
 	});
 	const chromeTitle = state.selectedChat?.title ? formatChatDisplayLabel(state.selectedChat.title) : undefined;
 	const menuOpen = menu !== null && !collapsed;
+
+	const startChatRename = useCallback((projectId: string, chatId: string) => {
+		setPendingRenameChat({ projectId, chatId });
+	}, []);
+
+	const clearPendingRename = useCallback(() => {
+		setPendingRenameChat(null);
+	}, []);
+
+	const pendingRenameContextValue = useMemo(
+		() => ({
+			pendingRename: pendingRenameChat,
+			clearPendingRename,
+		}),
+		[pendingRenameChat, clearPendingRename],
+	);
+
+	useEffect(() => {
+		onRegisterActions?.({ startChatRename });
+		return () => onRegisterActions?.(null);
+	}, [onRegisterActions, startChatRename]);
 
 	const toggleCollapsed = () => {
 		setMenu(null);
@@ -192,294 +221,294 @@ export function ProjectSidebar({
 	};
 
 	return (
-		<aside className="project-sidebar" aria-label="Project navigation">
-			<div className="project-sidebar__chrome">
-				<div className="project-sidebar__window-controls" aria-hidden="true">
-					<span className="project-sidebar__window-dot project-sidebar__window-dot--close" />
-					<span className="project-sidebar__window-dot project-sidebar__window-dot--minimize" />
-					<span className="project-sidebar__window-dot project-sidebar__window-dot--maximize" />
-				</div>
-				<div className="project-sidebar__chrome-actions">
-					<button
-						className="project-sidebar__chrome-button"
-						type="button"
-						aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-						aria-pressed={collapsed}
-						onClick={toggleCollapsed}
-					>
-						{collapsed ? (
-							<PanelLeftOpen className="project-sidebar__icon" />
-						) : (
-							<PanelLeftClose className="project-sidebar__icon" />
-						)}
-					</button>
-					<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Back">
-						<ArrowLeft className="project-sidebar__icon" />
-					</button>
-					<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Forward">
-						<ArrowRight className="project-sidebar__icon" />
-					</button>
-					<button
-						className="project-sidebar__chrome-button project-sidebar__chrome-button--collapsed-only"
-						type="button"
-						disabled
-						aria-label="New chat"
-					>
-						<SquarePen className="project-sidebar__icon" />
-					</button>
-				</div>
-				{collapsed && chromeTitle ? (
-					<div className="project-sidebar__chrome-title-group">
-						<div className="project-sidebar__chrome-title app-chrome-title">{chromeTitle}</div>
-						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
-							<MoreHorizontal className="project-sidebar__icon" />
-						</button>
+		<ProjectSidebarPendingRenameContext.Provider value={pendingRenameContextValue}>
+			<aside className="project-sidebar" aria-label="Project navigation">
+				<div className="project-sidebar__chrome">
+					<div className="project-sidebar__window-controls" aria-hidden="true">
+						<span className="project-sidebar__window-dot project-sidebar__window-dot--close" />
+						<span className="project-sidebar__window-dot project-sidebar__window-dot--minimize" />
+						<span className="project-sidebar__window-dot project-sidebar__window-dot--maximize" />
 					</div>
-				) : null}
-			</div>
-
-			<div
-				className={["project-sidebar__panel", menuOpen ? "project-sidebar__panel--menu-open" : ""]
-					.filter(Boolean)
-					.join(" ")}
-			>
-				<div className="project-sidebar__scroll">
-					<div className="project-sidebar__top-actions">
-						<button className="project-sidebar__action" type="button" disabled>
+					<div className="project-sidebar__chrome-actions">
+						<button
+							className="project-sidebar__chrome-button"
+							type="button"
+							aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+							aria-pressed={collapsed}
+							onClick={toggleCollapsed}
+						>
+							{collapsed ? (
+								<PanelLeftOpen className="project-sidebar__icon" />
+							) : (
+								<PanelLeftClose className="project-sidebar__icon" />
+							)}
+						</button>
+						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Back">
+							<ArrowLeft className="project-sidebar__icon" />
+						</button>
+						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Forward">
+							<ArrowRight className="project-sidebar__icon" />
+						</button>
+						<button
+							className="project-sidebar__chrome-button project-sidebar__chrome-button--collapsed-only"
+							type="button"
+							disabled
+							aria-label="New chat"
+						>
 							<SquarePen className="project-sidebar__icon" />
-							<span>New chat</span>
-						</button>
-						<button className="project-sidebar__action" type="button" disabled>
-							<Search className="project-sidebar__icon" />
-							<span>Search</span>
-						</button>
-						<button className="project-sidebar__action" type="button" disabled>
-							<Wrench className="project-sidebar__icon" />
-							<span>Plugins</span>
-						</button>
-						<button className="project-sidebar__action" type="button" disabled>
-							<Workflow className="project-sidebar__icon" />
-							<span>Automations</span>
 						</button>
 					</div>
+					{collapsed && chromeTitle ? (
+						<div className="project-sidebar__chrome-title-group">
+							<div className="project-sidebar__chrome-title app-chrome-title">{chromeTitle}</div>
+							<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
+								<MoreHorizontal className="project-sidebar__icon" />
+							</button>
+						</div>
+					) : null}
+				</div>
 
-					{pinnedRows.length > 0 ? (
-						<>
-							<div className="project-sidebar__section-heading">
+				<div
+					className={["project-sidebar__panel", menuOpen ? "project-sidebar__panel--menu-open" : ""]
+						.filter(Boolean)
+						.join(" ")}
+				>
+					<div className="project-sidebar__scroll">
+						<div className="project-sidebar__top-actions">
+							<button className="project-sidebar__action" type="button" disabled>
+								<SquarePen className="project-sidebar__icon" />
+								<span>New chat</span>
+							</button>
+							<button className="project-sidebar__action" type="button" disabled>
+								<Search className="project-sidebar__icon" />
+								<span>Search</span>
+							</button>
+							<button className="project-sidebar__action" type="button" disabled>
+								<Wrench className="project-sidebar__icon" />
+								<span>Plugins</span>
+							</button>
+							<button className="project-sidebar__action" type="button" disabled>
+								<Workflow className="project-sidebar__icon" />
+								<span>Automations</span>
+							</button>
+						</div>
+
+						{pinnedRows.length > 0 ? (
+							<>
+								<div className="project-sidebar__section-heading">
+									<button
+										className="project-sidebar__section-title"
+										type="button"
+										aria-expanded={!pinnedCollapsed}
+										onClick={() => setPinnedCollapsed((current) => !current)}
+									>
+										<span>Pinned</span>
+										{pinnedCollapsed ? (
+											<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
+										) : (
+											<ChevronDown className="project-sidebar__icon" />
+										)}
+									</button>
+								</div>
+								{pinnedCollapsed ? null : (
+									<ProjectRows
+										rows={pinnedRows}
+										menu={menu}
+										setMenu={setMenu}
+										closedProjectIds={closedProjectIds}
+										expandedProjectChatIds={expandedProjectChatIds}
+										onToggleOpen={toggleProjectOpen}
+										onToggleChats={toggleProjectChats}
+										runProjectAction={runProjectAction}
+									/>
+								)}
+							</>
+						) : null}
+
+						<div className="project-sidebar__section-heading">
+							<button
+								className="project-sidebar__section-title"
+								type="button"
+								aria-expanded={!projectsCollapsed}
+								onClick={() => setProjectsCollapsed((current) => !current)}
+							>
+								<span>Projects</span>
+								{projectsCollapsed ? (
+									<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
+								) : (
+									<ChevronDown className="project-sidebar__icon" />
+								)}
+							</button>
+							<div className="project-sidebar__heading-actions">
 								<button
-									className="project-sidebar__section-title"
+									className="project-sidebar__heading-button"
 									type="button"
-									aria-expanded={!pinnedCollapsed}
-									onClick={() => setPinnedCollapsed((current) => !current)}
+									aria-label={hasOpenProject ? "Collapse all projects" : "Expand all projects"}
+									onClick={toggleAllProjectsOpen}
 								>
-									<span>Pinned</span>
-									{pinnedCollapsed ? (
-										<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
-									) : (
-										<ChevronDown className="project-sidebar__icon" />
-									)}
+									<Minimize2 className="project-sidebar__icon" />
+								</button>
+								<MenuAnchor>
+									<button
+										className="project-sidebar__heading-button"
+										type="button"
+										aria-label="Filter projects"
+										aria-controls={projectsFilterMenuId}
+										aria-expanded={menu?.kind === "projects-filter"}
+										aria-haspopup="menu"
+										onClick={() =>
+											setMenu((current) =>
+												current?.kind === "projects-filter" ? null : { kind: "projects-filter" },
+											)
+										}
+									>
+										<ListFilter className="project-sidebar__icon" />
+									</button>
+									{menu?.kind === "projects-filter" ? (
+										<ProjectsFilterMenu
+											id={projectsFilterMenuId}
+											chatFilter={chatFilter}
+											onChatFilterChange={changeChatFilter}
+										/>
+									) : null}
+								</MenuAnchor>
+								<MenuAnchor>
+									<button
+										className="project-sidebar__heading-button"
+										type="button"
+										aria-label="Add project"
+										aria-controls={addProjectMenuId}
+										aria-expanded={menu?.kind === "add"}
+										aria-haspopup="menu"
+										onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
+									>
+										<FolderPlus className="project-sidebar__icon" />
+									</button>
+									{menu?.kind === "add" ? (
+										<MenuSurface className="project-sidebar__add-menu" id={addProjectMenuId}>
+											<MenuItem
+												onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
+											>
+												<MenuItemIcon>
+													<FolderPlus />
+												</MenuItemIcon>
+												Start from scratch
+											</MenuItem>
+											<MenuItem
+												onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
+											>
+												<MenuItemIcon>
+													<FolderOpen />
+												</MenuItemIcon>
+												Use an existing folder
+											</MenuItem>
+										</MenuSurface>
+									) : null}
+								</MenuAnchor>
+							</div>
+						</div>
+
+						{projectsCollapsed ? null : (
+							<ProjectRows
+								rows={unpinnedRows}
+								menu={menu}
+								setMenu={setMenu}
+								closedProjectIds={closedProjectIds}
+								expandedProjectChatIds={expandedProjectChatIds}
+								onToggleOpen={toggleProjectOpen}
+								onToggleChats={toggleProjectChats}
+								runProjectAction={runProjectAction}
+							/>
+						)}
+
+						<div className="project-sidebar__section-heading">
+							<button
+								className="project-sidebar__section-title"
+								type="button"
+								aria-expanded={!chatsCollapsed}
+								onClick={() => setChatsCollapsed((current) => !current)}
+							>
+								<span>Chats</span>
+								{chatsCollapsed ? (
+									<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
+								) : (
+									<ChevronDown className="project-sidebar__icon" />
+								)}
+							</button>
+							<div className="project-sidebar__heading-actions">
+								<MenuAnchor>
+									<button
+										className="project-sidebar__heading-button"
+										type="button"
+										aria-label="Filter chats"
+										aria-controls={chatsFilterMenuId}
+										aria-expanded={menu?.kind === "chats-filter"}
+										aria-haspopup="menu"
+										onClick={() =>
+											setMenu((current) =>
+												current?.kind === "chats-filter" ? null : { kind: "chats-filter" },
+											)
+										}
+									>
+										<ListFilter className="project-sidebar__icon" />
+									</button>
+									{menu?.kind === "chats-filter" ? (
+										<ChatsFilterMenu
+											id={chatsFilterMenuId}
+											chatFilter={chatFilter}
+											onChatFilterChange={changeChatFilter}
+										/>
+									) : null}
+								</MenuAnchor>
+								<button
+									className="project-sidebar__heading-button"
+									type="button"
+									aria-label="New quick-start chat"
+									onClick={() => {
+										void runProjectAction(() => window.piDesktop.chat.createStandalone({}));
+									}}
+								>
+									<SquarePen className="project-sidebar__icon" />
 								</button>
 							</div>
-							{pinnedCollapsed ? null : (
-								<ProjectRows
-									rows={pinnedRows}
-									menu={menu}
-									setMenu={setMenu}
-									closedProjectIds={closedProjectIds}
-									expandedProjectChatIds={expandedProjectChatIds}
-									onToggleOpen={toggleProjectOpen}
-									onToggleChats={toggleProjectChats}
-									runProjectAction={runProjectAction}
-									renameChatRequest={renameChatRequest}
-									onRenameChatRequestHandled={onRenameChatRequestHandled}
-								/>
-							)}
-						</>
-					) : null}
-
-					<div className="project-sidebar__section-heading">
-						<button
-							className="project-sidebar__section-title"
-							type="button"
-							aria-expanded={!projectsCollapsed}
-							onClick={() => setProjectsCollapsed((current) => !current)}
-						>
-							<span>Projects</span>
-							{projectsCollapsed ? (
-								<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
-							) : (
-								<ChevronDown className="project-sidebar__icon" />
-							)}
-						</button>
-						<div className="project-sidebar__heading-actions">
-							<button
-								className="project-sidebar__heading-button"
-								type="button"
-								aria-label={hasOpenProject ? "Collapse all projects" : "Expand all projects"}
-								onClick={toggleAllProjectsOpen}
-							>
-								<Minimize2 className="project-sidebar__icon" />
-							</button>
-							<MenuAnchor>
-								<button
-									className="project-sidebar__heading-button"
-									type="button"
-									aria-label="Filter projects"
-									aria-controls={projectsFilterMenuId}
-									aria-expanded={menu?.kind === "projects-filter"}
-									aria-haspopup="menu"
-									onClick={() =>
-										setMenu((current) =>
-											current?.kind === "projects-filter" ? null : { kind: "projects-filter" },
-										)
-									}
-								>
-									<ListFilter className="project-sidebar__icon" />
-								</button>
-								{menu?.kind === "projects-filter" ? (
-									<ProjectsFilterMenu
-										id={projectsFilterMenuId}
-										chatFilter={chatFilter}
-										onChatFilterChange={changeChatFilter}
-									/>
-								) : null}
-							</MenuAnchor>
-							<MenuAnchor>
-								<button
-									className="project-sidebar__heading-button"
-									type="button"
-									aria-label="Add project"
-									aria-controls={addProjectMenuId}
-									aria-expanded={menu?.kind === "add"}
-									aria-haspopup="menu"
-									onClick={() => setMenu((current) => (current?.kind === "add" ? null : { kind: "add" }))}
-								>
-									<FolderPlus className="project-sidebar__icon" />
-								</button>
-								{menu?.kind === "add" ? (
-									<MenuSurface className="project-sidebar__add-menu" id={addProjectMenuId}>
-										<MenuItem
-											onClick={() => runProjectAction(() => window.piDesktop.project.createFromScratch())}
-										>
-											<MenuItemIcon>
-												<FolderPlus />
-											</MenuItemIcon>
-											Start from scratch
-										</MenuItem>
-										<MenuItem
-											onClick={() => runProjectAction(() => window.piDesktop.project.addExistingFolder())}
-										>
-											<MenuItemIcon>
-												<FolderOpen />
-											</MenuItemIcon>
-											Use an existing folder
-										</MenuItem>
-									</MenuSurface>
-								) : null}
-							</MenuAnchor>
 						</div>
+
+						{chatsCollapsed ? null : (
+							<ProjectSidebarChatList
+								chatList={standaloneChatRows}
+								expanded={standaloneExpanded}
+								listClassName="project-sidebar__chats project-sidebar__chats--standalone"
+								onToggleExpanded={() => setStandaloneExpanded((current) => !current)}
+								renderChatRow={(child) => (
+									<button
+										className={[
+											"project-sidebar__chat-row",
+											"project-sidebar__chat-row--standalone",
+											child.selected ? "project-sidebar__chat-row--selected" : "",
+											child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
+										]
+											.filter(Boolean)
+											.join(" ")}
+										key={child.chatId}
+										type="button"
+										onClick={() => selectStandaloneChat(child.chatId)}
+									>
+										<span className="project-sidebar__chat-label">{child.label}</span>
+										{child.needsAttention ? (
+											<span className="project-sidebar__attention-dot" />
+										) : child.status === "failed" ? (
+											<X className="project-sidebar__chat-failed-icon" />
+										) : (
+											<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
+										)}
+									</button>
+								)}
+							/>
+						)}
 					</div>
-
-					{projectsCollapsed ? null : (
-						<ProjectRows
-							rows={unpinnedRows}
-							menu={menu}
-							setMenu={setMenu}
-							closedProjectIds={closedProjectIds}
-							expandedProjectChatIds={expandedProjectChatIds}
-							onToggleOpen={toggleProjectOpen}
-							onToggleChats={toggleProjectChats}
-							runProjectAction={runProjectAction}
-							renameChatRequest={renameChatRequest}
-							onRenameChatRequestHandled={onRenameChatRequestHandled}
-						/>
-					)}
-
-					<div className="project-sidebar__section-heading">
-						<button
-							className="project-sidebar__section-title"
-							type="button"
-							aria-expanded={!chatsCollapsed}
-							onClick={() => setChatsCollapsed((current) => !current)}
-						>
-							<span>Chats</span>
-							{chatsCollapsed ? (
-								<ChevronRight className="project-sidebar__icon project-sidebar__section-chevron" />
-							) : (
-								<ChevronDown className="project-sidebar__icon" />
-							)}
-						</button>
-						<div className="project-sidebar__heading-actions">
-							<MenuAnchor>
-								<button
-									className="project-sidebar__heading-button"
-									type="button"
-									aria-label="Filter chats"
-									aria-controls={chatsFilterMenuId}
-									aria-expanded={menu?.kind === "chats-filter"}
-									aria-haspopup="menu"
-									onClick={() =>
-										setMenu((current) => (current?.kind === "chats-filter" ? null : { kind: "chats-filter" }))
-									}
-								>
-									<ListFilter className="project-sidebar__icon" />
-								</button>
-								{menu?.kind === "chats-filter" ? (
-									<ChatsFilterMenu
-										id={chatsFilterMenuId}
-										chatFilter={chatFilter}
-										onChatFilterChange={changeChatFilter}
-									/>
-								) : null}
-							</MenuAnchor>
-							<button
-								className="project-sidebar__heading-button"
-								type="button"
-								aria-label="New quick-start chat"
-								onClick={() => {
-									void runProjectAction(() => window.piDesktop.chat.createStandalone({}));
-								}}
-							>
-								<SquarePen className="project-sidebar__icon" />
-							</button>
-						</div>
-					</div>
-
-					{chatsCollapsed ? null : (
-						<ProjectSidebarChatList
-							chatList={standaloneChatRows}
-							expanded={standaloneExpanded}
-							listClassName="project-sidebar__chats project-sidebar__chats--standalone"
-							onToggleExpanded={() => setStandaloneExpanded((current) => !current)}
-							renderChatRow={(child) => (
-								<button
-									className={[
-										"project-sidebar__chat-row",
-										"project-sidebar__chat-row--standalone",
-										child.selected ? "project-sidebar__chat-row--selected" : "",
-										child.status === "failed" ? "project-sidebar__chat-row--failed" : "",
-									]
-										.filter(Boolean)
-										.join(" ")}
-									key={child.chatId}
-									type="button"
-									onClick={() => selectStandaloneChat(child.chatId)}
-								>
-									<span className="project-sidebar__chat-label">{child.label}</span>
-									{child.needsAttention ? (
-										<span className="project-sidebar__attention-dot" />
-									) : child.status === "failed" ? (
-										<X className="project-sidebar__chat-failed-icon" />
-									) : (
-										<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
-									)}
-								</button>
-							)}
-						/>
-					)}
 				</div>
-			</div>
-		</aside>
+			</aside>
+		</ProjectSidebarPendingRenameContext.Provider>
 	);
 }
 
@@ -492,8 +521,6 @@ interface ProjectRowsProps {
 	onToggleOpen: (projectId: string) => void;
 	onToggleChats: (projectId: string) => void;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
-	renameChatRequest?: RenameChatRequest | null;
-	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectRows({
@@ -505,8 +532,6 @@ function ProjectRows({
 	onToggleOpen,
 	onToggleChats,
 	runProjectAction,
-	renameChatRequest = null,
-	onRenameChatRequestHandled,
 }: ProjectRowsProps) {
 	const renderProject = (row: SidebarProjectRow) => (
 		<ProjectSidebarProject
@@ -519,8 +544,6 @@ function ProjectRows({
 			onToggleChats={onToggleChats}
 			chatsExpanded={expandedProjectChatIds.has(row.projectId)}
 			runProjectAction={runProjectAction}
-			renameChatRequest={renameChatRequest}
-			onRenameChatRequestHandled={onRenameChatRequestHandled}
 		/>
 	);
 
@@ -601,8 +624,6 @@ interface ProjectSidebarProjectProps {
 	onToggleChats: (projectId: string) => void;
 	chatsExpanded: boolean;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
-	renameChatRequest?: RenameChatRequest | null;
-	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectSidebarProject({
@@ -614,8 +635,6 @@ function ProjectSidebarProject({
 	onToggleChats,
 	chatsExpanded,
 	runProjectAction,
-	renameChatRequest = null,
-	onRenameChatRequestHandled,
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
 	const [isRenaming, setIsRenaming] = useState(false);
@@ -802,8 +821,6 @@ function ProjectSidebarProject({
 							sessionPath={sessionPathByChatId.get(child.chatId) ?? null}
 							setMenu={setMenu}
 							runProjectAction={runProjectAction}
-							renameChatRequest={renameChatRequest}
-							onRenameChatRequestHandled={onRenameChatRequestHandled}
 						/>
 					)}
 				/>
@@ -820,8 +837,6 @@ interface ProjectChatRowProps {
 	sessionPath: string | null;
 	setMenu: (menu: MenuState | ((current: MenuState) => MenuState)) => void;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
-	renameChatRequest?: RenameChatRequest | null;
-	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectChatRow({
@@ -832,14 +847,13 @@ function ProjectChatRow({
 	sessionPath,
 	setMenu,
 	runProjectAction,
-	renameChatRequest = null,
-	onRenameChatRequestHandled,
 }: ProjectChatRowProps) {
 	const chatMenuId = useId();
 	const [isRenaming, setIsRenaming] = useState(false);
+	const pendingRename = useProjectSidebarPendingRename();
 	const chatMenuOpen = menu?.kind === "chat" && menu.projectId === projectId && menu.chatId === child.chatId;
-	const sessionActionsDisabled = sessionPath === null;
-	const sessionActionTitle = sessionActionsDisabled ? "Chat does not have a Pi session file yet" : undefined;
+	const sessionActionTitle = getProjectChatBranchActionDisabledTitle(sessionPath);
+	const sessionActionsDisabled = sessionActionTitle !== undefined;
 
 	const startRenameChat = () => {
 		setMenu(null);
@@ -847,12 +861,13 @@ function ProjectChatRow({
 	};
 
 	useEffect(() => {
-		if (renameChatRequest?.projectId === projectId && renameChatRequest.chatId === child.chatId && !isRenaming) {
+		const pending = pendingRename?.pendingRename;
+		if (pending?.projectId === projectId && pending.chatId === child.chatId && !isRenaming) {
 			setMenu(null);
 			setIsRenaming(true);
-			onRenameChatRequestHandled?.();
+			pendingRename?.clearPendingRename();
 		}
-	}, [child.chatId, isRenaming, onRenameChatRequestHandled, projectId, renameChatRequest, setMenu]);
+	}, [child.chatId, isRenaming, pendingRename, projectId, setMenu]);
 
 	const cancelRenameChat = () => {
 		setIsRenaming(false);
@@ -953,20 +968,22 @@ function ProjectChatRow({
 						disabledTitle={sessionActionTitle}
 						onRename={startRenameChat}
 						onFork={() =>
-							runProjectAction(() =>
-								window.piDesktop.chat.fork({
-									projectId,
-									chatId: child.chatId,
-								}),
-							)
+							runProjectChatBranchActionForRow({
+								runProjectAction,
+								projectId,
+								chatId: child.chatId,
+								sessionPath,
+								call: window.piDesktop.chat.fork,
+							})
 						}
 						onClone={() =>
-							runProjectAction(() =>
-								window.piDesktop.chat.clone({
-									projectId,
-									chatId: child.chatId,
-								}),
-							)
+							runProjectChatBranchActionForRow({
+								runProjectAction,
+								projectId,
+								chatId: child.chatId,
+								sessionPath,
+								call: window.piDesktop.chat.clone,
+							})
 						}
 					/>
 				) : null}

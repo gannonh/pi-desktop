@@ -72,7 +72,7 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/new` | Start a new session | `palette entry` | Session | `session.new` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | `chat.create` or `chat.createStandalone` | — |
 | `/quit` | Quit pi | Pending | Meta/Skills | `meta.quit` | — | Likely `out-of-scope` | Planned Slice 6 |
 | `/reload` | Reload resources | Pending | Config | `config.reload` | — | Extensions/skills/themes | Planned Slice 4 |
-| `/resume` | Resume a different session | `palette entry` | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Status guidance to select a chat in the sidebar (existing resume path) | — |
+| `/resume` | Resume a different session | `deferred` | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts` | Status guidance to select a chat in the sidebar (existing resume path) | — |
 | `/scoped-models` | Scoped model cycling set | Pending | Config | `config.scoped-models` | — | | Planned Slice 4 |
 | `/session` | Show session info and stats | `palette entry` | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message | — |
 | `/settings` | Open settings menu | Pending | Config | `config.settings` | — | | Planned Slice 4 |
@@ -93,13 +93,14 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 
 ## S011 implementation note (session family)
 
-S011 replaced the Session section stub with nine concrete palette entries and wired supported actions through `SessionCommandPaletteActions` in `App.tsx`:
+S011 replaced the Session section stub with nine concrete palette entries and wired supported actions through `useSessionCommandPaletteActions` and sidebar registration:
 
-- `src/renderer/chat/session-command-palette.ts`: stable `session.*` entry IDs, labels, and handlers.
+- `src/renderer/chat/session-command-palette.ts`: stable `session.*` entry IDs, labels, deferral copy, and handlers.
+- `src/renderer/chat/use-session-command-palette-actions.ts`: palette action wiring for new/fork/clone/name/info.
 - `src/renderer/chat/build-command-palette-entries.ts`: merges session entries with remaining section stubs.
 - `src/renderer/chat/use-composer-command-palette.ts`: accepts optional session actions to build the registry at runtime.
-- `src/renderer/App.tsx`: implements new/fork/clone/resume/name/info and visible deferrals for tree/import/compact.
-- `src/renderer/components/project-sidebar.tsx`: palette-triggered inline rename for project chats.
+- `src/renderer/projects/project-chat-branch-action.ts`: shared fork/clone guards for palette and sidebar.
+- `src/renderer/components/project-sidebar.tsx`: registers `startChatRename`; pending rename via sidebar context.
 
 Verification: `tests/renderer/session-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and updated registry tests.
 

@@ -21,15 +21,14 @@ import {
 import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
-import type { RenameChatRequest } from "../projects/rename-chat-request";
+import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
 import { Badge } from "./ui/badge";
 
 interface AppShellProps {
 	state: ProjectStateView;
-	renameChatRequest?: RenameChatRequest | null;
-	onRenameChatRequestHandled?: () => void;
+	onRegisterSidebarActions?: (actions: ProjectSidebarActions | null) => void;
 	statusMessage?: string;
 	session: LiveSessionState;
 	transcriptHydration: TranscriptHydrationState;
@@ -42,8 +41,7 @@ interface AppShellProps {
 
 export function AppShell({
 	state,
-	renameChatRequest = null,
-	onRenameChatRequestHandled,
+	onRegisterSidebarActions,
 	statusMessage,
 	session,
 	transcriptHydration,
@@ -121,8 +119,7 @@ export function AppShell({
 				collapsed={sidebarCollapsed}
 				onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
 				onProjectState={onProjectState}
-				renameChatRequest={renameChatRequest}
-				onRenameChatRequestHandled={onRenameChatRequestHandled}
+				onRegisterActions={onRegisterSidebarActions}
 			/>
 			{!sidebarCollapsed ? (
 				<div

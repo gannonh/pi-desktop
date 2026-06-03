@@ -10,7 +10,7 @@ export function createMockSessionCommandPaletteActions(
 		onShowSessionInfo: vi.fn(),
 		onForkSession: vi.fn(),
 		onCloneSession: vi.fn(),
-		onDefer: vi.fn(),
+		onShowPaletteNotice: vi.fn(),
 		...overrides,
 	};
 }

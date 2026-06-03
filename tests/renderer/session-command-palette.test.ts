@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createSessionCommandPaletteEntries } from "../../src/renderer/chat/session-command-palette";
+import {
+	createSessionCommandPaletteEntries,
+	SESSION_PALETTE_DEFERRAL_MESSAGES,
+} from "../../src/renderer/chat/session-command-palette";
 import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 
 describe("session command palette entries", () => {
@@ -30,7 +33,7 @@ describe("session command palette entries", () => {
 		expect(actions.onForkSession).toHaveBeenCalledOnce();
 	});
 
-	it("routes resume and deferred commands through onDefer", () => {
+	it("routes deferred commands through onShowPaletteNotice", () => {
 		const actions = createMockSessionCommandPaletteActions();
 		const entries = createSessionCommandPaletteEntries(actions);
 		const resume = entries.find((entry) => entry.id === "session.resume");
@@ -39,7 +42,7 @@ describe("session command palette entries", () => {
 		resume?.handler();
 		compact?.handler();
 
-		expect(actions.onDefer).toHaveBeenCalledWith("Resume a session by selecting a chat in the project sidebar.");
-		expect(actions.onDefer).toHaveBeenCalledWith(expect.stringContaining("compaction"));
+		expect(actions.onShowPaletteNotice).toHaveBeenCalledWith(SESSION_PALETTE_DEFERRAL_MESSAGES.resume);
+		expect(actions.onShowPaletteNotice).toHaveBeenCalledWith(SESSION_PALETTE_DEFERRAL_MESSAGES.compact);
 	});
 });
