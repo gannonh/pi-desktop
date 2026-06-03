@@ -23,12 +23,24 @@ describe("command palette registry", () => {
 	});
 
 	it("builds grouped session entries for S011 when session actions are provided", () => {
-		const entries = buildCommandPaletteEntries(createMockSessionCommandPaletteActions());
+		const entries = buildCommandPaletteEntries({ session: createMockSessionCommandPaletteActions() });
 		const registry = createCommandPaletteRegistry(entries);
 		const sessionGroup = registry.getEntriesBySection().find((group) => group.section.id === "session");
 
 		expect(sessionGroup?.entries.map((entry) => entry.id)).toContain("session.new");
 		expect(sessionGroup?.entries).toHaveLength(9);
+	});
+
+	it("lets family slices replace section stubs through buildCommandPaletteEntries", () => {
+		const entries = buildCommandPaletteEntries({
+			output: {
+				onCopyLastAssistantMessage: () => {},
+				onDefer: () => {},
+			},
+		});
+
+		expect(entries.some((entry) => entry.id === "output.stub")).toBe(false);
+		expect(entries.some((entry) => entry.id === "output.copy")).toBe(true);
 	});
 
 	it("lets family slices register stable entries without changing the API", () => {
