@@ -38,9 +38,9 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 | Section | Typical commands |
 | --- | --- |
 | **Session** | Lifecycle, tree, fork/clone, compact, import/resume |
-| **Config** | Auth, model, scoped models, settings, reload |
+| **Config** | Auth, model, scoped models, settings |
 | **Output** | Copy, export, share |
-| **Meta/Skills** | Help surfaces, changelog, app exit |
+| **Meta/Skills** | Help surfaces, changelog, resource reload, app exit |
 
 ### Example rows (one per disposition type)
 
@@ -57,21 +57,21 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 
 | CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by family slice |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/changelog` | Show changelog entries | Pending | Meta/Skills | `meta.changelog` | — | | Planned Slice 6 |
+| `/changelog` | Show changelog entries | `deferred` | Meta/Skills | `meta.changelog` | `src/renderer/chat/meta-command-palette-entries.ts` | In-app changelog deferred; palette shows visible notice (S014) | — |
 | `/clone` | Duplicate session at current position | Pending | Session | `session.clone` | — | | Planned Slice 3 |
 | `/compact` | Manually compact session context | Pending | Session | `session.compact` | — | Optional `[prompt]` in CLI | Planned Slice 3 |
 | `/copy` | Copy last agent message | Pending | Output | `output.copy` | — | | Planned Slice 5 |
 | `/export` | Export session to HTML/JSONL | Pending | Output | `output.export` | — | | Planned Slice 5 |
 | `/fork` | Fork from previous user message | Pending | Session | `session.fork` | — | | Planned Slice 3 |
-| `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
+| `/hotkeys` | Show all keyboard shortcuts | `deferred` | Meta/Skills | `meta.hotkeys` | `src/renderer/chat/meta-command-palette-entries.ts` | Keybindings reference deferred; palette shows visible notice (S014) | — |
 | `/import` | Import session from JSONL | Pending | Session | `session.import` | — | | Planned Slice 3 |
 | `/login` | Configure provider auth | Pending | Config | `config.login` | — | Secrets stay in main process | Planned Slice 4 |
 | `/logout` | Remove provider auth | Pending | Config | `config.logout` | — | | Planned Slice 4 |
 | `/model` | Select model | Pending | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | May remain `existing UI` after review | Planned Slice 4 |
 | `/name` | Set session display name | Pending | Session | `session.name` | — | | Planned Slice 3 |
 | `/new` | Start a new session | Pending | Session | `session.new` | — | | Planned Slice 3 |
-| `/quit` | Quit pi | Pending | Meta/Skills | `meta.quit` | — | Likely `out-of-scope` | Planned Slice 6 |
-| `/reload` | Reload resources | Pending | Config | `config.reload` | — | Extensions/skills/themes | Planned Slice 4 |
+| `/quit` | Quit pi | `out-of-scope` | Meta/Skills | `meta.quit` | `src/renderer/chat/meta-command-palette-entries.ts` | OS/window close is the Desktop equivalent; palette explains (S014) | — |
+| `/reload` | Reload resources | `deferred` | Meta/Skills | `meta.reload` | `src/renderer/chat/meta-command-palette-entries.ts` | **Ownership (S012/S014):** config slice defers implementation; Meta/Skills palette entry only. Hot-reload deferred until extensibility milestone | — |
 | `/resume` | Resume a different session | Pending | Session | `session.resume` | — | | Planned Slice 3 |
 | `/scoped-models` | Scoped model cycling set | Pending | Config | `config.scoped-models` | — | | Planned Slice 4 |
 | `/session` | Show session info and stats | Pending | Session | `session.info` | — | | Planned Slice 3 |
@@ -84,11 +84,11 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 21 |
+| **Pending disposition** | 17 |
 | **Session family** | 9 |
-| **Config family** | 6 |
+| **Config family** | 5 |
 | **Output family** | 3 |
-| **Meta/Skills family** | 3 |
+| **Meta/Skills family** | 4 |
 
 ## S010 implementation note (palette shell)
 
@@ -109,6 +109,6 @@ Family slices should register concrete entries using the `Palette entry ID` valu
 | Planned slice | Palette section | Commands (palette entry IDs) |
 | --- | --- | --- |
 | Planned Slice 3 (Session) | Session | `session.*` (9 rows) |
-| Planned Slice 4 (Config) | Config | `config.*` (6 rows) |
+| Planned Slice 4 (Config) | Config | `config.*` (5 rows; `/reload` owned by S014 `meta.reload`) |
 | Planned Slice 5 (Output) | Output | `output.*` (3 rows) |
-| Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (3 rows) |
+| Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (4 rows; S014 complete) |
