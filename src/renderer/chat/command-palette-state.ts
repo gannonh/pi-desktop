@@ -73,7 +73,7 @@ export function getNextCommandPaletteEntryId(
 
 	const currentIndex = entries.findIndex((entry) => entry.id === activeEntryId);
 	const safeCurrentIndex = currentIndex === -1 ? 0 : currentIndex;
-	const nextIndex = (safeCurrentIndex + delta + entries.length) % entries.length;
+	const nextIndex = (((safeCurrentIndex + delta) % entries.length) + entries.length) % entries.length;
 	return entries[nextIndex]?.id;
 }
 

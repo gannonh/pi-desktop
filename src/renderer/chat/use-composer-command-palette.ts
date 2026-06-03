@@ -115,6 +115,14 @@ export function useComposerCommandPalette({
 				return false;
 			}
 
+			if (visibleEntries.length === 0) {
+				if (action === "dismiss") {
+					dismiss();
+					return true;
+				}
+				return false;
+			}
+
 			switch (action) {
 				case "next":
 					moveActiveEntry(1);
@@ -132,7 +140,7 @@ export function useComposerCommandPalette({
 
 			return true;
 		},
-		[dismiss, moveActiveEntry, open, selectActiveEntry],
+		[dismiss, moveActiveEntry, open, selectActiveEntry, visibleEntries.length],
 	);
 
 	return {

@@ -48,6 +48,10 @@ describe("command palette state", () => {
 		expect(getNextCommandPaletteEntryId([], "session.new", 1)).toBeUndefined();
 	});
 
+	it("normalizes large negative deltas without returning undefined", () => {
+		expect(getNextCommandPaletteEntryId(entries, "session.new", -3)).toBe("config.model");
+	});
+
 	it("captures palette navigation keys so they do not submit prompts", () => {
 		expect(isCommandPaletteNavigationKey("ArrowDown")).toBe(true);
 		expect(isCommandPaletteNavigationKey("ArrowUp")).toBe(true);

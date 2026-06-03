@@ -82,6 +82,21 @@ describe("useComposerCommandPalette", () => {
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 
+	it("does not swallow Enter when the palette has no visible entries", async () => {
+		render(<CommandPaletteHookHarness initialText="/nomatch" />);
+
+		await waitFor(() => expect(screen.getByTestId("open").textContent).toBe("true"));
+		expect(screen.getByTestId("active-entry").textContent).toBe("");
+
+		fireEvent.click(screen.getByRole("button", { name: "select" }));
+		expect(screen.getByTestId("last-handled").textContent).toBe("false");
+		expect(screen.getByTestId("text").textContent).toBe("/nomatch");
+
+		fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
+		expect(screen.getByTestId("last-handled").textContent).toBe("true");
+		expect(screen.getByTestId("open").textContent).toBe("false");
+	});
+
 	it("dismisses handled actions and closed palette navigation without inserting prompt text", async () => {
 		const focusTextarea = vi.fn();
 		render(<CommandPaletteHookHarness initialText="hello" focusTextarea={focusTextarea} />);

@@ -94,7 +94,14 @@ export function CommandPalettePopover({
 	};
 
 	return (
-		<Popover open={open}>
+		<Popover
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (!nextOpen) {
+					onDismiss();
+				}
+			}}
+		>
 			<PopoverAnchor asChild>
 				<span className="composer__command-anchor" aria-hidden="true" />
 			</PopoverAnchor>
