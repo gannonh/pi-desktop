@@ -4,6 +4,7 @@ import {
 	getDefaultCommandPaletteEntries,
 	groupCommandPaletteEntries,
 	type CommandPaletteEntry,
+	type ConfigCommandPaletteDeps,
 } from "./command-palette-registry";
 import {
 	filterCommandPaletteEntries,
@@ -19,6 +20,7 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
+	configPaletteDeps?: ConfigCommandPaletteDeps;
 }
 
 export function useComposerCommandPalette({
@@ -28,10 +30,14 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
+	configPaletteDeps,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntries(), []);
+	const entries = useMemo(
+		() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries(configPaletteDeps)).getEntries(),
+		[configPaletteDeps],
+	);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);

@@ -68,7 +68,7 @@ describe("useComposerCommandPalette", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "next" }));
 		expect(screen.getByTestId("last-handled").textContent).toBe("true");
-		expect(screen.getByTestId("active-entry").textContent).toBe("config.stub");
+		expect(screen.getByTestId("active-entry").textContent).toBe("config.model");
 
 		fireEvent.click(screen.getByRole("button", { name: "previous" }));
 		expect(screen.getByTestId("active-entry").textContent).toBe("session.stub");

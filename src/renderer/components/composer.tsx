@@ -11,7 +11,7 @@ import {
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
@@ -97,6 +97,7 @@ export function Composer({
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
 	const [attachmentError, setAttachmentError] = useState("");
+	const [paletteNotice, setPaletteNotice] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
@@ -122,6 +123,18 @@ export function Composer({
 	const setTextareaSelection = useCallback((nextSelectionStart: number) => {
 		pendingTextareaSelectionRef.current = nextSelectionStart;
 	}, []);
+	const configPaletteDeps = useMemo(
+		() => ({
+			onOpenModelPicker: () => {
+				setPaletteNotice("");
+				setOpenMenu("model");
+			},
+			onShowPaletteNotice: (message: string) => {
+				setPaletteNotice(message);
+			},
+		}),
+		[],
+	);
 	const commandPalette = useComposerCommandPalette({
 		text,
 		selectionStart,
@@ -129,6 +142,7 @@ export function Composer({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
+		configPaletteDeps,
 	});
 
 	useLayoutEffect(() => {
@@ -509,6 +523,11 @@ export function Composer({
 					{attachmentError ? (
 						<span className="composer__disabled-reason" role="alert">
 							{attachmentError}
+						</span>
+					) : null}
+					{paletteNotice ? (
+						<span className="composer__disabled-reason" role="status">
+							{paletteNotice}
 						</span>
 					) : null}
 					{state.statusLabel ? (

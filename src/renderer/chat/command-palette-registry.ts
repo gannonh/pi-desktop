@@ -1,3 +1,5 @@
+import { buildConfigCommandPaletteEntries, type ConfigCommandPaletteDeps } from "./config-command-palette-entries";
+
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
 export type CommandPaletteIconName = "CircleHelp" | "FileOutput" | "Settings" | "SquarePen";
@@ -106,7 +108,16 @@ function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPalet
 	});
 }
 
-export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
+export type { ConfigCommandPaletteDeps };
+
+export function getDefaultCommandPaletteEntries(deps?: ConfigCommandPaletteDeps): CommandPaletteEntry[] {
+	const configEntries = deps
+		? buildConfigCommandPaletteEntries(deps)
+		: buildConfigCommandPaletteEntries({
+				onOpenModelPicker: () => {},
+				onShowPaletteNotice: () => {},
+			});
+
 	return [
 		{
 			id: "session.stub",
@@ -117,15 +128,7 @@ export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
 		},
-		{
-			id: "config.stub",
-			sectionId: "config",
-			icon: "Settings",
-			title: "Config command",
-			description: "Config commands will be wired in the config slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Config command selected" }),
-		},
+		...configEntries,
 		{
 			id: "output.stub",
 			sectionId: "output",
