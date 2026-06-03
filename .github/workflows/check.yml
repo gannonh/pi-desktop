@@ -39,9 +39,7 @@ jobs:
           key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Electron binary
-        run: |
-          ELECTRON_PKG="$(node -e "console.log(require('path').dirname(require.resolve('electron/package.json')))")"
-          node "$ELECTRON_PKG/install.js"
+        run: node ./scripts/ensure-electron-binary.mjs
 
       - name: Resolve Playwright version
         run: echo "PLAYWRIGHT_VERSION=$(pnpm exec playwright --version)" >> "$GITHUB_ENV"
