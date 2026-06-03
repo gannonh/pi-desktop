@@ -71,6 +71,15 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 - For code changes, add or run the smallest deterministic checks that prove the changed behavior.
 - Once project scripts exist, prefer the repo `check` command for final verification.
 
+## Cursor Cloud specific instructions
+
+- **Node 24:** `preinstall` rejects any Node major other than 24. Cloud VMs often ship `/exec-daemon/node` (v22) ahead of nvm on `PATH`; prepend the active nvm Node 24 bin directory before `pnpm install` or scripts (see `~/.bashrc` in this environment, or `nvm use 24` then `export PATH="$(dirname "$(nvm which current)"):$PATH"`).
+- **Package manager:** Use Corepack for `pnpm@11.1.1` per [README.md](README.md).
+- **Linux / headless VMs:** Prefer `pnpm dev:web` over `pnpm dev`. Electron desktop dev targets macOS; web preview starts Vite plus the local app data bridge (`/api/rpc`, `/api/events`) in one process. Open the printed Vite URL (default `http://127.0.0.1:5173/`).
+- **Project creation in web preview:** `project.createFromScratch` scans `~/Documents`. Create that directory on minimal Linux images (`mkdir -p ~/Documents`) or scratch-project creation fails with `ENOENT`.
+- **Verification:** Standard commands are in [README.md](README.md). On Linux, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test:coverage` are the reliable subset; full `pnpm check` (Electron build + Playwright smoke) matches CI on `macos-latest` and needs `pnpm exec playwright install chromium` plus a display/stack suitable for Electron.
+- **Pi runtime:** No separate `pi-mono` daemon. Agent config defaults to `~/.pi/agent`; optional smoke mock via `PI_DESKTOP_SMOKE_PI_SESSION=1` for Playwright tests.
+
 ## Git
 
 - Commit after each coherent change set or turn.
