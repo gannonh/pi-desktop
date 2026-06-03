@@ -228,6 +228,7 @@ export function Composer({
 				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
+				setPaletteNotice("");
 				focusTextarea();
 			}
 		} catch (error) {
@@ -366,6 +367,7 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => {
+								setPaletteNotice("");
 								commandPalette.noteTextChanged(
 									event.target.value,
 									event.target.selectionStart ?? event.target.value.length,

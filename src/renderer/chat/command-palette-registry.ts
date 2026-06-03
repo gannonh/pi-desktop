@@ -3,6 +3,7 @@ import {
 	NOOP_CONFIG_PALETTE_DEPS,
 	type ConfigCommandPaletteDeps,
 } from "./config-command-palette-entries";
+import { getMetaCommandPaletteEntries } from "./meta-command-palette-entries";
 
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
@@ -138,14 +139,6 @@ export function getDefaultCommandPaletteEntries(
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
 		},
-		{
-			id: "meta.stub",
-			sectionId: "meta",
-			icon: "CircleHelp",
-			title: "Meta/Skills command",
-			description: "Meta and skill commands will be wired in the meta slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Meta/Skills command selected" }),
-		},
+		...getMetaCommandPaletteEntries(),
 	];
 }

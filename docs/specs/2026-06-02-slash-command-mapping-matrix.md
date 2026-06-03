@@ -10,7 +10,7 @@
 
 Authoritative mapping of each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S015 consolidated family-slice outcomes (S011–S014) into final dispositions for all 21 built-in commands.
 
-> **Implementation status (2026-06-03):** Mapping and dispositions are final on this branch. Family-slice code (S011–S014) lands on branches `cursor/s011-session-command-mapping-bc1b` through `cursor/s014-meta-command-mapping-3e57`; `main` currently ships S010 palette stubs only until that stack merges.
+> **Implementation status (2026-06-03):** Mapping and dispositions are final. S011–S014 palette wiring is integrated on branch `cursor/m003-palette-integration-cdb1`; merge to `main` closes M003 implementation.
 
 ## Matrix schema
 

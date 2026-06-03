@@ -4,6 +4,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Composer } from "../../src/renderer/components/composer";
 import { CONFIG_PALETTE_DEFERRAL_MESSAGES } from "../../src/renderer/chat/config-command-palette-entries";
+import {
+	META_CHANGELOG_DEFERRAL_MESSAGE,
+	META_HOTKEYS_DEFERRAL_MESSAGE,
+	META_QUIT_OUT_OF_SCOPE_MESSAGE,
+	META_RELOAD_DEFERRAL_MESSAGE,
+} from "../../src/renderer/chat/meta-command-palette-entries";
 import { createComposerContext } from "./composer-fixtures";
 
 const context = createComposerContext({
@@ -72,6 +78,37 @@ describe("Composer command palette integration", () => {
 		fireEvent.click(textarea);
 
 		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
+	});
+
+	it.each([
+		{ query: "/hot", option: /\/hotkeys/, expectedMessage: META_HOTKEYS_DEFERRAL_MESSAGE },
+		{ query: "/change", option: /\/changelog/, expectedMessage: META_CHANGELOG_DEFERRAL_MESSAGE },
+		{ query: "/rel", option: /\/reload/, expectedMessage: META_RELOAD_DEFERRAL_MESSAGE },
+		{ query: "/qu", option: /\/quit/, expectedMessage: META_QUIT_OUT_OF_SCOPE_MESSAGE },
+	])("shows meta notice when selecting $option", ({ query, option, expectedMessage }) => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: query } });
+		fireEvent.click(screen.getByRole("option", { name: option }));
+
+		expect(textarea.value).toBe(query);
+		expect(screen.getByRole("status").textContent).toBe(expectedMessage);
+	});
+
+	it("clears a meta notice when selecting a stub palette entry", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/hot" } });
+		fireEvent.click(screen.getByRole("option", { name: /\/hotkeys/ }));
+		expect(screen.getByRole("status").textContent).toBe(META_HOTKEYS_DEFERRAL_MESSAGE);
+
+		fireEvent.change(textarea, { target: { value: "/" } });
+		fireEvent.click(screen.getByRole("option", { name: /Session command/ }));
+
+		expect(screen.queryByRole("status")).toBeNull();
+		expect(textarea.value).toBe("Session command selected");
 	});
 
 	it("preserves Enter submit behavior when the palette is closed", async () => {

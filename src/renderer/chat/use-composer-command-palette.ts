@@ -84,8 +84,6 @@ export function useComposerCommandPalette({
 			}
 			if (action.type === "showNotice") {
 				onShowPaletteNotice?.(action.message);
-			} else {
-				onShowPaletteNotice?.("");
 			}
 			dismiss();
 			focusTextarea();
