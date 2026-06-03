@@ -1,3 +1,5 @@
+import { getMetaCommandPaletteEntries } from "./meta-command-palette-entries";
+
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
 export type CommandPaletteIconName = "CircleHelp" | "FileOutput" | "Settings" | "SquarePen";
@@ -7,7 +9,10 @@ export interface CommandPaletteSection {
 	label: string;
 }
 
-export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { type: "handled" };
+export type CommandPaletteAction =
+	| { type: "insertPrompt"; prompt: string }
+	| { type: "handled" }
+	| { type: "showNotice"; message: string };
 
 export interface CommandPaletteEntry {
 	id: string;
@@ -135,14 +140,6 @@ export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
 		},
-		{
-			id: "meta.stub",
-			sectionId: "meta",
-			icon: "CircleHelp",
-			title: "Meta/Skills command",
-			description: "Meta and skill commands will be wired in the meta slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Meta/Skills command selected" }),
-		},
+		...getMetaCommandPaletteEntries(),
 	];
 }

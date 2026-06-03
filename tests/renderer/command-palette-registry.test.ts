@@ -16,8 +16,21 @@ describe("command palette registry", () => {
 			session: 1,
 			config: 1,
 			output: 1,
-			meta: 1,
+			meta: 4,
 		});
+	});
+
+	it("registers S014 meta entries with stable matrix IDs", () => {
+		const registry = createCommandPaletteRegistry(getDefaultCommandPaletteEntries());
+		const metaEntries = registry.getEntriesBySection().find((group) => group.section.id === "meta")?.entries ?? [];
+
+		expect(metaEntries.map((entry) => entry.id)).toEqual([
+			"meta.changelog",
+			"meta.hotkeys",
+			"meta.quit",
+			"meta.reload",
+		]);
+		expect(metaEntries[0]?.handler()).toEqual({ type: "showNotice", message: expect.any(String) });
 	});
 
 	it("lets family slices register stable entries without changing the API", () => {
