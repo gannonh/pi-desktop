@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-command-palette-entries";
+import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
@@ -22,15 +23,7 @@ describe("command palette registry", () => {
 	});
 
 	it("builds grouped session entries for S011 when session actions are provided", () => {
-		const entries = buildCommandPaletteEntries({
-			onNewSession: () => {},
-			onResumeSession: () => {},
-			onRenameSession: () => {},
-			onShowSessionInfo: () => {},
-			onForkSession: () => {},
-			onCloneSession: () => {},
-			onDefer: () => {},
-		});
+		const entries = buildCommandPaletteEntries(createMockSessionCommandPaletteActions());
 		const registry = createCommandPaletteRegistry(entries);
 		const sessionGroup = registry.getEntriesBySection().find((group) => group.section.id === "session");
 

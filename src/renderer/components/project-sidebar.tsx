@@ -53,12 +53,8 @@ import {
 	MenuSurface,
 } from "./menu";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
+import type { RenameChatRequest } from "../projects/rename-chat-request";
 import { SidebarInlineRenameField } from "./sidebar-inline-rename";
-
-type RenameChatRequest = {
-	projectId: string | null;
-	chatId: string;
-};
 
 interface ProjectSidebarProps {
 	state: ProjectStateView;

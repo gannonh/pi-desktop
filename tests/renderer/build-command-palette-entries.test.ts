@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-command-palette-entries";
+import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 
 describe("buildCommandPaletteEntries", () => {
 	it("uses session stubs when session actions are not provided", () => {
@@ -11,15 +12,7 @@ describe("buildCommandPaletteEntries", () => {
 	});
 
 	it("replaces the session stub with concrete S011 entries when actions are provided", () => {
-		const entries = buildCommandPaletteEntries({
-			onNewSession: vi.fn(),
-			onResumeSession: vi.fn(),
-			onRenameSession: vi.fn(),
-			onShowSessionInfo: vi.fn(),
-			onForkSession: vi.fn(),
-			onCloneSession: vi.fn(),
-			onDefer: vi.fn(),
-		});
+		const entries = buildCommandPaletteEntries(createMockSessionCommandPaletteActions());
 		const sessionEntries = entries.filter((entry) => entry.sectionId === "session");
 
 		expect(sessionEntries).toHaveLength(9);

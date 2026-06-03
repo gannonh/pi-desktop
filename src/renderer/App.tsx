@@ -12,6 +12,7 @@ import type {
 import type { ComposerHostProps } from "./chat/composer-host";
 import type { SessionCommandPaletteActions } from "./chat/session-command-palette";
 import { AppShell } from "./components/app-shell";
+import type { RenameChatRequest } from "./projects/rename-chat-request";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
@@ -59,6 +60,39 @@ const createEmptyProjectStateView = (): ProjectStateView => ({
 });
 
 type SessionChat = NonNullable<ProjectStateView["selectedChat"]>;
+
+function projectActionErrorMessage(error: unknown, fallback: string): string {
+	return error instanceof Error ? error.message : fallback;
+}
+
+function runProjectChatForkOrClone(
+	notify: (message: string) => void,
+	applyProjectStateViewResult: (result: ProjectStateViewResult) => void,
+	scope: {
+		selectedProjectId: string | null;
+		selectedChatId: string | null;
+		sessionPath: string | null | undefined;
+	},
+	verb: "fork" | "clone",
+	call: (args: { projectId: string; chatId: string }) => Promise<ProjectStateViewResult>,
+): void {
+	if (!scope.selectedProjectId || !scope.selectedChatId) {
+		notify(`Select a project chat before ${verb === "fork" ? "forking" : "cloning"}.`);
+		return;
+	}
+	if (!scope.sessionPath) {
+		const label = verb === "fork" ? "Fork" : "Clone";
+		notify(
+			`${label} is available after the chat has a Pi session file. Send a message to start the session, then try again.`,
+		);
+		return;
+	}
+	void call({ projectId: scope.selectedProjectId, chatId: scope.selectedChatId })
+		.then(applyProjectStateViewResult)
+		.catch((error) => {
+			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`));
+		});
+}
 
 const isPiSessionStartPayload = (payload: unknown): payload is PiSessionStartPayload =>
 	typeof payload === "object" &&
@@ -159,10 +193,7 @@ export function App() {
 	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
 	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
 	const [composerDraft, setComposerDraft] = useState("");
-	const [renameChatRequest, setRenameChatRequest] = useState<{
-		projectId: string | null;
-		chatId: string;
-	} | null>(null);
+	const [renameChatRequest, setRenameChatRequest] = useState<RenameChatRequest | null>(null);
 	const selectedProjectId = projectState.selectedProjectId;
 	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
@@ -185,6 +216,14 @@ export function App() {
 
 		setProjectState(result.data);
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+	}, []);
+
+	const notifyProjectStatus = useCallback((message: string) => {
+		setStatusMessage({ source: "project", message });
+	}, []);
+
+	const handleRenameChatRequestHandled = useCallback(() => {
+		setRenameChatRequest(null);
 	}, []);
 
 	const scheduleProjectTitleRefresh = useCallback(() => {
@@ -661,31 +700,31 @@ export function App() {
 	);
 
 	const sessionCommandPaletteActions = useMemo((): SessionCommandPaletteActions => {
-		const notify = (message: string) => {
-			setStatusMessage({ source: "project", message });
+		const chatScope = {
+			selectedProjectId,
+			selectedChatId,
+			sessionPath: projectState.selectedChat?.sessionPath,
 		};
 
 		return {
 			onNewSession: () => {
-				void (async () => {
-					const result = selectedProjectId
-						? await window.piDesktop.chat.create({ projectId: selectedProjectId })
-						: await window.piDesktop.chat.createStandalone({});
-					applyProjectStateViewResult(result);
-				})().catch((error) => {
-					notify(error instanceof Error ? error.message : "Unable to start a new session.");
-				});
-			},
-			onResumeSession: () => {
-				notify("Resume a session by selecting a chat in the project sidebar.");
+				void (
+					selectedProjectId
+						? window.piDesktop.chat.create({ projectId: selectedProjectId })
+						: window.piDesktop.chat.createStandalone({})
+				)
+					.then(applyProjectStateViewResult)
+					.catch((error) => {
+						notifyProjectStatus(projectActionErrorMessage(error, "Unable to start a new session."));
+					});
 			},
 			onRenameSession: () => {
 				if (!selectedChatId) {
-					notify("Select a chat before renaming the session.");
+					notifyProjectStatus("Select a chat before renaming the session.");
 					return;
 				}
 				if (!selectedProjectId) {
-					notify(
+					notifyProjectStatus(
 						"Quick-start chat rename from the command palette is not available yet. Select a project chat to rename from the sidebar.",
 					);
 					return;
@@ -695,7 +734,7 @@ export function App() {
 			onShowSessionInfo: () => {
 				const chat = projectState.selectedChat;
 				if (!chat) {
-					notify("Select a chat to view session info.");
+					notifyProjectStatus("Select a chat to view session info.");
 					return;
 				}
 				const lines = [
@@ -705,49 +744,29 @@ export function App() {
 					chat.sessionPath ? `Session file: ${chat.sessionPath}` : "Session file: not created yet",
 					`Updated: ${chat.updatedAt}`,
 				];
-				notify(lines.join(" · "));
+				notifyProjectStatus(lines.join(" · "));
 			},
 			onForkSession: () => {
-				if (!selectedProjectId || !selectedChatId) {
-					notify("Select a project chat before forking.");
-					return;
-				}
-				const chat = projectState.selectedChat;
-				if (!chat?.sessionPath) {
-					notify(
-						"Fork is available after the chat has a Pi session file. Send a message to start the session, then try again.",
-					);
-					return;
-				}
-				void window.piDesktop.chat
-					.fork({ projectId: selectedProjectId, chatId: selectedChatId })
-					.then(applyProjectStateViewResult)
-					.catch((error) => {
-						notify(error instanceof Error ? error.message : "Unable to fork session.");
-					});
+				runProjectChatForkOrClone(
+					notifyProjectStatus,
+					applyProjectStateViewResult,
+					chatScope,
+					"fork",
+					window.piDesktop.chat.fork,
+				);
 			},
 			onCloneSession: () => {
-				if (!selectedProjectId || !selectedChatId) {
-					notify("Select a project chat before cloning.");
-					return;
-				}
-				const chat = projectState.selectedChat;
-				if (!chat?.sessionPath) {
-					notify(
-						"Clone is available after the chat has a Pi session file. Send a message to start the session, then try again.",
-					);
-					return;
-				}
-				void window.piDesktop.chat
-					.clone({ projectId: selectedProjectId, chatId: selectedChatId })
-					.then(applyProjectStateViewResult)
-					.catch((error) => {
-						notify(error instanceof Error ? error.message : "Unable to clone session.");
-					});
+				runProjectChatForkOrClone(
+					notifyProjectStatus,
+					applyProjectStateViewResult,
+					chatScope,
+					"clone",
+					window.piDesktop.chat.clone,
+				);
 			},
-			onDefer: notify,
+			onDefer: notifyProjectStatus,
 		};
-	}, [applyProjectStateViewResult, projectState.selectedChat, selectedChatId, selectedProjectId]);
+	}, [applyProjectStateViewResult, notifyProjectStatus, projectState.selectedChat, selectedChatId, selectedProjectId]);
 
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
@@ -911,7 +930,7 @@ export function App() {
 				<AppShell
 					state={projectState}
 					renameChatRequest={renameChatRequest}
-					onRenameChatRequestHandled={() => setRenameChatRequest(null)}
+					onRenameChatRequestHandled={handleRenameChatRequestHandled}
 					statusMessage={statusMessage?.message}
 					session={
 						isSessionScopeSelected(

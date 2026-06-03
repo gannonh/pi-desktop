@@ -2,7 +2,6 @@ import type { CommandPaletteEntry } from "./command-palette-registry";
 
 export type SessionCommandPaletteActions = {
 	onNewSession: () => void;
-	onResumeSession: () => void;
 	onRenameSession: () => void;
 	onShowSessionInfo: () => void;
 	onForkSession: () => void;
@@ -25,28 +24,38 @@ const sessionEntry = (id: string, title: string, description: string, run: () =>
 
 export function createSessionCommandPaletteEntries(actions: SessionCommandPaletteActions): CommandPaletteEntry[] {
 	return [
-		sessionEntry("session.new", "New session", "Start a new chat in the current project or quick start", () =>
-			actions.onNewSession(),
+		sessionEntry(
+			"session.new",
+			"New session",
+			"Start a new chat in the current project or quick start",
+			actions.onNewSession,
 		),
 		sessionEntry("session.resume", "Resume session", "Switch to another chat to resume its Pi session", () =>
-			actions.onResumeSession(),
+			actions.onDefer("Resume a session by selecting a chat in the project sidebar."),
 		),
-		sessionEntry("session.name", "Rename session", "Rename the selected chat session", () =>
-			actions.onRenameSession(),
-		),
-		sessionEntry("session.info", "Session info", "Show identity and status for the selected session", () =>
-			actions.onShowSessionInfo(),
+		sessionEntry("session.name", "Rename session", "Rename the selected chat session", actions.onRenameSession),
+		sessionEntry(
+			"session.info",
+			"Session info",
+			"Show identity and status for the selected session",
+			actions.onShowSessionInfo,
 		),
 		sessionEntry("session.tree", "Session tree", "Navigate branches in the session tree", () =>
 			actions.onDefer(
 				"Session tree navigation is not available in Desktop yet. Use Fork chat in the sidebar for branch workflows until the tree UI ships.",
 			),
 		),
-		sessionEntry("session.fork", "Fork session", "Fork the selected chat from its current branch", () =>
-			actions.onForkSession(),
+		sessionEntry(
+			"session.fork",
+			"Fork session",
+			"Fork the selected chat from its current branch",
+			actions.onForkSession,
 		),
-		sessionEntry("session.clone", "Clone session", "Clone the selected chat at the current leaf", () =>
-			actions.onCloneSession(),
+		sessionEntry(
+			"session.clone",
+			"Clone session",
+			"Clone the selected chat at the current leaf",
+			actions.onCloneSession,
 		),
 		sessionEntry("session.import", "Import session", "Import a session from JSONL", () =>
 			actions.onDefer(

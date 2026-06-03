@@ -23,5 +23,3 @@ export type ComposerHostProps = {
 	onComposerDraftApplied: () => void;
 	sessionCommandPaletteActions?: SessionCommandPaletteActions;
 };
-
-export type { ComposerHostProps as ComposerInteractions };

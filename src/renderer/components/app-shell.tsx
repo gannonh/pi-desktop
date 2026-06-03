@@ -21,14 +21,10 @@ import {
 import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
+import type { RenameChatRequest } from "../projects/rename-chat-request";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
 import { Badge } from "./ui/badge";
-
-type RenameChatRequest = {
-	projectId: string | null;
-	chatId: string;
-};
 
 interface AppShellProps {
 	state: ProjectStateView;
