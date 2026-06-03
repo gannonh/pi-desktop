@@ -173,6 +173,7 @@ export function App() {
 	const nextSessionRequestIdRef = useRef(0);
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const sessionMessagesRef = useRef(sessionState.messages);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -212,6 +213,10 @@ export function App() {
 		activeSessionProjectIdRef.current = activeSessionProjectId;
 		activeSessionChatIdRef.current = activeSessionChatId;
 	}, [activeSessionProjectId, activeSessionChatId]);
+
+	useEffect(() => {
+		sessionMessagesRef.current = sessionState.messages;
+	}, [sessionState.messages]);
 
 	useEffect(() => {
 		if (
@@ -664,7 +669,7 @@ export function App() {
 
 		return {
 			onCopyLastAssistantMessage: () => {
-				const content = getLastAssistantMessageContent(sessionState.messages);
+				const content = getLastAssistantMessageContent(sessionMessagesRef.current);
 				if (!content) {
 					notify("No assistant message to copy yet.");
 					return;
@@ -684,7 +689,14 @@ export function App() {
 			},
 			onDefer: notify,
 		};
-	}, [sessionState.messages]);
+	}, []);
+
+	const commandPaletteActions = useMemo(
+		() => ({
+			output: outputCommandPaletteActions,
+		}),
+		[outputCommandPaletteActions],
+	);
 
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
@@ -709,9 +721,7 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
-		commandPaletteActions: {
-			output: outputCommandPaletteActions,
-		},
+		commandPaletteActions,
 	};
 
 	useEffect(() => {

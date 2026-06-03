@@ -31,6 +31,14 @@ describe("getLastAssistantMessageContent", () => {
 		expect(content).toBe("Useful answer");
 	});
 
+	it("returns untrimmed content when only surrounding whitespace differs from trim", () => {
+		const content = getLastAssistantMessageContent([
+			message({ id: "assistant-1", role: "assistant", content: "  formatted answer\n" }),
+		]);
+
+		expect(content).toBe("  formatted answer\n");
+	});
+
 	it("returns null when no assistant message exists", () => {
 		expect(
 			getLastAssistantMessageContent([message({ id: "user-1", role: "user", content: "Only user text" })]),
