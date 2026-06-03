@@ -30,7 +30,7 @@ import {
 	Wrench,
 	X,
 } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectStateView } from "../../shared/project-state";
@@ -55,11 +55,18 @@ import {
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
 import { SidebarInlineRenameField } from "./sidebar-inline-rename";
 
+type RenameChatRequest = {
+	projectId: string | null;
+	chatId: string;
+};
+
 interface ProjectSidebarProps {
 	state: ProjectStateView;
 	collapsed: boolean;
 	onToggleCollapsed: () => void;
 	onProjectState: (result: ProjectStateViewResult) => void;
+	renameChatRequest?: RenameChatRequest | null;
+	onRenameChatRequestHandled?: () => void;
 }
 
 type MenuState =
@@ -91,7 +98,14 @@ const toProjectStateError = (error: unknown): ProjectStateViewResult => ({
 	},
 });
 
-export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectState }: ProjectSidebarProps) {
+export function ProjectSidebar({
+	state,
+	collapsed,
+	onToggleCollapsed,
+	onProjectState,
+	renameChatRequest = null,
+	onRenameChatRequestHandled,
+}: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
 	const [closedProjectIds, setClosedProjectIds] = useState<Set<string>>(() => new Set());
 	const [pinnedCollapsed, setPinnedCollapsed] = useState(false);
@@ -280,6 +294,8 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 									onToggleOpen={toggleProjectOpen}
 									onToggleChats={toggleProjectChats}
 									runProjectAction={runProjectAction}
+									renameChatRequest={renameChatRequest}
+									onRenameChatRequestHandled={onRenameChatRequestHandled}
 								/>
 							)}
 						</>
@@ -378,6 +394,8 @@ export function ProjectSidebar({ state, collapsed, onToggleCollapsed, onProjectS
 							onToggleOpen={toggleProjectOpen}
 							onToggleChats={toggleProjectChats}
 							runProjectAction={runProjectAction}
+							renameChatRequest={renameChatRequest}
+							onRenameChatRequestHandled={onRenameChatRequestHandled}
 						/>
 					)}
 
@@ -478,6 +496,8 @@ interface ProjectRowsProps {
 	onToggleOpen: (projectId: string) => void;
 	onToggleChats: (projectId: string) => void;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
+	renameChatRequest?: RenameChatRequest | null;
+	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectRows({
@@ -489,6 +509,8 @@ function ProjectRows({
 	onToggleOpen,
 	onToggleChats,
 	runProjectAction,
+	renameChatRequest = null,
+	onRenameChatRequestHandled,
 }: ProjectRowsProps) {
 	const renderProject = (row: SidebarProjectRow) => (
 		<ProjectSidebarProject
@@ -501,6 +523,8 @@ function ProjectRows({
 			onToggleChats={onToggleChats}
 			chatsExpanded={expandedProjectChatIds.has(row.projectId)}
 			runProjectAction={runProjectAction}
+			renameChatRequest={renameChatRequest}
+			onRenameChatRequestHandled={onRenameChatRequestHandled}
 		/>
 	);
 
@@ -581,6 +605,8 @@ interface ProjectSidebarProjectProps {
 	onToggleChats: (projectId: string) => void;
 	chatsExpanded: boolean;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
+	renameChatRequest?: RenameChatRequest | null;
+	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectSidebarProject({
@@ -592,6 +618,8 @@ function ProjectSidebarProject({
 	onToggleChats,
 	chatsExpanded,
 	runProjectAction,
+	renameChatRequest = null,
+	onRenameChatRequestHandled,
 }: ProjectSidebarProjectProps) {
 	const projectMenuId = useId();
 	const [isRenaming, setIsRenaming] = useState(false);
@@ -778,6 +806,8 @@ function ProjectSidebarProject({
 							sessionPath={sessionPathByChatId.get(child.chatId) ?? null}
 							setMenu={setMenu}
 							runProjectAction={runProjectAction}
+							renameChatRequest={renameChatRequest}
+							onRenameChatRequestHandled={onRenameChatRequestHandled}
 						/>
 					)}
 				/>
@@ -794,6 +824,8 @@ interface ProjectChatRowProps {
 	sessionPath: string | null;
 	setMenu: (menu: MenuState | ((current: MenuState) => MenuState)) => void;
 	runProjectAction: (action: () => Promise<ProjectStateViewResult>) => Promise<void>;
+	renameChatRequest?: RenameChatRequest | null;
+	onRenameChatRequestHandled?: () => void;
 }
 
 function ProjectChatRow({
@@ -804,6 +836,8 @@ function ProjectChatRow({
 	sessionPath,
 	setMenu,
 	runProjectAction,
+	renameChatRequest = null,
+	onRenameChatRequestHandled,
 }: ProjectChatRowProps) {
 	const chatMenuId = useId();
 	const [isRenaming, setIsRenaming] = useState(false);
@@ -815,6 +849,14 @@ function ProjectChatRow({
 		setMenu(null);
 		setIsRenaming(true);
 	};
+
+	useEffect(() => {
+		if (renameChatRequest?.projectId === projectId && renameChatRequest.chatId === child.chatId && !isRenaming) {
+			setMenu(null);
+			setIsRenaming(true);
+			onRenameChatRequestHandled?.();
+		}
+	}, [child.chatId, isRenaming, onRenameChatRequestHandled, projectId, renameChatRequest, setMenu]);
 
 	const cancelRenameChat = () => {
 		setIsRenaming(false);

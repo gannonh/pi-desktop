@@ -25,8 +25,15 @@ import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
 import { Badge } from "./ui/badge";
 
+type RenameChatRequest = {
+	projectId: string | null;
+	chatId: string;
+};
+
 interface AppShellProps {
 	state: ProjectStateView;
+	renameChatRequest?: RenameChatRequest | null;
+	onRenameChatRequestHandled?: () => void;
 	statusMessage?: string;
 	session: LiveSessionState;
 	transcriptHydration: TranscriptHydrationState;
@@ -39,6 +46,8 @@ interface AppShellProps {
 
 export function AppShell({
 	state,
+	renameChatRequest = null,
+	onRenameChatRequestHandled,
 	statusMessage,
 	session,
 	transcriptHydration,
@@ -116,6 +125,8 @@ export function AppShell({
 				collapsed={sidebarCollapsed}
 				onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
 				onProjectState={onProjectState}
+				renameChatRequest={renameChatRequest}
+				onRenameChatRequestHandled={onRenameChatRequestHandled}
 			/>
 			{!sidebarCollapsed ? (
 				<div

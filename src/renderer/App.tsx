@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type {
@@ -10,6 +10,7 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import type { SessionCommandPaletteActions } from "./chat/session-command-palette";
 import { AppShell } from "./components/app-shell";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
@@ -158,6 +159,10 @@ export function App() {
 	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
 	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
 	const [composerDraft, setComposerDraft] = useState("");
+	const [renameChatRequest, setRenameChatRequest] = useState<{
+		projectId: string | null;
+		chatId: string;
+	} | null>(null);
 	const selectedProjectId = projectState.selectedProjectId;
 	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
@@ -655,8 +660,98 @@ export function App() {
 		],
 	);
 
+	const sessionCommandPaletteActions = useMemo((): SessionCommandPaletteActions => {
+		const notify = (message: string) => {
+			setStatusMessage({ source: "project", message });
+		};
+
+		return {
+			onNewSession: () => {
+				void (async () => {
+					const result = selectedProjectId
+						? await window.piDesktop.chat.create({ projectId: selectedProjectId })
+						: await window.piDesktop.chat.createStandalone({});
+					applyProjectStateViewResult(result);
+				})().catch((error) => {
+					notify(error instanceof Error ? error.message : "Unable to start a new session.");
+				});
+			},
+			onResumeSession: () => {
+				notify("Resume a session by selecting a chat in the project sidebar.");
+			},
+			onRenameSession: () => {
+				if (!selectedChatId) {
+					notify("Select a chat before renaming the session.");
+					return;
+				}
+				if (!selectedProjectId) {
+					notify(
+						"Quick-start chat rename from the command palette is not available yet. Select a project chat to rename from the sidebar.",
+					);
+					return;
+				}
+				setRenameChatRequest({ projectId: selectedProjectId, chatId: selectedChatId });
+			},
+			onShowSessionInfo: () => {
+				const chat = projectState.selectedChat;
+				if (!chat) {
+					notify("Select a chat to view session info.");
+					return;
+				}
+				const lines = [
+					`Title: ${chat.title}`,
+					`Status: ${chat.status}`,
+					`Workspace: ${chat.cwd}`,
+					chat.sessionPath ? `Session file: ${chat.sessionPath}` : "Session file: not created yet",
+					`Updated: ${chat.updatedAt}`,
+				];
+				notify(lines.join(" · "));
+			},
+			onForkSession: () => {
+				if (!selectedProjectId || !selectedChatId) {
+					notify("Select a project chat before forking.");
+					return;
+				}
+				const chat = projectState.selectedChat;
+				if (!chat?.sessionPath) {
+					notify(
+						"Fork is available after the chat has a Pi session file. Send a message to start the session, then try again.",
+					);
+					return;
+				}
+				void window.piDesktop.chat
+					.fork({ projectId: selectedProjectId, chatId: selectedChatId })
+					.then(applyProjectStateViewResult)
+					.catch((error) => {
+						notify(error instanceof Error ? error.message : "Unable to fork session.");
+					});
+			},
+			onCloneSession: () => {
+				if (!selectedProjectId || !selectedChatId) {
+					notify("Select a project chat before cloning.");
+					return;
+				}
+				const chat = projectState.selectedChat;
+				if (!chat?.sessionPath) {
+					notify(
+						"Clone is available after the chat has a Pi session file. Send a message to start the session, then try again.",
+					);
+					return;
+				}
+				void window.piDesktop.chat
+					.clone({ projectId: selectedProjectId, chatId: selectedChatId })
+					.then(applyProjectStateViewResult)
+					.catch((error) => {
+						notify(error instanceof Error ? error.message : "Unable to clone session.");
+					});
+			},
+			onDefer: notify,
+		};
+	}, [applyProjectStateViewResult, projectState.selectedChat, selectedChatId, selectedProjectId]);
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
+		sessionCommandPaletteActions,
 		onSelectProject: (projectId) => {
 			void selectComposerProject(projectId);
 		},
@@ -815,6 +910,8 @@ export function App() {
 			<RightPanelProvider>
 				<AppShell
 					state={projectState}
+					renameChatRequest={renameChatRequest}
+					onRenameChatRequestHandled={() => setRenameChatRequest(null)}
 					statusMessage={statusMessage?.message}
 					session={
 						isSessionScopeSelected(
