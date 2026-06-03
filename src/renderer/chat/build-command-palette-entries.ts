@@ -1,8 +1,5 @@
-import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
-	type CommandPaletteEntry,
-} from "./command-palette-registry";
+import { getDefaultCommandPaletteEntries } from "./command-palette-default-entries";
+import { createCommandPaletteRegistry, type CommandPaletteEntry } from "./command-palette-registry";
 import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions } from "./session-command-palette";
 
 export function buildCommandPaletteEntries(sessionActions?: SessionCommandPaletteActions): CommandPaletteEntry[] {

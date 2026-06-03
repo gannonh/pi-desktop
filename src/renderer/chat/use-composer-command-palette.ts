@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { groupCommandPaletteEntries, type CommandPaletteEntry } from "./command-palette-registry";
 import { buildCommandPaletteEntries } from "./build-command-palette-entries";
+import type { CommandPaletteAction, CommandPaletteEntry } from "./command-palette-registry";
+import { groupCommandPaletteEntries } from "./command-palette-registry";
 import type { SessionCommandPaletteActions } from "./session-command-palette";
 import {
 	filterCommandPaletteEntries,
@@ -17,6 +18,9 @@ interface UseComposerCommandPaletteOptions {
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
 	sessionCommandPaletteActions?: SessionCommandPaletteActions;
+	onOpenModelPicker?: () => void;
+	onShowPaletteNotice?: (message: string) => void;
+	onClearPaletteNotice?: () => void;
 }
 
 export function useComposerCommandPalette({
@@ -27,6 +31,9 @@ export function useComposerCommandPalette({
 	setTextareaSelection,
 	focusTextarea,
 	sessionCommandPaletteActions,
+	onOpenModelPicker,
+	onShowPaletteNotice,
+	onClearPaletteNotice,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
@@ -55,8 +62,9 @@ export function useComposerCommandPalette({
 			setText(nextText);
 			setSelectionStart(nextSelectionStart);
 			setDismissedForText("");
+			onClearPaletteNotice?.();
 		},
-		[setText, setSelectionStart],
+		[onClearPaletteNotice, setText, setSelectionStart],
 	);
 
 	const dismiss = useCallback(() => {
@@ -76,17 +84,36 @@ export function useComposerCommandPalette({
 		[focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
 	);
 
+	const applyPaletteAction = useCallback(
+		(action: CommandPaletteAction) => {
+			switch (action.type) {
+				case "insertPrompt":
+					replaceTrigger(action.prompt);
+					return;
+				case "openModelPicker":
+					onOpenModelPicker?.();
+					setDismissedForText(text);
+					focusTextarea();
+					return;
+				case "notice":
+					onShowPaletteNotice?.(action.message);
+					setDismissedForText(text);
+					focusTextarea();
+					return;
+				case "handled":
+					setDismissedForText(text);
+					focusTextarea();
+					return;
+			}
+		},
+		[focusTextarea, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
+	);
+
 	const selectEntry = useCallback(
 		(entry: CommandPaletteEntry) => {
-			const action = entry.handler();
-			if (action.type === "insertPrompt") {
-				replaceTrigger(action.prompt);
-				return;
-			}
-			dismiss();
-			focusTextarea();
+			applyPaletteAction(entry.handler());
 		},
-		[dismiss, focusTextarea, replaceTrigger],
+		[applyPaletteAction],
 	);
 
 	const moveActiveEntry = useCallback(
@@ -119,6 +146,7 @@ export function useComposerCommandPalette({
 
 			if (visibleEntries.length === 0) {
 				if (action === "dismiss") {
+					onClearPaletteNotice?.();
 					dismiss();
 					return true;
 				}
@@ -136,13 +164,14 @@ export function useComposerCommandPalette({
 					selectActiveEntry();
 					break;
 				case "dismiss":
+					onClearPaletteNotice?.();
 					dismiss();
 					break;
 			}
 
 			return true;
 		},
-		[dismiss, moveActiveEntry, open, selectActiveEntry, visibleEntries.length],
+		[dismiss, moveActiveEntry, onClearPaletteNotice, open, selectActiveEntry, visibleEntries.length],
 	);
 
 	return {

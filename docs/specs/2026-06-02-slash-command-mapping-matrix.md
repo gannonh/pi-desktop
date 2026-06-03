@@ -1,7 +1,7 @@
 # Slash-command mapping matrix
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  
-**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011 — Session and project command mapping
+**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011 — Session and project command mapping; S012 — Runtime configuration command mapping
 **Requirements:** COMMANDS-MAP-01 (`MAP-01`)  
 **Inventory:** [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md)  
 **Coverage parent:** [2026-05-25-cli-parity-coverage-matrix.md](./2026-05-25-cli-parity-coverage-matrix.md) (CLI-COMMANDS-007)
@@ -65,17 +65,17 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | `/fork` | Fork from previous user message | `palette entry` | Session | `session.fork` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.fork` when the selected chat has a session file | — |
 | `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
 | `/import` | Import session from JSONL | `deferred` | Session | `session.import` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until JSONL import IPC exists | — |
-| `/login` | Configure provider auth | Pending | Config | `config.login` | — | Secrets stay in main process | Planned Slice 4 |
-| `/logout` | Remove provider auth | Pending | Config | `config.logout` | — | | Planned Slice 4 |
-| `/model` | Select model | Pending | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx` | May remain `existing UI` after review | Planned Slice 4 |
+| `/login` | Configure provider auth | `palette entry` | Config | `config.login` | `src/renderer/chat/config-command-palette-entries.ts` | Visible deferral until Settings/Auth milestone; secrets stay in main process | — |
+| `/logout` | Remove provider auth | `palette entry` | Config | `config.logout` | `src/renderer/chat/config-command-palette-entries.ts` | Visible deferral until Settings/Auth milestone; no renderer secrets | — |
+| `/model` | Select model | `existing UI` | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx`, `src/renderer/chat/config-command-palette-entries.ts` | Palette opens composer model picker; no draft insertion | — |
 | `/name` | Set session display name | `palette entry` | Session | `session.name` | `src/renderer/components/project-sidebar.tsx`, `src/renderer/App.tsx` | Opens inline rename for the selected project chat | — |
 | `/new` | Start a new session | `palette entry` | Session | `session.new` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | `chat.create` or `chat.createStandalone` | — |
 | `/quit` | Quit pi | Pending | Meta/Skills | `meta.quit` | — | Likely `out-of-scope` | Planned Slice 6 |
-| `/reload` | Reload resources | Pending | Config | `config.reload` | — | Extensions/skills/themes | Planned Slice 4 |
+| `/reload` | Reload resources | `deferred` | Config | `config.reload` | — | Belongs to Config family (extensions/skills/themes), not Meta/Skills; reload RPC not exposed — deferred beyond S012 | — |
 | `/resume` | Resume a different session | `deferred` | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts` | Status guidance to select a chat in the sidebar (existing resume path) | — |
-| `/scoped-models` | Scoped model cycling set | Pending | Config | `config.scoped-models` | — | | Planned Slice 4 |
+| `/scoped-models` | Scoped model cycling set | `deferred` | Config | `config.scoped-models` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral; Ctrl+P cycling not implemented | — |
 | `/session` | Show session info and stats | `palette entry` | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message | — |
-| `/settings` | Open settings menu | Pending | Config | `config.settings` | — | | Planned Slice 4 |
+| `/settings` | Open settings menu | `deferred` | Config | `config.settings` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral until Settings shell ships | — |
 | `/share` | Share session via gist | Pending | Output | `output.share` | — | | Planned Slice 5 |
 | `/tree` | Navigate session tree | `deferred` | Session | `session.tree` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until session tree UI ships | — |
 
@@ -84,7 +84,8 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 12 |
+| **Pending disposition** | 7 |
+| **Config family classified (S012)** | 6 |
 | **Session family** | 9 |
 | **S011 session rows finalized** | 9 |
 | **Config family** | 6 |
@@ -118,11 +119,25 @@ Current behavior: typing `/` at the start of composer text or after whitespace o
 
 Family slices should register concrete entries using the `Palette entry ID` values in this matrix and replace section stubs with real handlers or existing-UI affordances.
 
+## S012 implementation note (config command mapping)
+
+S012 registered and wired Config palette entries with these evidence paths:
+
+- `src/renderer/chat/config-command-palette-entries.ts`: stable `config.*` entry IDs, deferral copy, and pure `CommandPaletteAction` handlers.
+- `src/renderer/chat/command-palette-default-entries.ts`: composes config entries with output/meta stubs (replaces `config.stub`).
+- `src/renderer/chat/build-command-palette-entries.ts`: merges session entries from S011 with default entries.
+- `src/renderer/chat/use-composer-command-palette.ts`: applies palette actions (`openModelPicker`, `notice`, `insertPrompt`) via composer callbacks.
+- `src/renderer/components/composer.tsx`: opens model picker and surfaces palette deferral notices; clears notices on text change.
+
+Current behavior: typing `/` and filtering to Config shows five concrete entries. **Change model** opens the composer model picker without inserting slash text. **Scoped models**, **Settings**, **Log in**, and **Log out** dismiss the palette and show visible deferral copy in the composer status row. Provider secrets never enter palette entry data or renderer state.
+
+`/reload` remains in the Config family with `deferred` disposition; S012 did not register it because reload requires a main-process RPC not yet exposed.
+
 ## Handoff to family slices
 
 | Planned slice | Palette section | Commands (palette entry IDs) |
 | --- | --- | --- |
 | S011 / Planned Slice 3 (Session) | Session | `session.*` (9 rows) — complete |
-| Planned Slice 4 (Config) | Config | `config.*` (6 rows) |
+| S012 / Planned Slice 4 (Config) | Config | `config.*` (6 rows; `/reload` deferred) |
 | Planned Slice 5 (Output) | Output | `output.*` (3 rows) |
 | Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (3 rows) |
