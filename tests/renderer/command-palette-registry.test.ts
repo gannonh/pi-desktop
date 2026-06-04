@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-command-palette-entries";
+import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
@@ -18,6 +20,15 @@ describe("command palette registry", () => {
 			output: 1,
 			meta: 1,
 		});
+	});
+
+	it("builds grouped session entries for S011 when session actions are provided", () => {
+		const entries = buildCommandPaletteEntries(createMockSessionCommandPaletteActions());
+		const registry = createCommandPaletteRegistry(entries);
+		const sessionGroup = registry.getEntriesBySection().find((group) => group.section.id === "session");
+
+		expect(sessionGroup?.entries.map((entry) => entry.id)).toContain("session.new");
+		expect(sessionGroup?.entries).toHaveLength(9);
 	});
 
 	it("lets family slices register stable entries without changing the API", () => {

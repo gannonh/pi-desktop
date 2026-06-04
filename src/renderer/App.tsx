@@ -10,7 +10,9 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
+import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
@@ -158,6 +160,7 @@ export function App() {
 	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
 	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
 	const [composerDraft, setComposerDraft] = useState("");
+	const sidebarActionsRef = useRef<ProjectSidebarActions | null>(null);
 	const selectedProjectId = projectState.selectedProjectId;
 	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
@@ -180,6 +183,14 @@ export function App() {
 
 		setProjectState(result.data);
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+	}, []);
+
+	const notifyProjectStatus = useCallback((message: string) => {
+		setStatusMessage({ source: "project", message });
+	}, []);
+
+	const registerSidebarActions = useCallback((actions: ProjectSidebarActions | null) => {
+		sidebarActionsRef.current = actions;
 	}, []);
 
 	const scheduleProjectTitleRefresh = useCallback(() => {
@@ -655,8 +666,18 @@ export function App() {
 		],
 	);
 
+	const sessionCommandPaletteActions = useSessionCommandPaletteActions({
+		selectedProjectId,
+		selectedChatId,
+		selectedChat: projectState.selectedChat,
+		applyProjectStateViewResult,
+		notifyProjectStatus,
+		sidebarActionsRef,
+	});
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
+		sessionCommandPaletteActions,
 		onSelectProject: (projectId) => {
 			void selectComposerProject(projectId);
 		},
@@ -815,6 +836,7 @@ export function App() {
 			<RightPanelProvider>
 				<AppShell
 					state={projectState}
+					onRegisterSidebarActions={registerSidebarActions}
 					statusMessage={statusMessage?.message}
 					session={
 						isSessionScopeSelected(

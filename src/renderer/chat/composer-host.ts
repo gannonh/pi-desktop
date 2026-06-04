@@ -4,6 +4,7 @@ import type {
 	PiSessionQueuedMessage,
 	PiSessionQueuedMessageId,
 } from "../../shared/pi-session";
+import type { SessionCommandPaletteActions } from "./session-command-palette";
 
 export type ComposerHostProps = {
 	onSubmitPrompt: (
@@ -20,6 +21,5 @@ export type ComposerHostProps = {
 	pendingComposerDelivery: PiSessionDelivery;
 	composerDraft: string;
 	onComposerDraftApplied: () => void;
+	sessionCommandPaletteActions?: SessionCommandPaletteActions;
 };
-
-export type { ComposerHostProps as ComposerInteractions };

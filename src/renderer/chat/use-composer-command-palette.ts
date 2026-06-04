@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
-	groupCommandPaletteEntries,
-	type CommandPaletteEntry,
-} from "./command-palette-registry";
+import { groupCommandPaletteEntries, type CommandPaletteEntry } from "./command-palette-registry";
+import { buildCommandPaletteEntries } from "./build-command-palette-entries";
+import type { SessionCommandPaletteActions } from "./session-command-palette";
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteKeyAction,
@@ -19,6 +16,7 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
+	sessionCommandPaletteActions?: SessionCommandPaletteActions;
 }
 
 export function useComposerCommandPalette({
@@ -28,10 +26,14 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
+	sessionCommandPaletteActions,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntries(), []);
+	const entries = useMemo(
+		() => buildCommandPaletteEntries(sessionCommandPaletteActions),
+		[sessionCommandPaletteActions],
+	);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);

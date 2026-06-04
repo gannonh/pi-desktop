@@ -5,6 +5,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { CommandPaletteEntry } from "../../src/renderer/chat/command-palette-registry";
 import { useComposerCommandPalette } from "../../src/renderer/chat/use-composer-command-palette";
+import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 
 interface HarnessProps {
 	initialText?: string;
@@ -58,7 +59,49 @@ function CommandPaletteHookHarness({
 	);
 }
 
+function SessionActionsSwapHarness() {
+	const [text, setText] = useState("/");
+	const [selectionStart, setSelectionStart] = useState(1);
+	const [sessionCommandPaletteActions, setSessionCommandPaletteActions] = useState<
+		ReturnType<typeof createMockSessionCommandPaletteActions> | undefined
+	>();
+	const palette = useComposerCommandPalette({
+		text,
+		selectionStart,
+		setText,
+		setSelectionStart,
+		setTextareaSelection: () => {},
+		focusTextarea: () => {},
+		sessionCommandPaletteActions,
+	});
+	const sessionEntryIds =
+		palette.groups.find((group) => group.section.id === "session")?.entries.map((entry) => entry.id).join(",") ??
+		"";
+
+	return (
+		<div>
+			<output data-testid="session-entry-ids">{sessionEntryIds}</output>
+			<button type="button" onClick={() => setSessionCommandPaletteActions(createMockSessionCommandPaletteActions())}>
+				wire session actions
+			</button>
+		</div>
+	);
+}
+
 describe("useComposerCommandPalette", () => {
+	it("rebuilds session entries when sessionCommandPaletteActions is supplied after mount", async () => {
+		render(<SessionActionsSwapHarness />);
+
+		await waitFor(() => expect(screen.getByTestId("session-entry-ids").textContent).toBe("session.stub"));
+
+		fireEvent.click(screen.getByRole("button", { name: "wire session actions" }));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("session-entry-ids").textContent).toContain("session.new"),
+		);
+		expect(screen.getByTestId("session-entry-ids").textContent).not.toContain("session.stub");
+	});
+
 	it("handles command navigation actions from the composer", async () => {
 		const focusTextarea = vi.fn();
 		const setTextareaSelection = vi.fn();

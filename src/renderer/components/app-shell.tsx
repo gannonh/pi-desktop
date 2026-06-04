@@ -21,12 +21,14 @@ import {
 import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
+import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
 import { Badge } from "./ui/badge";
 
 interface AppShellProps {
 	state: ProjectStateView;
+	onRegisterSidebarActions?: (actions: ProjectSidebarActions | null) => void;
 	statusMessage?: string;
 	session: LiveSessionState;
 	transcriptHydration: TranscriptHydrationState;
@@ -39,6 +41,7 @@ interface AppShellProps {
 
 export function AppShell({
 	state,
+	onRegisterSidebarActions,
 	statusMessage,
 	session,
 	transcriptHydration,
@@ -116,6 +119,8 @@ export function AppShell({
 				collapsed={sidebarCollapsed}
 				onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
 				onProjectState={onProjectState}
+				onRegisterActions={onRegisterSidebarActions}
+				ensureSidebarVisible={() => setSidebarCollapsed(false)}
 			/>
 			{!sidebarCollapsed ? (
 				<div
