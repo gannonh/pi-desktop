@@ -120,6 +120,7 @@ export function AppShell({
 				onToggleCollapsed={() => setSidebarCollapsed((collapsed) => !collapsed)}
 				onProjectState={onProjectState}
 				onRegisterActions={onRegisterSidebarActions}
+				ensureSidebarVisible={() => setSidebarCollapsed(false)}
 			/>
 			{!sidebarCollapsed ? (
 				<div

@@ -57,7 +57,8 @@ import {
 	getProjectChatBranchActionDisabledTitle,
 	runProjectChatBranchActionForRow,
 } from "../projects/project-chat-branch-action";
-import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
+import { findProjectChat } from "../projects/find-project-chat";
+import type { ProjectSidebarActions, StartChatRenameResult } from "../projects/project-sidebar-actions";
 import {
 	ProjectSidebarPendingRenameContext,
 	useProjectSidebarPendingRename,
@@ -71,6 +72,7 @@ interface ProjectSidebarProps {
 	onToggleCollapsed: () => void;
 	onProjectState: (result: ProjectStateViewResult) => void;
 	onRegisterActions?: (actions: ProjectSidebarActions | null) => void;
+	ensureSidebarVisible?: () => void;
 }
 
 type MenuState =
@@ -108,6 +110,7 @@ export function ProjectSidebar({
 	onToggleCollapsed,
 	onProjectState,
 	onRegisterActions,
+	ensureSidebarVisible,
 }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
 	const [pendingRenameChat, setPendingRenameChat] = useState<PendingChatRename | null>(null);
@@ -134,9 +137,41 @@ export function ProjectSidebar({
 	const chromeTitle = state.selectedChat?.title ? formatChatDisplayLabel(state.selectedChat.title) : undefined;
 	const menuOpen = menu !== null && !collapsed;
 
-	const startChatRename = useCallback((projectId: string, chatId: string) => {
-		setPendingRenameChat({ projectId, chatId });
-	}, []);
+	const startChatRename = useCallback(
+		(projectId: string, chatId: string): StartChatRenameResult => {
+			if (!findProjectChat(state, projectId, chatId)) {
+				return "chat-not-found";
+			}
+
+			if (collapsed) {
+				ensureSidebarVisible?.();
+			}
+
+			const project = state.projects.find((candidate) => candidate.id === projectId);
+			if (!project) {
+				return "chat-not-found";
+			}
+
+			setProjectsCollapsed(false);
+			if (project.pinned) {
+				setPinnedCollapsed(false);
+			}
+			setChatFilter("all");
+			setClosedProjectIds((current) => {
+				const next = new Set(current);
+				next.delete(projectId);
+				return next;
+			});
+			setExpandedProjectChatIds((current) => {
+				const next = new Set(current);
+				next.add(projectId);
+				return next;
+			});
+			setPendingRenameChat({ projectId, chatId });
+			return "started";
+		},
+		[collapsed, ensureSidebarVisible, state],
+	);
 
 	const clearPendingRename = useCallback(() => {
 		setPendingRenameChat(null);

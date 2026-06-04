@@ -20,6 +20,7 @@ export const SESSION_PALETTE_DEFERRAL_MESSAGES = {
 
 const sessionEntry = (
 	id: string,
+	slashCommand: string,
 	title: string,
 	description: string,
 	handler: () => CommandPaletteAction,
@@ -29,6 +30,7 @@ const sessionEntry = (
 	icon: "SquarePen",
 	title,
 	description,
+	slashCommand,
 	scopeTag: "Session",
 	handler,
 });
@@ -51,54 +53,63 @@ export function createSessionCommandPaletteEntries(actions: SessionCommandPalett
 	return [
 		sessionEntry(
 			"session.new",
+			"new",
 			"New session",
 			"Start a new chat in the current project or quick start",
 			handled(actions.onNewSession),
 		),
 		sessionEntry(
 			"session.resume",
+			"resume",
 			"Resume session",
 			"Switch to another chat to resume its Pi session",
 			handledWithNotice(actions, SESSION_PALETTE_DEFERRAL_MESSAGES.resume),
 		),
 		sessionEntry(
 			"session.name",
+			"name",
 			"Rename session",
 			"Rename the selected chat session",
 			handled(actions.onRenameSession),
 		),
 		sessionEntry(
 			"session.info",
+			"session",
 			"Session info",
 			"Show identity and status for the selected session",
 			handled(actions.onShowSessionInfo),
 		),
 		sessionEntry(
 			"session.tree",
+			"tree",
 			"Session tree",
 			"Navigate branches in the session tree",
 			handledWithNotice(actions, SESSION_PALETTE_DEFERRAL_MESSAGES.tree),
 		),
 		sessionEntry(
 			"session.fork",
+			"fork",
 			"Fork session",
 			"Fork the selected chat from its current branch",
 			handled(actions.onForkSession),
 		),
 		sessionEntry(
 			"session.clone",
+			"clone",
 			"Clone session",
 			"Clone the selected chat at the current leaf",
 			handled(actions.onCloneSession),
 		),
 		sessionEntry(
 			"session.import",
+			"import",
 			"Import session",
 			"Import a session from JSONL",
 			handledWithNotice(actions, SESSION_PALETTE_DEFERRAL_MESSAGES.import),
 		),
 		sessionEntry(
 			"session.compact",
+			"compact",
 			"Compact session",
 			"Manually compact session context",
 			handledWithNotice(actions, SESSION_PALETTE_DEFERRAL_MESSAGES.compact),

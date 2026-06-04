@@ -49,7 +49,15 @@ export function useSessionCommandPaletteActions({
 					);
 					return;
 				}
-				sidebarActionsRef.current?.startChatRename(selectedProjectId, selectedChatId);
+				const sidebarActions = sidebarActionsRef.current;
+				if (!sidebarActions) {
+					notifyProjectStatus("Rename is temporarily unavailable. Try again in a moment.");
+					return;
+				}
+				const result = sidebarActions.startChatRename(selectedProjectId, selectedChatId);
+				if (result === "chat-not-found") {
+					notifyProjectStatus("Could not find the selected chat in the project sidebar.");
+				}
 			},
 			onShowSessionInfo: () => {
 				if (!selectedChat) {

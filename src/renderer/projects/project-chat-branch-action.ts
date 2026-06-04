@@ -43,7 +43,8 @@ export function runProjectChatBranchAction({
 		notify(projectChatBranchUnavailableMessage(verb));
 		return;
 	}
-	void call({ projectId, chatId })
+	void Promise.resolve()
+		.then(() => call({ projectId, chatId }))
 		.then(applyProjectStateViewResult)
 		.catch((error) => {
 			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`));

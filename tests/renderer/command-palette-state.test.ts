@@ -14,7 +14,29 @@ const entries: CommandPaletteEntry[] = [
 		icon: "SquarePen",
 		title: "New session",
 		description: "Start a fresh session",
+		slashCommand: "new",
+		scopeTag: "Session",
 		handler: () => ({ type: "insertPrompt", prompt: "New session" }),
+	},
+	{
+		id: "session.info",
+		sectionId: "session",
+		icon: "SquarePen",
+		title: "Session info",
+		description: "Show session metadata",
+		slashCommand: "session",
+		scopeTag: "Session",
+		handler: () => ({ type: "handled" }),
+	},
+	{
+		id: "session.clone",
+		sectionId: "session",
+		icon: "SquarePen",
+		title: "Clone session",
+		description: "Clone at the current leaf",
+		slashCommand: "clone",
+		scopeTag: "Session",
+		handler: () => ({ type: "handled" }),
 	},
 	{
 		id: "config.model",
@@ -42,14 +64,18 @@ describe("command palette state", () => {
 		expect(filterCommandPaletteEntries(entries, "session.new").map((entry) => entry.id)).toEqual(["session.new"]);
 	});
 
+	it("prioritizes an exact slash-command match over scope-tag substring matches", () => {
+		expect(filterCommandPaletteEntries(entries, "session").map((entry) => entry.id)).toEqual(["session.info"]);
+	});
+
 	it("wraps keyboard navigation across filtered entries", () => {
-		expect(getNextCommandPaletteEntryId(entries, "session.new", 1)).toBe("config.model");
+		expect(getNextCommandPaletteEntryId(entries, "session.new", 1)).toBe("session.info");
 		expect(getNextCommandPaletteEntryId(entries, "session.new", -1)).toBe("config.model");
 		expect(getNextCommandPaletteEntryId([], "session.new", 1)).toBeUndefined();
 	});
 
 	it("normalizes large negative deltas without returning undefined", () => {
-		expect(getNextCommandPaletteEntryId(entries, "session.new", -3)).toBe("config.model");
+		expect(getNextCommandPaletteEntryId(entries, "session.new", -3)).toBe("session.info");
 	});
 
 	it("captures palette navigation keys so they do not submit prompts", () => {

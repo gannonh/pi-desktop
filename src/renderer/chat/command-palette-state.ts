@@ -56,6 +56,11 @@ export function filterCommandPaletteEntries(entries: CommandPaletteEntry[], quer
 		return entries;
 	}
 
+	const exactSlashMatches = entries.filter((entry) => entry.slashCommand?.toLowerCase() === normalizedQuery);
+	if (exactSlashMatches.length > 0) {
+		return exactSlashMatches;
+	}
+
 	return entries.filter((entry) => {
 		const searchable = `${entry.id} ${entry.title} ${entry.description} ${entry.scopeTag ?? ""}`.toLowerCase();
 		return searchable.includes(normalizedQuery);
