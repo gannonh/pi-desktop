@@ -46,7 +46,7 @@ describe("Composer command palette integration", () => {
 		fireEvent.keyDown(screen.getByRole("listbox", { name: "Suggestions" }), { key: "Enter" });
 
 		expect(onSubmit).not.toHaveBeenCalled();
-		expect(textarea.value).toBe("/");
+		expect(textarea.value).toBe("");
 		expect(screen.getByRole("button", { name: context.modelLabel }).getAttribute("aria-expanded")).toBe("true");
 	});
 

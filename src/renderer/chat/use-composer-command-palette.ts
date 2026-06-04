@@ -84,6 +84,16 @@ export function useComposerCommandPalette({
 		[focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
 	);
 
+	const clearTrigger = useCallback(() => {
+		const nextText = `${text.slice(0, trigger.start)}${text.slice(trigger.end)}`;
+		const nextSelectionStart = trigger.start;
+		setText(nextText);
+		setSelectionStart(nextSelectionStart);
+		setTextareaSelection(nextSelectionStart);
+		setDismissedForText(nextText);
+		focusTextarea();
+	}, [focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start]);
+
 	const applyPaletteAction = useCallback(
 		(action: CommandPaletteAction) => {
 			switch (action.type) {
@@ -92,8 +102,7 @@ export function useComposerCommandPalette({
 					return;
 				case "openModelPicker":
 					onOpenModelPicker?.();
-					setDismissedForText(text);
-					focusTextarea();
+					clearTrigger();
 					return;
 				case "notice":
 					onShowPaletteNotice?.(action.message);
@@ -106,7 +115,7 @@ export function useComposerCommandPalette({
 					return;
 			}
 		},
-		[focusTextarea, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
+		[clearTrigger, focusTextarea, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
 	);
 
 	const selectEntry = useCallback(
