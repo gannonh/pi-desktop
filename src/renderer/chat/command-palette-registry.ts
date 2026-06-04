@@ -7,7 +7,11 @@ export interface CommandPaletteSection {
 	label: string;
 }
 
-export type CommandPaletteAction = { type: "insertPrompt"; prompt: string } | { type: "handled" };
+export type CommandPaletteAction =
+	| { type: "insertPrompt"; prompt: string }
+	| { type: "openModelPicker" }
+	| { type: "notice"; message: string }
+	| { type: "handled" };
 
 export interface CommandPaletteEntry {
 	id: string;
@@ -106,45 +110,4 @@ function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPalet
 		const sectionDelta = sectionOrder[left.sectionId] - sectionOrder[right.sectionId];
 		return sectionDelta || left.title.localeCompare(right.title);
 	});
-}
-
-export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
-	return [
-		{
-			id: "session.stub",
-			sectionId: "session",
-			icon: "SquarePen",
-			title: "Session command",
-			description: "Session commands will be wired in the session slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
-		},
-		{
-			id: "config.stub",
-			sectionId: "config",
-			icon: "Settings",
-			title: "Config command",
-			description: "Config commands will be wired in the config slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Config command selected" }),
-		},
-		{
-			id: "output.stub",
-			sectionId: "output",
-			icon: "FileOutput",
-			title: "Output command",
-			description: "Output commands will be wired in the output slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
-		},
-		{
-			id: "meta.stub",
-			sectionId: "meta",
-			icon: "CircleHelp",
-			title: "Meta/Skills command",
-			description: "Meta and skill commands will be wired in the meta slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Meta/Skills command selected" }),
-		},
-	];
 }

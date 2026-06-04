@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-command-palette-entries";
+import { getDefaultCommandPaletteEntries } from "../../src/renderer/chat/command-palette-default-entries";
 import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
 	type CommandPaletteEntry,
 } from "../../src/renderer/chat/command-palette-registry";
 
@@ -16,7 +16,7 @@ describe("command palette registry", () => {
 		expect(COMMAND_PALETTE_SECTIONS.map((section) => section.id)).toEqual(["session", "config", "output", "meta"]);
 		expect(Object.fromEntries(entriesBySection.map((group) => [group.section.id, group.entries.length]))).toEqual({
 			session: 1,
-			config: 1,
+			config: 5,
 			output: 1,
 			meta: 1,
 		});

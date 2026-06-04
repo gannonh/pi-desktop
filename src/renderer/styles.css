@@ -2442,6 +2442,15 @@ body.file-workspace--resizing {
 	text-align: right;
 }
 
+.composer__palette-notice {
+	flex: 1 1 auto;
+	min-width: 10rem;
+	overflow-wrap: anywhere;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+	text-align: right;
+}
+
 .composer__control-icon {
 	width: 0.875rem;
 	height: 0.875rem;

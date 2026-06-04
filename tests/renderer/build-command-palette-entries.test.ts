@@ -17,6 +17,6 @@ describe("buildCommandPaletteEntries", () => {
 
 		expect(sessionEntries).toHaveLength(9);
 		expect(sessionEntries.some((entry) => entry.id === "session.stub")).toBe(false);
-		expect(entries.filter((entry) => entry.sectionId === "config")).toHaveLength(1);
+		expect(entries.filter((entry) => entry.sectionId === "config")).toHaveLength(5);
 	});
 });

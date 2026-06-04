@@ -100,6 +100,7 @@ export function Composer({
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
 	const [attachmentError, setAttachmentError] = useState("");
+	const [paletteNotice, setPaletteNotice] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
@@ -125,6 +126,13 @@ export function Composer({
 	const setTextareaSelection = useCallback((nextSelectionStart: number) => {
 		pendingTextareaSelectionRef.current = nextSelectionStart;
 	}, []);
+	const clearPaletteNotice = useCallback(() => {
+		setPaletteNotice("");
+	}, []);
+	const openModelPickerFromPalette = useCallback(() => {
+		clearPaletteNotice();
+		setOpenMenu("model");
+	}, [clearPaletteNotice]);
 	const commandPalette = useComposerCommandPalette({
 		text,
 		selectionStart,
@@ -133,6 +141,9 @@ export function Composer({
 		setTextareaSelection,
 		focusTextarea,
 		sessionCommandPaletteActions,
+		onOpenModelPicker: openModelPickerFromPalette,
+		onShowPaletteNotice: setPaletteNotice,
+		onClearPaletteNotice: clearPaletteNotice,
 	});
 
 	useLayoutEffect(() => {
@@ -513,6 +524,11 @@ export function Composer({
 					{attachmentError ? (
 						<span className="composer__disabled-reason" role="alert">
 							{attachmentError}
+						</span>
+					) : null}
+					{paletteNotice ? (
+						<span className="composer__palette-notice" role="status">
+							{paletteNotice}
 						</span>
 					) : null}
 					{state.statusLabel ? (
