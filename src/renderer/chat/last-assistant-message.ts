@@ -6,6 +6,9 @@ export function getLastAssistantMessageContent(messages: readonly LiveSessionMes
 		if (message.role !== "assistant") {
 			continue;
 		}
+		if (message.streaming) {
+			continue;
+		}
 		const content = message.content.trim();
 		if (content.length > 0) {
 			return message.content;

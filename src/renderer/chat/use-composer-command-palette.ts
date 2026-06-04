@@ -109,8 +109,7 @@ export function useComposerCommandPalette({
 					focusTextarea();
 					return;
 				case "handled":
-					setDismissedForText(text);
-					focusTextarea();
+					clearTrigger();
 					return;
 			}
 		},

@@ -685,7 +685,13 @@ export function App() {
 		() => ({
 			session: sessionCommandPaletteActions,
 			output: createOutputCommandPaletteActions({
-				getMessages: () => sessionMessagesRef.current,
+				getMessages: () =>
+					isSessionScopeSelected(
+						{ projectId: activeSessionProjectIdRef.current, chatId: activeSessionChatIdRef.current },
+						{ projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					)
+						? sessionMessagesRef.current
+						: [],
 				writeText: (input) => window.piDesktop.clipboard.writeText(input),
 				notify: (message) => setStatusMessage({ source: "output", message }),
 			}),

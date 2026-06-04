@@ -140,7 +140,7 @@ describe("useComposerCommandPalette", () => {
 		expect(screen.getByTestId("open").textContent).toBe("false");
 	});
 
-	it("dismisses handled actions and closed palette navigation without inserting prompt text", async () => {
+	it("clears handled command text and closed palette navigation without inserting prompt text", async () => {
 		const focusTextarea = vi.fn();
 		render(<CommandPaletteHookHarness initialText="hello" focusTextarea={focusTextarea} />);
 
@@ -156,7 +156,7 @@ describe("useComposerCommandPalette", () => {
 		expect(screen.getByTestId("open").textContent).toBe("false");
 
 		fireEvent.click(screen.getByRole("button", { name: "handled action" }));
-		expect(screen.getByTestId("text").textContent).toBe("/co");
+		expect(screen.getByTestId("text").textContent).toBe("");
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 });

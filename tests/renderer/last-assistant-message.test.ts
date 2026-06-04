@@ -31,6 +31,15 @@ describe("getLastAssistantMessageContent", () => {
 		expect(content).toBe("Useful answer");
 	});
 
+	it("skips streaming assistant messages", () => {
+		const content = getLastAssistantMessageContent([
+			message({ id: "assistant-1", role: "assistant", content: "Complete answer" }),
+			message({ id: "assistant-2", role: "assistant", content: "Partial answer", streaming: true }),
+		]);
+
+		expect(content).toBe("Complete answer");
+	});
+
 	it("returns untrimmed content when only surrounding whitespace differs from trim", () => {
 		const content = getLastAssistantMessageContent([
 			message({ id: "assistant-1", role: "assistant", content: "  formatted answer\n" }),
@@ -42,6 +51,14 @@ describe("getLastAssistantMessageContent", () => {
 	it("returns null when no assistant message exists", () => {
 		expect(
 			getLastAssistantMessageContent([message({ id: "user-1", role: "user", content: "Only user text" })]),
+		).toBeNull();
+	});
+
+	it("returns null when only streaming assistant messages exist", () => {
+		expect(
+			getLastAssistantMessageContent([
+				message({ id: "assistant-1", role: "assistant", content: "Partial answer", streaming: true }),
+			]),
 		).toBeNull();
 	});
 });
