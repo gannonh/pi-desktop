@@ -43,7 +43,7 @@ import {
 } from "./session/transcript-hydration";
 
 type StatusMessage = {
-	source: "project" | "startup";
+	source: "project" | "startup" | "output";
 	message: string;
 };
 
@@ -687,7 +687,7 @@ export function App() {
 			output: createOutputCommandPaletteActions({
 				getMessages: () => sessionMessagesRef.current,
 				writeText: (input) => window.piDesktop.clipboard.writeText(input),
-				notify: (message) => setStatusMessage({ source: "project", message }),
+				notify: (message) => setStatusMessage({ source: "output", message }),
 			}),
 		}),
 		[sessionCommandPaletteActions],

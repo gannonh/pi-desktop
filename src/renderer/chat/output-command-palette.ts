@@ -29,10 +29,11 @@ export function createOutputCommandPaletteActions(deps: OutputCommandPaletteDeps
 						deps.notify("Copied the last assistant message to the clipboard.");
 						return;
 					}
-					deps.notify(result.error.message);
+					deps.notify(`Copy failed: ${result.error.message}`);
 				})
 				.catch((error) => {
-					deps.notify(error instanceof Error ? error.message : "Unable to copy the last assistant message.");
+					const message = error instanceof Error ? error.message : "Unable to copy the last assistant message.";
+					deps.notify(`Copy failed: ${message}`);
 				});
 		},
 		onNotify: deps.notify,

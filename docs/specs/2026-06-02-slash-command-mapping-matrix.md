@@ -116,7 +116,7 @@ S013 replaced the Output section stub with three concrete palette entries and wi
 - `src/renderer/chat/use-composer-command-palette.ts`: accepts optional palette actions to build the registry at runtime.
 - `src/renderer/chat/output-command-palette.ts` (`createOutputCommandPaletteActions`): clipboard copy and visible deferrals for export/share; `src/renderer/App.tsx` wires deps only.
 
-Verification: `tests/renderer/output-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, and `tests/renderer/last-assistant-message.test.ts`.
+Verification: `tests/renderer/output-command-palette.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, `tests/renderer/command-palette-registry.test.ts`, and `tests/renderer/last-assistant-message.test.ts`.
 
 ## S010 implementation note (palette shell)
 

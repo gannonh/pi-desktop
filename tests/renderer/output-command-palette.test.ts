@@ -83,4 +83,22 @@ describe("createOutputCommandPaletteActions", () => {
 
 		expect(notify).toHaveBeenCalledWith("No assistant message to copy yet.");
 	});
+
+	it("prefixes clipboard write failures with copy context", async () => {
+		const writeText = vi.fn().mockResolvedValue({
+			ok: false as const,
+			error: { message: "Permission denied" },
+		});
+		const notify = vi.fn();
+		const actions = createOutputCommandPaletteActions({
+			getMessages: () => [message({ role: "assistant", content: "Answer text" })],
+			writeText,
+			notify,
+		});
+
+		actions.onCopyLastAssistantMessage();
+		await Promise.resolve();
+
+		expect(notify).toHaveBeenCalledWith("Copy failed: Permission denied");
+	});
 });

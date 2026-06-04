@@ -16,7 +16,7 @@ export function buildCommandPaletteEntries(actions?: CommandPaletteEntryActions)
 		if (entry.sectionId === "session" && sessionEntries) {
 			return false;
 		}
-		if (entry.sectionId === "output" && outputEntries) {
+		if (entry.id === "output.stub" && outputEntries) {
 			return false;
 		}
 		return true;
