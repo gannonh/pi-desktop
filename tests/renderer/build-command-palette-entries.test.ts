@@ -39,6 +39,16 @@ const runtimeCommands = [
 		provenance: { path: "/tmp/SKILL.md", source: "user", origin: "top-level" as const },
 		availability: { state: "available" as const },
 	},
+	{
+		id: "runtime-command:skill:missing",
+		title: "skill:missing",
+		slashCommand: "skill:missing",
+		source: "skill" as const,
+		description: "Missing skill",
+		scope: "user" as const,
+		provenance: { path: "/tmp/missing/SKILL.md", source: "user", origin: "top-level" as const },
+		availability: { state: "unavailable" as const, reason: "Skill metadata is unavailable." },
+	},
 ];
 
 describe("buildCommandPaletteEntries", () => {
@@ -64,14 +74,20 @@ describe("buildCommandPaletteEntries", () => {
 		const entries = buildCommandPaletteEntries({ runtimeCommands });
 
 		expect(entries.some((entry) => entry.id === "config.model")).toBe(true);
-		expect(entries.filter((entry) => entry.id.startsWith("runtime-command:")).map((entry) => entry.title)).toEqual([
-			"/demo:run",
-			"/review",
-			"/skill:summarize",
-		]);
+		expect(
+			entries
+				.filter((entry) => entry.id.startsWith("runtime-command:") && entry.slashCommand)
+				.map((entry) => entry.title),
+		).toEqual(["/demo:run", "/review", "/skill:summarize"]);
 		expect(entries.find((entry) => entry.id === "runtime-command:review")).toMatchObject({
 			description: "Review a path Arguments: [path]",
 			scopeTag: "Prompt template",
+			detail: "project · project · /tmp/review.md",
+		});
+		expect(entries.find((entry) => entry.id === "runtime-command:skill:missing")).toMatchObject({
+			description: "Missing skill Skill metadata is unavailable.",
+			scopeTag: "Unavailable skill",
+			slashCommand: undefined,
 		});
 	});
 

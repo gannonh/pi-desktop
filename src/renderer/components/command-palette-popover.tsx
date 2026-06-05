@@ -139,6 +139,9 @@ export function CommandPalettePopover({
 													{highlightMatch(entry.title, query)}
 												</span>
 												<span className="composer__command-description">{entry.description}</span>
+												{entry.detail ? (
+													<span className="composer__command-detail">{entry.detail}</span>
+												) : null}
 											</span>
 											{entry.scopeTag ? <Badge variant="secondary">{entry.scopeTag}</Badge> : null}
 										</CommandItem>

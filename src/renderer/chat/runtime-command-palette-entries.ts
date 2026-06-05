@@ -10,23 +10,35 @@ const runtimeSourceLabels: Record<PiSessionRuntimeCommand["source"], string> = {
 export function createRuntimeCommandPaletteEntries(
 	commands: readonly PiSessionRuntimeCommand[],
 ): CommandPaletteEntry[] {
-	return commands.filter(isAvailableCommand).map((command) => ({
-		id: command.id,
-		sectionId: "meta",
-		icon: "CircleHelp",
-		title: `/${command.slashCommand}`,
-		description: formatRuntimeCommandDescription(command),
-		slashCommand: command.slashCommand,
-		scopeTag: runtimeSourceLabels[command.source],
-		handler: () => ({ type: "insertPrompt", prompt: `/${command.slashCommand}` }),
-	}));
-}
-
-function isAvailableCommand(command: PiSessionRuntimeCommand): boolean {
-	return command.availability.state === "available";
+	return commands.map((command) => {
+		const available = command.availability.state === "available";
+		return {
+			id: command.id,
+			sectionId: "meta",
+			icon: "CircleHelp",
+			title: `/${command.slashCommand}`,
+			description: formatRuntimeCommandDescription(command),
+			slashCommand: available ? command.slashCommand : undefined,
+			scopeTag: available
+				? runtimeSourceLabels[command.source]
+				: `Unavailable ${runtimeSourceLabels[command.source].toLowerCase()}`,
+			detail: formatRuntimeCommandDetail(command),
+			handler: () =>
+				available
+					? { type: "insertPrompt", prompt: `/${command.slashCommand}` }
+					: { type: "notice", message: command.availability.reason ?? "Command is unavailable." },
+		} satisfies CommandPaletteEntry;
+	});
 }
 
 function formatRuntimeCommandDescription(command: PiSessionRuntimeCommand): string {
 	const description = command.description?.trim() || "Runtime-discovered command";
-	return command.argumentHint ? `${description} Arguments: ${command.argumentHint}` : description;
+	const withArguments = command.argumentHint ? `${description} Arguments: ${command.argumentHint}` : description;
+	return command.availability.state === "available"
+		? withArguments
+		: `${withArguments} ${command.availability.reason ?? "Command is unavailable."}`;
+}
+
+function formatRuntimeCommandDetail(command: PiSessionRuntimeCommand): string {
+	return `${command.scope} · ${command.provenance.source} · ${command.provenance.path}`;
 }

@@ -27,6 +27,7 @@ export interface CommandPaletteEntry {
 	/** CLI slash command token without the leading slash (e.g. `session` for `/session`). */
 	slashCommand?: string;
 	scopeTag?: string;
+	detail?: string;
 	handler: () => CommandPaletteAction;
 }
 
