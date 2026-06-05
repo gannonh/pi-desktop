@@ -37,11 +37,8 @@ export function useSessionCommandPaletteActions({
 	return useMemo(
 		(): SessionCommandPaletteActions => ({
 			onNewSession: () => {
-				notifyProjectStatus(
-					"Starting new session…",
-					"pending",
-					currentSelection(selectedProjectId, selectedChatId),
-				);
+				const selection = currentSelection(selectedProjectId, selectedChatId);
+				notifyProjectStatus("Starting new session…", "pending", selection);
 
 				void (
 					selectedProjectId
@@ -55,7 +52,11 @@ export function useSessionCommandPaletteActions({
 						}
 					})
 					.catch((error) => {
-						notifyProjectStatus(projectActionErrorMessage(error, "Unable to start a new session."));
+						notifyProjectStatus(
+							projectActionErrorMessage(error, "Unable to start a new session."),
+							"error",
+							selection,
+						);
 					});
 			},
 			onRenameSession: () => {

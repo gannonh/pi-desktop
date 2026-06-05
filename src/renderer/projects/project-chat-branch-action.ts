@@ -55,7 +55,8 @@ export function runProjectChatBranchAction({
 		notify(projectChatBranchUnavailableMessage(verb));
 		return;
 	}
-	notify(projectChatBranchPendingMessage(verb), "pending", { projectId, chatId });
+	const scope = { projectId, chatId };
+	notify(projectChatBranchPendingMessage(verb), "pending", scope);
 
 	void Promise.resolve()
 		.then(() => call({ projectId, chatId }))
@@ -69,7 +70,7 @@ export function runProjectChatBranchAction({
 			}
 		})
 		.catch((error) => {
-			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`));
+			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`), "error", scope);
 		});
 }
 
