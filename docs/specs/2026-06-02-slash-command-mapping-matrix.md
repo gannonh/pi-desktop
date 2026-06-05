@@ -1,14 +1,14 @@
 # Slash-command mapping matrix
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  
-**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011 — Session and project command mapping; S012 — Runtime configuration command mapping
+**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011 — Session and project command mapping; S012 — Runtime configuration command mapping; S013 — Output command mapping; S014 — Meta and discovery command mapping
 **Requirements:** COMMANDS-MAP-01 (`MAP-01`)  
 **Inventory:** [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md)  
 **Coverage parent:** [2026-05-25-cli-parity-coverage-matrix.md](./2026-05-25-cli-parity-coverage-matrix.md) (CLI-COMMANDS-007)
 
 ## Purpose
 
-Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S010 provides the composer palette shell and section stubs. Family slices (Planned Slices 3–6) fill command dispositions without changing this schema.
+Schema and rows mapping each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S010 provides the composer palette shell and section stubs. Family slices fill command dispositions without changing this schema.
 
 ## Matrix schema
 
@@ -38,9 +38,9 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 | Section | Typical commands |
 | --- | --- |
 | **Session** | Lifecycle, tree, fork/clone, compact, import/resume |
-| **Config** | Auth, model, scoped models, settings, reload |
+| **Config** | Auth, model, scoped models, settings |
 | **Output** | Copy, export, share |
-| **Meta/Skills** | Help surfaces, changelog, app exit |
+| **Meta/Skills** | Help surfaces, changelog, resource reload, app exit |
 
 ### Example rows (one per disposition type)
 
@@ -53,25 +53,25 @@ Schema and scaffold rows mapping each built-in Pi CLI slash command to a Desktop
 
 ## Mapping matrix (built-in commands)
 
-Disposition is **`Pending`** until a family slice updates it. Palette columns are pre-filled for stable registration. S010 established the palette shell and one stub per section; it did not classify or execute the 21 built-in commands.
+S010 established the palette shell and one stub per section. S011, S012, S013, and S014 classify and wire the family rows shown below.
 
 | CLI command | Description | Disposition | Palette section | Palette entry ID | Desktop evidence path | M002/M003 notes | Blocked by family slice |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/changelog` | Show changelog entries | Pending | Meta/Skills | `meta.changelog` | — | | Planned Slice 6 |
+| `/changelog` | Show changelog entries | `deferred` | Meta/Skills | `meta.changelog` | `src/renderer/chat/meta-command-palette-entries.ts` | In-app changelog deferred; palette shows visible notice (S014) | — |
 | `/clone` | Duplicate session at current position | `palette entry` | Session | `session.clone` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.clone` when the selected chat has a session file | — |
 | `/compact` | Manually compact session context | `deferred` | Session | `session.compact` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until `piSession.compact` IPC exists | — |
 | `/copy` | Copy last agent message | `palette entry` | Output | `output.copy` | `src/renderer/chat/output-command-palette.ts`, `src/renderer/App.tsx` | Copies the last assistant transcript message via clipboard IPC | — |
 | `/export` | Export session to HTML/JSONL | `deferred` | Output | `output.export` | `src/renderer/chat/output-command-palette.ts` | Visible deferral until export IPC ships | — |
 | `/fork` | Fork from previous user message | `palette entry` | Session | `session.fork` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Wired via `chat.fork` when the selected chat has a session file | — |
-| `/hotkeys` | Show all keyboard shortcuts | Pending | Meta/Skills | `meta.hotkeys` | — | | Planned Slice 6 |
+| `/hotkeys` | Show all keyboard shortcuts | `deferred` | Meta/Skills | `meta.hotkeys` | `src/renderer/chat/meta-command-palette-entries.ts` | Keybindings reference deferred; palette shows visible notice (S014) | — |
 | `/import` | Import session from JSONL | `deferred` | Session | `session.import` | `src/renderer/chat/session-command-palette.ts` | Visible deferral until JSONL import IPC exists | — |
 | `/login` | Configure provider auth | `palette entry` | Config | `config.login` | `src/renderer/chat/config-command-palette-entries.ts` | Visible deferral until Settings/Auth milestone; secrets stay in main process | — |
 | `/logout` | Remove provider auth | `palette entry` | Config | `config.logout` | `src/renderer/chat/config-command-palette-entries.ts` | Visible deferral until Settings/Auth milestone; no renderer secrets | — |
 | `/model` | Select model | `existing UI` | Config | `config.model` | `src/renderer/components/composer-model-selector.tsx`, `src/renderer/chat/config-command-palette-entries.ts` | Palette opens composer model picker; no draft insertion | — |
 | `/name` | Set session display name | `palette entry` | Session | `session.name` | `src/renderer/components/project-sidebar.tsx`, `src/renderer/App.tsx` | Opens inline rename for the selected project chat | — |
 | `/new` | Start a new session | `palette entry` | Session | `session.new` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | `chat.create` or `chat.createStandalone` | — |
-| `/quit` | Quit pi | Pending | Meta/Skills | `meta.quit` | — | Likely `out-of-scope` | Planned Slice 6 |
-| `/reload` | Reload resources | `deferred` | Config | `config.reload` | — | Belongs to Config family (extensions/skills/themes), not Meta/Skills; reload RPC not exposed — deferred beyond S012 | — |
+| `/quit` | Quit pi | `out-of-scope` | Meta/Skills | `meta.quit` | `src/renderer/chat/meta-command-palette-entries.ts` | OS/window close is the Desktop equivalent; palette explains (S014) | — |
+| `/reload` | Reload resources | `deferred` | Meta/Skills | `meta.reload` | `src/renderer/chat/meta-command-palette-entries.ts` | Hot-reload deferred until extensibility milestone; S012 does not register `config.reload` | — |
 | `/resume` | Resume a different session | `deferred` | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts` | Status guidance to select a chat in the sidebar (existing resume path) | — |
 | `/scoped-models` | Scoped model cycling set | `deferred` | Config | `config.scoped-models` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral; Ctrl+P cycling not implemented | — |
 | `/session` | Show session info and stats | `palette entry` | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message | — |
@@ -84,14 +84,15 @@ Disposition is **`Pending`** until a family slice updates it. Palette columns ar
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **Pending disposition** | 3 |
+| **Pending disposition** | 0 |
 | **S011 session rows finalized** | 9 |
-| **Config family classified (S012)** | 6 |
+| **Config family classified (S012)** | 5 |
 | **S013 output rows finalized** | 3 |
+| **S014 meta rows finalized** | 4 |
 | **Session family** | 9 |
-| **Config family** | 6 |
+| **Config family** | 5 |
 | **Output family** | 3 |
-| **Meta/Skills family** | 3 |
+| **Meta/Skills family** | 4 |
 
 ## S011 implementation note (session family)
 
@@ -137,20 +138,33 @@ Family slices should register concrete entries using the `Palette entry ID` valu
 S012 registered and wired Config palette entries with these evidence paths:
 
 - `src/renderer/chat/config-command-palette-entries.ts`: stable `config.*` entry IDs, deferral copy, and pure `CommandPaletteAction` handlers.
-- `src/renderer/chat/command-palette-default-entries.ts`: composes config entries with output/meta stubs (replaces `config.stub`).
+- `src/renderer/chat/command-palette-default-entries.ts`: composes config entries with output and meta stubs or entries.
 - `src/renderer/chat/build-command-palette-entries.ts`: merges session entries from S011 with default entries.
 - `src/renderer/chat/use-composer-command-palette.ts`: applies palette actions (`openModelPicker`, `notice`, `insertPrompt`) via composer callbacks.
 - `src/renderer/components/composer.tsx`: opens model picker and surfaces palette deferral notices; clears notices on text change.
 
 Current behavior: typing `/` and filtering to Config shows five concrete entries. **Change model** opens the composer model picker without inserting slash text. **Scoped models**, **Settings**, **Log in**, and **Log out** dismiss the palette and show visible deferral copy in the composer status row. Provider secrets never enter palette entry data or renderer state.
 
-`/reload` remains in the Config family with `deferred` disposition; S012 did not register it because reload requires a main-process RPC not yet exposed.
+`/reload` remains in the Meta/Skills family with `deferred` disposition; S012 does not register it because reload requires a main-process RPC not yet exposed.
+
+## S014 implementation note (meta / discovery)
+
+S014 classified and registered Meta/Skills palette entries for `/hotkeys`, `/changelog`, `/reload`, and `/quit`:
+
+- `src/renderer/chat/meta-command-palette-entries.ts`: stable `meta.*` entry IDs and `notice` handlers for deferred or out-of-scope commands.
+- `src/renderer/chat/command-palette-registry.ts`: `showPaletteNoticeAction()` is the canonical deferral contract for palette handlers.
+- `src/renderer/chat/command-palette-default-entries.ts`: replaces the Meta/Skills section stub with S014 entries.
+- `src/renderer/chat/use-composer-command-palette.ts` and `src/renderer/components/composer.tsx`: show visible deferral/out-of-scope copy without inserting raw slash text; clear stale notices on stub selection and successful submit.
+
+Family slices with deferred commands should return `{ type: "notice", message }` (via `showPaletteNoticeAction`) rather than imperative notice callbacks inside handlers.
+
+`/reload` palette ownership is `meta.reload` (Meta/Skills); S012 does not register `config.reload`.
 
 ## Handoff to family slices
 
 | Planned slice | Palette section | Commands (palette entry IDs) |
 | --- | --- | --- |
 | S011 / Planned Slice 3 (Session) | Session | `session.*` (9 rows) — complete |
-| S012 / Planned Slice 4 (Config) | Config | `config.*` (6 rows; `/reload` deferred) |
-| Planned Slice 5 (Output) | Output | `output.*` (3 rows) |
-| Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (3 rows) |
+| S012 / Planned Slice 4 (Config) | Config | `config.*` (5 rows; `/reload` owned by S014 `meta.reload`) — complete |
+| S013 / Planned Slice 5 (Output) | Output | `output.*` (3 rows) — complete |
+| S014 / Planned Slice 6 (Meta/Skills) | Meta/Skills | `meta.*` (4 rows) — complete |

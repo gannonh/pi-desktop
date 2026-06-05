@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { buildCommandPaletteEntries } from "../../src/renderer/chat/build-command-palette-entries";
 import { getDefaultCommandPaletteEntries } from "../../src/renderer/chat/command-palette-default-entries";
-import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 import {
 	COMMAND_PALETTE_SECTIONS,
 	createCommandPaletteRegistry,
+	showPaletteNoticeAction,
 	type CommandPaletteEntry,
 } from "../../src/renderer/chat/command-palette-registry";
+import { createMockSessionCommandPaletteActions } from "./session-command-palette-fixtures";
 
 describe("command palette registry", () => {
-	it("registers stub entries for every S009 matrix section", () => {
+	it("builds notice actions for deferred palette handlers", () => {
+		expect(showPaletteNoticeAction("Deferred")).toEqual({ type: "notice", message: "Deferred" });
+	});
+
+	it("registers stub and concrete entries for every S009 matrix section", () => {
 		const registry = createCommandPaletteRegistry(getDefaultCommandPaletteEntries());
 		const entriesBySection = registry.getEntriesBySection();
 
@@ -18,8 +23,20 @@ describe("command palette registry", () => {
 			session: 1,
 			config: 5,
 			output: 1,
-			meta: 1,
+			meta: 4,
 		});
+	});
+
+	it("registers S014 meta entries with stable matrix IDs", () => {
+		const registry = createCommandPaletteRegistry(getDefaultCommandPaletteEntries());
+		const metaEntries = registry.getEntriesBySection().find((group) => group.section.id === "meta")?.entries ?? [];
+
+		expect(metaEntries.map((entry) => entry.id)).toEqual([
+			"meta.changelog",
+			"meta.hotkeys",
+			"meta.quit",
+			"meta.reload",
+		]);
 	});
 
 	it("builds grouped session entries for S011 when session actions are provided", () => {

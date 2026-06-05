@@ -1,5 +1,6 @@
 import { buildConfigCommandPaletteEntries } from "./config-command-palette-entries";
 import type { CommandPaletteEntry } from "./command-palette-registry";
+import { getMetaCommandPaletteEntries } from "./meta-command-palette-entries";
 
 export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 	return [
@@ -22,14 +23,6 @@ export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
 		},
-		{
-			id: "meta.stub",
-			sectionId: "meta",
-			icon: "CircleHelp",
-			title: "Meta/Skills command",
-			description: "Meta and skill commands will be wired in the meta slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Meta/Skills command selected" }),
-		},
+		...getMetaCommandPaletteEntries(),
 	];
 }

@@ -97,9 +97,11 @@ export function useComposerCommandPalette({
 		(action: CommandPaletteAction) => {
 			switch (action.type) {
 				case "insertPrompt":
+					onClearPaletteNotice?.();
 					replaceTrigger(action.prompt);
 					return;
 				case "openModelPicker":
+					onClearPaletteNotice?.();
 					onOpenModelPicker?.();
 					clearTrigger();
 					return;
@@ -109,11 +111,12 @@ export function useComposerCommandPalette({
 					focusTextarea();
 					return;
 				case "handled":
+					onClearPaletteNotice?.();
 					clearTrigger();
 					return;
 			}
 		},
-		[clearTrigger, focusTextarea, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
+		[clearTrigger, focusTextarea, onClearPaletteNotice, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
 	);
 
 	const selectEntry = useCallback(

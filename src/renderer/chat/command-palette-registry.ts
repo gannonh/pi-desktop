@@ -13,6 +13,11 @@ export type CommandPaletteAction =
 	| { type: "notice"; message: string }
 	| { type: "handled" };
 
+/** Canonical deferral/out-of-scope handler for palette entries (S014+). */
+export function showPaletteNoticeAction(message: string): CommandPaletteAction {
+	return { type: "notice", message };
+}
+
 export interface CommandPaletteEntry {
 	id: string;
 	sectionId: CommandPaletteSectionId;

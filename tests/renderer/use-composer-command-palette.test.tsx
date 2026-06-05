@@ -48,13 +48,27 @@ function CommandPaletteHookHarness({
 			<output data-testid="active-entry">{palette.activeEntryId}</output>
 			<output data-testid="text">{text}</output>
 			<output data-testid="last-handled">{lastHandled}</output>
-			<button type="button" onClick={() => handleKey("ArrowDown")}>next</button>
-			<button type="button" onClick={() => handleKey("ArrowUp")}>previous</button>
-			<button type="button" onClick={() => handleKey("Enter")}>select</button>
-			<button type="button" onClick={() => handleKey("Escape")}>dismiss</button>
-			<button type="button" onClick={() => handleKey("Tab")}>unsupported</button>
-			<button type="button" onClick={() => palette.selectEntry(handledEntry)}>handled action</button>
-			<button type="button" onClick={() => palette.noteTextChanged("/co", 3)}>change text</button>
+			<button type="button" onClick={() => handleKey("ArrowDown")}>
+				next
+			</button>
+			<button type="button" onClick={() => handleKey("ArrowUp")}>
+				previous
+			</button>
+			<button type="button" onClick={() => handleKey("Enter")}>
+				select
+			</button>
+			<button type="button" onClick={() => handleKey("Escape")}>
+				dismiss
+			</button>
+			<button type="button" onClick={() => handleKey("Tab")}>
+				unsupported
+			</button>
+			<button type="button" onClick={() => palette.selectEntry(handledEntry)}>
+				handled action
+			</button>
+			<button type="button" onClick={() => palette.noteTextChanged("/co", 3)}>
+				change text
+			</button>
 		</div>
 	);
 }
@@ -96,9 +110,7 @@ describe("useComposerCommandPalette", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "wire session actions" }));
 
-		await waitFor(() =>
-			expect(screen.getByTestId("session-entry-ids").textContent).toContain("session.new"),
-		);
+		await waitFor(() => expect(screen.getByTestId("session-entry-ids").textContent).toContain("session.new"));
 		expect(screen.getByTestId("session-entry-ids").textContent).not.toContain("session.stub");
 	});
 
@@ -138,6 +150,100 @@ describe("useComposerCommandPalette", () => {
 		fireEvent.click(screen.getByRole("button", { name: "dismiss" }));
 		expect(screen.getByTestId("last-handled").textContent).toBe("true");
 		expect(screen.getByTestId("open").textContent).toBe("false");
+	});
+
+	it("surfaces notice actions without inserting prompt text", () => {
+		const focusTextarea = vi.fn();
+		const onShowPaletteNotice = vi.fn();
+		const noticeEntry: CommandPaletteEntry = {
+			id: "meta.hotkeys",
+			sectionId: "meta",
+			icon: "CircleHelp",
+			title: "/hotkeys",
+			description: "Show keyboard shortcuts",
+			handler: () => ({ type: "notice", message: "Shortcuts deferred" }),
+		};
+
+		function NoticeHarness() {
+			const [text, setText] = useState("/");
+			const [selectionStart, setSelectionStart] = useState(1);
+			const palette = useComposerCommandPalette({
+				text,
+				selectionStart,
+				setText,
+				setSelectionStart,
+				setTextareaSelection: () => {},
+				focusTextarea,
+				onShowPaletteNotice,
+			});
+
+			return (
+				<div>
+					<output data-testid="notice-text">{text}</output>
+					<button type="button" onClick={() => palette.selectEntry(noticeEntry)}>
+						select notice
+					</button>
+				</div>
+			);
+		}
+
+		render(<NoticeHarness />);
+		fireEvent.click(screen.getByRole("button", { name: "select notice" }));
+
+		expect(onShowPaletteNotice).toHaveBeenCalledWith("Shortcuts deferred");
+		expect(screen.getByTestId("notice-text").textContent).toBe("/");
+		expect(focusTextarea).toHaveBeenCalled();
+	});
+
+	it("clears palette notices when selecting handled or insertPrompt actions", () => {
+		const onClearPaletteNotice = vi.fn();
+		const handledEntry: CommandPaletteEntry = {
+			id: "config.model",
+			sectionId: "config",
+			icon: "Settings",
+			title: "Model",
+			description: "Open model picker",
+			handler: () => ({ type: "handled" }),
+		};
+		const insertEntry: CommandPaletteEntry = {
+			id: "session.stub",
+			sectionId: "session",
+			icon: "SquarePen",
+			title: "Session",
+			description: "Insert session prompt",
+			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
+		};
+
+		function ClearNoticeHarness() {
+			const [text, setText] = useState("/");
+			const [selectionStart, setSelectionStart] = useState(1);
+			const palette = useComposerCommandPalette({
+				text,
+				selectionStart,
+				setText,
+				setSelectionStart,
+				setTextareaSelection: () => {},
+				focusTextarea: () => {},
+				onClearPaletteNotice,
+			});
+
+			return (
+				<div>
+					<button type="button" onClick={() => palette.selectEntry(handledEntry)}>
+						select handled
+					</button>
+					<button type="button" onClick={() => palette.selectEntry(insertEntry)}>
+						select insert
+					</button>
+				</div>
+			);
+		}
+
+		render(<ClearNoticeHarness />);
+		fireEvent.click(screen.getByRole("button", { name: "select handled" }));
+		fireEvent.click(screen.getByRole("button", { name: "select insert" }));
+
+		expect(onClearPaletteNotice).toHaveBeenCalledTimes(2);
 	});
 
 	it("clears handled command text and closed palette navigation without inserting prompt text", async () => {
