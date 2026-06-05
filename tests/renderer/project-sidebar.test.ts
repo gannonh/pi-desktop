@@ -56,17 +56,37 @@ const createProject = (chats: ChatMetadata[], overrides: Partial<ProjectWithChat
 	...overrides,
 });
 
-const renderSidebar = (state: ProjectStateView) =>
+const renderSidebar = (state: ProjectStateView, options: { loading?: boolean } = {}) =>
 	renderToStaticMarkup(
 		createElement(ProjectSidebar, {
 			state,
 			collapsed: false,
 			onToggleCollapsed: vi.fn(),
 			onProjectState: vi.fn(),
+			loading: options.loading,
 		}),
 	);
 
 describe("ProjectSidebar", () => {
+	it("marks the sidebar busy and overlays loading feedback while sessions load", () => {
+		const markup = renderSidebar(
+			{
+				projects: [],
+				standaloneChats: [],
+				selectedProjectId: null,
+				selectedChatId: null,
+				selectedProject: null,
+				selectedChat: null,
+			},
+			{ loading: true },
+		);
+
+		expect(markup).toContain('aria-busy="true"');
+		expect(markup).toContain("project-sidebar__panel--loading");
+		expect(markup).toContain('role="status"');
+		expect(markup).toContain("Loading sessions…");
+	});
+
 	it("enables the CHATS new-chat button for Desktop quick-start chats", () => {
 		const markup = renderSidebar({
 			projects: [],

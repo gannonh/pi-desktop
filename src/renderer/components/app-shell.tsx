@@ -38,6 +38,7 @@ interface AppShellProps {
 	composerHost: ComposerHostProps;
 	defaultComposerSettings: PiSessionSettingsPayload | null;
 	onAbortSession: () => void;
+	sidebarLoading?: boolean;
 }
 
 export function AppShell({
@@ -51,6 +52,7 @@ export function AppShell({
 	composerHost,
 	defaultComposerSettings,
 	onAbortSession,
+	sidebarLoading = false,
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
@@ -122,6 +124,7 @@ export function AppShell({
 				onProjectState={onProjectState}
 				onRegisterActions={onRegisterSidebarActions}
 				ensureSidebarVisible={() => setSidebarCollapsed(false)}
+				loading={sidebarLoading}
 			/>
 			{!sidebarCollapsed ? (
 				<div

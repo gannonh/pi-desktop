@@ -153,6 +153,7 @@ const toSessionStatusLabel = (status: LiveSessionState["status"]): string => {
 
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
+	const [projectStateLoading, setProjectStateLoading] = useState(true);
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
 	const [transcriptHydration, setTranscriptHydration] = useState<TranscriptHydrationState>(() =>
 		createIdleTranscriptHydration(),
@@ -854,6 +855,8 @@ export function App() {
 		let mounted = true;
 
 		const loadInitialState = async () => {
+			setProjectStateLoading(true);
+
 			const [versionResult, projectStateResult] = await Promise.allSettled([
 				window.piDesktop.app.getVersion(),
 				window.piDesktop.project.getState(),
@@ -888,6 +891,8 @@ export function App() {
 							: "Unable to load project state.",
 				});
 			}
+
+			setProjectStateLoading(false);
 		};
 
 		void loadInitialState();
@@ -918,6 +923,7 @@ export function App() {
 					composerHost={composerHost}
 					defaultComposerSettings={defaultComposerSettings}
 					onAbortSession={abortSession}
+					sidebarLoading={projectStateLoading}
 				/>
 			</RightPanelProvider>
 		</ShellLayoutProvider>
