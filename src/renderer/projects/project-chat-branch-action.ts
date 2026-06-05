@@ -22,6 +22,10 @@ function projectChatBranchPastTense(verb: ProjectChatBranchVerb): string {
 	return verb === "fork" ? "Forked" : "Cloned";
 }
 
+function projectChatBranchPendingMessage(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Forking session…" : "Cloning session…";
+}
+
 function projectChatBranchUnavailableMessage(verb: ProjectChatBranchVerb): string {
 	return `${projectChatBranchLabel(verb)} is available after the chat has a Pi session file. Send a message to start the session, then try again.`;
 }
@@ -51,6 +55,8 @@ export function runProjectChatBranchAction({
 		notify(projectChatBranchUnavailableMessage(verb));
 		return;
 	}
+	notify(projectChatBranchPendingMessage(verb), "pending", { projectId, chatId });
+
 	void Promise.resolve()
 		.then(() => call({ projectId, chatId }))
 		.then((result) => {

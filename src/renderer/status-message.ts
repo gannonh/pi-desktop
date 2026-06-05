@@ -1,4 +1,4 @@
-export type StatusMessageTone = "error" | "info" | "success";
+export type StatusMessageTone = "error" | "info" | "pending" | "success";
 
 export type StatusMessageScope = {
 	projectId: string | null;

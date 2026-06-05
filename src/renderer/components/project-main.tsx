@@ -79,7 +79,9 @@ export function ProjectMain({
 	return (
 		<main className="project-main">
 			{statusMessage ? (
-				<div className={getStatusMessageClassName(statusMessage)}>{statusMessage.message}</div>
+				<div className={getStatusMessageClassName(statusMessage)} role="status">
+					{statusMessage.message}
+				</div>
 			) : null}
 
 			{route.kind === "unavailable-project" ? (

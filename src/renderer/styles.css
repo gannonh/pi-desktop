@@ -733,11 +733,25 @@ button:disabled {
 }
 
 .project-main__status-message {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 	overflow-wrap: anywhere;
 	border: 1px solid transparent;
 	border-radius: var(--radius-control);
 	padding: 0.5rem 0.75rem;
 	font-size: var(--type-caption);
+}
+
+.project-main__status-message--pending::before {
+	width: 0.75rem;
+	height: 0.75rem;
+	flex: 0 0 auto;
+	border: 2px solid currentcolor;
+	border-right-color: transparent;
+	border-radius: 999px;
+	animation: live-session-spin 1s linear infinite;
+	content: "";
 }
 
 .project-main__status-message--error {
@@ -750,6 +764,12 @@ button:disabled {
 	border-color: var(--color-border);
 	background: color-mix(in oklch, var(--color-muted) 70%, transparent);
 	color: var(--color-muted-foreground);
+}
+
+.project-main__status-message--pending {
+	border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+	background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+	color: var(--color-foreground);
 }
 
 .project-main__status-message--success {

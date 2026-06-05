@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ProjectStateViewResult } from "../../src/shared/ipc";
 import {
 	canRunProjectChatBranchAction,
 	getProjectChatBranchActionDisabledTitle,
@@ -6,6 +7,19 @@ import {
 	runProjectChatBranchAction,
 	runProjectChatBranchActionForRow,
 } from "../../src/renderer/projects/project-chat-branch-action";
+
+const okProjectState = (selectedProjectId: string | null, selectedChatId: string | null): ProjectStateViewResult =>
+	({
+		ok: true,
+		data: {
+			projects: [],
+			standaloneChats: [],
+			selectedProjectId,
+			selectedChatId,
+			selectedProject: null,
+			selectedChat: null,
+		},
+	}) as ProjectStateViewResult;
 
 describe("project chat branch action", () => {
 	it("treats null session paths as unavailable", () => {
@@ -33,14 +47,17 @@ describe("project chat branch action", () => {
 		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
 	});
 
-	it("applies project state and confirms when fork succeeds", async () => {
+	it("shows pending feedback before fork completes", async () => {
 		const notify = vi.fn();
 		const applyProjectStateViewResult = vi.fn();
-		const result = {
-			ok: true as const,
-			data: { selectedProjectId: "project-1", selectedChatId: "chat-forked" },
-		};
-		const call = vi.fn().mockResolvedValue(result);
+		const result = okProjectState("project-1", "chat-forked");
+		let resolveCall!: (result: ProjectStateViewResult) => void;
+		const call = vi.fn(
+			() =>
+				new Promise<ProjectStateViewResult>((resolve) => {
+					resolveCall = resolve;
+				}),
+		);
 
 		runProjectChatBranchAction({
 			notify,
@@ -54,6 +71,16 @@ describe("project chat branch action", () => {
 
 		await vi.waitFor(() => {
 			expect(call).toHaveBeenCalledWith({ projectId: "project-1", chatId: "chat-1" });
+		});
+		expect(notify).toHaveBeenCalledWith("Forking session…", "pending", {
+			projectId: "project-1",
+			chatId: "chat-1",
+		});
+		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
+
+		resolveCall(result);
+
+		await vi.waitFor(() => {
 			expect(applyProjectStateViewResult).toHaveBeenCalledWith(result);
 			expect(notify).toHaveBeenCalledWith("Forked session.", "success", {
 				projectId: "project-1",

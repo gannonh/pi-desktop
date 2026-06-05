@@ -19,6 +19,11 @@ export interface UseSessionCommandPaletteActionsOptions {
 const projectStateResultSelection = (result: ProjectStateViewResult): StatusMessageScope | undefined =>
 	result.ok ? { projectId: result.data.selectedProjectId, chatId: result.data.selectedChatId } : undefined;
 
+const currentSelection = (projectId: string | null, chatId: string | null): StatusMessageScope => ({
+	projectId,
+	chatId,
+});
+
 export function useSessionCommandPaletteActions({
 	selectedProjectId,
 	selectedChatId,
@@ -32,6 +37,12 @@ export function useSessionCommandPaletteActions({
 	return useMemo(
 		(): SessionCommandPaletteActions => ({
 			onNewSession: () => {
+				notifyProjectStatus(
+					"Starting new session…",
+					"pending",
+					currentSelection(selectedProjectId, selectedChatId),
+				);
+
 				void (
 					selectedProjectId
 						? window.piDesktop.chat.create({ projectId: selectedProjectId })

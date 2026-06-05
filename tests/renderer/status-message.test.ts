@@ -54,4 +54,17 @@ describe("status messages", () => {
 
 		expect(getStatusMessageAutoDismissMs(message)).toBe(10000);
 	});
+
+	it("keeps pending messages visible until the action resolves", () => {
+		const message: StatusMessage = {
+			source: "project",
+			tone: "pending",
+			message: "Forking session…",
+		};
+
+		expect(getStatusMessageClassName(message)).toBe(
+			"project-main__status-message project-main__status-message--pending",
+		);
+		expect(getStatusMessageAutoDismissMs(message)).toBeNull();
+	});
 });
