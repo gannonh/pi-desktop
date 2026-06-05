@@ -42,7 +42,11 @@ describe("project chat branch action", () => {
 			call,
 		});
 
-		expect(notify).toHaveBeenCalledOnce();
+		expect(notify).toHaveBeenCalledWith(
+			"Fork is available after the chat has a Pi session file. Send a message to start the session, then try again.",
+			"info",
+			{ projectId: "project-1", chatId: "chat-1" },
+		);
 		expect(call).not.toHaveBeenCalled();
 		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
 	});

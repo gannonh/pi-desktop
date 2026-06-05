@@ -18,6 +18,16 @@ export const getStatusMessageClassName = (statusMessage: StatusMessage): string 
 export const getStatusMessageAutoDismissMs = (statusMessage: StatusMessage): number | null =>
 	statusMessage.tone === "success" ? 10000 : null;
 
+export const retainStatusMessageAfterProjectStateResult = (
+	statusMessage: StatusMessage | undefined,
+): StatusMessage | undefined => {
+	if (statusMessage?.source === "project" && statusMessage.tone !== "pending") {
+		return undefined;
+	}
+
+	return statusMessage;
+};
+
 export const retainStatusMessageForSelection = (
 	statusMessage: StatusMessage | undefined,
 	selection: StatusMessageScope,

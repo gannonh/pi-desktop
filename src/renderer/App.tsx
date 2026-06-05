@@ -43,6 +43,7 @@ import {
 } from "./session/transcript-hydration";
 import {
 	getStatusMessageAutoDismissMs,
+	retainStatusMessageAfterProjectStateResult,
 	retainStatusMessageForSelection,
 	type StatusMessage,
 	type StatusMessageScope,
@@ -182,12 +183,17 @@ export function App() {
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
-			setStatusMessage({ source: "project", tone: "error", message: result.error.message });
+			setStatusMessage({
+				source: "project",
+				tone: "error",
+				message: result.error.message,
+				scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+			});
 			return;
 		}
 
 		setProjectState(result.data);
-		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+		setStatusMessage(retainStatusMessageAfterProjectStateResult);
 	}, []);
 
 	const notifyProjectStatus = useCallback(
@@ -221,6 +227,7 @@ export function App() {
 						source: "project",
 						tone: "error",
 						message: error instanceof Error ? error.message : "Unable to refresh project state.",
+						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
 					});
 				});
 		}, 100);
@@ -806,7 +813,7 @@ export function App() {
 
 			if (!result.ok) {
 				setTranscriptHydration(createErrorTranscriptHydration(selectedScope, result.error.message));
-				setStatusMessage({ source: "project", tone: "error", message: result.error.message });
+				setStatusMessage({ source: "project", tone: "error", message: result.error.message, scope: selectedScope });
 				return;
 			}
 

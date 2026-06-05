@@ -51,11 +51,11 @@ export function runProjectChatBranchAction({
 		notify(`Select a project chat before ${verb === "fork" ? "forking" : "cloning"}.`);
 		return;
 	}
+	const scope = { projectId, chatId };
 	if (!canRunProjectChatBranchAction(sessionPath)) {
-		notify(projectChatBranchUnavailableMessage(verb));
+		notify(projectChatBranchUnavailableMessage(verb), "info", scope);
 		return;
 	}
-	const scope = { projectId, chatId };
 	notify(projectChatBranchPendingMessage(verb), "pending", scope);
 
 	void Promise.resolve()

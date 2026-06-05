@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	getStatusMessageAutoDismissMs,
 	getStatusMessageClassName,
+	retainStatusMessageAfterProjectStateResult,
 	retainStatusMessageForSelection,
 	type StatusMessage,
 } from "../../src/renderer/status-message";
@@ -66,5 +67,27 @@ describe("status messages", () => {
 			"project-main__status-message project-main__status-message--pending",
 		);
 		expect(getStatusMessageAutoDismissMs(message)).toBeNull();
+	});
+
+	it("retains pending project messages after unrelated project-state refreshes", () => {
+		const message: StatusMessage = {
+			source: "project",
+			tone: "pending",
+			message: "Starting new session…",
+			scope: { projectId: "project:one", chatId: "chat:one" },
+		};
+
+		expect(retainStatusMessageAfterProjectStateResult(message)).toBe(message);
+	});
+
+	it("clears completed project messages after project-state refreshes", () => {
+		const message: StatusMessage = {
+			source: "project",
+			tone: "success",
+			message: "Started new session.",
+			scope: { projectId: "project:one", chatId: "chat:one" },
+		};
+
+		expect(retainStatusMessageAfterProjectStateResult(message)).toBeUndefined();
 	});
 });
