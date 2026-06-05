@@ -16,7 +16,7 @@ export const getStatusMessageClassName = (statusMessage: StatusMessage): string 
 	["project-main__status-message", `project-main__status-message--${statusMessage.tone}`].join(" ");
 
 export const getStatusMessageAutoDismissMs = (statusMessage: StatusMessage): number | null =>
-	statusMessage.tone === "success" ? 4000 : null;
+	statusMessage.tone === "success" ? 10000 : null;
 
 export const retainStatusMessageForSelection = (
 	statusMessage: StatusMessage | undefined,

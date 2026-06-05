@@ -52,6 +52,6 @@ describe("status messages", () => {
 			scope: { projectId: "project:one", chatId: "chat:one" },
 		};
 
-		expect(getStatusMessageAutoDismissMs(message)).toBe(4000);
+		expect(getStatusMessageAutoDismissMs(message)).toBe(10000);
 	});
 });
