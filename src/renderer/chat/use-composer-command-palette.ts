@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { buildCommandPaletteEntries, type CommandPaletteEntryActions } from "./build-command-palette-entries";
 import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
 	groupCommandPaletteEntries,
+	type CommandPaletteAction,
 	type CommandPaletteEntry,
 } from "./command-palette-registry";
 import {
@@ -19,7 +19,10 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
-	onShowNotice?: (message: string) => void;
+	commandPaletteActions?: CommandPaletteEntryActions;
+	onOpenModelPicker?: () => void;
+	onShowPaletteNotice?: (message: string) => void;
+	onClearPaletteNotice?: () => void;
 }
 
 export function useComposerCommandPalette({
@@ -29,11 +32,14 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
-	onShowNotice,
+	commandPaletteActions,
+	onOpenModelPicker,
+	onShowPaletteNotice,
+	onClearPaletteNotice,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(() => createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntries(), []);
+	const entries = useMemo(() => buildCommandPaletteEntries(commandPaletteActions), [commandPaletteActions]);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);
@@ -55,8 +61,9 @@ export function useComposerCommandPalette({
 			setText(nextText);
 			setSelectionStart(nextSelectionStart);
 			setDismissedForText("");
+			onClearPaletteNotice?.();
 		},
-		[setText, setSelectionStart],
+		[onClearPaletteNotice, setText, setSelectionStart],
 	);
 
 	const dismiss = useCallback(() => {
@@ -76,23 +83,47 @@ export function useComposerCommandPalette({
 		[focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
 	);
 
+	const clearTrigger = useCallback(() => {
+		const nextText = `${text.slice(0, trigger.start)}${text.slice(trigger.end)}`;
+		const nextSelectionStart = trigger.start;
+		setText(nextText);
+		setSelectionStart(nextSelectionStart);
+		setTextareaSelection(nextSelectionStart);
+		setDismissedForText(nextText);
+		focusTextarea();
+	}, [focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start]);
+
+	const applyPaletteAction = useCallback(
+		(action: CommandPaletteAction) => {
+			switch (action.type) {
+				case "insertPrompt":
+					onClearPaletteNotice?.();
+					replaceTrigger(action.prompt);
+					return;
+				case "openModelPicker":
+					onClearPaletteNotice?.();
+					onOpenModelPicker?.();
+					clearTrigger();
+					return;
+				case "notice":
+					onShowPaletteNotice?.(action.message);
+					setDismissedForText(text);
+					focusTextarea();
+					return;
+				case "handled":
+					onClearPaletteNotice?.();
+					clearTrigger();
+					return;
+			}
+		},
+		[clearTrigger, focusTextarea, onClearPaletteNotice, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
+	);
+
 	const selectEntry = useCallback(
 		(entry: CommandPaletteEntry) => {
-			const action = entry.handler();
-			if (action.type === "insertPrompt") {
-				onShowNotice?.("");
-				replaceTrigger(action.prompt);
-				return;
-			}
-			if (action.type === "showNotice") {
-				onShowNotice?.(action.message);
-			} else {
-				onShowNotice?.("");
-			}
-			dismiss();
-			focusTextarea();
+			applyPaletteAction(entry.handler());
 		},
-		[dismiss, focusTextarea, onShowNotice, replaceTrigger],
+		[applyPaletteAction],
 	);
 
 	const moveActiveEntry = useCallback(
@@ -125,6 +156,7 @@ export function useComposerCommandPalette({
 
 			if (visibleEntries.length === 0) {
 				if (action === "dismiss") {
+					onClearPaletteNotice?.();
 					dismiss();
 					return true;
 				}
@@ -142,13 +174,14 @@ export function useComposerCommandPalette({
 					selectActiveEntry();
 					break;
 				case "dismiss":
+					onClearPaletteNotice?.();
 					dismiss();
 					break;
 			}
 
 			return true;
 		},
-		[dismiss, moveActiveEntry, open, selectActiveEntry, visibleEntries.length],
+		[dismiss, moveActiveEntry, onClearPaletteNotice, open, selectActiveEntry, visibleEntries.length],
 	);
 
 	return {

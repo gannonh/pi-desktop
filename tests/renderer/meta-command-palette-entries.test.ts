@@ -22,9 +22,9 @@ describe("meta command palette entries", () => {
 		["meta.changelog", META_CHANGELOG_DEFERRAL_MESSAGE],
 		["meta.reload", META_RELOAD_DEFERRAL_MESSAGE],
 		["meta.quit", META_QUIT_OUT_OF_SCOPE_MESSAGE],
-	] as const)("returns showNotice for %s", (entryId, message) => {
+	] as const)("returns notice for %s", (entryId, message) => {
 		const entry = getMetaCommandPaletteEntries().find((candidate) => candidate.id === entryId);
 
-		expect(entry?.handler()).toEqual({ type: "showNotice", message });
+		expect(entry?.handler()).toEqual({ type: "notice", message });
 	});
 });

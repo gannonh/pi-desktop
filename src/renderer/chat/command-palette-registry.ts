@@ -1,5 +1,3 @@
-import { getMetaCommandPaletteEntries } from "./meta-command-palette-entries";
-
 export type CommandPaletteSectionId = "session" | "config" | "output" | "meta";
 
 export type CommandPaletteIconName = "CircleHelp" | "FileOutput" | "Settings" | "SquarePen";
@@ -11,12 +9,13 @@ export interface CommandPaletteSection {
 
 export type CommandPaletteAction =
 	| { type: "insertPrompt"; prompt: string }
-	| { type: "handled" }
-	| { type: "showNotice"; message: string };
+	| { type: "openModelPicker" }
+	| { type: "notice"; message: string }
+	| { type: "handled" };
 
 /** Canonical deferral/out-of-scope handler for palette entries (S014+). */
 export function showPaletteNoticeAction(message: string): CommandPaletteAction {
-	return { type: "showNotice", message };
+	return { type: "notice", message };
 }
 
 export interface CommandPaletteEntry {
@@ -25,6 +24,8 @@ export interface CommandPaletteEntry {
 	icon: CommandPaletteIconName;
 	title: string;
 	description: string;
+	/** CLI slash command token without the leading slash (e.g. `session` for `/session`). */
+	slashCommand?: string;
 	scopeTag?: string;
 	handler: () => CommandPaletteAction;
 }
@@ -114,37 +115,4 @@ function sortCommandPaletteEntries(entries: CommandPaletteEntry[]): CommandPalet
 		const sectionDelta = sectionOrder[left.sectionId] - sectionOrder[right.sectionId];
 		return sectionDelta || left.title.localeCompare(right.title);
 	});
-}
-
-export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
-	return [
-		{
-			id: "session.stub",
-			sectionId: "session",
-			icon: "SquarePen",
-			title: "Session command",
-			description: "Session commands will be wired in the session slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Session command selected" }),
-		},
-		{
-			id: "config.stub",
-			sectionId: "config",
-			icon: "Settings",
-			title: "Config command",
-			description: "Config commands will be wired in the config slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Config command selected" }),
-		},
-		{
-			id: "output.stub",
-			sectionId: "output",
-			icon: "FileOutput",
-			title: "Output command",
-			description: "Output commands will be wired in the output slice.",
-			scopeTag: "Stub",
-			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
-		},
-		...getMetaCommandPaletteEntries(),
-	];
 }
