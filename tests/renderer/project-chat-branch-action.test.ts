@@ -36,7 +36,10 @@ describe("project chat branch action", () => {
 	it("applies project state and confirms when fork succeeds", async () => {
 		const notify = vi.fn();
 		const applyProjectStateViewResult = vi.fn();
-		const result = { ok: true as const, data: {} };
+		const result = {
+			ok: true as const,
+			data: { selectedProjectId: "project-1", selectedChatId: "chat-forked" },
+		};
 		const call = vi.fn().mockResolvedValue(result);
 
 		runProjectChatBranchAction({
@@ -52,7 +55,10 @@ describe("project chat branch action", () => {
 		await vi.waitFor(() => {
 			expect(call).toHaveBeenCalledWith({ projectId: "project-1", chatId: "chat-1" });
 			expect(applyProjectStateViewResult).toHaveBeenCalledWith(result);
-			expect(notify).toHaveBeenCalledWith("Forked session.", "success");
+			expect(notify).toHaveBeenCalledWith("Forked session.", "success", {
+				projectId: "project-1",
+				chatId: "chat-forked",
+			});
 		});
 	});
 

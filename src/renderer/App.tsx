@@ -45,6 +45,7 @@ import {
 	getStatusMessageAutoDismissMs,
 	retainStatusMessageForSelection,
 	type StatusMessage,
+	type StatusMessageScope,
 	type StatusMessageTone,
 } from "./status-message";
 
@@ -188,14 +189,17 @@ export function App() {
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
 	}, []);
 
-	const notifyProjectStatus = useCallback((message: string, tone: StatusMessageTone = "info") => {
-		setStatusMessage({
-			source: "project",
-			tone,
-			message,
-			scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
-		});
-	}, []);
+	const notifyProjectStatus = useCallback(
+		(message: string, tone: StatusMessageTone = "info", scope?: StatusMessageScope) => {
+			setStatusMessage({
+				source: "project",
+				tone,
+				message,
+				scope: scope ?? { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+			});
+		},
+		[],
+	);
 
 	const registerSidebarActions = useCallback((actions: ProjectSidebarActions | null) => {
 		sidebarActionsRef.current = actions;

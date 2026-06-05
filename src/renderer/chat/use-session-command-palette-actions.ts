@@ -4,7 +4,7 @@ import type { ProjectStateViewResult } from "../../shared/ipc";
 import { projectActionErrorMessage } from "../projects/project-action-error";
 import { runProjectChatBranchAction } from "../projects/project-chat-branch-action";
 import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
-import type { StatusMessageTone } from "../status-message";
+import type { StatusMessageScope, StatusMessageTone } from "../status-message";
 import type { SessionCommandPaletteActions } from "./session-command-palette";
 
 export interface UseSessionCommandPaletteActionsOptions {
@@ -12,9 +12,12 @@ export interface UseSessionCommandPaletteActionsOptions {
 	selectedChatId: string | null;
 	selectedChat: ProjectStateView["selectedChat"];
 	applyProjectStateViewResult: (result: ProjectStateViewResult) => void;
-	notifyProjectStatus: (message: string, tone?: StatusMessageTone) => void;
+	notifyProjectStatus: (message: string, tone?: StatusMessageTone, scope?: StatusMessageScope) => void;
 	sidebarActionsRef: RefObject<ProjectSidebarActions | null>;
 }
+
+const projectStateResultSelection = (result: ProjectStateViewResult): StatusMessageScope | undefined =>
+	result.ok ? { projectId: result.data.selectedProjectId, chatId: result.data.selectedChatId } : undefined;
 
 export function useSessionCommandPaletteActions({
 	selectedProjectId,
@@ -36,7 +39,9 @@ export function useSessionCommandPaletteActions({
 				)
 					.then((result) => {
 						applyProjectStateViewResult(result);
-						notifyProjectStatus("Started new session.", "success");
+						if (result.ok) {
+							notifyProjectStatus("Started new session.", "success", projectStateResultSelection(result));
+						}
 					})
 					.catch((error) => {
 						notifyProjectStatus(projectActionErrorMessage(error, "Unable to start a new session."));

@@ -846,9 +846,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				const chat = findProjectChat(store, input.projectId, input.chatId);
 				const targetPath = await deps.forkSession(requireSessionPath(chat), project.path);
 				const now = deps.now();
+				const chatId = createChatId(now, store.chatsByProject[input.projectId] ?? []);
 
 				store.sessionUiByPath[targetPath] = {
-					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					chatId,
 					sessionId: null,
 					sessionPath: targetPath,
 					projectId: input.projectId,
@@ -856,6 +857,8 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					status: "idle",
 					attention: false,
 				};
+				store.selectedProjectId = input.projectId;
+				store.selectedChatId = chatId;
 
 				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
@@ -869,9 +872,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				const chat = findProjectChat(store, input.projectId, input.chatId);
 				const targetPath = await deps.cloneSession(requireSessionPath(chat), project.path);
 				const now = deps.now();
+				const chatId = createChatId(now, store.chatsByProject[input.projectId] ?? []);
 
 				store.sessionUiByPath[targetPath] = {
-					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					chatId,
 					sessionId: null,
 					sessionPath: targetPath,
 					projectId: input.projectId,
@@ -879,6 +883,8 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					status: "idle",
 					attention: false,
 				};
+				store.selectedProjectId = input.projectId;
+				store.selectedChatId = chatId;
 
 				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
@@ -892,9 +898,10 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				const chat = findProjectChat(store, input.projectId, input.chatId);
 				const targetPath = await deps.branchSession(requireSessionPath(chat), project.path, input.entryId);
 				const now = deps.now();
+				const chatId = createChatId(now, store.chatsByProject[input.projectId] ?? []);
 
 				store.sessionUiByPath[targetPath] = {
-					chatId: createChatId(now, store.chatsByProject[input.projectId] ?? []),
+					chatId,
 					sessionId: null,
 					sessionPath: targetPath,
 					projectId: input.projectId,
@@ -902,6 +909,8 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 					status: "idle",
 					attention: false,
 				};
+				store.selectedProjectId = input.projectId;
+				store.selectedChatId = chatId;
 
 				const refreshed = await refreshSessionChats(deps, store, activeSessionIds);
 				return saveAndView(deps.store, refreshed);
