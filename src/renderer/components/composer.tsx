@@ -16,6 +16,7 @@ import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
 import type { ComposerContext } from "../chat/chat-view-model";
+import type { CommandPaletteEntryActions } from "../chat/build-command-palette-entries";
 import { processFilesForComposer, removeAttachment } from "../chat/composer-attachments-state";
 import { useComposerCommandPalette } from "../chat/use-composer-command-palette";
 import { createComposerState } from "../chat/composer-state";
@@ -57,6 +58,7 @@ interface ComposerProps {
 	draftText?: string;
 	onDraftApplied?: () => void;
 	focusKey?: string;
+	commandPaletteActions?: CommandPaletteEntryActions;
 }
 
 type ComposerMenu = "project" | "mode" | "model" | null;
@@ -85,6 +87,7 @@ export function Composer({
 	draftText = "",
 	onDraftApplied,
 	focusKey,
+	commandPaletteActions,
 }: ComposerProps) {
 	const statusId = useId();
 	const composerStackRef = useRef<HTMLDivElement>(null);
@@ -97,6 +100,7 @@ export function Composer({
 	const [processingFiles, setProcessingFiles] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
 	const [attachmentError, setAttachmentError] = useState("");
+	const [paletteNotice, setPaletteNotice] = useState("");
 	const { ref: textareaRef } = useAutoResizeTextarea(text);
 	const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
 	const [openQueueMenuId, setOpenQueueMenuId] = useState<string | null>(null);
@@ -122,6 +126,13 @@ export function Composer({
 	const setTextareaSelection = useCallback((nextSelectionStart: number) => {
 		pendingTextareaSelectionRef.current = nextSelectionStart;
 	}, []);
+	const clearPaletteNotice = useCallback(() => {
+		setPaletteNotice("");
+	}, []);
+	const openModelPickerFromPalette = useCallback(() => {
+		clearPaletteNotice();
+		setOpenMenu("model");
+	}, [clearPaletteNotice]);
 	const commandPalette = useComposerCommandPalette({
 		text,
 		selectionStart,
@@ -129,6 +140,10 @@ export function Composer({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
+		commandPaletteActions,
+		onOpenModelPicker: openModelPickerFromPalette,
+		onShowPaletteNotice: setPaletteNotice,
+		onClearPaletteNotice: clearPaletteNotice,
 	});
 
 	useLayoutEffect(() => {
@@ -203,6 +218,7 @@ export function Composer({
 				setSelectionStart(0);
 				setAttachments([]);
 				setAttachmentError("");
+				setPaletteNotice("");
 				focusTextarea();
 			}
 		} catch (error) {
@@ -341,6 +357,7 @@ export function Composer({
 							aria-label="Message Pi"
 							value={text}
 							onChange={(event) => {
+								setPaletteNotice("");
 								commandPalette.noteTextChanged(
 									event.target.value,
 									event.target.selectionStart ?? event.target.value.length,
@@ -509,6 +526,11 @@ export function Composer({
 					{attachmentError ? (
 						<span className="composer__disabled-reason" role="alert">
 							{attachmentError}
+						</span>
+					) : null}
+					{paletteNotice ? (
+						<span className="composer__palette-notice" role="status">
+							{paletteNotice}
 						</span>
 					) : null}
 					{state.statusLabel ? (

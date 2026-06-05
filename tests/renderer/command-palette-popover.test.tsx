@@ -4,10 +4,8 @@ import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CommandPalettePopover } from "../../src/renderer/components/command-palette-popover";
-import {
-	createCommandPaletteRegistry,
-	getDefaultCommandPaletteEntries,
-} from "../../src/renderer/chat/command-palette-registry";
+import { getDefaultCommandPaletteEntries } from "../../src/renderer/chat/command-palette-default-entries";
+import { createCommandPaletteRegistry } from "../../src/renderer/chat/command-palette-registry";
 
 const groups = createCommandPaletteRegistry(getDefaultCommandPaletteEntries()).getEntriesBySection();
 
@@ -72,9 +70,9 @@ describe("CommandPalettePopover", () => {
 
 		const palette = screen.getByRole("listbox", { name: "Suggestions" });
 		fireEvent.keyDown(palette, { key: "ArrowDown" });
-		expect(onActiveEntryIdChange).toHaveBeenCalledWith("config.stub");
+		expect(onActiveEntryIdChange).toHaveBeenCalledWith("config.model");
 		fireEvent.keyDown(palette, { key: "Enter" });
-		expect(onSelectEntry).toHaveBeenCalledWith(expect.objectContaining({ id: "config.stub" }));
+		expect(onSelectEntry).toHaveBeenCalledWith(expect.objectContaining({ id: "config.model" }));
 	});
 
 	it("dismisses on Escape", () => {

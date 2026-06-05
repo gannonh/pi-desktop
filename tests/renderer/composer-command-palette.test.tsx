@@ -2,7 +2,14 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CONFIG_PALETTE_DEFERRAL_MESSAGES } from "../../src/renderer/chat/config-command-palette-entries";
 import { Composer } from "../../src/renderer/components/composer";
+import {
+	META_CHANGELOG_DEFERRAL_MESSAGE,
+	META_HOTKEYS_DEFERRAL_MESSAGE,
+	META_QUIT_OUT_OF_SCOPE_MESSAGE,
+	META_RELOAD_DEFERRAL_MESSAGE,
+} from "../../src/renderer/chat/meta-command-palette-entries";
 import { createComposerContext } from "./composer-fixtures";
 
 const context = createComposerContext({
@@ -32,10 +39,10 @@ describe("Composer command palette integration", () => {
 		fireEvent.change(screen.getByLabelText("Message Pi"), { target: { value: "/co" } });
 
 		expect(screen.getByRole("group", { name: "Config" })).toBeTruthy();
-		expect(screen.getByRole("option", { name: /Config command/ })).toBeTruthy();
+		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
 	});
 
-	it("selects a stub entry into the draft without submitting raw slash text", () => {
+	it("selects the change model entry without submitting raw slash text", () => {
 		const onSubmit = vi.fn();
 		render(<Composer context={context} onSubmit={onSubmit} />);
 		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
@@ -45,8 +52,31 @@ describe("Composer command palette integration", () => {
 		fireEvent.keyDown(screen.getByRole("listbox", { name: "Suggestions" }), { key: "Enter" });
 
 		expect(onSubmit).not.toHaveBeenCalled();
-		expect(textarea.value).toBe("Config command selected");
-		expect(textarea.selectionStart).toBe("Config command selected".length);
+		expect(textarea.value).toBe("");
+		expect(screen.getByRole("button", { name: context.modelLabel }).getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("shows a visible deferral when selecting settings from the palette", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/set" } });
+		fireEvent.click(screen.getByRole("option", { name: /Settings/ }));
+
+		expect(textarea.value).toBe("/set");
+		expect(screen.getByRole("status").textContent).toContain(CONFIG_PALETTE_DEFERRAL_MESSAGES.settings);
+	});
+
+	it("clears palette deferral notices when the composer text changes", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/set" } });
+		fireEvent.click(screen.getByRole("option", { name: /Settings/ }));
+		expect(screen.getByRole("status")).toBeTruthy();
+
+		fireEvent.change(textarea, { target: { value: "/set " } });
+		expect(screen.queryByRole("status")).toBeNull();
 	});
 
 	it("re-evaluates slash triggers after clicking to move the caret", () => {
@@ -59,7 +89,38 @@ describe("Composer command palette integration", () => {
 		textarea.setSelectionRange(3, 3);
 		fireEvent.click(textarea);
 
-		expect(screen.getByRole("option", { name: /Config command/ })).toBeTruthy();
+		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
+	});
+
+	it.each([
+		{ query: "/hot", option: /\/hotkeys/, expectedMessage: META_HOTKEYS_DEFERRAL_MESSAGE },
+		{ query: "/change", option: /\/changelog/, expectedMessage: META_CHANGELOG_DEFERRAL_MESSAGE },
+		{ query: "/rel", option: /\/reload/, expectedMessage: META_RELOAD_DEFERRAL_MESSAGE },
+		{ query: "/qu", option: /\/quit/, expectedMessage: META_QUIT_OUT_OF_SCOPE_MESSAGE },
+	])("shows meta notice when selecting $option", ({ query, option, expectedMessage }) => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: query } });
+		fireEvent.click(screen.getByRole("option", { name: option }));
+
+		expect(textarea.value).toBe(query);
+		expect(screen.getByRole("status").textContent).toBe(expectedMessage);
+	});
+
+	it("clears a meta notice when selecting a stub palette entry", () => {
+		render(<Composer context={context} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/hot" } });
+		fireEvent.click(screen.getByRole("option", { name: /\/hotkeys/ }));
+		expect(screen.getByRole("status").textContent).toBe(META_HOTKEYS_DEFERRAL_MESSAGE);
+
+		fireEvent.change(textarea, { target: { value: "/" } });
+		fireEvent.click(screen.getByRole("option", { name: /Session command/ }));
+
+		expect(screen.queryByRole("status")).toBeNull();
+		expect(textarea.value).toBe("Session command selected");
 	});
 
 	it("preserves Enter submit behavior when the palette is closed", async () => {

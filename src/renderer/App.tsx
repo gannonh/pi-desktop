@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type {
@@ -10,7 +10,10 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
+import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
+import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "./file-workspace/file-workspace-guard";
 import { RightPanelProvider } from "./right-panel/right-panel-context";
 import { ShellLayoutProvider } from "./shell/shell-layout-context";
@@ -40,7 +43,7 @@ import {
 } from "./session/transcript-hydration";
 
 type StatusMessage = {
-	source: "project" | "startup";
+	source: "project" | "startup" | "output";
 	message: string;
 };
 
@@ -158,6 +161,7 @@ export function App() {
 	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
 	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
 	const [composerDraft, setComposerDraft] = useState("");
+	const sidebarActionsRef = useRef<ProjectSidebarActions | null>(null);
 	const selectedProjectId = projectState.selectedProjectId;
 	const selectedChatId = projectState.selectedChatId;
 	const selectedProjectIdRef = useRef<string | null>(selectedProjectId);
@@ -171,6 +175,7 @@ export function App() {
 	const nextSessionRequestIdRef = useRef(0);
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const sessionMessagesRef = useRef(sessionState.messages);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -180,6 +185,14 @@ export function App() {
 
 		setProjectState(result.data);
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+	}, []);
+
+	const notifyProjectStatus = useCallback((message: string) => {
+		setStatusMessage({ source: "project", message });
+	}, []);
+
+	const registerSidebarActions = useCallback((actions: ProjectSidebarActions | null) => {
+		sidebarActionsRef.current = actions;
 	}, []);
 
 	const scheduleProjectTitleRefresh = useCallback(() => {
@@ -210,6 +223,10 @@ export function App() {
 		activeSessionProjectIdRef.current = activeSessionProjectId;
 		activeSessionChatIdRef.current = activeSessionChatId;
 	}, [activeSessionProjectId, activeSessionChatId]);
+
+	useEffect(() => {
+		sessionMessagesRef.current = sessionState.messages;
+	}, [sessionState.messages]);
 
 	useEffect(() => {
 		if (
@@ -655,6 +672,33 @@ export function App() {
 		],
 	);
 
+	const sessionCommandPaletteActions = useSessionCommandPaletteActions({
+		selectedProjectId,
+		selectedChatId,
+		selectedChat: projectState.selectedChat,
+		applyProjectStateViewResult,
+		notifyProjectStatus,
+		sidebarActionsRef,
+	});
+
+	const commandPaletteActions = useMemo(
+		() => ({
+			session: sessionCommandPaletteActions,
+			output: createOutputCommandPaletteActions({
+				getMessages: () =>
+					isSessionScopeSelected(
+						{ projectId: activeSessionProjectIdRef.current, chatId: activeSessionChatIdRef.current },
+						{ projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					)
+						? sessionMessagesRef.current
+						: [],
+				writeText: (input) => window.piDesktop.clipboard.writeText(input),
+				notify: (message) => setStatusMessage({ source: "output", message }),
+			}),
+		}),
+		[sessionCommandPaletteActions],
+	);
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
 		onSelectProject: (projectId) => {
@@ -678,6 +722,7 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
+		commandPaletteActions,
 	};
 
 	useEffect(() => {
@@ -815,6 +860,7 @@ export function App() {
 			<RightPanelProvider>
 				<AppShell
 					state={projectState}
+					onRegisterSidebarActions={registerSidebarActions}
 					statusMessage={statusMessage?.message}
 					session={
 						isSessionScopeSelected(
