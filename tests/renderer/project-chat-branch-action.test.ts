@@ -105,7 +105,10 @@ describe("project chat branch action", () => {
 		});
 
 		await vi.waitFor(() => {
-			expect(notify).toHaveBeenCalledWith("fork failed");
+			expect(notify).toHaveBeenCalledWith("fork failed", "error", {
+				projectId: "project-1",
+				chatId: "chat-1",
+			});
 		});
 		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
 	});
@@ -128,7 +131,10 @@ describe("project chat branch action", () => {
 		});
 
 		await vi.waitFor(() => {
-			expect(notify).toHaveBeenCalledWith("bridge unavailable");
+			expect(notify).toHaveBeenCalledWith("bridge unavailable", "error", {
+				projectId: "project-1",
+				chatId: "chat-1",
+			});
 		});
 		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
 	});
