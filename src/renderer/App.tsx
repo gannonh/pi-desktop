@@ -292,6 +292,7 @@ export function App() {
 		pendingStartEventsRef.current.clear();
 		setActiveSessionProjectId(null);
 		setActiveSessionChatId(null);
+		setRuntimeCommands([]);
 		setSessionState(createInitialSessionState());
 
 		if (sessionId && sessionId === runtimeSessionId) {
@@ -545,6 +546,9 @@ export function App() {
 
 	const refreshRuntimeCommands = useCallback(async (sessionId: string) => {
 		const result = await window.piDesktop.piSession.getCommands({ sessionId });
+		if (acceptedSessionIdRef.current !== sessionId) {
+			return;
+		}
 		setRuntimeCommands(result.ok ? result.data.commands : []);
 	}, []);
 
@@ -580,6 +584,7 @@ export function App() {
 				pendingStartRequestRef.current = request;
 				pendingStartEventsRef.current.clear();
 				acceptedSessionIdRef.current = null;
+				setRuntimeCommands([]);
 			}
 
 			activeSessionProjectIdRef.current = requestProjectId;
