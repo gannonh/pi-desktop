@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { buildCommandPaletteEntries } from "./build-command-palette-entries";
-import type { CommandPaletteAction, CommandPaletteEntry } from "./command-palette-registry";
-import { groupCommandPaletteEntries } from "./command-palette-registry";
-import type { SessionCommandPaletteActions } from "./session-command-palette";
+import { buildCommandPaletteEntries, type CommandPaletteEntryActions } from "./build-command-palette-entries";
+import {
+	groupCommandPaletteEntries,
+	type CommandPaletteAction,
+	type CommandPaletteEntry,
+} from "./command-palette-registry";
 import {
 	filterCommandPaletteEntries,
 	getCommandPaletteKeyAction,
@@ -17,7 +19,7 @@ interface UseComposerCommandPaletteOptions {
 	setSelectionStart: (selectionStart: number) => void;
 	setTextareaSelection: (selectionStart: number) => void;
 	focusTextarea: () => void;
-	sessionCommandPaletteActions?: SessionCommandPaletteActions;
+	commandPaletteActions?: CommandPaletteEntryActions;
 	onOpenModelPicker?: () => void;
 	onShowPaletteNotice?: (message: string) => void;
 	onClearPaletteNotice?: () => void;
@@ -30,17 +32,14 @@ export function useComposerCommandPalette({
 	setSelectionStart,
 	setTextareaSelection,
 	focusTextarea,
-	sessionCommandPaletteActions,
+	commandPaletteActions,
 	onOpenModelPicker,
 	onShowPaletteNotice,
 	onClearPaletteNotice,
 }: UseComposerCommandPaletteOptions) {
 	const [activeEntryId, setActiveEntryId] = useState("");
 	const [dismissedForText, setDismissedForText] = useState("");
-	const entries = useMemo(
-		() => buildCommandPaletteEntries(sessionCommandPaletteActions),
-		[sessionCommandPaletteActions],
-	);
+	const entries = useMemo(() => buildCommandPaletteEntries(commandPaletteActions), [commandPaletteActions]);
 	const trigger = getCommandPaletteTrigger(text, selectionStart);
 	const open = trigger.open && dismissedForText !== text;
 	const filteredEntries = useMemo(() => filterCommandPaletteEntries(entries, trigger.query), [entries, trigger.query]);
@@ -110,8 +109,7 @@ export function useComposerCommandPalette({
 					focusTextarea();
 					return;
 				case "handled":
-					setDismissedForText(text);
-					focusTextarea();
+					clearTrigger();
 					return;
 			}
 		},

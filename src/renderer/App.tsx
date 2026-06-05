@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
 import type {
@@ -10,6 +10,7 @@ import type {
 	PiSessionStartPayload,
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
+import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
 import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
 import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
@@ -42,7 +43,7 @@ import {
 } from "./session/transcript-hydration";
 
 type StatusMessage = {
-	source: "project" | "startup";
+	source: "project" | "startup" | "output";
 	message: string;
 };
 
@@ -174,6 +175,7 @@ export function App() {
 	const nextSessionRequestIdRef = useRef(0);
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const sessionMessagesRef = useRef(sessionState.messages);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -221,6 +223,10 @@ export function App() {
 		activeSessionProjectIdRef.current = activeSessionProjectId;
 		activeSessionChatIdRef.current = activeSessionChatId;
 	}, [activeSessionProjectId, activeSessionChatId]);
+
+	useEffect(() => {
+		sessionMessagesRef.current = sessionState.messages;
+	}, [sessionState.messages]);
 
 	useEffect(() => {
 		if (
@@ -675,9 +681,26 @@ export function App() {
 		sidebarActionsRef,
 	});
 
+	const commandPaletteActions = useMemo(
+		() => ({
+			session: sessionCommandPaletteActions,
+			output: createOutputCommandPaletteActions({
+				getMessages: () =>
+					isSessionScopeSelected(
+						{ projectId: activeSessionProjectIdRef.current, chatId: activeSessionChatIdRef.current },
+						{ projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					)
+						? sessionMessagesRef.current
+						: [],
+				writeText: (input) => window.piDesktop.clipboard.writeText(input),
+				notify: (message) => setStatusMessage({ source: "output", message }),
+			}),
+		}),
+		[sessionCommandPaletteActions],
+	);
+
 	const composerHost: ComposerHostProps = {
 		onSubmitPrompt: submitPrompt,
-		sessionCommandPaletteActions,
 		onSelectProject: (projectId) => {
 			void selectComposerProject(projectId);
 		},
@@ -699,6 +722,7 @@ export function App() {
 		pendingComposerDelivery,
 		composerDraft,
 		onComposerDraftApplied: () => setComposerDraft(""),
+		commandPaletteActions,
 	};
 
 	useEffect(() => {

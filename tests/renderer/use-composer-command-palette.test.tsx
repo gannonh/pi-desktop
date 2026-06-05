@@ -62,7 +62,7 @@ function CommandPaletteHookHarness({
 function SessionActionsSwapHarness() {
 	const [text, setText] = useState("/");
 	const [selectionStart, setSelectionStart] = useState(1);
-	const [sessionCommandPaletteActions, setSessionCommandPaletteActions] = useState<
+	const [sessionActions, setSessionActions] = useState<
 		ReturnType<typeof createMockSessionCommandPaletteActions> | undefined
 	>();
 	const palette = useComposerCommandPalette({
@@ -72,7 +72,7 @@ function SessionActionsSwapHarness() {
 		setSelectionStart,
 		setTextareaSelection: () => {},
 		focusTextarea: () => {},
-		sessionCommandPaletteActions,
+		commandPaletteActions: sessionActions ? { session: sessionActions } : undefined,
 	});
 	const sessionEntryIds =
 		palette.groups.find((group) => group.section.id === "session")?.entries.map((entry) => entry.id).join(",") ??
@@ -81,7 +81,7 @@ function SessionActionsSwapHarness() {
 	return (
 		<div>
 			<output data-testid="session-entry-ids">{sessionEntryIds}</output>
-			<button type="button" onClick={() => setSessionCommandPaletteActions(createMockSessionCommandPaletteActions())}>
+			<button type="button" onClick={() => setSessionActions(createMockSessionCommandPaletteActions())}>
 				wire session actions
 			</button>
 		</div>
@@ -89,7 +89,7 @@ function SessionActionsSwapHarness() {
 }
 
 describe("useComposerCommandPalette", () => {
-	it("rebuilds session entries when sessionCommandPaletteActions is supplied after mount", async () => {
+	it("rebuilds session entries when session actions are supplied after mount", async () => {
 		render(<SessionActionsSwapHarness />);
 
 		await waitFor(() => expect(screen.getByTestId("session-entry-ids").textContent).toBe("session.stub"));
@@ -140,7 +140,7 @@ describe("useComposerCommandPalette", () => {
 		expect(screen.getByTestId("open").textContent).toBe("false");
 	});
 
-	it("dismisses handled actions and closed palette navigation without inserting prompt text", async () => {
+	it("clears handled command text and closed palette navigation without inserting prompt text", async () => {
 		const focusTextarea = vi.fn();
 		render(<CommandPaletteHookHarness initialText="hello" focusTextarea={focusTextarea} />);
 
@@ -156,7 +156,7 @@ describe("useComposerCommandPalette", () => {
 		expect(screen.getByTestId("open").textContent).toBe("false");
 
 		fireEvent.click(screen.getByRole("button", { name: "handled action" }));
-		expect(screen.getByTestId("text").textContent).toBe("/co");
+		expect(screen.getByTestId("text").textContent).toBe("");
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 });
