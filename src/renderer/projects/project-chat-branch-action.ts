@@ -1,4 +1,5 @@
 import type { ProjectStateViewResult } from "../../shared/ipc";
+import type { StatusMessageTone } from "../status-message";
 import { projectActionErrorMessage } from "./project-action-error";
 
 export const PROJECT_CHAT_NO_SESSION_FILE_MESSAGE = "Chat does not have a Pi session file yet";
@@ -13,9 +14,16 @@ export function getProjectChatBranchActionDisabledTitle(sessionPath: string | nu
 	return canRunProjectChatBranchAction(sessionPath) ? undefined : PROJECT_CHAT_NO_SESSION_FILE_MESSAGE;
 }
 
+function projectChatBranchLabel(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Fork" : "Clone";
+}
+
+function projectChatBranchPastTense(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Forked" : "Cloned";
+}
+
 function projectChatBranchUnavailableMessage(verb: ProjectChatBranchVerb): string {
-	const label = verb === "fork" ? "Fork" : "Clone";
-	return `${label} is available after the chat has a Pi session file. Send a message to start the session, then try again.`;
+	return `${projectChatBranchLabel(verb)} is available after the chat has a Pi session file. Send a message to start the session, then try again.`;
 }
 
 export function runProjectChatBranchAction({
@@ -27,7 +35,7 @@ export function runProjectChatBranchAction({
 	verb,
 	call,
 }: {
-	notify: (message: string) => void;
+	notify: (message: string, tone?: StatusMessageTone) => void;
 	applyProjectStateViewResult: (result: ProjectStateViewResult) => void;
 	projectId: string | null;
 	chatId: string | null;
@@ -45,7 +53,10 @@ export function runProjectChatBranchAction({
 	}
 	void Promise.resolve()
 		.then(() => call({ projectId, chatId }))
-		.then(applyProjectStateViewResult)
+		.then((result) => {
+			applyProjectStateViewResult(result);
+			notify(`${projectChatBranchPastTense(verb)} session.`, "success");
+		})
 		.catch((error) => {
 			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`));
 		});

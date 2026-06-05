@@ -33,7 +33,7 @@ describe("project chat branch action", () => {
 		expect(applyProjectStateViewResult).not.toHaveBeenCalled();
 	});
 
-	it("applies project state when fork succeeds", async () => {
+	it("applies project state and confirms when fork succeeds", async () => {
 		const notify = vi.fn();
 		const applyProjectStateViewResult = vi.fn();
 		const result = { ok: true as const, data: {} };
@@ -52,8 +52,8 @@ describe("project chat branch action", () => {
 		await vi.waitFor(() => {
 			expect(call).toHaveBeenCalledWith({ projectId: "project-1", chatId: "chat-1" });
 			expect(applyProjectStateViewResult).toHaveBeenCalledWith(result);
+			expect(notify).toHaveBeenCalledWith("Forked session.", "success");
 		});
-		expect(notify).not.toHaveBeenCalled();
 	});
 
 	it("notifies when fork rejects", async () => {

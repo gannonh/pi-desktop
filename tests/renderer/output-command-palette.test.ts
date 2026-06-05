@@ -68,7 +68,7 @@ describe("createOutputCommandPaletteActions", () => {
 		await Promise.resolve();
 
 		expect(writeText).toHaveBeenCalledWith({ text: "Answer text" });
-		expect(notify).toHaveBeenCalledWith("Copied the last assistant message to the clipboard.");
+		expect(notify).toHaveBeenCalledWith("Copied the last assistant message to the clipboard.", "success");
 	});
 
 	it("notifies when there is no assistant message to copy", () => {
@@ -81,7 +81,7 @@ describe("createOutputCommandPaletteActions", () => {
 
 		actions.onCopyLastAssistantMessage();
 
-		expect(notify).toHaveBeenCalledWith("No assistant message to copy yet.");
+		expect(notify).toHaveBeenCalledWith("No assistant message to copy yet.", "info");
 	});
 
 	it("prefixes clipboard write failures with copy context", async () => {
@@ -99,6 +99,6 @@ describe("createOutputCommandPaletteActions", () => {
 		actions.onCopyLastAssistantMessage();
 		await Promise.resolve();
 
-		expect(notify).toHaveBeenCalledWith("Copy failed: Permission denied");
+		expect(notify).toHaveBeenCalledWith("Copy failed: Permission denied", "error");
 	});
 });

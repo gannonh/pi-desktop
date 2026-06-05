@@ -4,6 +4,7 @@ import type { ProjectStateViewResult } from "../../shared/ipc";
 import { projectActionErrorMessage } from "../projects/project-action-error";
 import { runProjectChatBranchAction } from "../projects/project-chat-branch-action";
 import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
+import type { StatusMessageTone } from "../status-message";
 import type { SessionCommandPaletteActions } from "./session-command-palette";
 
 export interface UseSessionCommandPaletteActionsOptions {
@@ -11,7 +12,7 @@ export interface UseSessionCommandPaletteActionsOptions {
 	selectedChatId: string | null;
 	selectedChat: ProjectStateView["selectedChat"];
 	applyProjectStateViewResult: (result: ProjectStateViewResult) => void;
-	notifyProjectStatus: (message: string) => void;
+	notifyProjectStatus: (message: string, tone?: StatusMessageTone) => void;
 	sidebarActionsRef: RefObject<ProjectSidebarActions | null>;
 }
 
@@ -33,7 +34,10 @@ export function useSessionCommandPaletteActions({
 						? window.piDesktop.chat.create({ projectId: selectedProjectId })
 						: window.piDesktop.chat.createStandalone({})
 				)
-					.then(applyProjectStateViewResult)
+					.then((result) => {
+						applyProjectStateViewResult(result);
+						notifyProjectStatus("Started new session.", "success");
+					})
 					.catch((error) => {
 						notifyProjectStatus(projectActionErrorMessage(error, "Unable to start a new session."));
 					});
@@ -57,7 +61,9 @@ export function useSessionCommandPaletteActions({
 				const result = sidebarActions.startChatRename(selectedProjectId, selectedChatId);
 				if (result === "chat-not-found") {
 					notifyProjectStatus("Could not find the selected chat in the project sidebar.");
+					return;
 				}
+				notifyProjectStatus("Rename editor opened.", "success");
 			},
 			onShowSessionInfo: () => {
 				if (!selectedChat) {

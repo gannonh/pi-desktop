@@ -41,11 +41,12 @@ import {
 	createLoadingTranscriptHydration,
 	type TranscriptHydrationState,
 } from "./session/transcript-hydration";
-
-type StatusMessage = {
-	source: "project" | "startup" | "output";
-	message: string;
-};
+import {
+	getStatusMessageAutoDismissMs,
+	retainStatusMessageForSelection,
+	type StatusMessage,
+	type StatusMessageTone,
+} from "./status-message";
 
 type SessionRequest = SessionScope & {
 	id: number;
@@ -179,7 +180,7 @@ export function App() {
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
-			setStatusMessage({ source: "project", message: result.error.message });
+			setStatusMessage({ source: "project", tone: "error", message: result.error.message });
 			return;
 		}
 
@@ -187,8 +188,13 @@ export function App() {
 		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
 	}, []);
 
-	const notifyProjectStatus = useCallback((message: string) => {
-		setStatusMessage({ source: "project", message });
+	const notifyProjectStatus = useCallback((message: string, tone: StatusMessageTone = "info") => {
+		setStatusMessage({
+			source: "project",
+			tone,
+			message,
+			scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+		});
 	}, []);
 
 	const registerSidebarActions = useCallback((actions: ProjectSidebarActions | null) => {
@@ -208,6 +214,7 @@ export function App() {
 				.catch((error) => {
 					setStatusMessage({
 						source: "project",
+						tone: "error",
 						message: error instanceof Error ? error.message : "Unable to refresh project state.",
 					});
 				});
@@ -225,8 +232,31 @@ export function App() {
 	}, [activeSessionProjectId, activeSessionChatId]);
 
 	useEffect(() => {
+		setStatusMessage((current) =>
+			retainStatusMessageForSelection(current, { projectId: selectedProjectId, chatId: selectedChatId }),
+		);
+	}, [selectedProjectId, selectedChatId]);
+
+	useEffect(() => {
 		sessionMessagesRef.current = sessionState.messages;
 	}, [sessionState.messages]);
+
+	useEffect(() => {
+		if (!statusMessage) {
+			return;
+		}
+
+		const autoDismissMs = getStatusMessageAutoDismissMs(statusMessage);
+		if (autoDismissMs === null) {
+			return;
+		}
+
+		const timeout = setTimeout(() => {
+			setStatusMessage((current) => (current === statusMessage ? undefined : current));
+		}, autoDismissMs);
+
+		return () => clearTimeout(timeout);
+	}, [statusMessage]);
 
 	useEffect(() => {
 		if (
@@ -626,7 +656,7 @@ export function App() {
 						errorMessage: message,
 						retryMessage: "",
 					}));
-					setStatusMessage({ source: "startup", message });
+					setStatusMessage({ source: "startup", tone: "error", message });
 					return false;
 				}
 				const started = result.data;
@@ -693,7 +723,13 @@ export function App() {
 						? sessionMessagesRef.current
 						: [],
 				writeText: (input) => window.piDesktop.clipboard.writeText(input),
-				notify: (message) => setStatusMessage({ source: "output", message }),
+				notify: (message, tone: StatusMessageTone = "info") =>
+					setStatusMessage({
+						source: "output",
+						tone,
+						message,
+						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					}),
 			}),
 		}),
 		[sessionCommandPaletteActions],
@@ -765,7 +801,7 @@ export function App() {
 
 			if (!result.ok) {
 				setTranscriptHydration(createErrorTranscriptHydration(selectedScope, result.error.message));
-				setStatusMessage({ source: "project", message: result.error.message });
+				setStatusMessage({ source: "project", tone: "error", message: result.error.message });
 				return;
 			}
 
@@ -825,11 +861,12 @@ export function App() {
 
 			if (versionResult.status === "fulfilled") {
 				if (!versionResult.value.ok) {
-					setStatusMessage({ source: "startup", message: versionResult.value.error.message });
+					setStatusMessage({ source: "startup", tone: "error", message: versionResult.value.error.message });
 				}
 			} else {
 				setStatusMessage({
 					source: "startup",
+					tone: "error",
 					message:
 						versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
 				});
@@ -840,6 +877,7 @@ export function App() {
 			} else {
 				setStatusMessage({
 					source: "project",
+					tone: "error",
 					message:
 						projectStateResult.reason instanceof Error
 							? projectStateResult.reason.message
@@ -861,7 +899,7 @@ export function App() {
 				<AppShell
 					state={projectState}
 					onRegisterSidebarActions={registerSidebarActions}
-					statusMessage={statusMessage?.message}
+					statusMessage={statusMessage}
 					session={
 						isSessionScopeSelected(
 							{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
