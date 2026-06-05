@@ -1,4 +1,5 @@
 import type { ProjectStateViewResult } from "../../shared/ipc";
+import type { StatusMessageScope, StatusMessageTone } from "../status-message";
 import { projectActionErrorMessage } from "./project-action-error";
 
 export const PROJECT_CHAT_NO_SESSION_FILE_MESSAGE = "Chat does not have a Pi session file yet";
@@ -13,9 +14,20 @@ export function getProjectChatBranchActionDisabledTitle(sessionPath: string | nu
 	return canRunProjectChatBranchAction(sessionPath) ? undefined : PROJECT_CHAT_NO_SESSION_FILE_MESSAGE;
 }
 
+function projectChatBranchLabel(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Fork" : "Clone";
+}
+
+function projectChatBranchPastTense(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Forked" : "Cloned";
+}
+
+function projectChatBranchPendingMessage(verb: ProjectChatBranchVerb): string {
+	return verb === "fork" ? "Forking session…" : "Cloning session…";
+}
+
 function projectChatBranchUnavailableMessage(verb: ProjectChatBranchVerb): string {
-	const label = verb === "fork" ? "Fork" : "Clone";
-	return `${label} is available after the chat has a Pi session file. Send a message to start the session, then try again.`;
+	return `${projectChatBranchLabel(verb)} is available after the chat has a Pi session file. Send a message to start the session, then try again.`;
 }
 
 export function runProjectChatBranchAction({
@@ -27,7 +39,7 @@ export function runProjectChatBranchAction({
 	verb,
 	call,
 }: {
-	notify: (message: string) => void;
+	notify: (message: string, tone?: StatusMessageTone, scope?: StatusMessageScope) => void;
 	applyProjectStateViewResult: (result: ProjectStateViewResult) => void;
 	projectId: string | null;
 	chatId: string | null;
@@ -39,15 +51,26 @@ export function runProjectChatBranchAction({
 		notify(`Select a project chat before ${verb === "fork" ? "forking" : "cloning"}.`);
 		return;
 	}
+	const scope = { projectId, chatId };
 	if (!canRunProjectChatBranchAction(sessionPath)) {
-		notify(projectChatBranchUnavailableMessage(verb));
+		notify(projectChatBranchUnavailableMessage(verb), "info", scope);
 		return;
 	}
+	notify(projectChatBranchPendingMessage(verb), "pending", scope);
+
 	void Promise.resolve()
 		.then(() => call({ projectId, chatId }))
-		.then(applyProjectStateViewResult)
+		.then((result) => {
+			applyProjectStateViewResult(result);
+			if (result.ok) {
+				notify(`${projectChatBranchPastTense(verb)} session.`, "success", {
+					projectId: result.data.selectedProjectId,
+					chatId: result.data.selectedChatId,
+				});
+			}
+		})
 		.catch((error) => {
-			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`));
+			notify(projectActionErrorMessage(error, `Unable to ${verb} session.`), "error", scope);
 		});
 }
 

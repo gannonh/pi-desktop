@@ -16,6 +16,7 @@ import {
 	FolderPlus,
 	GitFork,
 	ListFilter,
+	LoaderCircle,
 	MessageCircle,
 	Minimize2,
 	MoreHorizontal,
@@ -73,6 +74,7 @@ interface ProjectSidebarProps {
 	onProjectState: (result: ProjectStateViewResult) => void;
 	onRegisterActions?: (actions: ProjectSidebarActions | null) => void;
 	ensureSidebarVisible?: () => void;
+	loading?: boolean;
 }
 
 type MenuState =
@@ -111,6 +113,7 @@ export function ProjectSidebar({
 	onProjectState,
 	onRegisterActions,
 	ensureSidebarVisible,
+	loading = false,
 }: ProjectSidebarProps) {
 	const [menu, setMenu] = useState<MenuState>(null);
 	const [pendingRenameChat, setPendingRenameChat] = useState<PendingChatRename | null>(null);
@@ -257,7 +260,7 @@ export function ProjectSidebar({
 
 	return (
 		<ProjectSidebarPendingRenameContext.Provider value={pendingRenameContextValue}>
-			<aside className="project-sidebar" aria-label="Project navigation">
+			<aside className="project-sidebar" aria-label="Project navigation" aria-busy={loading ? "true" : undefined}>
 				<div className="project-sidebar__chrome">
 					<div className="project-sidebar__window-controls" aria-hidden="true">
 						<span className="project-sidebar__window-dot project-sidebar__window-dot--close" />
@@ -304,7 +307,11 @@ export function ProjectSidebar({
 				</div>
 
 				<div
-					className={["project-sidebar__panel", menuOpen ? "project-sidebar__panel--menu-open" : ""]
+					className={[
+						"project-sidebar__panel",
+						menuOpen ? "project-sidebar__panel--menu-open" : "",
+						loading ? "project-sidebar__panel--loading" : "",
+					]
 						.filter(Boolean)
 						.join(" ")}
 				>
@@ -541,6 +548,12 @@ export function ProjectSidebar({
 							/>
 						)}
 					</div>
+					{loading ? (
+						<div className="project-sidebar__loading-overlay" role="status" aria-live="polite">
+							<LoaderCircle className="project-sidebar__loading-icon" aria-hidden="true" />
+							<span>Loading sessions…</span>
+						</div>
+					) : null}
 				</div>
 			</aside>
 		</ProjectSidebarPendingRenameContext.Provider>

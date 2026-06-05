@@ -3,12 +3,13 @@ import type { ChatShellRoute } from "../chat/chat-view-model";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectRecord } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
+import { getStatusMessageClassName, type StatusMessage } from "../status-message";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import { ChatShell } from "./chat-shell";
 
 interface ProjectMainProps {
 	chatShellRoute: ChatShellRoute;
-	statusMessage?: string;
+	statusMessage?: StatusMessage;
 	session: LiveSessionState;
 	transcriptHydration: TranscriptHydrationState;
 	transcriptScope: { projectId: string | null; chatId: string | null };
@@ -77,7 +78,11 @@ export function ProjectMain({
 
 	return (
 		<main className="project-main">
-			{statusMessage ? <div className="project-main__status-message">{statusMessage}</div> : null}
+			{statusMessage ? (
+				<div className={getStatusMessageClassName(statusMessage)} role="status">
+					{statusMessage.message}
+				</div>
+			) : null}
 
 			{route.kind === "unavailable-project" ? (
 				<section className="project-main__recovery" aria-labelledby="project-main-title">

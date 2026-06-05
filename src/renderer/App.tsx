@@ -41,11 +41,14 @@ import {
 	createLoadingTranscriptHydration,
 	type TranscriptHydrationState,
 } from "./session/transcript-hydration";
-
-type StatusMessage = {
-	source: "project" | "startup" | "output";
-	message: string;
-};
+import {
+	getStatusMessageAutoDismissMs,
+	retainStatusMessageAfterProjectStateResult,
+	retainStatusMessageForSelection,
+	type StatusMessage,
+	type StatusMessageScope,
+	type StatusMessageTone,
+} from "./status-message";
 
 type SessionRequest = SessionScope & {
 	id: number;
@@ -151,6 +154,7 @@ const toSessionStatusLabel = (status: LiveSessionState["status"]): string => {
 
 export function App() {
 	const [projectState, setProjectState] = useState<ProjectStateView>(() => createEmptyProjectStateView());
+	const [projectStateLoading, setProjectStateLoading] = useState(true);
 	const [sessionState, setSessionState] = useState<LiveSessionState>(() => createInitialSessionState());
 	const [transcriptHydration, setTranscriptHydration] = useState<TranscriptHydrationState>(() =>
 		createIdleTranscriptHydration(),
@@ -179,17 +183,30 @@ export function App() {
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
-			setStatusMessage({ source: "project", message: result.error.message });
+			setStatusMessage({
+				source: "project",
+				tone: "error",
+				message: result.error.message,
+				scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+			});
 			return;
 		}
 
 		setProjectState(result.data);
-		setStatusMessage((current) => (current?.source === "project" ? undefined : current));
+		setStatusMessage(retainStatusMessageAfterProjectStateResult);
 	}, []);
 
-	const notifyProjectStatus = useCallback((message: string) => {
-		setStatusMessage({ source: "project", message });
-	}, []);
+	const notifyProjectStatus = useCallback(
+		(message: string, tone: StatusMessageTone = "info", scope?: StatusMessageScope) => {
+			setStatusMessage({
+				source: "project",
+				tone,
+				message,
+				scope: scope ?? { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+			});
+		},
+		[],
+	);
 
 	const registerSidebarActions = useCallback((actions: ProjectSidebarActions | null) => {
 		sidebarActionsRef.current = actions;
@@ -208,7 +225,9 @@ export function App() {
 				.catch((error) => {
 					setStatusMessage({
 						source: "project",
+						tone: "error",
 						message: error instanceof Error ? error.message : "Unable to refresh project state.",
+						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
 					});
 				});
 		}, 100);
@@ -225,8 +244,31 @@ export function App() {
 	}, [activeSessionProjectId, activeSessionChatId]);
 
 	useEffect(() => {
+		setStatusMessage((current) =>
+			retainStatusMessageForSelection(current, { projectId: selectedProjectId, chatId: selectedChatId }),
+		);
+	}, [selectedProjectId, selectedChatId]);
+
+	useEffect(() => {
 		sessionMessagesRef.current = sessionState.messages;
 	}, [sessionState.messages]);
+
+	useEffect(() => {
+		if (!statusMessage) {
+			return;
+		}
+
+		const autoDismissMs = getStatusMessageAutoDismissMs(statusMessage);
+		if (autoDismissMs === null) {
+			return;
+		}
+
+		const timeout = setTimeout(() => {
+			setStatusMessage((current) => (current === statusMessage ? undefined : current));
+		}, autoDismissMs);
+
+		return () => clearTimeout(timeout);
+	}, [statusMessage]);
 
 	useEffect(() => {
 		if (
@@ -626,7 +668,7 @@ export function App() {
 						errorMessage: message,
 						retryMessage: "",
 					}));
-					setStatusMessage({ source: "startup", message });
+					setStatusMessage({ source: "startup", tone: "error", message });
 					return false;
 				}
 				const started = result.data;
@@ -693,7 +735,13 @@ export function App() {
 						? sessionMessagesRef.current
 						: [],
 				writeText: (input) => window.piDesktop.clipboard.writeText(input),
-				notify: (message) => setStatusMessage({ source: "output", message }),
+				notify: (message, tone: StatusMessageTone = "info") =>
+					setStatusMessage({
+						source: "output",
+						tone,
+						message,
+						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					}),
 			}),
 		}),
 		[sessionCommandPaletteActions],
@@ -765,7 +813,7 @@ export function App() {
 
 			if (!result.ok) {
 				setTranscriptHydration(createErrorTranscriptHydration(selectedScope, result.error.message));
-				setStatusMessage({ source: "project", message: result.error.message });
+				setStatusMessage({ source: "project", tone: "error", message: result.error.message, scope: selectedScope });
 				return;
 			}
 
@@ -814,6 +862,8 @@ export function App() {
 		let mounted = true;
 
 		const loadInitialState = async () => {
+			setProjectStateLoading(true);
+
 			const [versionResult, projectStateResult] = await Promise.allSettled([
 				window.piDesktop.app.getVersion(),
 				window.piDesktop.project.getState(),
@@ -825,11 +875,12 @@ export function App() {
 
 			if (versionResult.status === "fulfilled") {
 				if (!versionResult.value.ok) {
-					setStatusMessage({ source: "startup", message: versionResult.value.error.message });
+					setStatusMessage({ source: "startup", tone: "error", message: versionResult.value.error.message });
 				}
 			} else {
 				setStatusMessage({
 					source: "startup",
+					tone: "error",
 					message:
 						versionResult.reason instanceof Error ? versionResult.reason.message : "Unable to load version.",
 				});
@@ -840,12 +891,15 @@ export function App() {
 			} else {
 				setStatusMessage({
 					source: "project",
+					tone: "error",
 					message:
 						projectStateResult.reason instanceof Error
 							? projectStateResult.reason.message
 							: "Unable to load project state.",
 				});
 			}
+
+			setProjectStateLoading(false);
 		};
 
 		void loadInitialState();
@@ -861,7 +915,7 @@ export function App() {
 				<AppShell
 					state={projectState}
 					onRegisterSidebarActions={registerSidebarActions}
-					statusMessage={statusMessage?.message}
+					statusMessage={statusMessage}
 					session={
 						isSessionScopeSelected(
 							{ projectId: activeSessionProjectId, chatId: activeSessionChatId },
@@ -876,6 +930,7 @@ export function App() {
 					composerHost={composerHost}
 					defaultComposerSettings={defaultComposerSettings}
 					onAbortSession={abortSession}
+					sidebarLoading={projectStateLoading}
 				/>
 			</RightPanelProvider>
 		</ShellLayoutProvider>

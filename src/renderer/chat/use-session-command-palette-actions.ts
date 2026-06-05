@@ -4,6 +4,7 @@ import type { ProjectStateViewResult } from "../../shared/ipc";
 import { projectActionErrorMessage } from "../projects/project-action-error";
 import { runProjectChatBranchAction } from "../projects/project-chat-branch-action";
 import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
+import type { StatusMessageScope, StatusMessageTone } from "../status-message";
 import type { SessionCommandPaletteActions } from "./session-command-palette";
 
 export interface UseSessionCommandPaletteActionsOptions {
@@ -11,9 +12,17 @@ export interface UseSessionCommandPaletteActionsOptions {
 	selectedChatId: string | null;
 	selectedChat: ProjectStateView["selectedChat"];
 	applyProjectStateViewResult: (result: ProjectStateViewResult) => void;
-	notifyProjectStatus: (message: string) => void;
+	notifyProjectStatus: (message: string, tone?: StatusMessageTone, scope?: StatusMessageScope) => void;
 	sidebarActionsRef: RefObject<ProjectSidebarActions | null>;
 }
+
+const projectStateResultSelection = (result: ProjectStateViewResult): StatusMessageScope | undefined =>
+	result.ok ? { projectId: result.data.selectedProjectId, chatId: result.data.selectedChatId } : undefined;
+
+const currentSelection = (projectId: string | null, chatId: string | null): StatusMessageScope => ({
+	projectId,
+	chatId,
+});
 
 export function useSessionCommandPaletteActions({
 	selectedProjectId,
@@ -28,14 +37,26 @@ export function useSessionCommandPaletteActions({
 	return useMemo(
 		(): SessionCommandPaletteActions => ({
 			onNewSession: () => {
+				const selection = currentSelection(selectedProjectId, selectedChatId);
+				notifyProjectStatus("Starting new session…", "pending", selection);
+
 				void (
 					selectedProjectId
 						? window.piDesktop.chat.create({ projectId: selectedProjectId })
 						: window.piDesktop.chat.createStandalone({})
 				)
-					.then(applyProjectStateViewResult)
+					.then((result) => {
+						applyProjectStateViewResult(result);
+						if (result.ok) {
+							notifyProjectStatus("Started new session.", "success", projectStateResultSelection(result));
+						}
+					})
 					.catch((error) => {
-						notifyProjectStatus(projectActionErrorMessage(error, "Unable to start a new session."));
+						notifyProjectStatus(
+							projectActionErrorMessage(error, "Unable to start a new session."),
+							"error",
+							selection,
+						);
 					});
 			},
 			onRenameSession: () => {
@@ -57,7 +78,9 @@ export function useSessionCommandPaletteActions({
 				const result = sidebarActions.startChatRename(selectedProjectId, selectedChatId);
 				if (result === "chat-not-found") {
 					notifyProjectStatus("Could not find the selected chat in the project sidebar.");
+					return;
 				}
+				notifyProjectStatus("Rename editor opened.", "success");
 			},
 			onShowSessionInfo: () => {
 				if (!selectedChat) {

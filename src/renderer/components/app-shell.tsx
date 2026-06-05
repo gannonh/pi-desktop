@@ -22,6 +22,7 @@ import type { PiSessionSettingsPayload } from "../../shared/pi-session";
 import type { LiveSessionState } from "../session/session-state";
 import type { TranscriptHydrationState } from "../session/transcript-hydration";
 import type { ProjectSidebarActions } from "../projects/project-sidebar-actions";
+import type { StatusMessage } from "../status-message";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
 import { Badge } from "./ui/badge";
@@ -29,7 +30,7 @@ import { Badge } from "./ui/badge";
 interface AppShellProps {
 	state: ProjectStateView;
 	onRegisterSidebarActions?: (actions: ProjectSidebarActions | null) => void;
-	statusMessage?: string;
+	statusMessage?: StatusMessage;
 	session: LiveSessionState;
 	transcriptHydration: TranscriptHydrationState;
 	transcriptScope: { projectId: string | null; chatId: string | null };
@@ -37,6 +38,7 @@ interface AppShellProps {
 	composerHost: ComposerHostProps;
 	defaultComposerSettings: PiSessionSettingsPayload | null;
 	onAbortSession: () => void;
+	sidebarLoading?: boolean;
 }
 
 export function AppShell({
@@ -50,6 +52,7 @@ export function AppShell({
 	composerHost,
 	defaultComposerSettings,
 	onAbortSession,
+	sidebarLoading = false,
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
@@ -121,6 +124,7 @@ export function AppShell({
 				onProjectState={onProjectState}
 				onRegisterActions={onRegisterSidebarActions}
 				ensureSidebarVisible={() => setSidebarCollapsed(false)}
+				loading={sidebarLoading}
 			/>
 			{!sidebarCollapsed ? (
 				<div

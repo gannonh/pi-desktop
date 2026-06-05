@@ -1,17 +1,18 @@
 import type { ClipboardWriteTextInput, ClipboardWriteTextResult } from "../../shared/ipc";
 import type { LiveSessionMessage } from "../session/session-state";
+import type { StatusMessageTone } from "../status-message";
 import { getLastAssistantMessageContent } from "./last-assistant-message";
 import type { CommandPaletteEntry } from "./command-palette-registry";
 
 export type OutputCommandPaletteActions = {
 	onCopyLastAssistantMessage: () => void;
-	onNotify: (message: string) => void;
+	onNotify: (message: string, tone?: StatusMessageTone) => void;
 };
 
 export type OutputCommandPaletteDeps = {
 	getMessages: () => readonly LiveSessionMessage[];
 	writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;
-	notify: (message: string) => void;
+	notify: (message: string, tone?: StatusMessageTone) => void;
 };
 
 export function createOutputCommandPaletteActions(deps: OutputCommandPaletteDeps): OutputCommandPaletteActions {
@@ -19,21 +20,21 @@ export function createOutputCommandPaletteActions(deps: OutputCommandPaletteDeps
 		onCopyLastAssistantMessage: () => {
 			const content = getLastAssistantMessageContent(deps.getMessages());
 			if (!content) {
-				deps.notify("No assistant message to copy yet.");
+				deps.notify("No assistant message to copy yet.", "info");
 				return;
 			}
 			void deps
 				.writeText({ text: content })
 				.then((result) => {
 					if (result.ok) {
-						deps.notify("Copied the last assistant message to the clipboard.");
+						deps.notify("Copied the last assistant message to the clipboard.", "success");
 						return;
 					}
-					deps.notify(`Copy failed: ${result.error.message}`);
+					deps.notify(`Copy failed: ${result.error.message}`, "error");
 				})
 				.catch((error) => {
 					const message = error instanceof Error ? error.message : "Unable to copy the last assistant message.";
-					deps.notify(`Copy failed: ${message}`);
+					deps.notify(`Copy failed: ${message}`, "error");
 				});
 		},
 		onNotify: deps.notify,

@@ -233,6 +233,18 @@ const expectDerivedSessionChat = ({
 		status: "idle",
 		attention: false,
 	});
+	expect(view.selectedChatId).toBe(`chat:${secondNow}:2`);
+	expect(view.selectedChat).toEqual(
+		expect.objectContaining({
+			id: `chat:${secondNow}:2`,
+			projectId,
+			sessionPath,
+			title,
+			status: "idle",
+			attention: false,
+			lastOpenedAt: secondNow,
+		}),
+	);
 	expect(view.selectedProject?.chats).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
@@ -1645,6 +1657,18 @@ describe("project service", () => {
 			status: "idle",
 			attention: false,
 		});
+		expect(view.selectedChatId).toBe(`chat:${secondNow}:2`);
+		expect(view.selectedChat).toEqual(
+			expect.objectContaining({
+				id: `chat:${secondNow}:2`,
+				projectId: project.id,
+				sessionPath: forkedPath,
+				title: "Forked session",
+				status: "idle",
+				attention: false,
+				lastOpenedAt: secondNow,
+			}),
+		);
 		expect(view.selectedProject?.chats).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
