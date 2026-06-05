@@ -683,6 +683,13 @@ export const installDevPreviewApi = () => {
 				ok: true,
 				data: previewComposerSettings,
 			}),
+			getCommands: async ({ sessionId }) => ({
+				ok: true,
+				data: {
+					sessionId,
+					commands: [],
+				},
+			}),
 			setModel: async () => ({
 				ok: true,
 				data: previewComposerSettings,

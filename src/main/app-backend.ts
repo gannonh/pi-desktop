@@ -11,6 +11,7 @@ import {
 	PiSessionAbortInputSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionGetDefaultSettingsInputSchema,
+	PiSessionGetRuntimeCommandsInputSchema,
 	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
@@ -43,6 +44,7 @@ import type {
 	PiSessionStartPayload,
 	PiSessionStatus,
 } from "../shared/pi-session";
+import type { PiSessionRuntimeCommandsPayload } from "../shared/pi-session-commands";
 import type { ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
@@ -73,6 +75,7 @@ export type AppBackendResult = IpcResult<
 	| PiSessionActionPayload
 	| PiSessionHistoryPayload
 	| PiSessionSettingsPayload
+	| PiSessionRuntimeCommandsPayload
 	| PiSessionQueuePayload
 	| WorkspaceListDirectoryPayload
 	| WorkspaceReadFileStatusPayload
@@ -192,6 +195,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			| PiSessionActionPayload
 			| PiSessionHistoryPayload
 			| PiSessionSettingsPayload
+			| PiSessionRuntimeCommandsPayload
 			| PiSessionQueuePayload
 		>,
 	): Promise<AppBackendResult> => {
@@ -346,6 +350,12 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				case "piSession.getSettings":
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.getSettings(PiSessionGetSettingsInputSchema.parse(request.input)),
+					);
+				case "piSession.getCommands":
+					return handlePiSessionOperation(() =>
+						Promise.resolve(
+							piSessionRuntime.getCommands(PiSessionGetRuntimeCommandsInputSchema.parse(request.input)),
+						),
 					);
 				case "piSession.getDefaultSettings":
 					return handlePiSessionOperation(() => {

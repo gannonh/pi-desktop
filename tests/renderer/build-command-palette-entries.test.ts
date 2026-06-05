@@ -7,6 +7,40 @@ const createMockOutputCommandPaletteActions = () => ({
 	onNotify: vi.fn(),
 });
 
+const runtimeCommands = [
+	{
+		id: "runtime-command:demo:run",
+		title: "demo:run",
+		slashCommand: "demo:run",
+		source: "extension" as const,
+		description: "Run the demo command",
+		scope: "project" as const,
+		provenance: { path: "/tmp/demo.ts", source: "demo-extension", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+	{
+		id: "runtime-command:review",
+		title: "review",
+		slashCommand: "review",
+		source: "prompt-template" as const,
+		description: "Review a path",
+		argumentHint: "[path]",
+		scope: "project" as const,
+		provenance: { path: "/tmp/review.md", source: "project", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+	{
+		id: "runtime-command:skill:summarize",
+		title: "skill:summarize",
+		slashCommand: "skill:summarize",
+		source: "skill" as const,
+		description: "Summarize a path",
+		scope: "user" as const,
+		provenance: { path: "/tmp/SKILL.md", source: "user", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+];
+
 describe("buildCommandPaletteEntries", () => {
 	it("uses family stubs when actions are not provided", () => {
 		const entries = buildCommandPaletteEntries();
@@ -24,6 +58,21 @@ describe("buildCommandPaletteEntries", () => {
 		expect(sessionEntries).toHaveLength(9);
 		expect(sessionEntries.some((entry) => entry.id === "session.stub")).toBe(false);
 		expect(entries.filter((entry) => entry.sectionId === "config")).toHaveLength(5);
+	});
+
+	it("adds available runtime commands without replacing built-in entries", () => {
+		const entries = buildCommandPaletteEntries({ runtimeCommands });
+
+		expect(entries.some((entry) => entry.id === "config.model")).toBe(true);
+		expect(entries.filter((entry) => entry.id.startsWith("runtime-command:")).map((entry) => entry.title)).toEqual([
+			"/demo:run",
+			"/review",
+			"/skill:summarize",
+		]);
+		expect(entries.find((entry) => entry.id === "runtime-command:review")).toMatchObject({
+			description: "Review a path Arguments: [path]",
+			scopeTag: "Prompt template",
+		});
 	});
 
 	it("replaces the output stub with concrete S013 entries when output actions are provided", () => {

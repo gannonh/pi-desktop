@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatus, ProjectStateView } from "../shared/project-state";
 import type { ProjectStateViewResult } from "../shared/ipc";
+import type { PiSessionRuntimeCommand } from "../shared/pi-session-commands";
 import type {
 	PiSessionDelivery,
 	PiSessionImageContent,
@@ -163,6 +164,7 @@ export function App() {
 	const [activeSessionChatId, setActiveSessionChatId] = useState<string | null>(null);
 	const [statusMessage, setStatusMessage] = useState<StatusMessage>();
 	const [defaultComposerSettings, setDefaultComposerSettings] = useState<PiSessionSettingsPayload | null>(null);
+	const [runtimeCommands, setRuntimeCommands] = useState<PiSessionRuntimeCommand[]>([]);
 	const [pendingComposerDelivery, setPendingComposerDelivery] = useState<PiSessionDelivery>("steer");
 	const [composerDraft, setComposerDraft] = useState("");
 	const sidebarActionsRef = useRef<ProjectSidebarActions | null>(null);
@@ -541,6 +543,11 @@ export function App() {
 		[removeQueuedMessage],
 	);
 
+	const refreshRuntimeCommands = useCallback(async (sessionId: string) => {
+		const result = await window.piDesktop.piSession.getCommands({ sessionId });
+		setRuntimeCommands(result.ok ? result.data.commands : []);
+	}, []);
+
 	const submitPrompt = useCallback(
 		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
 			nextHistoryRequestIdRef.current += 1;
@@ -656,6 +663,10 @@ export function App() {
 				return false;
 			}
 
+			if (reusableSessionId) {
+				void refreshRuntimeCommands(reusableSessionId);
+			}
+
 			if (!reusableSessionId) {
 				if (!isPiSessionStartPayload(result.data)) {
 					const message = "Invalid session start response.";
@@ -687,6 +698,7 @@ export function App() {
 				activeSessionChatIdRef.current = started.chatId;
 				setActiveSessionProjectId(started.projectId);
 				setActiveSessionChatId(started.chatId);
+				void refreshRuntimeCommands(started.sessionId);
 				setSessionState((current) => {
 					let next = applySessionStartResult(current, {
 						sessionId: started.sessionId,
@@ -709,6 +721,7 @@ export function App() {
 			applyProjectStateViewResult,
 			defaultComposerSettings,
 			projectState,
+			refreshRuntimeCommands,
 			sessionState.settings,
 			sessionState.status,
 		],
@@ -726,6 +739,7 @@ export function App() {
 	const commandPaletteActions = useMemo(
 		() => ({
 			session: sessionCommandPaletteActions,
+			runtimeCommands,
 			output: createOutputCommandPaletteActions({
 				getMessages: () =>
 					isSessionScopeSelected(
@@ -744,7 +758,7 @@ export function App() {
 					}),
 			}),
 		}),
-		[sessionCommandPaletteActions],
+		[sessionCommandPaletteActions, runtimeCommands],
 	);
 
 	const composerHost: ComposerHostProps = {
@@ -818,6 +832,7 @@ export function App() {
 			}
 
 			acceptedSessionIdRef.current = null;
+			setRuntimeCommands([]);
 			pendingStartRequestRef.current = null;
 			pendingStartEventsRef.current.clear();
 			activeSessionProjectIdRef.current = selectedProjectId;

@@ -359,6 +359,65 @@ describe("app backend", () => {
 		});
 	});
 
+	it("returns runtime command metadata for the active session", async () => {
+		const projectService = createProjectService();
+		const session = createSession([{ type: "agent_end", messages: [] }]);
+		const agentSession = {
+			extensionRunner: { getRegisteredCommands: () => [] },
+			promptTemplates: [
+				{
+					name: "review",
+					description: "Review a path",
+					argumentHint: "[path]",
+					sourceInfo: {
+						path: "/tmp/one/.pi/prompts/review.md",
+						source: "project",
+						scope: "project",
+						origin: "top-level",
+					},
+				},
+			],
+			model: undefined,
+			thinkingLevel: "off",
+			modelRegistry: { getAvailable: vi.fn(async () => []) },
+			getAvailableThinkingLevels: () => ["off"],
+			resourceLoader: { getSkills: () => ({ skills: [], diagnostics: [] }) },
+		};
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: vi.fn(() => createSessionManager()),
+			createAgentSession: vi.fn(async () => ({ session, agentSession: agentSession as never })),
+		});
+
+		const started = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+		if (!started.ok || !("sessionId" in started.data)) {
+			throw new Error("Session did not start.");
+		}
+
+		await expect(
+			backend.handle({
+				operation: "piSession.getCommands",
+				input: { sessionId: started.data.sessionId },
+			} as AppRpcRequest),
+		).resolves.toMatchObject({
+			ok: true,
+			data: {
+				commands: [
+					{
+						slashCommand: "review",
+						argumentHint: "[path]",
+						source: "prompt-template",
+					},
+				],
+			},
+		});
+	});
+
 	it("preserves start prompt images, model, and thinking context at the runtime boundary", async () => {
 		const projectService = createProjectService();
 		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({

@@ -143,6 +143,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.piSessionHistory, (_event, input) => invokeBackend("piSession.history", input));
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
 	ipcMain.handle(IpcChannels.piSessionGetSettings, (_event, input) => invokeBackend("piSession.getSettings", input));
+	ipcMain.handle(IpcChannels.piSessionGetCommands, (_event, input) => invokeBackend("piSession.getCommands", input));
 	ipcMain.handle(IpcChannels.piSessionGetDefaultSettings, (_event, input) =>
 		invokeBackend("piSession.getDefaultSettings", input),
 	);

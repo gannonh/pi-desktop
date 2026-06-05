@@ -8,6 +8,7 @@ import {
 	PiSessionEventSchema,
 	PiSessionHistoryResultSchema,
 	PiSessionQueueResultSchema,
+	PiSessionRuntimeCommandsResultSchema,
 	PiSessionSettingsResultSchema,
 	PiSessionStartResultSchema,
 	ProjectStateViewResultSchema,
@@ -80,6 +81,8 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.piSessionGetSettings, PiSessionSettingsResultSchema, input),
 		getDefaultSettings: async (input) =>
 			safeInvokeParse(IpcChannels.piSessionGetDefaultSettings, PiSessionSettingsResultSchema, input),
+		getCommands: async (input) =>
+			safeInvokeParse(IpcChannels.piSessionGetCommands, PiSessionRuntimeCommandsResultSchema, input),
 		setModel: async (input) => safeInvokeParse(IpcChannels.piSessionSetModel, PiSessionSettingsResultSchema, input),
 		setThinkingLevel: async (input) =>
 			safeInvokeParse(IpcChannels.piSessionSetThinkingLevel, PiSessionSettingsResultSchema, input),

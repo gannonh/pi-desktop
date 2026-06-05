@@ -20,6 +20,20 @@ const context = createComposerContext({
 	showProjectMenu: true,
 });
 
+const runtimeCommands = [
+	{
+		id: "runtime-command:review",
+		title: "review",
+		slashCommand: "review",
+		source: "prompt-template" as const,
+		description: "Review a path",
+		argumentHint: "[path]",
+		scope: "project" as const,
+		provenance: { path: "/tmp/review.md", source: "project", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+];
+
 describe("Composer command palette integration", () => {
 	beforeEach(() => {
 		vi.stubGlobal(
@@ -40,6 +54,16 @@ describe("Composer command palette integration", () => {
 
 		expect(screen.getByRole("group", { name: "Config" })).toBeTruthy();
 		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
+	});
+
+	it("renders dynamic runtime commands in slash search with source labels and argument hints", () => {
+		render(<Composer context={context} commandPaletteActions={{ runtimeCommands }} />);
+
+		fireEvent.change(screen.getByLabelText("Message Pi"), { target: { value: "/rev" } });
+
+		expect(screen.getByRole("option", { name: /\/review/ })).toBeTruthy();
+		expect(screen.getByText("Review a path Arguments: [path]")).toBeTruthy();
+		expect(screen.getByText("Prompt template")).toBeTruthy();
 	});
 
 	it("selects the change model entry without submitting raw slash text", () => {

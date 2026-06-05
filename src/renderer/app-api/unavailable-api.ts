@@ -46,6 +46,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			dispose: unavailable,
 			getSettings: unavailable,
 			getDefaultSettings: unavailable,
+			getCommands: unavailable,
 			setModel: unavailable,
 			setThinkingLevel: unavailable,
 			setDefaultModel: unavailable,

@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+	PiSessionGetRuntimeCommandsInputSchema,
+	PiSessionRuntimeCommandsResultSchema,
+	type PiSessionGetRuntimeCommandsInput,
+	type PiSessionRuntimeCommandsResult,
+} from "./pi-session-commands";
+import {
 	type PiSessionAbortInput,
 	PiSessionAbortInputSchema,
 	type PiSessionActionResult,
@@ -91,6 +97,7 @@ export const IpcChannels = {
 	piSessionDispose: "pi-session:dispose",
 	piSessionGetSettings: "pi-session:getSettings",
 	piSessionGetDefaultSettings: "pi-session:getDefaultSettings",
+	piSessionGetCommands: "pi-session:getCommands",
 	piSessionSetModel: "pi-session:setModel",
 	piSessionSetThinkingLevel: "pi-session:setThinkingLevel",
 	piSessionSetDefaultModel: "pi-session:setDefaultModel",
@@ -174,6 +181,7 @@ export {
 	PiSessionDisposeInputSchema,
 	PiSessionEventSchema,
 	PiSessionGetDefaultSettingsInputSchema,
+	PiSessionGetRuntimeCommandsInputSchema,
 	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionHistoryResultSchema,
@@ -183,6 +191,7 @@ export {
 	PiSessionSetDefaultThinkingLevelInputSchema,
 	PiSessionSetModelInputSchema,
 	PiSessionSetThinkingLevelInputSchema,
+	PiSessionRuntimeCommandsResultSchema,
 	PiSessionSettingsResultSchema,
 	PiSessionStartInputSchema,
 	PiSessionStartResultSchema,
@@ -212,6 +221,7 @@ export type {
 	PiSessionDisposeInput,
 	PiSessionEvent,
 	PiSessionGetDefaultSettingsInput,
+	PiSessionGetRuntimeCommandsInput,
 	PiSessionGetSettingsInput,
 	PiSessionHistoryInput,
 	PiSessionHistoryResult,
@@ -221,6 +231,7 @@ export type {
 	PiSessionSetDefaultThinkingLevelInput,
 	PiSessionSetModelInput,
 	PiSessionSetThinkingLevelInput,
+	PiSessionRuntimeCommandsResult,
 	PiSessionSettingsResult,
 	PiSessionStartInput,
 	PiSessionStartResult,

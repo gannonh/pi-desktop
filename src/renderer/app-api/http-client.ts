@@ -191,6 +191,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			dispose: (input) => callRpc("piSession.dispose", input),
 			getSettings: (input) => callRpc("piSession.getSettings", input),
 			getDefaultSettings: (input) => callRpc("piSession.getDefaultSettings", input ?? {}),
+			getCommands: (input) => callRpc("piSession.getCommands", input),
 			setModel: (input) => callRpc("piSession.setModel", input),
 			setThinkingLevel: (input) => callRpc("piSession.setThinkingLevel", input),
 			setDefaultModel: (input) => callRpc("piSession.setDefaultModel", input),
