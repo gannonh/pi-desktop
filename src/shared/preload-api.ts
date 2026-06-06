@@ -14,6 +14,7 @@ import type {
 	PiSessionActionResult,
 	PiSessionDisposeInput,
 	PiSessionEvent,
+	PiSessionGetRuntimeCommandsInput,
 	PiSessionGetSettingsInput,
 	PiSessionHistoryInput,
 	PiSessionHistoryResult,
@@ -23,6 +24,7 @@ import type {
 	PiSessionSetDefaultThinkingLevelInput,
 	PiSessionSetModelInput,
 	PiSessionSetThinkingLevelInput,
+	PiSessionRuntimeCommandsResult,
 	PiSessionSettingsResult,
 	PiSessionStartInput,
 	PiSessionStartResult,
@@ -82,6 +84,7 @@ export interface PiDesktopApi {
 		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
 		getSettings: (input: PiSessionGetSettingsInput) => Promise<PiSessionSettingsResult>;
 		getDefaultSettings: (input?: PiSessionGetDefaultSettingsInput) => Promise<PiSessionSettingsResult>;
+		getCommands: (input: PiSessionGetRuntimeCommandsInput) => Promise<PiSessionRuntimeCommandsResult>;
 		setModel: (input: PiSessionSetModelInput) => Promise<PiSessionSettingsResult>;
 		setThinkingLevel: (input: PiSessionSetThinkingLevelInput) => Promise<PiSessionSettingsResult>;
 		setDefaultModel: (input: PiSessionSetDefaultModelInput) => Promise<PiSessionSettingsResult>;

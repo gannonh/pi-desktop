@@ -20,6 +20,30 @@ const context = createComposerContext({
 	showProjectMenu: true,
 });
 
+const runtimeCommands = [
+	{
+		id: "runtime-command:review",
+		title: "review",
+		slashCommand: "review",
+		source: "prompt-template" as const,
+		description: "Review a path",
+		argumentHint: "[path]",
+		scope: "project" as const,
+		provenance: { path: "/tmp/review.md", source: "project", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+	{
+		id: "runtime-command:skill:missing",
+		title: "skill:missing",
+		slashCommand: "skill:missing",
+		source: "skill" as const,
+		description: "Missing skill",
+		scope: "user" as const,
+		provenance: { path: "/tmp/missing/SKILL.md", source: "user", origin: "top-level" as const },
+		availability: { state: "unavailable" as const, reason: "Skill metadata is unavailable." },
+	},
+];
+
 describe("Composer command palette integration", () => {
 	beforeEach(() => {
 		vi.stubGlobal(
@@ -40,6 +64,28 @@ describe("Composer command palette integration", () => {
 
 		expect(screen.getByRole("group", { name: "Config" })).toBeTruthy();
 		expect(screen.getByRole("option", { name: /Change model/ })).toBeTruthy();
+	});
+
+	it("renders dynamic runtime commands in slash search with source labels and argument hints", () => {
+		render(<Composer context={context} commandPaletteActions={{ runtimeCommands }} />);
+
+		fireEvent.change(screen.getByLabelText("Message Pi"), { target: { value: "/rev" } });
+
+		expect(screen.getByRole("option", { name: /\/review/ })).toBeTruthy();
+		expect(screen.getByText("Review a path Arguments: [path]")).toBeTruthy();
+		expect(screen.getByText("Prompt template")).toBeTruthy();
+		expect(screen.getByText("project · project · /tmp/review.md")).toBeTruthy();
+	});
+
+	it("shows unavailable skill guidance without inserting an invokable command", () => {
+		render(<Composer context={context} commandPaletteActions={{ runtimeCommands }} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/missing" } });
+		fireEvent.click(screen.getByRole("option", { name: /\/skill:missing/ }));
+
+		expect(textarea.value).toBe("/missing");
+		expect(screen.getByRole("status").textContent).toBe("Skill metadata is unavailable.");
 	});
 
 	it("selects the change model entry without submitting raw slash text", () => {

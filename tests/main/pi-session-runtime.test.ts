@@ -121,6 +121,81 @@ describe("createPiSessionRuntime", () => {
 		]);
 	});
 
+	it("returns runtime commands for the active SDK session", async () => {
+		const { session } = createFakeSession();
+		const agentSession = {
+			extensionRunner: {
+				getRegisteredCommands: () => [
+					{
+						invocationName: "demo:run",
+						description: "Run the demo command",
+						sourceInfo: {
+							path: "/tmp/pi-desktop/.pi/extensions/demo.ts",
+							source: "demo-extension",
+							scope: "project",
+							origin: "top-level",
+						},
+					},
+				],
+			},
+			promptTemplates: [
+				{
+					name: "review",
+					description: "Review a path",
+					argumentHint: "[path]",
+					sourceInfo: {
+						path: "/tmp/pi-desktop/.pi/prompts/review.md",
+						source: "project",
+						scope: "project",
+						origin: "top-level",
+					},
+				},
+			],
+			model: undefined,
+			thinkingLevel: "off",
+			modelRegistry: {
+				getAvailable: vi.fn(async () => []),
+			},
+			getAvailableThinkingLevels: () => ["off"],
+			resourceLoader: {
+				getSkills: () => ({
+					diagnostics: [],
+					skills: [
+						{
+							name: "summarize",
+							description: "Summarize a code path",
+							disableModelInvocation: false,
+							sourceInfo: {
+								path: "/Users/me/.pi/skills/summarize/SKILL.md",
+								source: "user",
+								scope: "user",
+								origin: "top-level",
+								baseDir: "/Users/me/.pi/skills/summarize",
+							},
+						},
+					],
+				}),
+			},
+		};
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: () => {},
+			createAgentSession: vi.fn(async () => ({ session, agentSession: agentSession as never })),
+		});
+
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await runtime.whenIdle(started.sessionId);
+
+		expect(
+			runtime.getCommands({ sessionId: started.sessionId }).commands.map((command) => command.slashCommand),
+		).toEqual(["demo:run", "review", "skill:summarize"]);
+	});
+
 	it("forwards images into prompt options on start and submit", async () => {
 		const { session } = createFakeSession();
 		const runtime = createPiSessionRuntime({

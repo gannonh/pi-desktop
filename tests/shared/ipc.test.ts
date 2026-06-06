@@ -91,6 +91,7 @@ describe("IPC contracts", () => {
 			piSessionDispose: "pi-session:dispose",
 			piSessionGetSettings: "pi-session:getSettings",
 			piSessionGetDefaultSettings: "pi-session:getDefaultSettings",
+			piSessionGetCommands: "pi-session:getCommands",
 			piSessionSetModel: "pi-session:setModel",
 			piSessionSetThinkingLevel: "pi-session:setThinkingLevel",
 			piSessionSetDefaultModel: "pi-session:setDefaultModel",

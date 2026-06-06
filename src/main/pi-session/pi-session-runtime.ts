@@ -25,7 +25,12 @@ import type {
 	PiSessionSubmitInput,
 	PiSessionUpdateQueuedMessageInput,
 } from "../../shared/pi-session";
+import type {
+	PiSessionGetRuntimeCommandsInput,
+	PiSessionRuntimeCommandsPayload,
+} from "../../shared/pi-session-commands";
 import { resolvePiAgentDir, resolvePiSessionFilesDirForCwd } from "../app-paths";
+import { buildPiRuntimeCommandMetadata } from "./pi-session-runtime-commands";
 import { createRuntimeErrorEvent, normalizePiSessionEvent } from "./pi-session-event-normalizer";
 import {
 	buildDefaultSettings,
@@ -492,6 +497,40 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		async dispose(input: PiSessionDisposeInput): Promise<PiSessionActionPayload> {
 			const entry = getEntry(input.sessionId);
 			return disposeEntry(input.sessionId, entry);
+		},
+
+		getCommands(input: PiSessionGetRuntimeCommandsInput): PiSessionRuntimeCommandsPayload {
+			const entry = getEntry(input.sessionId);
+			const agentSession = entry.agentSession;
+			if (!agentSession) {
+				return { sessionId: input.sessionId, commands: [] };
+			}
+			const extensionCommands = agentSession.extensionRunner.getRegisteredCommands().map((command) => ({
+				name: command.invocationName,
+				description: command.description,
+				source: "extension" as const,
+				sourceInfo: command.sourceInfo,
+			}));
+			const promptCommands = agentSession.promptTemplates.map((template) => ({
+				name: template.name,
+				description: template.description,
+				source: "prompt" as const,
+				sourceInfo: template.sourceInfo,
+			}));
+			const skills = agentSession.resourceLoader.getSkills().skills;
+			const skillCommands = skills.map((skill) => ({
+				name: `skill:${skill.name}`,
+				description: skill.description,
+				source: "skill" as const,
+				sourceInfo: skill.sourceInfo,
+			}));
+
+			return buildPiRuntimeCommandMetadata({
+				sessionId: input.sessionId,
+				commands: [...extensionCommands, ...promptCommands, ...skillCommands],
+				promptTemplates: agentSession.promptTemplates,
+				skills,
+			});
 		},
 
 		async getSettings(input: PiSessionGetSettingsInput) {
