@@ -9,6 +9,7 @@ export interface CommandPaletteSection {
 
 export type CommandPaletteAction =
 	| { type: "insertPrompt"; prompt: string }
+	| { type: "submitPrompt"; prompt: string }
 	| { type: "openModelPicker" }
 	| { type: "notice"; message: string }
 	| { type: "handled" };

@@ -21,6 +21,7 @@ interface UseComposerCommandPaletteOptions {
 	focusTextarea: () => void;
 	commandPaletteActions?: CommandPaletteEntryActions;
 	onOpenModelPicker?: () => void;
+	onSubmitPrompt?: (prompt: string) => void;
 	onShowPaletteNotice?: (message: string) => void;
 	onClearPaletteNotice?: () => void;
 }
@@ -34,6 +35,7 @@ export function useComposerCommandPalette({
 	focusTextarea,
 	commandPaletteActions,
 	onOpenModelPicker,
+	onSubmitPrompt,
 	onShowPaletteNotice,
 	onClearPaletteNotice,
 }: UseComposerCommandPaletteOptions) {
@@ -93,12 +95,29 @@ export function useComposerCommandPalette({
 		focusTextarea();
 	}, [focusTextarea, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start]);
 
+	const submitTrigger = useCallback(
+		(prompt: string) => {
+			const nextText = `${text.slice(0, trigger.start)}${prompt}${text.slice(trigger.end)}`;
+			const nextSelectionStart = trigger.start + prompt.length;
+			setText(nextText);
+			setSelectionStart(nextSelectionStart);
+			setTextareaSelection(nextSelectionStart);
+			setDismissedForText(nextText);
+			onSubmitPrompt?.(nextText);
+		},
+		[onSubmitPrompt, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
+	);
+
 	const applyPaletteAction = useCallback(
 		(action: CommandPaletteAction) => {
 			switch (action.type) {
 				case "insertPrompt":
 					onClearPaletteNotice?.();
 					replaceTrigger(action.prompt);
+					return;
+				case "submitPrompt":
+					onClearPaletteNotice?.();
+					submitTrigger(action.prompt);
 					return;
 				case "openModelPicker":
 					onClearPaletteNotice?.();
@@ -116,7 +135,16 @@ export function useComposerCommandPalette({
 					return;
 			}
 		},
-		[clearTrigger, focusTextarea, onClearPaletteNotice, onOpenModelPicker, onShowPaletteNotice, replaceTrigger, text],
+		[
+			clearTrigger,
+			focusTextarea,
+			onClearPaletteNotice,
+			onOpenModelPicker,
+			onShowPaletteNotice,
+			replaceTrigger,
+			submitTrigger,
+			text,
+		],
 	);
 
 	const selectEntry = useCallback(
