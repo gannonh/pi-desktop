@@ -12,6 +12,7 @@ import type {
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
 import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
+import { refreshRuntimeCommandPalette } from "./chat/runtime-command-refresh";
 import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
 import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
@@ -546,34 +547,23 @@ export function App() {
 
 	const refreshRuntimeCommands = useCallback(
 		async (sessionId: string, options: { reloadResources?: boolean; notify?: boolean } = {}) => {
-			const result = await window.piDesktop.piSession.getCommands({
+			await refreshRuntimeCommandPalette({
 				sessionId,
-				reloadResources: options.reloadResources || undefined,
+				reloadResources: options.reloadResources,
+				requestCommands: window.piDesktop.piSession.getCommands,
+				getCurrentSessionId: () => acceptedSessionIdRef.current,
+				replaceCommands: setRuntimeCommands,
+				notify: options.notify
+					? (message, tone) => {
+							setStatusMessage({
+								source: "project",
+								tone,
+								message,
+								scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+							});
+						}
+					: undefined,
 			});
-			if (acceptedSessionIdRef.current !== sessionId) {
-				return;
-			}
-			if (result.ok) {
-				setRuntimeCommands(result.data.commands);
-				if (options.notify) {
-					setStatusMessage({
-						source: "project",
-						tone: "success",
-						message: "Runtime commands refreshed.",
-						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
-					});
-				}
-				return;
-			}
-			setRuntimeCommands([]);
-			if (options.notify) {
-				setStatusMessage({
-					source: "project",
-					tone: "error",
-					message: result.error.message,
-					scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
-				});
-			}
 		},
 		[],
 	);
