@@ -353,9 +353,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					);
 				case "piSession.getCommands":
 					return handlePiSessionOperation(() =>
-						Promise.resolve(
-							piSessionRuntime.getCommands(PiSessionGetRuntimeCommandsInputSchema.parse(request.input)),
-						),
+						piSessionRuntime.getCommands(PiSessionGetRuntimeCommandsInputSchema.parse(request.input)),
 					);
 				case "piSession.getDefaultSettings":
 					return handlePiSessionOperation(() => {

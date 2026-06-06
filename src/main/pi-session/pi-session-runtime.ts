@@ -499,11 +499,14 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			return disposeEntry(input.sessionId, entry);
 		},
 
-		getCommands(input: PiSessionGetRuntimeCommandsInput): PiSessionRuntimeCommandsPayload {
+		async getCommands(input: PiSessionGetRuntimeCommandsInput): Promise<PiSessionRuntimeCommandsPayload> {
 			const entry = getEntry(input.sessionId);
 			const agentSession = entry.agentSession;
 			if (!agentSession) {
 				return { sessionId: input.sessionId, commands: [] };
+			}
+			if (input.reloadResources) {
+				await agentSession.reload();
 			}
 			const extensionCommands = agentSession.extensionRunner.getRegisteredCommands().map((command) => ({
 				name: command.invocationName,

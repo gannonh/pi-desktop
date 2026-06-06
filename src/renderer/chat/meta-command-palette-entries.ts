@@ -12,6 +12,10 @@ export const META_RELOAD_DEFERRAL_MESSAGE =
 export const META_QUIT_OUT_OF_SCOPE_MESSAGE =
 	"Quit is handled by the OS window close control (macOS red button or Cmd+Q). Pi Desktop does not duplicate the CLI /quit command in the palette.";
 
+export type MetaCommandPaletteActions = {
+	onReloadResources?: () => void;
+};
+
 const META_COMMAND_DEFINITIONS = [
 	{
 		id: "meta.hotkeys",
@@ -39,13 +43,19 @@ const META_COMMAND_DEFINITIONS = [
 	},
 ] as const;
 
-export function getMetaCommandPaletteEntries(): CommandPaletteEntry[] {
+export function getMetaCommandPaletteEntries(actions?: MetaCommandPaletteActions): CommandPaletteEntry[] {
 	return META_COMMAND_DEFINITIONS.map((definition) => ({
 		id: definition.id,
 		sectionId: "meta",
 		icon: "CircleHelp",
 		title: definition.title,
 		description: definition.description,
-		handler: () => showPaletteNoticeAction(definition.message),
+		handler: () => {
+			if (definition.id === "meta.reload" && actions?.onReloadResources) {
+				actions.onReloadResources();
+				return { type: "handled" };
+			}
+			return showPaletteNoticeAction(definition.message);
+		},
 	}));
 }

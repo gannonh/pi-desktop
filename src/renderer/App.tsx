@@ -544,13 +544,60 @@ export function App() {
 		[removeQueuedMessage],
 	);
 
-	const refreshRuntimeCommands = useCallback(async (sessionId: string) => {
-		const result = await window.piDesktop.piSession.getCommands({ sessionId });
-		if (acceptedSessionIdRef.current !== sessionId) {
+	const refreshRuntimeCommands = useCallback(
+		async (sessionId: string, options: { reloadResources?: boolean; notify?: boolean } = {}) => {
+			const result = await window.piDesktop.piSession.getCommands({
+				sessionId,
+				reloadResources: options.reloadResources || undefined,
+			});
+			if (acceptedSessionIdRef.current !== sessionId) {
+				return;
+			}
+			if (result.ok) {
+				setRuntimeCommands(result.data.commands);
+				if (options.notify) {
+					setStatusMessage({
+						source: "project",
+						tone: "success",
+						message: "Runtime commands refreshed.",
+						scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+					});
+				}
+				return;
+			}
+			setRuntimeCommands([]);
+			if (options.notify) {
+				setStatusMessage({
+					source: "project",
+					tone: "error",
+					message: result.error.message,
+					scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+				});
+			}
+		},
+		[],
+	);
+
+	const reloadRuntimeCommands = useCallback(() => {
+		const sessionId = acceptedSessionIdRef.current;
+		const scope = { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current };
+		if (!sessionId) {
+			setStatusMessage({
+				source: "project",
+				tone: "error",
+				message: "Start a Pi session before reloading runtime commands.",
+				scope,
+			});
 			return;
 		}
-		setRuntimeCommands(result.ok ? result.data.commands : []);
-	}, []);
+		setStatusMessage({
+			source: "project",
+			tone: "pending",
+			message: "Reloading runtime commands…",
+			scope,
+		});
+		void refreshRuntimeCommands(sessionId, { reloadResources: true, notify: true });
+	}, [refreshRuntimeCommands]);
 
 	const submitPrompt = useCallback(
 		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
@@ -744,6 +791,7 @@ export function App() {
 	const commandPaletteActions = useMemo(
 		() => ({
 			session: sessionCommandPaletteActions,
+			meta: { onReloadResources: reloadRuntimeCommands },
 			runtimeCommands,
 			output: createOutputCommandPaletteActions({
 				getMessages: () =>
@@ -763,7 +811,7 @@ export function App() {
 					}),
 			}),
 		}),
-		[sessionCommandPaletteActions, runtimeCommands],
+		[reloadRuntimeCommands, sessionCommandPaletteActions, runtimeCommands],
 	);
 
 	const composerHost: ComposerHostProps = {

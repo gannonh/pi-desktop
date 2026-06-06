@@ -1,6 +1,7 @@
 import { getDefaultCommandPaletteEntries } from "./command-palette-default-entries";
 import { createCommandPaletteRegistry, type CommandPaletteEntry } from "./command-palette-registry";
 import type { PiSessionRuntimeCommand } from "../../shared/pi-session-commands";
+import type { MetaCommandPaletteActions } from "./meta-command-palette-entries";
 import { createOutputCommandPaletteEntries, type OutputCommandPaletteActions } from "./output-command-palette";
 import { createRuntimeCommandPaletteEntries } from "./runtime-command-palette-entries";
 import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions } from "./session-command-palette";
@@ -8,11 +9,12 @@ import { createSessionCommandPaletteEntries, type SessionCommandPaletteActions }
 export type CommandPaletteEntryActions = {
 	session?: SessionCommandPaletteActions;
 	output?: OutputCommandPaletteActions;
+	meta?: MetaCommandPaletteActions;
 	runtimeCommands?: readonly PiSessionRuntimeCommand[];
 };
 
 export function buildCommandPaletteEntries(actions?: CommandPaletteEntryActions): CommandPaletteEntry[] {
-	const defaultEntries = getDefaultCommandPaletteEntries();
+	const defaultEntries = getDefaultCommandPaletteEntries(actions?.meta);
 	const sessionEntries = actions?.session ? createSessionCommandPaletteEntries(actions.session) : undefined;
 	const outputEntries = actions?.output ? createOutputCommandPaletteEntries(actions.output) : undefined;
 	const runtimeEntries = actions?.runtimeCommands
