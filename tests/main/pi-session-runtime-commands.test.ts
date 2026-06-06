@@ -129,6 +129,7 @@ describe("pi session runtime commands", () => {
 
 		expect(payload.commands[0]).toMatchObject({
 			source: "skill",
+			argumentHint: undefined,
 			availability: {
 				state: "unavailable",
 				reason: "Skill metadata is unavailable for this command.",

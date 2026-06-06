@@ -54,7 +54,8 @@ function toRuntimeCommand({
 		slashCommand: command.name,
 		source,
 		description: command.description,
-		argumentHint: promptTemplate?.argumentHint ?? (command.source === "skill" ? "[instructions]" : undefined),
+		argumentHint:
+			promptTemplate?.argumentHint ?? (command.source === "skill" && skill ? "[instructions]" : undefined),
 		scope: command.sourceInfo.scope,
 		provenance: toProvenance(command.sourceInfo),
 		availability: unavailableSkill
