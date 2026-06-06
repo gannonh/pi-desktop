@@ -238,6 +238,19 @@ describe("Composer command palette integration", () => {
 		expect(screen.getByRole("status").textContent).toBe(expectedMessage);
 	});
 
+	it("runs the Desktop reload action instead of inserting stale slash text when available", () => {
+		const onReloadResources = vi.fn();
+		render(<Composer context={context} commandPaletteActions={{ meta: { onReloadResources } }} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/rel" } });
+		fireEvent.click(screen.getByRole("option", { name: /\/reload/ }));
+
+		expect(onReloadResources).toHaveBeenCalledOnce();
+		expect(textarea.value).toBe("");
+		expect(screen.queryByRole("status")).toBeNull();
+	});
+
 	it("clears a meta notice when selecting a stub palette entry", () => {
 		render(<Composer context={context} />);
 		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;

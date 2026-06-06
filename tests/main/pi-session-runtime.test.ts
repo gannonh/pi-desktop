@@ -224,8 +224,57 @@ describe("createPiSessionRuntime", () => {
 		await runtime.whenIdle(started.sessionId);
 
 		expect(
-			runtime.getCommands({ sessionId: started.sessionId }).commands.map((command) => command.slashCommand),
+			(await runtime.getCommands({ sessionId: started.sessionId })).commands.map((command) => command.slashCommand),
 		).toEqual(["demo:run", "review", "skill:summarize"]);
+	});
+
+	it("reloads Pi resources before returning refreshed runtime commands", async () => {
+		const { session } = createFakeSession();
+		let commandName = "before:reload";
+		const reload = vi.fn(async () => {
+			commandName = "after:reload";
+		});
+		const agentSession = {
+			reload,
+			extensionRunner: {
+				getRegisteredCommands: () => [
+					{
+						invocationName: commandName,
+						description: "Reloaded command",
+						sourceInfo: {
+							path: "/tmp/pi-desktop/.pi/extensions/reloaded.ts",
+							source: "reload-extension",
+							scope: "project",
+							origin: "top-level",
+						},
+					},
+				],
+			},
+			promptTemplates: [],
+			model: undefined,
+			thinkingLevel: "off",
+			modelRegistry: { getAvailable: vi.fn(async () => []) },
+			getAvailableThinkingLevels: () => ["off"],
+			resourceLoader: { getSkills: () => ({ skills: [], diagnostics: [] }) },
+		};
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: () => {},
+			createAgentSession: vi.fn(async () => ({ session, agentSession: agentSession as never })),
+		});
+
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await runtime.whenIdle(started.sessionId);
+
+		const refreshed = await runtime.getCommands({ sessionId: started.sessionId, reloadResources: true });
+
+		expect(reload).toHaveBeenCalledOnce();
+		expect(refreshed.commands.map((command) => command.slashCommand)).toEqual(["after:reload"]);
 	});
 
 	it("surfaces successful extension command activity from Pi runtime events", async () => {

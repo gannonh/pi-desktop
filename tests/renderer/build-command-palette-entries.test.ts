@@ -91,6 +91,18 @@ describe("buildCommandPaletteEntries", () => {
 		});
 	});
 
+	it("wires reload to the runtime resource refresh action when available", () => {
+		const onReloadResources = vi.fn();
+		const entries = buildCommandPaletteEntries({ meta: { onReloadResources } });
+		const reloadEntry = entries.find((entry) => entry.id === "meta.reload");
+
+		expect(reloadEntry).toMatchObject({
+			description: "Reload Pi resources and refresh runtime commands",
+		});
+		expect(reloadEntry?.handler()).toEqual({ type: "handled" });
+		expect(onReloadResources).toHaveBeenCalledOnce();
+	});
+
 	it("replaces the output stub with concrete S013 entries when output actions are provided", () => {
 		const entries = buildCommandPaletteEntries({ output: createMockOutputCommandPaletteActions() });
 

@@ -1,8 +1,8 @@
 import { buildConfigCommandPaletteEntries } from "./config-command-palette-entries";
 import type { CommandPaletteEntry } from "./command-palette-registry";
-import { getMetaCommandPaletteEntries } from "./meta-command-palette-entries";
+import { getMetaCommandPaletteEntries, type MetaCommandPaletteActions } from "./meta-command-palette-entries";
 
-export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
+export function getDefaultCommandPaletteEntries(metaActions?: MetaCommandPaletteActions): CommandPaletteEntry[] {
 	return [
 		{
 			id: "session.stub",
@@ -23,6 +23,6 @@ export function getDefaultCommandPaletteEntries(): CommandPaletteEntry[] {
 			scopeTag: "Stub",
 			handler: () => ({ type: "insertPrompt", prompt: "Output command selected" }),
 		},
-		...getMetaCommandPaletteEntries(),
+		...getMetaCommandPaletteEntries(metaActions),
 	];
 }

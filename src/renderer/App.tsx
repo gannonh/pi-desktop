@@ -12,6 +12,7 @@ import type {
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
 import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
+import { refreshRuntimeCommandPalette } from "./chat/runtime-command-refresh";
 import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
 import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
@@ -182,6 +183,7 @@ export function App() {
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const sessionMessagesRef = useRef(sessionState.messages);
+	const isRuntimeCommandReloadingRef = useRef(false);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -544,13 +546,63 @@ export function App() {
 		[removeQueuedMessage],
 	);
 
-	const refreshRuntimeCommands = useCallback(async (sessionId: string) => {
-		const result = await window.piDesktop.piSession.getCommands({ sessionId });
-		if (acceptedSessionIdRef.current !== sessionId) {
+	const refreshRuntimeCommands = useCallback(
+		async (
+			sessionId: string,
+			options: { reloadResources?: boolean; notify?: boolean; notifyScope?: StatusMessageScope } = {},
+		) => {
+			await refreshRuntimeCommandPalette({
+				sessionId,
+				reloadResources: options.reloadResources,
+				requestCommands: window.piDesktop.piSession.getCommands,
+				getCurrentSessionId: () => acceptedSessionIdRef.current,
+				replaceCommands: setRuntimeCommands,
+				notify: options.notify
+					? (message, tone) => {
+							setStatusMessage({
+								source: "project",
+								tone,
+								message,
+								scope: options.notifyScope ?? {
+									projectId: selectedProjectIdRef.current,
+									chatId: selectedChatIdRef.current,
+								},
+							});
+						}
+					: undefined,
+			});
+		},
+		[],
+	);
+
+	const reloadRuntimeCommands = useCallback(() => {
+		const sessionId = acceptedSessionIdRef.current;
+		const scope = { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current };
+		if (!sessionId) {
+			setStatusMessage({
+				source: "project",
+				tone: "error",
+				message: "Start a Pi session before reloading runtime commands.",
+				scope,
+			});
 			return;
 		}
-		setRuntimeCommands(result.ok ? result.data.commands : []);
-	}, []);
+		if (isRuntimeCommandReloadingRef.current) {
+			return;
+		}
+		isRuntimeCommandReloadingRef.current = true;
+		setStatusMessage({
+			source: "project",
+			tone: "pending",
+			message: "Reloading runtime commands…",
+			scope,
+		});
+		void refreshRuntimeCommands(sessionId, { reloadResources: true, notify: true, notifyScope: scope }).finally(
+			() => {
+				isRuntimeCommandReloadingRef.current = false;
+			},
+		);
+	}, [refreshRuntimeCommands]);
 
 	const submitPrompt = useCallback(
 		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
@@ -744,6 +796,7 @@ export function App() {
 	const commandPaletteActions = useMemo(
 		() => ({
 			session: sessionCommandPaletteActions,
+			meta: { onReloadResources: reloadRuntimeCommands },
 			runtimeCommands,
 			output: createOutputCommandPaletteActions({
 				getMessages: () =>
@@ -763,7 +816,7 @@ export function App() {
 					}),
 			}),
 		}),
-		[sessionCommandPaletteActions, runtimeCommands],
+		[reloadRuntimeCommands, sessionCommandPaletteActions, runtimeCommands],
 	);
 
 	const composerHost: ComposerHostProps = {

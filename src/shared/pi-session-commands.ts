@@ -29,6 +29,7 @@ export const PiSessionRuntimeCommandsPayloadSchema = z.strictObject({
 });
 export const PiSessionGetRuntimeCommandsInputSchema = z.strictObject({
 	sessionId: z.string().min(1),
+	reloadResources: z.boolean().optional(),
 });
 export const PiSessionRuntimeCommandsResultSchema = createResultSchema(PiSessionRuntimeCommandsPayloadSchema);
 

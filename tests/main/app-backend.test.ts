@@ -418,6 +418,64 @@ describe("app backend", () => {
 		});
 	});
 
+	it("routes runtime command refresh requests through Pi reload", async () => {
+		const projectService = createProjectService();
+		const session = createSession([{ type: "agent_end", messages: [] }]);
+		let commandName = "old-command";
+		const reload = vi.fn(async () => {
+			commandName = "new-command";
+		});
+		const agentSession = {
+			reload,
+			extensionRunner: {
+				getRegisteredCommands: () => [
+					{
+						invocationName: commandName,
+						description: "Reloaded command",
+						sourceInfo: {
+							path: "/tmp/one/.pi/extensions/reloaded.ts",
+							source: "project",
+							scope: "project",
+							origin: "top-level",
+						},
+					},
+				],
+			},
+			promptTemplates: [],
+			model: undefined,
+			thinkingLevel: "off",
+			modelRegistry: { getAvailable: vi.fn(async () => []) },
+			getAvailableThinkingLevels: () => ["off"],
+			resourceLoader: { getSkills: () => ({ skills: [], diagnostics: [] }) },
+		};
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+			createSessionManager: vi.fn(() => createSessionManager()),
+			createAgentSession: vi.fn(async () => ({ session, agentSession: agentSession as never })),
+		});
+
+		const started = await backend.handle({
+			operation: "piSession.start",
+			input: { projectId: "project:one", prompt: "Hello" },
+		});
+		if (!started.ok || !("sessionId" in started.data)) {
+			throw new Error("Session did not start.");
+		}
+
+		await expect(
+			backend.handle({
+				operation: "piSession.getCommands",
+				input: { sessionId: started.data.sessionId, reloadResources: true },
+			} as AppRpcRequest),
+		).resolves.toMatchObject({
+			ok: true,
+			data: { commands: [{ slashCommand: "new-command" }] },
+		});
+		expect(reload).toHaveBeenCalledOnce();
+	});
+
 	it("preserves start prompt images, model, and thinking context at the runtime boundary", async () => {
 		const projectService = createProjectService();
 		vi.mocked(projectService.getSessionStartTarget).mockResolvedValueOnce({
