@@ -25,7 +25,7 @@ export function createRuntimeCommandPaletteEntries(
 			detail: formatRuntimeCommandDetail(command),
 			handler: () =>
 				available
-					? { type: "insertPrompt", prompt: `/${command.slashCommand}` }
+					? { type: "submitPrompt", prompt: `/${command.slashCommand}` }
 					: { type: "notice", message: command.availability.reason ?? "Command is unavailable." },
 		} satisfies CommandPaletteEntry;
 	});

@@ -142,6 +142,9 @@ export function Composer({
 		focusTextarea,
 		commandPaletteActions,
 		onOpenModelPicker: openModelPickerFromPalette,
+		onSubmitPrompt: (prompt) => {
+			void submitPromptText(prompt, running ? (pendingDelivery === "followUp" ? "followUp" : "steer") : "prompt");
+		},
 		onShowPaletteNotice: setPaletteNotice,
 		onClearPaletteNotice: clearPaletteNotice,
 	});
@@ -203,12 +206,12 @@ export function Composer({
 		}
 	};
 
-	const submitPrompt = async (delivery?: PiSessionDelivery) => {
+	const submitPromptText = async (promptText: string, delivery?: PiSessionDelivery) => {
 		if (state.sendDisabled || processingFiles) {
 			return;
 		}
 		try {
-			const { prompt, images } = await buildPromptFromAttachments(text, attachments);
+			const { prompt, images } = await buildPromptFromAttachments(promptText, attachments);
 			if (!prompt && !images?.length) {
 				return;
 			}
@@ -224,6 +227,10 @@ export function Composer({
 		} catch (error) {
 			setAttachmentError(error instanceof Error ? error.message : "Failed to send message.");
 		}
+	};
+
+	const submitPrompt = async (delivery?: PiSessionDelivery) => {
+		await submitPromptText(text, delivery);
 	};
 
 	const showAbortOnly = running && abortable && !state.showSendWhileRunning;

@@ -9,17 +9,21 @@ import { createMockSessionCommandPaletteActions } from "./session-command-palett
 
 interface HarnessProps {
 	initialText?: string;
+	initialSelectionStart?: number;
 	focusTextarea?: () => void;
+	onSubmitPrompt?: (prompt: string) => void;
 	setTextareaSelection?: (selectionStart: number) => void;
 }
 
 function CommandPaletteHookHarness({
 	initialText = "/",
+	initialSelectionStart = initialText.length,
 	focusTextarea = () => {},
+	onSubmitPrompt,
 	setTextareaSelection = () => {},
 }: HarnessProps) {
 	const [text, setText] = useState(initialText);
-	const [selectionStart, setSelectionStart] = useState(initialText.length);
+	const [selectionStart, setSelectionStart] = useState(initialSelectionStart);
 	const [lastHandled, setLastHandled] = useState("unset");
 	const palette = useComposerCommandPalette({
 		text,
@@ -28,6 +32,7 @@ function CommandPaletteHookHarness({
 		setSelectionStart,
 		setTextareaSelection,
 		focusTextarea,
+		onSubmitPrompt,
 	});
 	const handledEntry: CommandPaletteEntry = {
 		id: "session.handled",
@@ -36,6 +41,14 @@ function CommandPaletteHookHarness({
 		title: "Handled command",
 		description: "Covers handled palette actions",
 		handler: () => ({ type: "handled" }),
+	};
+	const submitEntry: CommandPaletteEntry = {
+		id: "runtime.review",
+		sectionId: "meta",
+		icon: "CircleHelp",
+		title: "/review",
+		description: "Review a path",
+		handler: () => ({ type: "submitPrompt", prompt: "/review" }),
 	};
 
 	const handleKey = (key: string) => {
@@ -65,6 +78,9 @@ function CommandPaletteHookHarness({
 			</button>
 			<button type="button" onClick={() => palette.selectEntry(handledEntry)}>
 				handled action
+			</button>
+			<button type="button" onClick={() => palette.selectEntry(submitEntry)}>
+				submit action
 			</button>
 			<button type="button" onClick={() => palette.noteTextChanged("/co", 3)}>
 				change text
@@ -263,6 +279,50 @@ describe("useComposerCommandPalette", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "handled action" }));
 		expect(screen.getByTestId("text").textContent).toBe("");
+		expect(focusTextarea).toHaveBeenCalled();
+	});
+
+	it("submits submitPrompt actions only when the slash trigger starts the draft", () => {
+		const focusTextarea = vi.fn();
+		const onSubmitPrompt = vi.fn();
+		const setTextareaSelection = vi.fn();
+		render(
+			<CommandPaletteHookHarness
+				initialText="/rev docs"
+				initialSelectionStart={4}
+				focusTextarea={focusTextarea}
+				onSubmitPrompt={onSubmitPrompt}
+				setTextareaSelection={setTextareaSelection}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "submit action" }));
+
+		expect(screen.getByTestId("text").textContent).toBe("/review docs");
+		expect(onSubmitPrompt).toHaveBeenCalledWith("/review docs");
+		expect(setTextareaSelection).toHaveBeenCalledWith("/review".length);
+		expect(focusTextarea).toHaveBeenCalled();
+	});
+
+	it("inserts submitPrompt actions instead of submitting mid-draft slash triggers", () => {
+		const focusTextarea = vi.fn();
+		const onSubmitPrompt = vi.fn();
+		const setTextareaSelection = vi.fn();
+		render(
+			<CommandPaletteHookHarness
+				initialText="please /rev later"
+				initialSelectionStart={"please /rev".length}
+				focusTextarea={focusTextarea}
+				onSubmitPrompt={onSubmitPrompt}
+				setTextareaSelection={setTextareaSelection}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "submit action" }));
+
+		expect(screen.getByTestId("text").textContent).toBe("please /review later");
+		expect(onSubmitPrompt).not.toHaveBeenCalled();
+		expect(setTextareaSelection).toHaveBeenCalledWith("please /review".length);
 		expect(focusTextarea).toHaveBeenCalled();
 	});
 });

@@ -22,6 +22,16 @@ const context = createComposerContext({
 
 const runtimeCommands = [
 	{
+		id: "runtime-command:demo:run",
+		title: "demo:run",
+		slashCommand: "demo:run",
+		source: "extension" as const,
+		description: "Run the demo command",
+		scope: "project" as const,
+		provenance: { path: "/tmp/demo.ts", source: "demo-extension", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+	{
 		id: "runtime-command:review",
 		title: "review",
 		slashCommand: "review",
@@ -30,6 +40,16 @@ const runtimeCommands = [
 		argumentHint: "[path]",
 		scope: "project" as const,
 		provenance: { path: "/tmp/review.md", source: "project", origin: "top-level" as const },
+		availability: { state: "available" as const },
+	},
+	{
+		id: "runtime-command:skill:summarize",
+		title: "skill:summarize",
+		slashCommand: "skill:summarize",
+		source: "skill" as const,
+		description: "Summarize a path",
+		scope: "user" as const,
+		provenance: { path: "/tmp/summarize/SKILL.md", source: "user", origin: "top-level" as const },
 		availability: { state: "available" as const },
 	},
 	{
@@ -75,6 +95,70 @@ describe("Composer command palette integration", () => {
 		expect(screen.getByText("Review a path Arguments: [path]")).toBeTruthy();
 		expect(screen.getByText("Prompt template")).toBeTruthy();
 		expect(screen.getByText("project · project · /tmp/review.md")).toBeTruthy();
+	});
+
+	it("submits selected prompt-template slash text with existing arguments", async () => {
+		const onSubmit = vi.fn(() => true);
+		render(<Composer context={context} onSubmit={onSubmit} commandPaletteActions={{ runtimeCommands }} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/rev docs/commands.md" } });
+		textarea.setSelectionRange(4, 4);
+		fireEvent.click(textarea);
+		fireEvent.click(screen.getByRole("option", { name: /\/review/ }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("/review docs/commands.md", "prompt", undefined));
+		expect(textarea.value).toBe("");
+	});
+
+	it("submits selected skill slash text without Desktop-side expansion", async () => {
+		const onSubmit = vi.fn(() => true);
+		render(<Composer context={context} onSubmit={onSubmit} commandPaletteActions={{ runtimeCommands }} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/summarize src/renderer" } });
+		textarea.setSelectionRange(10, 10);
+		fireEvent.click(textarea);
+		fireEvent.click(screen.getByRole("option", { name: /\/skill:summarize/ }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("/skill:summarize src/renderer", "prompt", undefined));
+		expect(textarea.value).toBe("");
+	});
+
+	it("submits selected extension slash text through the session input path", async () => {
+		const onSubmit = vi.fn(() => true);
+		render(<Composer context={context} onSubmit={onSubmit} commandPaletteActions={{ runtimeCommands }} />);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/demo --safe" } });
+		textarea.setSelectionRange(5, 5);
+		fireEvent.click(textarea);
+		fireEvent.click(screen.getByRole("option", { name: /\/demo:run/ }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("/demo:run --safe", "prompt", undefined));
+		expect(textarea.value).toBe("");
+	});
+
+	it("uses busy-session delivery when selecting a dynamic command while Pi is running", async () => {
+		const onSubmit = vi.fn(() => true);
+		render(
+			<Composer
+				context={context}
+				running
+				pendingDelivery="followUp"
+				onSubmit={onSubmit}
+				commandPaletteActions={{ runtimeCommands }}
+			/>,
+		);
+		const textarea = screen.getByLabelText("Message Pi") as HTMLTextAreaElement;
+
+		fireEvent.change(textarea, { target: { value: "/rev docs/commands.md" } });
+		textarea.setSelectionRange(4, 4);
+		fireEvent.click(textarea);
+		fireEvent.click(screen.getByRole("option", { name: /\/review/ }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("/review docs/commands.md", "followUp", undefined));
+		expect(textarea.value).toBe("");
 	});
 
 	it("shows unavailable skill guidance without inserting an invokable command", () => {

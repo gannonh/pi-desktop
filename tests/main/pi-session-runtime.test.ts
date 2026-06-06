@@ -61,6 +61,38 @@ type ControlledSessionOptions = {
 	clearQueue?: () => { steering: string[]; followUp: string[] };
 };
 
+const createPromptControlledSession = () => {
+	let listener: ((event: AgentSessionEvent) => void) | undefined;
+	const promptCalls: Array<{
+		prompt: string;
+		options?: { streamingBehavior?: "steer" | "followUp" };
+		resolve: () => void;
+		reject: (error: unknown) => void;
+	}> = [];
+	const session: PiSdkSession = {
+		sessionId: "sdk-session:one",
+		subscribe: vi.fn((nextListener) => {
+			listener = nextListener;
+			return () => {
+				listener = undefined;
+			};
+		}),
+		bindExtensions: vi.fn(async () => undefined),
+		prompt: vi.fn((prompt: string, options?: { streamingBehavior?: "steer" | "followUp" }) => {
+			const result = createDeferred();
+			promptCalls.push({ prompt, options, resolve: result.resolve, reject: result.reject });
+			return result.promise;
+		}),
+		getSteeringMessages: vi.fn(() => []),
+		getFollowUpMessages: vi.fn(() => []),
+		clearQueue: vi.fn(() => ({ steering: [], followUp: [] })),
+		abort: vi.fn(async () => undefined),
+		dispose: vi.fn(() => undefined),
+	};
+
+	return { emitSdkEvent: (event: AgentSessionEvent) => listener?.(event), promptCalls, session };
+};
+
 const createControlledSession = (options: ControlledSessionOptions = {}) => {
 	let listener: ((event: AgentSessionEvent) => void) | undefined;
 	const promptResult = createDeferred();
@@ -243,6 +275,131 @@ describe("createPiSessionRuntime", () => {
 
 		expect(reload).toHaveBeenCalledOnce();
 		expect(refreshed.commands.map((command) => command.slashCommand)).toEqual(["after:reload"]);
+	});
+
+	it("surfaces successful extension command activity from Pi runtime events", async () => {
+		const events: PiSessionEvent[] = [];
+		const { emitSdkEvent, promptCalls, session } = createPromptControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+		promptCalls[0]?.resolve();
+		await runtime.whenIdle(started.sessionId);
+		events.splice(0, events.length);
+
+		const submitted = runtime.submit({ sessionId: started.sessionId, prompt: "/demo:run success" });
+		await vi.waitFor(() => expect(promptCalls).toHaveLength(2));
+		emitSdkEvent({
+			type: "tool_execution_start",
+			toolCallId: "extension:demo",
+			toolName: "demo:run",
+			args: { command: "/demo:run success" },
+		} as AgentSessionEvent);
+		emitSdkEvent({
+			type: "tool_execution_end",
+			toolCallId: "extension:demo",
+			toolName: "demo:run",
+			result: "Command completed.",
+			isError: false,
+		} as AgentSessionEvent);
+		promptCalls[1]?.resolve();
+		await submitted;
+
+		expect(session.prompt).toHaveBeenLastCalledWith("/demo:run success", { images: undefined });
+		expect(events).toContainEqual({
+			type: "tool_execution_end",
+			sessionId: started.sessionId,
+			toolCallId: "extension:demo",
+			toolName: "demo:run",
+			result: "Command completed.",
+			isError: false,
+			receivedAt: now(),
+		});
+	});
+
+	it("surfaces cancelled extension commands as transcript messages", async () => {
+		const events: PiSessionEvent[] = [];
+		const { emitSdkEvent, promptCalls, session } = createPromptControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+		promptCalls[0]?.resolve();
+		await runtime.whenIdle(started.sessionId);
+		events.splice(0, events.length);
+
+		const submitted = runtime.submit({ sessionId: started.sessionId, prompt: "/demo:run cancel" });
+		await vi.waitFor(() => expect(promptCalls).toHaveLength(2));
+		emitSdkEvent({
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [{ type: "text", text: "Command cancelled." }],
+				timestamp: 3,
+			},
+		} as AgentSessionEvent);
+		promptCalls[1]?.resolve();
+		await submitted;
+
+		expect(events).toContainEqual({
+			type: "message_end",
+			sessionId: started.sessionId,
+			messageId: "assistant:3",
+			role: "assistant",
+			content: "Command cancelled.",
+			receivedAt: now(),
+		});
+	});
+
+	it("surfaces thrown extension command failures as runtime errors", async () => {
+		const events: PiSessionEvent[] = [];
+		const { promptCalls, session } = createPromptControlledSession();
+		const runtime = createPiSessionRuntime({
+			now,
+			emit: (event) => events.push(event),
+			createAgentSession: vi.fn(async () => ({ session })),
+		});
+		const started = await runtime.start({
+			projectId: "project:/tmp/pi-desktop",
+			chatId: null,
+			workspacePath: "/tmp/pi-desktop",
+			prompt: "Hello",
+		});
+		await waitForScheduledPrompt();
+		promptCalls[0]?.resolve();
+		await runtime.whenIdle(started.sessionId);
+		events.splice(0, events.length);
+
+		const submitted = runtime.submit({ sessionId: started.sessionId, prompt: "/demo:run fail" });
+		await vi.waitFor(() => expect(promptCalls).toHaveLength(2));
+		promptCalls[1]?.reject(new Error("extension failed"));
+		await runtime.whenIdle(started.sessionId);
+
+		await expect(submitted).resolves.toEqual({ sessionId: started.sessionId, status: "running" });
+		expect(events).toContainEqual({
+			type: "runtime_error",
+			sessionId: started.sessionId,
+			code: "pi.prompt_failed",
+			message: "extension failed",
+			receivedAt: now(),
+		});
 	});
 
 	it("forwards images into prompt options on start and submit", async () => {
