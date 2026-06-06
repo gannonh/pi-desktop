@@ -97,6 +97,11 @@ export function useComposerCommandPalette({
 
 	const submitTrigger = useCallback(
 		(prompt: string) => {
+			if (trigger.start !== 0) {
+				replaceTrigger(prompt);
+				return;
+			}
+
 			const nextText = `${text.slice(0, trigger.start)}${prompt}${text.slice(trigger.end)}`;
 			const nextSelectionStart = trigger.start + prompt.length;
 			setText(nextText);
@@ -104,8 +109,19 @@ export function useComposerCommandPalette({
 			setTextareaSelection(nextSelectionStart);
 			setDismissedForText(nextText);
 			onSubmitPrompt?.(nextText);
+			focusTextarea();
 		},
-		[onSubmitPrompt, setText, setSelectionStart, setTextareaSelection, text, trigger.end, trigger.start],
+		[
+			focusTextarea,
+			onSubmitPrompt,
+			replaceTrigger,
+			setText,
+			setSelectionStart,
+			setTextareaSelection,
+			text,
+			trigger.end,
+			trigger.start,
+		],
 	);
 
 	const applyPaletteAction = useCallback(
