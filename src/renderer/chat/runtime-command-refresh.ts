@@ -22,7 +22,7 @@ export async function refreshRuntimeCommandPalette({
 	replaceCommands,
 	notify,
 }: RuntimeCommandRefreshOptions): Promise<void> {
-	const result = await requestCommands({ sessionId, reloadResources: reloadResources || undefined });
+	const result = await requestCommands({ sessionId, reloadResources: reloadResources ? true : undefined });
 	if (getCurrentSessionId() !== sessionId) {
 		return;
 	}

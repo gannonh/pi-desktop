@@ -34,6 +34,24 @@ describe("refreshRuntimeCommandPalette", () => {
 		expect(replaceCommands).toHaveBeenCalledWith([command("new-command")]);
 	});
 
+	it("only sends true when requesting a Pi resource reload", async () => {
+		const replaceCommands = vi.fn();
+		const requestCommands = vi.fn(async () => ({
+			ok: true as const,
+			data: { sessionId: "session:one", commands: [] },
+		}));
+
+		await refreshRuntimeCommandPalette({
+			sessionId: "session:one",
+			reloadResources: false,
+			requestCommands,
+			getCurrentSessionId: () => "session:one",
+			replaceCommands,
+		});
+
+		expect(requestCommands).toHaveBeenCalledWith({ sessionId: "session:one", reloadResources: undefined });
+	});
+
 	it("clears stale commands and reports the failed refresh visibly", async () => {
 		const replaceCommands = vi.fn();
 		const notify = vi.fn();

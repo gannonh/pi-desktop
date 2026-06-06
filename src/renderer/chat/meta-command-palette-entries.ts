@@ -32,7 +32,7 @@ const META_COMMAND_DEFINITIONS = [
 	{
 		id: "meta.reload",
 		title: "/reload",
-		description: "Reload keybindings, extensions, skills, prompts, and themes",
+		description: "Reload Pi resources and refresh runtime commands",
 		message: META_RELOAD_DEFERRAL_MESSAGE,
 	},
 	{

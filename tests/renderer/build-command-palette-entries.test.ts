@@ -94,8 +94,12 @@ describe("buildCommandPaletteEntries", () => {
 	it("wires reload to the runtime resource refresh action when available", () => {
 		const onReloadResources = vi.fn();
 		const entries = buildCommandPaletteEntries({ meta: { onReloadResources } });
+		const reloadEntry = entries.find((entry) => entry.id === "meta.reload");
 
-		expect(entries.find((entry) => entry.id === "meta.reload")?.handler()).toEqual({ type: "handled" });
+		expect(reloadEntry).toMatchObject({
+			description: "Reload Pi resources and refresh runtime commands",
+		});
+		expect(reloadEntry?.handler()).toEqual({ type: "handled" });
 		expect(onReloadResources).toHaveBeenCalledOnce();
 	});
 

@@ -183,6 +183,7 @@ export function App() {
 	const nextHistoryRequestIdRef = useRef(0);
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const sessionMessagesRef = useRef(sessionState.messages);
+	const isRuntimeCommandReloadingRef = useRef(false);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -546,7 +547,10 @@ export function App() {
 	);
 
 	const refreshRuntimeCommands = useCallback(
-		async (sessionId: string, options: { reloadResources?: boolean; notify?: boolean } = {}) => {
+		async (
+			sessionId: string,
+			options: { reloadResources?: boolean; notify?: boolean; notifyScope?: StatusMessageScope } = {},
+		) => {
 			await refreshRuntimeCommandPalette({
 				sessionId,
 				reloadResources: options.reloadResources,
@@ -559,7 +563,10 @@ export function App() {
 								source: "project",
 								tone,
 								message,
-								scope: { projectId: selectedProjectIdRef.current, chatId: selectedChatIdRef.current },
+								scope: options.notifyScope ?? {
+									projectId: selectedProjectIdRef.current,
+									chatId: selectedChatIdRef.current,
+								},
 							});
 						}
 					: undefined,
@@ -580,13 +587,21 @@ export function App() {
 			});
 			return;
 		}
+		if (isRuntimeCommandReloadingRef.current) {
+			return;
+		}
+		isRuntimeCommandReloadingRef.current = true;
 		setStatusMessage({
 			source: "project",
 			tone: "pending",
 			message: "Reloading runtime commands…",
 			scope,
 		});
-		void refreshRuntimeCommands(sessionId, { reloadResources: true, notify: true });
+		void refreshRuntimeCommands(sessionId, { reloadResources: true, notify: true, notifyScope: scope }).finally(
+			() => {
+				isRuntimeCommandReloadingRef.current = false;
+			},
+		);
 	}, [refreshRuntimeCommands]);
 
 	const submitPrompt = useCallback(
