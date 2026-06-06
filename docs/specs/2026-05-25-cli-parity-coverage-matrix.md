@@ -90,14 +90,14 @@
 
 ### CLI-COMMANDS-007: Slash commands
 
-- Classification: Desktop-native equivalent (palette-first affordance with documented deferrals; partial until S011–S014 merge).
-- Release impact: M003 documents all 21 built-in slash commands with palette-first dispositions. Six commands wire real Desktop actions through the palette after S011–S013 merge; the remainder register visible deferral notices or existing UI aliases rather than silent gaps.
-- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `README.md`, `docs/usage.md`.
-- Desktop evidence: composer palette shell (`src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`). Per-command registry paths and handlers: [mapping matrix](./2026-06-02-slash-command-mapping-matrix.md#family-evidence-index).
-- M003 mapping artifacts: [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md), [2026-06-02-slash-command-mapping-matrix.md](./2026-06-02-slash-command-mapping-matrix.md).
+- Classification: Desktop-native equivalent (palette-first affordance with documented deferrals and M004 runtime-discovered command carry-forward evidence).
+- Release impact: M003 documents all 21 built-in slash commands with palette-first dispositions. Seven commands wire real Desktop actions through the palette, including M004 `/reload`; the remainder register visible deferral notices, existing UI aliases, or out-of-scope guidance rather than silent gaps.
+- CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/slash-commands.ts`, `README.md`, `docs/usage.md`.
+- Desktop evidence: composer palette shell (`src/renderer/components/composer.tsx`, `src/renderer/chat/command-palette-registry.ts`, `src/renderer/chat/command-palette-state.ts`, `src/renderer/chat/use-composer-command-palette.ts`, `src/renderer/components/command-palette-popover.tsx`). Runtime-discovered command evidence: `src/main/pi-session/pi-session-runtime-commands.ts`, `src/main/pi-session/pi-session-runtime.ts`, `src/renderer/chat/runtime-command-palette-entries.ts`, `src/renderer/chat/runtime-command-refresh.ts`. Per-command registry paths and handlers: [mapping matrix](./2026-06-02-slash-command-mapping-matrix.md#family-evidence-index).
+- M003/M004 mapping artifacts: [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md), [2026-06-02-slash-command-mapping-matrix.md](./2026-06-02-slash-command-mapping-matrix.md).
 - Disposition totals (21 built-in commands): [mapping matrix § Summary counts](./2026-06-02-slash-command-mapping-matrix.md#summary-counts).
-- Carry-forward (not M003 built-in parity): [mapping matrix § Carry-forward](./2026-06-02-slash-command-mapping-matrix.md#carry-forward-and-out-of-scope-not-in-built-in-matrix).
-- Disposition: M003 **mapping complete** for built-in slash commands (S015); **implementation** completes when S011–S014 merge to `main`. The composer `/` palette is the palette-first Desktop affordance; detail in the mapping matrix.
+- Carry-forward: [mapping matrix § Carry-forward](./2026-06-02-slash-command-mapping-matrix.md#carry-forward-and-out-of-scope-not-in-built-in-matrix) records M004 evidence for extension commands, prompt templates, skills, and reload outcomes.
+- Disposition: M003 **mapping complete** for built-in slash commands (S015). M004 adds dynamic command discovery/display and reload-state evidence while keeping Pi as the source of command metadata and resource reload behavior.
 
 ### CLI-DELIVERY-008: Prompt delivery while busy
 
@@ -221,27 +221,27 @@
 
 ### CLI-EXTENSIONS-023: Extensions
 
-- Classification: Deferred.
-- Release impact: Pi extension execution remains runtime-owned; Desktop management UI can follow local core release work.
+- Classification: Deferred for management UI; M004 covers runtime-discovered extension command palette display and reload traceability.
+- Release impact: Pi extension execution remains runtime-owned; Desktop management UI can follow local core release work. M004 records extension command metadata and reload evidence without adding a Desktop-side command interpreter.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/extensions.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/examples/extensions/`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/extensions/`.
-- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility.
-- Disposition: target M0X Extensibility after Settings/Auth.
+- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility, `src/main/pi-session/pi-session-runtime.ts`, `src/main/pi-session/pi-session-runtime-commands.ts`, `src/renderer/chat/runtime-command-palette-entries.ts`, `src/renderer/chat/runtime-command-refresh.ts`.
+- Disposition: target M0X Extensibility after Settings/Auth for management; preserve M004 palette/reload evidence as the command-affordance baseline.
 
 ### CLI-SKILLS-024: Skills
 
-- Classification: Deferred.
-- Release impact: Pi owns skill discovery/loading; Desktop inspection and management can follow core release work.
+- Classification: Deferred for inspection/management UI; M004 covers runtime-discovered skill command palette display, unavailable guidance, and reload traceability.
+- Release impact: Pi owns skill discovery/loading; Desktop inspection and management can follow core release work. M004 keeps skill command availability runtime-owned and prevents unavailable skill commands from becoming invokable palette entries.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/skills.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/resource-loader.ts`.
-- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility.
-- Disposition: target M0X Extensibility.
+- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility, `src/main/pi-session/pi-session-runtime.ts`, `src/main/pi-session/pi-session-runtime-commands.ts`, `src/renderer/chat/runtime-command-palette-entries.ts`, `tests/renderer/composer-command-palette.test.tsx`.
+- Disposition: target M0X Extensibility for inspection/management; preserve M004 palette/reload evidence as the command-affordance baseline.
 
 ### CLI-TEMPLATES-025: Prompt templates
 
-- Classification: Deferred.
-- Release impact: prompt-template discovery and invocation are power-user resource management surfaces.
+- Classification: Deferred for template management UI; M004 covers runtime-discovered prompt-template command palette display and reload traceability.
+- Release impact: prompt-template management remains a power-user resource surface, while M004 records the command affordance baseline through Pi-owned prompt metadata.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/prompt-templates.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/core/prompt-templates.ts`.
-- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility.
-- Disposition: target M0X Extensibility.
+- Desktop evidence: `docs/pi-desktop-high-level-roadmap.md` M0X Extensibility, `src/main/pi-session/pi-session-runtime.ts`, `src/main/pi-session/pi-session-runtime-commands.ts`, `src/renderer/chat/runtime-command-palette-entries.ts`, `tests/main/pi-session-runtime.test.ts`.
+- Disposition: target M0X Extensibility for management; preserve M004 palette/reload evidence as the command-affordance baseline.
 
 ### CLI-THEMES-026: Themes
 

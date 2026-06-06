@@ -1,14 +1,14 @@
 # Slash-command mapping matrix
 
-**Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  
-**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011–S014 — Family command mapping; S015 — Gap closure consolidation  
-**Requirements:** COMMANDS-MAP-01 (`MAP-01`), COMMANDS-OUTCOME-01 (`OUTCOME-01`), COMMANDS-DECISION-01 (`DECISION-01`)  
+**Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity; M004 — Dynamic Slash Commands and Skill Invocation Parity  
+**Slice:** S009 — Command inventory and mapping baseline; S010 — Composer command palette shell; S011–S014 — Family command mapping; S015 — Gap closure consolidation; S016/S018 — Dynamic command discovery and reload traceability  
+**Requirements:** COMMANDS-MAP-01 (`MAP-01`), COMMANDS-OUTCOME-01 (`OUTCOME-01`), COMMANDS-DECISION-01 (`DECISION-01`), DYN-RELOAD-01, DYN-TRACE-01  
 **Inventory:** [2026-06-02-slash-command-inventory.md](./2026-06-02-slash-command-inventory.md)  
 **Coverage parent:** [2026-05-25-cli-parity-coverage-matrix.md](./2026-05-25-cli-parity-coverage-matrix.md) (CLI-COMMANDS-007)
 
 ## Purpose
 
-Authoritative mapping of each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S015 consolidated family-slice outcomes (S011–S014) into final dispositions for all 21 built-in commands.
+Authoritative mapping of each built-in Pi CLI slash command to a Desktop disposition, palette registration metadata, and evidence paths. S015 consolidated family-slice outcomes (S011–S014) into final dispositions for all 21 built-in commands. M004 records runtime-discovered command carry-forward evidence for extension commands, prompt templates, skills, and resource reload behavior.
 
 ## Matrix schema
 
@@ -56,9 +56,9 @@ S010 shell: `command-palette-registry.ts`, `command-palette-state.ts`, `use-comp
 | **Session** | `src/renderer/chat/session-command-palette.ts`, `src/renderer/chat/use-session-command-palette-actions.ts`, `src/renderer/chat/build-command-palette-entries.ts` | S011 |
 | **Config** | `src/renderer/chat/config-command-palette-entries.ts`, `src/renderer/chat/command-palette-default-entries.ts` | S012 |
 | **Output** | `src/renderer/chat/output-command-palette.ts`, `src/renderer/chat/last-assistant-message.ts` | S013 |
-| **Meta/Skills** | `src/renderer/chat/meta-command-palette-entries.ts`, `src/renderer/chat/command-palette-default-entries.ts` | S014 |
+| **Meta/Skills** | `src/renderer/chat/meta-command-palette-entries.ts`, `src/renderer/chat/command-palette-default-entries.ts`, `src/renderer/chat/runtime-command-palette-entries.ts`, `src/renderer/chat/runtime-command-refresh.ts` | S014, S016, S018 |
 
-Wired Session and Output handlers also use `src/renderer/App.tsx`. Exceptions: `/model` → `src/renderer/components/composer-model-selector.tsx`; `/name` → `src/renderer/components/project-sidebar.tsx`. `/reload` is registered only under Meta/Skills (`meta.reload`); see [§ Cross-family ownership](#cross-family-ownership-decisions-s015).
+Wired Session and Output handlers also use `src/renderer/App.tsx`. Exceptions: `/model` → `src/renderer/components/composer-model-selector.tsx`; `/name` → `src/renderer/components/project-sidebar.tsx`. `/reload` is registered only under Meta/Skills (`meta.reload`) and now triggers the M004 runtime-resource refresh path; see [§ Cross-family ownership](#cross-family-ownership-decisions-s015).
 
 ## Mapping matrix (built-in commands)
 
@@ -78,7 +78,7 @@ Wired Session and Output handlers also use `src/renderer/App.tsx`. Exceptions: `
 | `/name` | Set session display name | `palette entry` | action | Session | `session.name` | `src/renderer/components/project-sidebar.tsx`, `src/renderer/App.tsx` | Opens inline rename for the selected project chat (S011) |
 | `/new` | Start a new session | `palette entry` | action | Session | `session.new` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | `chat.create` or `chat.createStandalone` (S011) |
 | `/quit` | Quit pi | `out-of-scope` | notice | Meta/Skills | `meta.quit` | `src/renderer/chat/meta-command-palette-entries.ts` | OS/window close is the Desktop equivalent; palette explains (S014) |
-| `/reload` | Reload resources | `deferred` | notice | Meta/Skills | `meta.reload` | `src/renderer/chat/meta-command-palette-entries.ts` | Hot-reload deferred until extensibility milestone; S012 does not register `config.reload` |
+| `/reload` | Reload resources | `palette entry` | action | Meta/Skills | `meta.reload` | `src/renderer/chat/meta-command-palette-entries.ts`, `src/renderer/App.tsx`, `src/renderer/chat/runtime-command-refresh.ts`, `src/main/pi-session/pi-session-runtime.ts` | M004 S018 asks Pi to reload resources, replaces active runtime command metadata, and clears stale command entries on refresh failure |
 | `/resume` | Resume a different session | `deferred` | notice | Session | `session.resume` | `src/renderer/chat/session-command-palette.ts` | Status guidance to select a chat in the sidebar (existing resume path) |
 | `/scoped-models` | Scoped model cycling set | `deferred` | notice | Config | `config.scoped-models` | `src/renderer/chat/config-command-palette-entries.ts` | Palette entry shows visible deferral; Ctrl+P cycling not implemented (S012) |
 | `/session` | Show session info and stats | `palette entry` | action | Session | `session.info` | `src/renderer/chat/session-command-palette.ts`, `src/renderer/App.tsx` | Shows selected chat metadata in the project status message (S011) |
@@ -91,12 +91,12 @@ Wired Session and Output handlers also use `src/renderer/App.tsx`. Exceptions: `
 | Metric | Count |
 | --- | ---: |
 | **Total built-in commands** | 21 |
-| **`palette entry` (capability wired)** | 6 |
+| **`palette entry` (capability wired)** | 7 |
 | **`existing UI`** | 1 |
-| **`deferred`** | 13 |
+| **`deferred`** | 12 |
 | **`out-of-scope`** | 1 |
-| **Palette UX `action`** | 7 |
-| **Palette UX `notice`** | 14 |
+| **Palette UX `action`** | 8 |
+| **Palette UX `notice`** | 13 |
 | **Commands in Session section** | 9 |
 | **Commands in Config section** | 5 |
 | **Commands in Output section** | 3 |
@@ -144,7 +144,7 @@ S012 registered and wired Config palette entries with these evidence paths:
 
 Current behavior: typing `/` and filtering to Config shows five concrete entries. **Change model** opens the composer model picker without inserting slash text. **Scoped models**, **Settings**, **Log in**, and **Log out** dismiss the palette and show visible deferral copy in the composer status row. Provider secrets never enter palette entry data or renderer state.
 
-`/reload` remains in the Meta/Skills family with `deferred` disposition; S012 does not register it because reload requires a main-process RPC not yet exposed.
+`/reload` remains in the Meta/Skills family. M004 S018 wires it to the runtime command resource refresh path; S012 does not register a `config.reload` alias.
 
 ### S013 output family
 
@@ -160,16 +160,27 @@ Verification: `tests/renderer/output-command-palette.test.ts`, `tests/renderer/b
 
 ### S014 meta / discovery family
 
-S014 classified and registered Meta/Skills palette entries for `/hotkeys`, `/changelog`, `/reload`, and `/quit`:
+S014 classified and registered Meta/Skills palette entries for `/hotkeys`, `/changelog`, `/reload`, and `/quit`; M004 S018 wires `/reload` to the active Pi session resource refresh path:
 
-- `src/renderer/chat/meta-command-palette-entries.ts`: stable `meta.*` entry IDs and `notice` handlers for deferred or out-of-scope commands.
+- `src/renderer/chat/meta-command-palette-entries.ts`: stable `meta.*` entry IDs plus the M004 reload action hook for `meta.reload`.
 - `src/renderer/chat/command-palette-registry.ts`: `showPaletteNoticeAction()` is the canonical deferral contract for palette handlers.
 - `src/renderer/chat/command-palette-default-entries.ts`: replaces the Meta/Skills section stub with S014 entries.
 - `src/renderer/chat/use-composer-command-palette.ts` and `src/renderer/components/composer.tsx`: show visible deferral/out-of-scope copy without inserting raw slash text; clear stale notices on stub selection and successful submit.
+- `src/main/pi-session/pi-session-runtime.ts` and `src/shared/pi-session-commands.ts`: `reloadResources` asks Pi to reload before command metadata is rebuilt.
+- `src/renderer/chat/runtime-command-refresh.ts` and `src/renderer/App.tsx`: replace active palette command state after refresh and clear stale entries when refresh fails.
 
 Family slices with deferred commands should return `{ type: "notice", message }` (via `showPaletteNoticeAction`) rather than imperative notice callbacks inside handlers.
 
 `/reload` palette ownership is `meta.reload` (Meta/Skills); S012 does not register `config.reload`.
+
+### M004 dynamic command evidence
+
+M004 carries forward runtime-discovered slash-command parity outside the fixed built-in matrix:
+
+- Discovery and metadata: `src/main/pi-session/pi-session-runtime-commands.ts`, `src/main/pi-session/pi-session-runtime.ts`, and `src/shared/pi-session-commands.ts` model Pi extension commands, prompt templates, and skill commands with source, scope, provenance, argument hints, and availability.
+- Palette display: `src/renderer/chat/runtime-command-palette-entries.ts`, `src/renderer/chat/build-command-palette-entries.ts`, and `src/renderer/components/composer.tsx` render dynamic command entries alongside built-ins with visible source labels and unavailable-command guidance.
+- Reload outcomes: `src/main/pi-session/pi-session-runtime.ts`, `src/renderer/chat/meta-command-palette-entries.ts`, `src/renderer/chat/runtime-command-refresh.ts`, and `src/renderer/App.tsx` wire `/reload` to Pi resource reload, replace active runtime command state, and clear stale commands on refresh failure.
+- Verification: `tests/main/pi-session-runtime-commands.test.ts`, `tests/main/pi-session-runtime.test.ts`, `tests/main/app-backend.test.ts`, `tests/renderer/build-command-palette-entries.test.ts`, `tests/renderer/composer-command-palette.test.tsx`, and `tests/renderer/runtime-command-refresh.test.ts` cover metadata, palette display, unavailable guidance, reload requests, state replacement, and failure feedback.
 
 ## Cross-family ownership decisions (S015)
 
@@ -177,15 +188,15 @@ Family slices with deferred commands should return `{ type: "notice", message }`
 | --- | --- | --- |
 | `/import` | Session family (`session.import`) | JSONL import is a session lifecycle action; S011 owns disposition and deferral |
 | `/compact` | Session family (`session.compact`) | Context compaction is session-scoped; S011 owns disposition and deferral |
-| `/reload` | Meta/Skills only (`meta.reload`) | Config-family deferral in S012; S014 registers under Meta/Skills. No `config.reload` row; implementation deferred until extensibility milestone |
+| `/reload` | Meta/Skills only (`meta.reload`) | Config-family deferral in S012; S014 registers under Meta/Skills. No `config.reload` row; M004 S018 wires resource refresh through Pi |
 
 ## Carry-forward and out-of-scope (not in built-in matrix)
 
 | Surface | Disposition | Destination scope | Rationale |
 | --- | --- | --- | --- |
 | `@` mentions | Deferred | Later composer UX milestone | Not a slash command; composer hint documents planned support |
-| Prompt templates (`/<name>`) | Deferred | M0X Extensibility | Runtime-discovered; not fixed built-in rows |
-| Extension commands | Deferred | M0X Extensibility | Runtime-discovered via `extensionRunner` |
-| Skills (`/skill:<name>`) | Deferred | M0X Extensibility | Runtime-discovered when `enableSkillCommands` is on |
+| Prompt templates (`/<name>`) | M004 dynamic palette entry | M004 Dynamic Commands | Runtime-discovered through Pi `promptTemplates`; S016 displays source/provenance and S018 refreshes changed resources |
+| Extension commands | M004 dynamic palette entry | M004 Dynamic Commands | Runtime-discovered via Pi `extensionRunner`; S016 displays source/provenance and S018 refreshes changed resources |
+| Skills (`/skill:<name>`) | M004 dynamic palette entry | M004 Dynamic Commands | Runtime-discovered through Pi skill metadata; unavailable skill commands remain visibly unavailable instead of invokable |
 | `!` / `!!` bash shortcuts | Deferred | M07D Terminal and Command Output | Terminal-specific; see CLI-BASH-010 |
 | `/debug`, easter eggs | Out of scope | — | Not user-facing builtins per S009 exclusion criteria |
