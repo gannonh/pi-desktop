@@ -35,3 +35,48 @@ export type GitStatusResult = {
 	upstreamStatus?: GitUpstreamStatus;
 	ignoredPaths?: string[];
 };
+
+export type GitDiffKind = "unstaged" | "staged" | "branch" | "commit";
+
+export type GitDiffPayload =
+	| {
+			kind: "text";
+			path: string;
+			title: string;
+			patch: string;
+			diffKind: GitDiffKind;
+	  }
+	| {
+			kind: "binary" | "too_large" | "unsupported";
+			path: string;
+			title: string;
+			diffKind: GitDiffKind;
+			message: string;
+	  };
+
+export type GitCommitResult = {
+	sha: string;
+	summary: string;
+};
+
+export type GitBranchCompareFile = {
+	path: string;
+	status: GitFileStatus;
+	oldPath?: string;
+	added?: number;
+	removed?: number;
+};
+
+export type GitBranchCompareResult = {
+	baseRef: string;
+	headRef: string;
+	ahead: number;
+	behind: number;
+	files: GitBranchCompareFile[];
+};
+
+export type SourceControlPullRequestInfo = {
+	title: string;
+	url: string;
+	state: "open" | "closed" | "merged" | "unknown";
+};

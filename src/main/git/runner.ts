@@ -20,8 +20,9 @@ export const gitOptionalLocksDisabledEnv = (sourceEnvironment: NodeJS.ProcessEnv
 export const gitExecFileAsync = async (
 	args: string[],
 	options: GitExecOptions,
+	command = "git",
 ): Promise<{ stdout: string; stderr: string }> => {
-	const { stdout, stderr } = await execFileAsync("git", args, {
+	const { stdout, stderr } = await execFileAsync(command, args, {
 		cwd: options.cwd,
 		env: { ...createGitChildProcessEnvironment(), ...options.env },
 		maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,

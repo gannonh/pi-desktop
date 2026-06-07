@@ -75,6 +75,27 @@ export function FileViewer() {
 		);
 	}
 
+	if (activeTab.kind === "diff") {
+		return (
+			<section className="file-viewer file-viewer--diff" data-testid="file-viewer">
+				<header className="file-viewer__header">
+					<div className="file-viewer__breadcrumbs" data-testid="file-viewer-breadcrumbs">
+						{activeTab.title}
+					</div>
+				</header>
+				{activeTab.diff.kind === "text" ? (
+					<pre className="file-viewer__diff" data-testid="file-diff-viewer">
+						{activeTab.diff.patch}
+					</pre>
+				) : (
+					<div className="file-viewer__diff-empty" data-testid="file-diff-state">
+						<p>{activeTab.diff.message}</p>
+					</div>
+				)}
+			</section>
+		);
+	}
+
 	return (
 		<section className="file-viewer" data-testid="file-viewer">
 			<header className="file-viewer__header">

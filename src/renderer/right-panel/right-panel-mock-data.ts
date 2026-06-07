@@ -51,7 +51,6 @@ export type MarkdownPanelMockData = {
 	content: string;
 };
 
-
 export const resolveTerminalMock = (tab: RightPanelTab): TerminalPanelMockData => ({
 	cwd: tab.subtitle ?? "~/pi-desktop",
 	prompt: "$ pnpm test",
@@ -82,4 +81,3 @@ export const resolveMarkdownMock = (tab: RightPanelTab): MarkdownPanelMockData =
 		"- Tabbed work surfaces on the right",
 	].join("\n"),
 });
-

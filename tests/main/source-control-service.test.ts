@@ -79,4 +79,28 @@ describe("source control service", () => {
 		await expect(service.stage({ projectId, relativePath: "../escape.txt" })).rejects.toThrow();
 		await expect(service.discard({ projectId, relativePath: "../escape.txt" })).rejects.toThrow();
 	});
+
+	it("commits staged changes for a project", async () => {
+		await createRepo();
+		await writeFile(join(repoDir, "README.md"), "# service commit\n", "utf8");
+
+		const service = createService();
+		await service.stage({ projectId, relativePath: "README.md" });
+		const commit = await service.commit({ projectId, message: "Service commit" });
+
+		expect(commit.summary).toBe("Service commit");
+		expect(commit.sha).toMatch(/^[a-f0-9]{40}$/);
+		expect((await service.getStatus({ projectId })).entries).toEqual([]);
+	});
+
+	it("returns guarded diff payloads for project files", async () => {
+		await createRepo();
+		await writeFile(join(repoDir, "README.md"), "# service diff\n", "utf8");
+
+		const service = createService();
+		const diff = await service.getDiff({ projectId, relativePath: "README.md", kind: "unstaged" });
+
+		expect(diff).toMatchObject({ kind: "text", path: "README.md", diffKind: "unstaged" });
+		await expect(service.getDiff({ projectId, relativePath: "../escape.txt", kind: "unstaged" })).rejects.toThrow();
+	});
 });

@@ -2,17 +2,25 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { decodeGitCQuotedPath } from "../../shared/git-cquoted-path";
-import { removeSafeUntrackedDiscardTarget, removeSafeUntrackedDiscardTargets } from "../../shared/git-discard-path-safety";
+import {
+	removeSafeUntrackedDiscardTarget,
+	removeSafeUntrackedDiscardTargets,
+} from "../../shared/git-discard-path-safety";
 import type {
+	GitBranchCompareResult,
+	GitCommitResult,
 	GitConflictOperation,
+	GitDiffPayload,
 	GitFileStatus,
 	GitStatusEntry,
 	GitStatusResult,
 	GitUpstreamStatus,
+	SourceControlPullRequestInfo,
 } from "../../shared/source-control/types";
 import { gitExecFileAsync, gitOptionalLocksDisabledEnv } from "./runner";
 
 const BULK_CHUNK_SIZE = 100;
+const MAX_TEXT_DIFF_BYTES = 512 * 1024;
 
 export type GetStatusOptions = {
 	includeIgnored?: boolean;
@@ -28,14 +36,7 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 	let statusSucceeded = false;
 
 	const conflictPromise = detectConflictOperation(worktreePath);
-	const statusArgs = [
-		"-c",
-		"core.quotePath=false",
-		"status",
-		"--porcelain=v2",
-		"--branch",
-		"--untracked-files=all",
-	];
+	const statusArgs = ["-c", "core.quotePath=false", "status", "--porcelain=v2", "--branch", "--untracked-files=all"];
 	if (options.includeIgnored) {
 		statusArgs.push("--ignored=matching");
 	}
@@ -319,10 +320,9 @@ export const bulkDiscardChanges = async (worktreePath: string, filePaths: string
 		async () => {
 			for (let i = 0; i < trackedPaths.length; i += BULK_CHUNK_SIZE) {
 				const chunk = trackedPaths.slice(i, i + BULK_CHUNK_SIZE);
-				await gitExecFileAsync(
-					["restore", "--worktree", "--source=HEAD", "--", ...chunk.map(literalPathspec)],
-					{ cwd: worktreePath },
-				);
+				await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", ...chunk.map(literalPathspec)], {
+					cwd: worktreePath,
+				});
 			}
 		},
 	);
@@ -352,4 +352,241 @@ export const bulkUnstageFiles = async (worktreePath: string, filePaths: string[]
 		const chunk = filePaths.slice(i, i + BULK_CHUNK_SIZE);
 		await gitExecFileAsync(["restore", "--staged", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
 	}
+};
+
+const currentBranchName = async (worktreePath: string): Promise<string> => {
+	const { stdout } = await gitExecFileAsync(["branch", "--show-current"], { cwd: worktreePath });
+	const branch = stdout.trim();
+	if (!branch) {
+		throw new Error("Cannot determine the current branch.");
+	}
+	return branch;
+};
+
+export const commitStagedChanges = async (worktreePath: string, message: string): Promise<GitCommitResult> => {
+	const summary = message.trim();
+	if (!summary) {
+		throw new Error("Commit message is required.");
+	}
+	await gitExecFileAsync(["commit", "-m", summary], { cwd: worktreePath });
+	const { stdout: shaOutput } = await gitExecFileAsync(["rev-parse", "HEAD"], { cwd: worktreePath });
+	return { sha: shaOutput.trim(), summary };
+};
+
+export type GetDiffInput =
+	| { relativePath: string; kind: "unstaged" | "staged" }
+	| { relativePath: string; kind: "branch"; baseRef: string; headRef: string }
+	| { relativePath: string; kind: "commit"; commitRef: string };
+
+const diffArgsForInput = (input: GetDiffInput): string[] => {
+	const pathspec = literalPathspec(input.relativePath);
+	switch (input.kind) {
+		case "staged":
+			return ["diff", "--cached", "--binary", "--", pathspec];
+		case "unstaged":
+			return ["diff", "--binary", "--", pathspec];
+		case "branch":
+			return ["diff", "--binary", `${input.baseRef}...${input.headRef}`, "--", pathspec];
+		case "commit":
+			return ["show", "--format=", "--binary", input.commitRef, "--", pathspec];
+		default:
+			return assertNever(input);
+	}
+};
+
+const titleForDiff = (input: GetDiffInput): string => {
+	switch (input.kind) {
+		case "staged":
+			return `${input.relativePath} (staged)`;
+		case "unstaged":
+			return `${input.relativePath} (unstaged)`;
+		case "branch":
+			return `${input.relativePath} (${input.baseRef}...${input.headRef})`;
+		case "commit":
+			return `${input.relativePath} (${input.commitRef})`;
+		default:
+			return assertNever(input);
+	}
+};
+
+export const getDiff = async (worktreePath: string, input: GetDiffInput): Promise<GitDiffPayload> => {
+	assertPathWithinWorktree(worktreePath, input.relativePath);
+	const { stdout } = await gitExecFileAsync(diffArgsForInput(input), {
+		cwd: worktreePath,
+		maxBuffer: MAX_TEXT_DIFF_BYTES + 1024,
+	});
+	const title = titleForDiff(input);
+
+	if (
+		stdout.includes("GIT binary patch") ||
+		/^Binary files /m.test(stdout) ||
+		/^diff --git .+\n(?:.*\n)*?Binary files /m.test(stdout)
+	) {
+		return {
+			kind: "binary",
+			path: input.relativePath,
+			title,
+			diffKind: input.kind,
+			message: "Binary file diffs are not displayed.",
+		};
+	}
+
+	if (Buffer.byteLength(stdout, "utf8") > MAX_TEXT_DIFF_BYTES) {
+		return {
+			kind: "too_large",
+			path: input.relativePath,
+			title,
+			diffKind: input.kind,
+			message: "This diff is too large to display.",
+		};
+	}
+
+	return { kind: "text", path: input.relativePath, title, patch: stdout, diffKind: input.kind };
+};
+
+export const getUpstreamStatus = async (worktreePath: string): Promise<GitUpstreamStatus> => {
+	const status = await getStatus(worktreePath);
+	return status.upstreamStatus ?? { hasUpstream: false, ahead: 0, behind: 0 };
+};
+
+export const fetchRemote = async (worktreePath: string): Promise<void> => {
+	await gitExecFileAsync(["fetch", "--all", "--prune"], { cwd: worktreePath });
+};
+
+export const pushRemote = async (worktreePath: string): Promise<void> => {
+	await gitExecFileAsync(["push"], { cwd: worktreePath });
+};
+
+export const pullRemote = async (worktreePath: string): Promise<void> => {
+	await gitExecFileAsync(["pull", "--ff-only"], { cwd: worktreePath });
+};
+
+export const syncRemote = async (worktreePath: string): Promise<void> => {
+	const upstream = await getUpstreamStatus(worktreePath);
+	if (upstream.behind > 0) {
+		await pullRemote(worktreePath);
+	}
+	if (upstream.ahead > 0) {
+		await pushRemote(worktreePath);
+	}
+};
+
+export const fastForwardBranch = async (worktreePath: string): Promise<void> => {
+	await pullRemote(worktreePath);
+};
+
+export const publishBranch = async (worktreePath: string): Promise<void> => {
+	const branch = await currentBranchName(worktreePath);
+	await gitExecFileAsync(["push", "-u", "origin", branch], { cwd: worktreePath });
+};
+
+export const rebaseFromBase = async (worktreePath: string, baseRef = "origin/main"): Promise<void> => {
+	await gitExecFileAsync(["rebase", baseRef], { cwd: worktreePath });
+};
+
+const parseAheadBehind = (stdout: string): { ahead: number; behind: number } => {
+	const [behind, ahead] = stdout.trim().split(/\s+/);
+	return { ahead: Number.parseInt(ahead || "0", 10), behind: Number.parseInt(behind || "0", 10) };
+};
+
+const parseNameStatusLine = (line: string): { status: GitFileStatus; path: string; oldPath?: string } | null => {
+	if (!line) {
+		return null;
+	}
+	const parts = line.split("\t");
+	const statusCode = parts[0];
+	if (!statusCode) {
+		return null;
+	}
+	if (statusCode.startsWith("R")) {
+		return { status: "renamed", oldPath: parts[1], path: parts[2] ?? parts[1] ?? "" };
+	}
+	if (statusCode.startsWith("C")) {
+		return { status: "copied", oldPath: parts[1], path: parts[2] ?? parts[1] ?? "" };
+	}
+	return { status: parseStatusChar(statusCode[0]), path: parts[1] ?? "" };
+};
+
+export const getBranchCompare = async (
+	worktreePath: string,
+	input: { baseRef: string; headRef: string },
+): Promise<GitBranchCompareResult> => {
+	const { stdout: countOutput } = await gitExecFileAsync(
+		["rev-list", "--left-right", "--count", `${input.baseRef}...${input.headRef}`],
+		{ cwd: worktreePath },
+	);
+	const { ahead, behind } = parseAheadBehind(countOutput);
+	const { stdout: filesOutput } = await gitExecFileAsync(
+		["diff", "--name-status", "--find-renames", `${input.baseRef}...${input.headRef}`],
+		{ cwd: worktreePath },
+	);
+	const files = filesOutput
+		.split(/\r?\n/)
+		.map(parseNameStatusLine)
+		.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry?.path));
+	return { baseRef: input.baseRef, headRef: input.headRef, ahead, behind, files };
+};
+
+export const abortConflictOperation = async (
+	worktreePath: string,
+	operation: Exclude<GitConflictOperation, "unknown">,
+): Promise<void> => {
+	switch (operation) {
+		case "merge":
+			await gitExecFileAsync(["merge", "--abort"], { cwd: worktreePath });
+			return;
+		case "rebase":
+			await gitExecFileAsync(["rebase", "--abort"], { cwd: worktreePath });
+			return;
+		case "cherry-pick":
+			await gitExecFileAsync(["cherry-pick", "--abort"], { cwd: worktreePath });
+			return;
+		default:
+			return assertNever(operation);
+	}
+};
+
+const parsePullRequestState = (value: string): SourceControlPullRequestInfo["state"] => {
+	const normalized = value.trim().toLowerCase();
+	if (normalized === "open" || normalized === "closed" || normalized === "merged") {
+		return normalized;
+	}
+	return "unknown";
+};
+
+export const createPullRequest = async (
+	worktreePath: string,
+	input: { title: string; body: string },
+): Promise<SourceControlPullRequestInfo> => {
+	const { stdout } = await gitExecFileAsync(
+		["pr", "create", "--title", input.title, "--body", input.body, "--json", "title,url,state"],
+		{ cwd: worktreePath },
+		"gh",
+	);
+	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string };
+	return {
+		title: parsed.title ?? input.title,
+		url: parsed.url ?? "",
+		state: parsePullRequestState(parsed.state ?? "unknown"),
+	};
+};
+
+export const getPullRequestInfo = async (worktreePath: string): Promise<SourceControlPullRequestInfo> => {
+	const { stdout } = await gitExecFileAsync(
+		["pr", "view", "--json", "title,url,state"],
+		{
+			cwd: worktreePath,
+		},
+		"gh",
+	);
+	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string };
+	return {
+		title: parsed.title ?? "Pull request",
+		url: parsed.url ?? "",
+		state: parsePullRequestState(parsed.state ?? "unknown"),
+	};
+};
+
+const assertNever = (value: never): never => {
+	throw new Error(`Unhandled source control value: ${String(value)}`);
 };

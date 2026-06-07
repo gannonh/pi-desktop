@@ -6,11 +6,19 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
 import {
+	abortConflictOperation,
 	bulkDiscardChanges,
 	bulkStageFiles,
 	bulkUnstageFiles,
+	commitStagedChanges,
 	discardChanges,
+	fetchRemote,
+	getBranchCompare,
+	getDiff,
 	getStatus,
+	getUpstreamStatus,
+	publishBranch,
+	pushRemote,
 	stageFile,
 	unstageFile,
 } from "../../src/main/git/status";
@@ -20,6 +28,12 @@ const execFileAsync = promisify(execFile);
 
 const runGit = (args: string[], cwd: string) =>
 	execFileAsync("git", args, { cwd, env: createGitChildProcessEnvironment() });
+
+const createBareRemote = async () => {
+	const remoteDir = await mkdtemp(join(tmpdir(), "pi-source-control-remote-"));
+	await runGit(["init", "--bare"], remoteDir);
+	return remoteDir;
+};
 
 describe("source control git operations", () => {
 	let repoDir = "";
@@ -117,5 +131,92 @@ describe("source control git operations", () => {
 		const repo = await createRepo();
 		await expect(discardChanges(repo, "../../etc/passwd")).rejects.toThrow(/outside the worktree/);
 		await expect(stageFile(repo, "../escape.txt")).rejects.toBeTruthy();
+	});
+
+	it("commits staged changes and returns the created commit", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), "# committed\n", "utf8");
+		await stageFile(repo, "README.md");
+
+		const result = await commitStagedChanges(repo, "Update readme");
+
+		expect(result.sha).toMatch(/^[a-f0-9]{40}$/);
+		expect(result.summary).toBe("Update readme");
+		expect((await getStatus(repo)).entries).toEqual([]);
+	});
+
+	it("returns text and binary diff payloads", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");
+		await writeFile(join(repo, "asset.bin"), Buffer.from([0, 1, 2, 3]));
+		await stageFile(repo, "asset.bin");
+
+		const textDiff = await getDiff(repo, { relativePath: "README.md", kind: "unstaged" });
+		const binaryDiff = await getDiff(repo, { relativePath: "asset.bin", kind: "staged" });
+
+		expect(textDiff).toMatchObject({ kind: "text", path: "README.md" });
+		if (textDiff.kind !== "text") {
+			throw new Error(`Expected text diff, received ${textDiff.kind}`);
+		}
+		expect(textDiff.patch).toContain("-# hello");
+		expect(textDiff.patch).toContain("+# changed");
+		expect(binaryDiff.kind).toBe("binary");
+	});
+
+	it("tracks upstream status and publishes branches", async () => {
+		const repo = await createRepo();
+		const remote = await createBareRemote();
+		await runGit(["remote", "add", "origin", remote], repo);
+
+		let upstream = await getUpstreamStatus(repo);
+		expect(upstream.hasUpstream).toBe(false);
+
+		await publishBranch(repo);
+		upstream = await getUpstreamStatus(repo);
+		expect(upstream).toMatchObject({ hasUpstream: true, ahead: 0, behind: 0 });
+
+		await writeFile(join(repo, "README.md"), "# local ahead\n", "utf8");
+		await stageFile(repo, "README.md");
+		await commitStagedChanges(repo, "Local ahead");
+		upstream = await getUpstreamStatus(repo);
+		expect(upstream.ahead).toBe(1);
+
+		await pushRemote(repo);
+		upstream = await getUpstreamStatus(repo);
+		expect(upstream.ahead).toBe(0);
+		await fetchRemote(repo);
+	});
+
+	it("returns branch compare metadata and diff entries", async () => {
+		const repo = await createRepo();
+		await runGit(["checkout", "-b", "feature"], repo);
+		await writeFile(join(repo, "feature.txt"), "feature\n", "utf8");
+		await stageFile(repo, "feature.txt");
+		await commitStagedChanges(repo, "Add feature");
+
+		const compare = await getBranchCompare(repo, { baseRef: "main", headRef: "feature" });
+
+		expect(compare).toMatchObject({ baseRef: "main", headRef: "feature", ahead: 1, behind: 0 });
+		expect(compare.files).toContainEqual(expect.objectContaining({ path: "feature.txt", status: "added" }));
+	});
+
+	it("aborts in-progress merge conflicts", async () => {
+		const repo = await createRepo();
+		await runGit(["checkout", "-b", "left"], repo);
+		await writeFile(join(repo, "README.md"), "# left\n", "utf8");
+		await stageFile(repo, "README.md");
+		await commitStagedChanges(repo, "Left change");
+		await runGit(["checkout", "main"], repo);
+		await runGit(["checkout", "-b", "right"], repo);
+		await writeFile(join(repo, "README.md"), "# right\n", "utf8");
+		await stageFile(repo, "README.md");
+		await commitStagedChanges(repo, "Right change");
+
+		await expect(runGit(["merge", "left"], repo)).rejects.toBeTruthy();
+		expect((await getStatus(repo)).conflictOperation).toBe("merge");
+
+		await abortConflictOperation(repo, "merge");
+
+		expect((await getStatus(repo)).conflictOperation).toBe("unknown");
 	});
 });

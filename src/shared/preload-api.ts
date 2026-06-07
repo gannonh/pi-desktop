@@ -43,10 +43,22 @@ import type {
 	WorkspaceWriteFileResult,
 	SourceControlBulkPathsInput,
 	SourceControlCheckIgnoredResult,
+	SourceControlCommitInput,
+	SourceControlCommitResult,
+	SourceControlCreatePullRequestInput,
+	SourceControlBranchCompareInput,
+	SourceControlBranchCompareResult,
+	SourceControlGetDiffInput,
+	SourceControlGetDiffResult,
 	SourceControlGetStatusResult,
 	SourceControlMutationResult,
 	SourceControlPathInput,
 	SourceControlProjectInput,
+	SourceControlPullRequestInfoResult,
+	SourceControlRebaseInput,
+	SourceControlRemoteActionInput,
+	SourceControlAbortConflictInput,
+	SourceControlUpstreamStatusResult,
 } from "./ipc";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
@@ -91,6 +103,20 @@ export interface PiDesktopApi {
 		bulkUnstage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
 		bulkDiscard: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
 		initializeRepository: (input: SourceControlProjectInput) => Promise<SourceControlMutationResult>;
+		commit: (input: SourceControlCommitInput) => Promise<SourceControlCommitResult>;
+		getDiff: (input: SourceControlGetDiffInput) => Promise<SourceControlGetDiffResult>;
+		getUpstreamStatus: (input: SourceControlProjectInput) => Promise<SourceControlUpstreamStatusResult>;
+		fetch: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		push: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		pull: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		sync: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		fastForward: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		publish: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		rebaseFromBase: (input: SourceControlRebaseInput) => Promise<SourceControlMutationResult>;
+		getBranchCompare: (input: SourceControlBranchCompareInput) => Promise<SourceControlBranchCompareResult>;
+		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
+		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
+		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;
 	};
 	clipboard: {
 		writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;

@@ -1,5 +1,12 @@
 import { isMarkdownRelativePath } from "./file-workspace-paths";
-import type { FileEditorTab, FileViewMode, FileWorkspaceState } from "./file-workspace-types";
+import type {
+	FileDiffTab,
+	FileEditorTab,
+	FileViewMode,
+	FileWorkspaceState,
+	FileWorkspaceTab,
+} from "./file-workspace-types";
+import type { GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
 
 export const createInitialFileWorkspaceState = (): FileWorkspaceState => ({
 	expandedPaths: [],
@@ -12,6 +19,9 @@ export const createInitialFileWorkspaceState = (): FileWorkspaceState => ({
 });
 
 const tabIdForPath = (relativePath: string) => `file:${relativePath}`;
+
+const diffTabIdForPath = (kind: GitDiffKind, relativePath: string, suffix?: string) =>
+	["diff", kind, suffix, relativePath].filter(Boolean).join(":");
 
 const basename = (relativePath: string) => relativePath.split("/").at(-1) ?? relativePath;
 
@@ -63,19 +73,22 @@ export const selectExplorerPath = (state: FileWorkspaceState, relativePath: stri
 });
 
 export const openFileTab = (state: FileWorkspaceState, relativePath: string): FileWorkspaceState => {
-	const existing = state.tabs.find((tab) => tab.relativePath === relativePath);
+	const existing = state.tabs.find((tab) => tab.kind !== "diff" && tab.relativePath === relativePath);
 	if (existing) {
 		return {
 			...state,
 			selectedPath: relativePath,
 			activeTabId: existing.id,
 			tabs: state.tabs.map((tab) =>
-				tab.id === existing.id ? { ...tab, status: tab.status === "loaded" ? tab.status : "loading" } : tab,
+				tab.id === existing.id && tab.kind !== "diff"
+					? { ...tab, status: tab.status === "loaded" ? tab.status : "loading" }
+					: tab,
 			),
 		};
 	}
 
 	const tab: FileEditorTab = {
+		kind: "file",
 		id: tabIdForPath(relativePath),
 		relativePath,
 		title: basename(relativePath),
@@ -94,6 +107,50 @@ export const openFileTab = (state: FileWorkspaceState, relativePath: string): Fi
 		activeTabId: tab.id,
 	};
 };
+
+export const openDiffTab = (
+	state: FileWorkspaceState,
+	input: { relativePath: string; kind: GitDiffKind; diff: GitDiffPayload; suffix?: string },
+): FileWorkspaceState => {
+	const tabId = diffTabIdForPath(input.kind, input.relativePath, input.suffix);
+	const existing = state.tabs.find((tab) => tab.id === tabId);
+	if (existing) {
+		return {
+			...state,
+			selectedPath: input.relativePath,
+			activeTabId: existing.id,
+			tabs: state.tabs.map((tab) =>
+				tab.id === existing.id && tab.kind === "diff"
+					? { ...tab, title: input.diff.title, diff: input.diff, buffer: diffBufferForPayload(input.diff) }
+					: tab,
+			),
+		};
+	}
+
+	const tab: FileDiffTab = {
+		kind: "diff",
+		id: tabId,
+		relativePath: input.relativePath,
+		title: input.diff.title,
+		dirty: false,
+		savedContent: diffBufferForPayload(input.diff),
+		buffer: diffBufferForPayload(input.diff),
+		status: "loaded",
+		viewMode: "source",
+		readOnly: true,
+		diffKind: input.kind,
+		diff: input.diff,
+	};
+
+	return {
+		...state,
+		selectedPath: input.relativePath,
+		tabs: [...state.tabs, tab],
+		activeTabId: tab.id,
+	};
+};
+
+const diffBufferForPayload = (diff: GitDiffPayload): string => (diff.kind === "text" ? diff.patch : diff.message);
 
 export const setActiveFileTab = (state: FileWorkspaceState, tabId: string): FileWorkspaceState => {
 	const tab = state.tabs.find((candidate) => candidate.id === tabId);
@@ -115,6 +172,9 @@ export const applyFileLoadResult = (
 	...state,
 	tabs: state.tabs.map((tab) => {
 		if (tab.relativePath !== relativePath) {
+			return tab;
+		}
+		if (tab.kind === "diff") {
 			return tab;
 		}
 
@@ -152,7 +212,9 @@ export const applyFileLoadError = (
 ): FileWorkspaceState => ({
 	...state,
 	tabs: state.tabs.map((tab) =>
-		tab.relativePath === relativePath ? { ...tab, status: "error", errorMessage: message } : tab,
+		tab.relativePath === relativePath && tab.kind !== "diff"
+			? { ...tab, status: "error", errorMessage: message }
+			: tab,
 	),
 });
 
@@ -160,6 +222,9 @@ export const updateFileBuffer = (state: FileWorkspaceState, tabId: string, buffe
 	...state,
 	tabs: state.tabs.map((tab) => {
 		if (tab.id !== tabId) {
+			return tab;
+		}
+		if (tab.kind === "diff") {
 			return tab;
 		}
 		const dirty = tab.savedContent !== null ? buffer !== tab.savedContent : buffer.length > 0;
@@ -178,7 +243,7 @@ export const setFileViewMode = (
 	viewMode: FileViewMode,
 ): FileWorkspaceState => ({
 	...state,
-	tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, viewMode } : tab)),
+	tabs: state.tabs.map((tab) => (tab.id === tabId && tab.kind !== "diff" ? { ...tab, viewMode } : tab)),
 });
 
 export const markFileSaved = (state: FileWorkspaceState, tabId: string, content: string): FileWorkspaceState => {
@@ -189,7 +254,7 @@ export const markFileSaved = (state: FileWorkspaceState, tabId: string, content:
 		saveStatus: "idle",
 		saveMessage: undefined,
 		tabs: state.tabs.map((tab) =>
-			tab.id === tabId
+			tab.id === tabId && tab.kind !== "diff"
 				? {
 						...tab,
 						buffer: savedCurrentBuffer ? content : tab.buffer,
@@ -230,7 +295,7 @@ export const closeFileTab = (state: FileWorkspaceState, tabId: string): FileWork
 
 export const resetFileWorkspaceState = (): FileWorkspaceState => createInitialFileWorkspaceState();
 
-export const getActiveFileTab = (state: FileWorkspaceState): FileEditorTab | null => {
+export const getActiveFileTab = (state: FileWorkspaceState): FileWorkspaceTab | null => {
 	if (!state.activeTabId) {
 		return null;
 	}

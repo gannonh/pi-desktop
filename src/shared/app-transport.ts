@@ -43,10 +43,22 @@ import {
 	WorkspaceWriteFileResultSchema,
 	SourceControlBulkPathsInputSchema,
 	SourceControlCheckIgnoredResultSchema,
+	SourceControlCommitInputSchema,
+	SourceControlCommitResultSchema,
+	SourceControlCreatePullRequestInputSchema,
+	SourceControlBranchCompareInputSchema,
+	SourceControlBranchCompareResultSchema,
+	SourceControlGetDiffInputSchema,
+	SourceControlGetDiffResultSchema,
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPathInputSchema,
 	SourceControlProjectInputSchema,
+	SourceControlRebaseInputSchema,
+	SourceControlRemoteActionInputSchema,
+	SourceControlAbortConflictInputSchema,
+	SourceControlPullRequestInfoResultSchema,
+	SourceControlUpstreamStatusResultSchema,
 } from "./ipc";
 
 export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
@@ -145,6 +157,62 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		operation: z.literal("sourceControl.initializeRepository"),
 		input: SourceControlProjectInputSchema,
 	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.commit"),
+		input: SourceControlCommitInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getDiff"),
+		input: SourceControlGetDiffInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getUpstreamStatus"),
+		input: SourceControlProjectInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.fetch"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.push"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.pull"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.sync"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.fastForward"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.publish"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.rebaseFromBase"),
+		input: SourceControlRebaseInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getBranchCompare"),
+		input: SourceControlBranchCompareInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.abortConflict"),
+		input: SourceControlAbortConflictInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.createPullRequest"),
+		input: SourceControlCreatePullRequestInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getPullRequestInfo"),
+		input: SourceControlProjectInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -198,6 +266,20 @@ export const AppRpcResponseSchemas = {
 	"sourceControl.bulkUnstage": SourceControlMutationResultSchema,
 	"sourceControl.bulkDiscard": SourceControlMutationResultSchema,
 	"sourceControl.initializeRepository": SourceControlMutationResultSchema,
+	"sourceControl.commit": SourceControlCommitResultSchema,
+	"sourceControl.getDiff": SourceControlGetDiffResultSchema,
+	"sourceControl.getUpstreamStatus": SourceControlUpstreamStatusResultSchema,
+	"sourceControl.fetch": SourceControlMutationResultSchema,
+	"sourceControl.push": SourceControlMutationResultSchema,
+	"sourceControl.pull": SourceControlMutationResultSchema,
+	"sourceControl.sync": SourceControlMutationResultSchema,
+	"sourceControl.fastForward": SourceControlMutationResultSchema,
+	"sourceControl.publish": SourceControlMutationResultSchema,
+	"sourceControl.rebaseFromBase": SourceControlMutationResultSchema,
+	"sourceControl.getBranchCompare": SourceControlBranchCompareResultSchema,
+	"sourceControl.abortConflict": SourceControlMutationResultSchema,
+	"sourceControl.createPullRequest": SourceControlPullRequestInfoResultSchema,
+	"sourceControl.getPullRequestInfo": SourceControlPullRequestInfoResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

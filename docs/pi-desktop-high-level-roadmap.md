@@ -429,23 +429,24 @@ Acceptance:
 - Desktop implementation claims cite `src/` evidence first, then ADR/spec/roadmap evidence when needed.
 - The roadmap no longer contains stale current-planning statements.
 
-### M07C: Right Panel - Diff and Patch Review
+### M07C: Right Panel - Changes and Source Control
 
-Goal: make file and code changes inspectable from the right panel before commit-oriented workflows.
+Goal: make local Git changes inspectable and actionable from the right panel before PR-review workflows.
 
 Deliverables:
 
-- Changed-file list for the active project where Git metadata is available.
-- Readable text diffs for modified files.
-- Clear states for untracked, binary, deleted, too-large, and unavailable files.
-- Open-in-files-workspace affordance for changed files.
-- Refresh and error handling for Git/runtime failures.
-- Tests for diff loading, empty state, unavailable repository state, and binary/unsupported file handling.
+- Live staged, unstaged, and untracked changed-file sections for the active project.
+- Stage, unstage, discard, bulk stage, commit, remote sync, branch compare, and conflict-abort actions.
+- Readable unified diff tabs in the file workspace for working-tree, staged, and branch-compare files.
+- GitHub-only pull request creation/link affordance from Changes; full PR review remains deferred.
+- Clear states for clean repos, non-git projects, binary/too-large diffs, Git failures, and unavailable source-control prerequisites.
+- Tests for Git parsing/mutations, project-root confinement, Changes panel states, commit flow, diff tabs, branch compare, PR API wiring, and conflict abort.
 
 Acceptance:
 
-- User can inspect changed project files from the right panel while chat remains active.
-- User can read diffs for supported text files.
+- User can inspect, stage, commit, sync, compare, and open changed project files from the right panel while chat remains active.
+- User can read diffs for supported text files and sees dedicated states for unsupported diff payloads.
+- User can create a GitHub PR when `gh` is authenticated and the repository remote supports it.
 - Git or filesystem failures display visibly.
 - The feature does not expose arbitrary filesystem access outside the selected project root.
 

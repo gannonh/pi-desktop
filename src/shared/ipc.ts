@@ -123,6 +123,20 @@ export const IpcChannels = {
 	sourceControlBulkUnstage: "source-control:bulkUnstage",
 	sourceControlBulkDiscard: "source-control:bulkDiscard",
 	sourceControlInitializeRepository: "source-control:initializeRepository",
+	sourceControlCommit: "source-control:commit",
+	sourceControlGetDiff: "source-control:getDiff",
+	sourceControlGetUpstreamStatus: "source-control:getUpstreamStatus",
+	sourceControlFetch: "source-control:fetch",
+	sourceControlPush: "source-control:push",
+	sourceControlPull: "source-control:pull",
+	sourceControlSync: "source-control:sync",
+	sourceControlFastForward: "source-control:fastForward",
+	sourceControlPublish: "source-control:publish",
+	sourceControlRebaseFromBase: "source-control:rebaseFromBase",
+	sourceControlGetBranchCompare: "source-control:getBranchCompare",
+	sourceControlAbortConflict: "source-control:abortConflict",
+	sourceControlCreatePullRequest: "source-control:createPullRequest",
+	sourceControlGetPullRequestInfo: "source-control:getPullRequestInfo",
 	clipboardWriteText: "clipboard:writeText",
 } as const;
 
@@ -188,12 +202,24 @@ export {
 };
 
 export {
+	SourceControlAbortConflictInputSchema,
+	SourceControlBranchCompareInputSchema,
 	SourceControlBulkPathsInputSchema,
 	SourceControlCheckIgnoredResultSchema,
+	SourceControlCommitInputSchema,
+	SourceControlCommitResultSchema,
+	SourceControlCreatePullRequestInputSchema,
+	SourceControlBranchCompareResultSchema,
+	SourceControlGetDiffInputSchema,
+	SourceControlGetDiffResultSchema,
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPathInputSchema,
 	SourceControlProjectInputSchema,
+	SourceControlRebaseInputSchema,
+	SourceControlRemoteActionInputSchema,
+	SourceControlPullRequestInfoResultSchema,
+	SourceControlUpstreamStatusResultSchema,
 } from "./source-control/schemas";
 
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
@@ -273,10 +299,22 @@ export type {
 };
 
 export type {
+	SourceControlAbortConflictInput,
+	SourceControlBranchCompareInput,
+	SourceControlBranchCompareResult,
 	SourceControlBulkPathsInput,
 	SourceControlCheckIgnoredResult,
+	SourceControlCommitInput,
+	SourceControlCommitResult,
+	SourceControlCreatePullRequestInput,
+	SourceControlGetDiffInput,
+	SourceControlGetDiffResult,
 	SourceControlGetStatusResult,
 	SourceControlMutationResult,
 	SourceControlPathInput,
 	SourceControlProjectInput,
+	SourceControlPullRequestInfoResult,
+	SourceControlRebaseInput,
+	SourceControlRemoteActionInput,
+	SourceControlUpstreamStatusResult,
 } from "./source-control/schemas";

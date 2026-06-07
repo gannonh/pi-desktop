@@ -10,6 +10,7 @@ import {
 	getActiveFileTab,
 	hasDirtyTabs,
 	markFileSaved,
+	openDiffTab,
 	openFileTab,
 	resetFileWorkspaceState,
 	selectExplorerPath,
@@ -26,6 +27,7 @@ import { registerFileWorkspaceDiscardConfirm } from "./file-workspace-guard";
 import { useRightPanel } from "../right-panel/right-panel-context";
 import { FILE_WORKSPACE_VIEW_ID } from "../right-panel/workspace-tab-ids";
 import type { FileViewMode, FileWorkspaceState } from "./file-workspace-types";
+import type { GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
 
 type FileWorkspaceContextValue = {
 	project: ProjectRecord | null;
@@ -33,6 +35,7 @@ type FileWorkspaceContextValue = {
 	activeTab: ReturnType<typeof getActiveFileTab>;
 	toggleDirectory: (relativePath: string) => void;
 	selectExplorerItem: (relativePath: string, kind: "file" | "directory") => void;
+	openDiff: (input: { relativePath: string; kind: GitDiffKind; diff: GitDiffPayload; suffix?: string }) => void;
 	setActiveTab: (tabId: string) => void;
 	closeTab: (tabId: string, force?: boolean) => boolean;
 	updateBuffer: (tabId: string, buffer: string) => void;
@@ -235,7 +238,7 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 		}
 
 		const tab = getActiveFileTab(stateRef.current);
-		if (!tab || tab.readOnly || !tab.dirty) {
+		if (!tab || tab.kind === "diff" || tab.readOnly || !tab.dirty) {
 			return;
 		}
 
@@ -280,6 +283,15 @@ export function FileWorkspaceProvider({ project, children }: FileWorkspaceProvid
 			activeTab: getActiveFileTab(state),
 			toggleDirectory,
 			selectExplorerItem,
+			openDiff: (input) => {
+				setState((current) => {
+					const next = openDiffTab(current, input);
+					if (next.activeTabId) {
+						selectWorkspaceTab(next.activeTabId);
+					}
+					return next;
+				});
+			},
 			setActiveTab: (tabId) => {
 				setState((current) => setActiveFileTab(current, tabId));
 				selectWorkspaceTab(tabId);
