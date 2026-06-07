@@ -387,7 +387,10 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 							sessionPath: target.sessionPath,
 						});
 						if (attached.sessionId !== parsed.expectedSessionId) {
-							throw new Error("Pi session attach returned an unexpected session id.");
+							await piSessionRuntime.dispose({ sessionId: attached.sessionId });
+							throw new Error(
+								`Pi session attach returned an unexpected session id: expected ${parsed.expectedSessionId}, received ${attached.sessionId}.`,
+							);
 						}
 						return attached;
 					});

@@ -182,4 +182,38 @@ describe("prepareRuntimeSessionForComposer", () => {
 
 		expect(onPrepared).not.toHaveBeenCalled();
 	});
+
+	it("returns the prepared session id when command discovery fails", async () => {
+		const onPrepared = vi.fn();
+		const prepareSession = vi.fn(async () => ({
+			ok: true as const,
+			data: {
+				sessionId: "session:one",
+				projectId: "project:/tmp/pi-desktop",
+				chatId: "chat:one",
+				workspacePath: "/tmp/pi-desktop",
+				sessionPath: "/tmp/pi-desktop/.pi/sessions/session.json",
+				status: "idle" as const,
+				resumed: false,
+			},
+		}));
+		const requestCommands = vi.fn(async () => ({
+			ok: false as const,
+			error: createIpcError("pi_session.operation_failed", "Command fetch failed"),
+		}));
+
+		await expect(
+			prepareRuntimeSessionForComposer({
+				projectId: "project:/tmp/pi-desktop",
+				chatId: "chat:one",
+				prepareSession,
+				requestCommands,
+				isStillActive: () => true,
+				onPrepared,
+			}),
+		).resolves.toBe("session:one");
+
+		expect(requestCommands).toHaveBeenCalledWith({ sessionId: "session:one" });
+		expect(onPrepared).not.toHaveBeenCalled();
+	});
 });
