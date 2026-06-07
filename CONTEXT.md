@@ -95,6 +95,14 @@ _Avoid_: In-session project switcher
 **Composer project selection**:
 Selecting a project from the composer selects that project and shows the **project start** composer. It does not create a chat row before the first prompt.
 
+**Changes**:
+The right-panel tool tab for local git source control on the selected project: inspect working-tree changes, stage, commit, sync, compare branches, and create or link GitHub pull requests. Chat stays active in the center column.
+_Avoid_: Diffs tab (legacy internal kind name), Checks panel
+
+**PR review**:
+The deferred right-panel tool tab for hosted pull request review: CI checks, threaded comments, merge and conflict triage. Not part of the Changes milestone; the old Changes mock incorrectly mixed this surface with local git.
+_Avoid_: Checks (Orca internal name), PR section inside Changes
+
 ## Example dialogue
 
 **Dev:** What model should a new chat in a project use?
