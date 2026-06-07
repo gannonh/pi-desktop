@@ -4,8 +4,10 @@ import {
 	addOrActivateRightPanelTab,
 	addRightPanelTab,
 	createDefaultRightPanelState,
+	isWorkspaceFilesActive,
 	removeRightPanelTab,
 	selectRightPanelTab,
+	selectWorkspaceFileTab,
 } from "../../src/renderer/right-panel/right-panel-state";
 import type { RightPanelKind } from "../../src/renderer/right-panel/right-panel-types";
 
@@ -57,6 +59,14 @@ describe("right panel state", () => {
 
 		expect(next.tabs).toHaveLength(3);
 		expect(next.activeTabId).toBe("file-workspace:view");
+	});
+
+	it("activates the file workspace for diff tabs", () => {
+		const next = selectWorkspaceFileTab(createDefaultRightPanelState(), "diff:unstaged:README.md");
+
+		expect(next.activeTabId).toBe("diff:unstaged:README.md");
+		expect(isWorkspaceFilesActive(next)).toBe(true);
+		expect(next.collapsed).toBe(false);
 	});
 
 	it("adds a tab by kind and activates it", () => {
