@@ -665,6 +665,30 @@ export const installDevPreviewApi = () => {
 					},
 				};
 			},
+			prepare: async ({ projectId, chatId }) => ({
+				ok: true,
+				data: {
+					sessionId: `${projectId ?? "standalone"}:${chatId ?? "preview"}:prepared`,
+					projectId,
+					chatId,
+					workspacePath: "/tmp/pi-desktop-preview",
+					sessionPath: null,
+					status: "idle" as const,
+					resumed: false,
+				},
+			}),
+			attach: async ({ projectId, chatId, expectedSessionId }) => ({
+				ok: true,
+				data: {
+					sessionId: expectedSessionId,
+					projectId,
+					chatId,
+					workspacePath: "/tmp/pi-desktop-preview",
+					sessionPath: null,
+					status: "idle" as const,
+					resumed: true,
+				},
+			}),
 			dispose: async ({ sessionId }) => {
 				clearPendingPreviewStream(sessionId);
 				return {

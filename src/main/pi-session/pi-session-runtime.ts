@@ -66,11 +66,14 @@ type CreateAgentSessionResult = {
 	agentSession?: AgentSession;
 };
 
-type RuntimeStartInput = {
+type RuntimeAttachInput = {
 	projectId: string | null;
 	chatId: string | null;
 	workspacePath: string;
 	sessionPath?: string | null;
+};
+
+type RuntimeStartInput = RuntimeAttachInput & {
 	prompt: string;
 	images?: PiSessionImageContent[];
 	modelProvider?: string;
@@ -104,7 +107,11 @@ type RuntimeDeps = {
 type RuntimeEntry = {
 	session: PiSdkSession;
 	agentSession: AgentSession | null;
+	projectId: string | null;
+	chatId: string | null;
 	workspacePath: string;
+	sessionPath: string | null;
+	recorded: boolean;
 	status: PiSessionStatus;
 	unsubscribe: () => void;
 	idle: Promise<void>;
@@ -372,8 +379,97 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 		}
 	};
 
+	const subscribeRuntimeSession = (sessionId: string, session: PiSdkSession) =>
+		session.subscribe((event) => {
+			if (event.type === "queue_update") {
+				const entry = sessions.get(sessionId);
+				if (!entry || entry.disposed || entry.suppressQueueUpdates) {
+					return;
+				}
+				emitQueueUpdate(sessionId, entry);
+				return;
+			}
+			if (event.type === "thinking_level_changed") {
+				const entry = sessions.get(sessionId);
+				if (!entry || entry.disposed) {
+					return;
+				}
+				void emitSessionSettings(sessionId, entry);
+				return;
+			}
+
+			for (const normalized of normalizePiSessionEvent({ sessionId, event, now: deps.now })) {
+				const entry = sessions.get(sessionId);
+				if (!entry || entry.disposed) {
+					return;
+				}
+				if (normalized.type === "status") {
+					entry.status = normalized.status;
+				} else if (normalized.type === "runtime_error") {
+					entry.status = "failed";
+				}
+				deps.emit(normalized);
+			}
+		});
+
+	const findIdlePreparedEntry = (
+		input: RuntimeAttachInput,
+	): { sessionId: string; entry: RuntimeEntry } | undefined => {
+		for (const [sessionId, entry] of sessions) {
+			if (
+				entry.disposed ||
+				entry.activePromptToken !== null ||
+				entry.status !== "idle" ||
+				entry.projectId !== input.projectId ||
+				entry.chatId !== input.chatId ||
+				entry.workspacePath !== input.workspacePath
+			) {
+				continue;
+			}
+			return { sessionId, entry };
+		}
+		return undefined;
+	};
+
+	const openRuntimeSession = async (
+		input: RuntimeAttachInput,
+	): Promise<{
+		created: CreateAgentSessionResult;
+		sessionManager: RuntimeSessionManager;
+		sessionId: string;
+	}> => {
+		const sessionManager = createSessionManager({
+			cwd: input.workspacePath,
+			sessionPath: input.sessionPath ?? undefined,
+			env: deps.env,
+		});
+		const created = await createAgentSession({
+			cwd: input.workspacePath,
+			sessionManager,
+		});
+		await created.session.bindExtensions({});
+		const sessionId = createDesktopSessionId(input.projectId, created.session.sessionId);
+		return { created, sessionManager, sessionId };
+	};
+
 	return {
 		async start(input: RuntimeStartInput): Promise<PiSessionStartPayload> {
+			const reusable = findIdlePreparedEntry(input);
+			if (reusable) {
+				schedulePrompt(reusable.sessionId, input.prompt, input.images);
+				await emitSessionSettings(reusable.sessionId, reusable.entry);
+				emitQueueUpdate(reusable.sessionId, reusable.entry);
+				return {
+					sessionId: reusable.sessionId,
+					projectId: input.projectId,
+					chatId: input.chatId,
+					workspacePath: input.workspacePath,
+					sessionPath: reusable.entry.sessionPath,
+					status: "running",
+					resumed: Boolean(input.sessionPath),
+				};
+			}
+
 			let created: CreateAgentSessionResult | undefined;
 			let sessionManager: RuntimeSessionManager | undefined;
 			try {
@@ -397,41 +493,15 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 			}
 
 			const sessionId = createDesktopSessionId(input.projectId, created.session.sessionId);
-			const unsubscribe = created.session.subscribe((event) => {
-				if (event.type === "queue_update") {
-					const entry = sessions.get(sessionId);
-					if (!entry || entry.disposed || entry.suppressQueueUpdates) {
-						return;
-					}
-					emitQueueUpdate(sessionId, entry);
-					return;
-				}
-				if (event.type === "thinking_level_changed") {
-					const entry = sessions.get(sessionId);
-					if (!entry || entry.disposed) {
-						return;
-					}
-					void emitSessionSettings(sessionId, entry);
-					return;
-				}
-
-				for (const normalized of normalizePiSessionEvent({ sessionId, event, now: deps.now })) {
-					const entry = sessions.get(sessionId);
-					if (!entry || entry.disposed) {
-						return;
-					}
-					if (normalized.type === "status") {
-						entry.status = normalized.status;
-					} else if (normalized.type === "runtime_error") {
-						entry.status = "failed";
-					}
-					deps.emit(normalized);
-				}
-			});
+			const unsubscribe = subscribeRuntimeSession(sessionId, created.session);
 			const entry: RuntimeEntry = {
 				session: created.session,
 				agentSession: created.agentSession ?? null,
+				projectId: input.projectId,
+				chatId: input.chatId,
 				workspacePath: input.workspacePath,
+				sessionPath: sessionManager.getSessionFile() ?? input.sessionPath ?? null,
+				recorded: false,
 				status: "running",
 				unsubscribe,
 				idle: Promise.resolve(),
@@ -451,10 +521,88 @@ export const createPiSessionRuntime = (deps: RuntimeDeps) => {
 				projectId: input.projectId,
 				chatId: input.chatId,
 				workspacePath: input.workspacePath,
-				sessionPath: sessionManager.getSessionFile() ?? input.sessionPath ?? null,
+				sessionPath: entry.sessionPath,
 				status: "running",
 				resumed: Boolean(input.sessionPath),
 			};
+		},
+
+		async prepare(input: RuntimeAttachInput): Promise<PiSessionStartPayload> {
+			const reusable = findIdlePreparedEntry(input);
+			if (reusable) {
+				return {
+					sessionId: reusable.sessionId,
+					projectId: input.projectId,
+					chatId: input.chatId,
+					workspacePath: input.workspacePath,
+					sessionPath: reusable.entry.sessionPath,
+					status: reusable.entry.status,
+					resumed: Boolean(input.sessionPath),
+				};
+			}
+
+			let created: CreateAgentSessionResult | undefined;
+			let sessionManager: RuntimeSessionManager | undefined;
+			try {
+				({ created, sessionManager } = await openRuntimeSession(input));
+			} catch (error) {
+				created?.session.dispose();
+				deps.emit(createRuntimeErrorEvent({ code: "pi.session_prepare_failed", error, now: deps.now }));
+				throw error;
+			}
+
+			const sessionId = createDesktopSessionId(input.projectId, created.session.sessionId);
+			const unsubscribe = subscribeRuntimeSession(sessionId, created.session);
+			const entry: RuntimeEntry = {
+				session: created.session,
+				agentSession: created.agentSession ?? null,
+				projectId: input.projectId,
+				chatId: input.chatId,
+				workspacePath: input.workspacePath,
+				sessionPath: sessionManager.getSessionFile() ?? input.sessionPath ?? null,
+				recorded: false,
+				status: "idle",
+				unsubscribe,
+				idle: Promise.resolve(),
+				activePromptToken: null,
+				abortedPromptToken: null,
+				scheduledPrompt: null,
+				suppressQueueUpdates: false,
+				disposed: false,
+			};
+			sessions.set(sessionId, entry);
+			emitStatus(sessionId, "idle", "Idle");
+			await emitSessionSettings(sessionId, entry);
+			emitQueueUpdate(sessionId, entry);
+			return {
+				sessionId,
+				projectId: input.projectId,
+				chatId: input.chatId,
+				workspacePath: input.workspacePath,
+				sessionPath: entry.sessionPath,
+				status: "idle",
+				resumed: Boolean(input.sessionPath),
+			};
+		},
+
+		getSessionRecordingTarget(sessionId: string) {
+			const entry = sessions.get(sessionId);
+			if (!entry || entry.disposed || entry.recorded) {
+				return null;
+			}
+			return {
+				projectId: entry.projectId,
+				chatId: entry.chatId,
+				sessionPath: entry.sessionPath,
+				recorded: entry.recorded,
+			};
+		},
+
+		markSessionRecorded(sessionId: string) {
+			const entry = sessions.get(sessionId);
+			if (entry && !entry.disposed) {
+				entry.recorded = true;
+			}
 		},
 
 		async submit(input: PiSessionSubmitInput): Promise<PiSessionActionPayload> {

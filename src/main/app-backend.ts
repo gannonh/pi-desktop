@@ -9,6 +9,8 @@ import {
 	ChatStandaloneCreateInputSchema,
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
+	PiSessionAttachInputSchema,
+	PiSessionPrepareInputSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionGetDefaultSettingsInputSchema,
 	PiSessionGetRuntimeCommandsInputSchema,
@@ -303,6 +305,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 								sessionPath: started.sessionPath,
 								status: toChatStatus(started.status),
 							});
+							piSessionRuntime.markSessionRecorded(started.sessionId);
 							return { ...started, chatId: recorded.chatId };
 						} catch (error) {
 							await piSessionRuntime.dispose({ sessionId: started.sessionId }).catch((disposeError) => {
@@ -312,9 +315,29 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						}
 					});
 				case "piSession.submit":
-					return handlePiSessionOperation(() =>
-						piSessionRuntime.submit(PiSessionSubmitInputSchema.parse(request.input)),
-					);
+					return handlePiSessionOperation(async () => {
+						const parsed = PiSessionSubmitInputSchema.parse(request.input);
+						const submitted = await piSessionRuntime.submit(parsed);
+						const recordingTarget = piSessionRuntime.getSessionRecordingTarget(parsed.sessionId);
+						if (recordingTarget?.sessionPath) {
+							try {
+								await deps.projectService.recordSessionStarted({
+									projectId: recordingTarget.projectId,
+									chatId: recordingTarget.chatId,
+									sessionId: parsed.sessionId,
+									sessionPath: recordingTarget.sessionPath,
+									status: toChatStatus(submitted.status),
+								});
+								piSessionRuntime.markSessionRecorded(parsed.sessionId);
+							} catch (error) {
+								await piSessionRuntime.dispose({ sessionId: parsed.sessionId }).catch((disposeError) => {
+									console.error("Failed to dispose Pi session after metadata recording failed.", disposeError);
+								});
+								throw error;
+							}
+						}
+						return submitted;
+					});
 				case "piSession.abort":
 					return handlePiSessionOperation(() =>
 						piSessionRuntime.abort(PiSessionAbortInputSchema.parse(request.input)),
@@ -335,6 +358,41 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 							sessionPath: target.sessionPath,
 							env: deps.env,
 						});
+					});
+				case "piSession.prepare":
+					return handlePiSessionOperation(async () => {
+						const parsed = PiSessionPrepareInputSchema.parse(request.input);
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
+							chatId: parsed.chatId,
+						});
+						return piSessionRuntime.prepare({
+							projectId: target.projectId,
+							chatId: target.chatId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
+						});
+					});
+				case "piSession.attach":
+					return handlePiSessionOperation(async () => {
+						const parsed = PiSessionAttachInputSchema.parse(request.input);
+						const target = await deps.projectService.getSessionStartTarget({
+							projectId: parsed.projectId,
+							chatId: parsed.chatId,
+						});
+						const attached = await piSessionRuntime.prepare({
+							projectId: target.projectId,
+							chatId: target.chatId,
+							workspacePath: target.workspacePath,
+							sessionPath: target.sessionPath,
+						});
+						if (attached.sessionId !== parsed.expectedSessionId) {
+							await piSessionRuntime.dispose({ sessionId: attached.sessionId });
+							throw new Error(
+								`Pi session attach returned an unexpected session id: expected ${parsed.expectedSessionId}, received ${attached.sessionId}.`,
+							);
+						}
+						return attached;
 					});
 				case "piSession.dispose":
 					return handlePiSessionOperation(async () => {

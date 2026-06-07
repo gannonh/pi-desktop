@@ -1,3 +1,4 @@
+import type { PiSessionPrepareInput, PiSessionStartResult } from "../../shared/pi-session";
 import type {
 	PiSessionGetRuntimeCommandsInput,
 	PiSessionRuntimeCommand,
@@ -35,4 +36,79 @@ export async function refreshRuntimeCommandPalette({
 	}
 	replaceCommands([]);
 	notify?.(result.error.message, "error");
+}
+
+export type RestoreRuntimeCommandsAfterHydrationOptions = {
+	sessionId: string;
+	requestCommands: RuntimeCommandRefreshOptions["requestCommands"];
+	attachSession?: () => Promise<{ ok: boolean }>;
+	isStillActive: () => boolean;
+	onRestored: (sessionId: string, commands: PiSessionRuntimeCommand[]) => void;
+};
+
+export async function restoreRuntimeCommandsAfterHydration({
+	sessionId,
+	requestCommands,
+	attachSession,
+	isStillActive,
+	onRestored,
+}: RestoreRuntimeCommandsAfterHydrationOptions): Promise<void> {
+	let result = await requestCommands({ sessionId });
+	if (!isStillActive()) {
+		return;
+	}
+
+	if (!result.ok && attachSession) {
+		const attached = await attachSession();
+		if (!isStillActive()) {
+			return;
+		}
+		if (attached.ok) {
+			result = await requestCommands({ sessionId });
+		}
+	}
+
+	if (!isStillActive() || !result.ok) {
+		return;
+	}
+
+	onRestored(sessionId, result.data.commands);
+}
+
+export type PrepareRuntimeSessionForComposerOptions = {
+	projectId: string | null;
+	chatId: string | null;
+	prepareSession: (input: PiSessionPrepareInput) => Promise<PiSessionStartResult>;
+	requestCommands: RuntimeCommandRefreshOptions["requestCommands"];
+	isStillActive: () => boolean;
+	onPrepared: (sessionId: string, commands: PiSessionRuntimeCommand[]) => void;
+};
+
+export async function prepareRuntimeSessionForComposer({
+	projectId,
+	chatId,
+	prepareSession,
+	requestCommands,
+	isStillActive,
+	onPrepared,
+}: PrepareRuntimeSessionForComposerOptions): Promise<string | null> {
+	const prepared = await prepareSession({ projectId, chatId });
+	if (!isStillActive()) {
+		return null;
+	}
+	if (!prepared.ok) {
+		return null;
+	}
+
+	const sessionId = prepared.data.sessionId;
+	const commandsResult = await requestCommands({ sessionId });
+	if (!isStillActive()) {
+		return null;
+	}
+	if (!commandsResult.ok) {
+		return sessionId;
+	}
+
+	onPrepared(sessionId, commandsResult.data.commands);
+	return sessionId;
 }

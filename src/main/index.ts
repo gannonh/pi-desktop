@@ -141,6 +141,8 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.piSessionSubmit, (_event, input) => invokeBackend("piSession.submit", input));
 	ipcMain.handle(IpcChannels.piSessionAbort, (_event, input) => invokeBackend("piSession.abort", input));
 	ipcMain.handle(IpcChannels.piSessionHistory, (_event, input) => invokeBackend("piSession.history", input));
+	ipcMain.handle(IpcChannels.piSessionPrepare, (_event, input) => invokeBackend("piSession.prepare", input));
+	ipcMain.handle(IpcChannels.piSessionAttach, (_event, input) => invokeBackend("piSession.attach", input));
 	ipcMain.handle(IpcChannels.piSessionDispose, (_event, input) => invokeBackend("piSession.dispose", input));
 	ipcMain.handle(IpcChannels.piSessionGetSettings, (_event, input) => invokeBackend("piSession.getSettings", input));
 	ipcMain.handle(IpcChannels.piSessionGetCommands, (_event, input) => invokeBackend("piSession.getCommands", input));

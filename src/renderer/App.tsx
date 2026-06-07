@@ -12,7 +12,12 @@ import type {
 } from "../shared/pi-session";
 import type { ComposerHostProps } from "./chat/composer-host";
 import { createOutputCommandPaletteActions } from "./chat/output-command-palette";
-import { refreshRuntimeCommandPalette } from "./chat/runtime-command-refresh";
+import {
+	refreshRuntimeCommandPalette,
+	prepareRuntimeSessionForComposer,
+	restoreRuntimeCommandsAfterHydration,
+} from "./chat/runtime-command-refresh";
+import { hasLiveSession } from "./chat/chat-view-model";
 import { useSessionCommandPaletteActions } from "./chat/use-session-command-palette-actions";
 import { AppShell } from "./components/app-shell";
 import type { ProjectSidebarActions } from "./projects/project-sidebar-actions";
@@ -184,6 +189,11 @@ export function App() {
 	const projectTitleRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const sessionMessagesRef = useRef(sessionState.messages);
 	const isRuntimeCommandReloadingRef = useRef(false);
+	const nextPrepareRequestIdRef = useRef(0);
+	const inflightPrepareRef = useRef<{
+		scope: SessionScope;
+		promise: Promise<string | null>;
+	} | null>(null);
 
 	const applyProjectStateViewResult = useCallback((result: ProjectStateViewResult) => {
 		if (!result.ok) {
@@ -285,7 +295,6 @@ export function App() {
 			return;
 		}
 
-		const sessionId = sessionState.sessionId;
 		const runtimeSessionId = acceptedSessionIdRef.current;
 		activeSessionProjectIdRef.current = null;
 		activeSessionChatIdRef.current = null;
@@ -297,10 +306,10 @@ export function App() {
 		setRuntimeCommands([]);
 		setSessionState(createInitialSessionState());
 
-		if (sessionId && sessionId === runtimeSessionId) {
-			void window.piDesktop.piSession.dispose({ sessionId });
+		if (runtimeSessionId) {
+			void window.piDesktop.piSession.dispose({ sessionId: runtimeSessionId });
 		}
-	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId, sessionState.sessionId]);
+	}, [activeSessionChatId, activeSessionProjectId, selectedChatId, selectedProjectId]);
 
 	useEffect(() => {
 		return () => {
@@ -604,6 +613,132 @@ export function App() {
 		);
 	}, [refreshRuntimeCommands]);
 
+	const shouldPrepareComposerSession = useCallback(
+		(scope: SessionScope): boolean => {
+			if (pendingStartRequestRef.current && isSessionScopeSelected(pendingStartRequestRef.current, scope)) {
+				return false;
+			}
+			if (projectState.selectedChat?.sessionPath) {
+				return false;
+			}
+			if (hasLiveSession(sessionState)) {
+				return false;
+			}
+			const selection = resolvePromptSessionStartSelection(projectState);
+			if (!selection.ok) {
+				return false;
+			}
+			return selection.projectId === scope.projectId && selection.chatId === scope.chatId;
+		},
+		[projectState, sessionState],
+	);
+
+	const ensurePreparedComposerSession = useCallback(async (): Promise<string | null> => {
+		const selection = resolvePromptSessionStartSelection(projectState);
+		if (!selection.ok) {
+			return null;
+		}
+
+		const scope = { projectId: selection.projectId, chatId: selection.chatId };
+		if (!shouldPrepareComposerSession(scope)) {
+			return acceptedSessionIdRef.current;
+		}
+
+		if (
+			acceptedSessionIdRef.current &&
+			isSessionScopeSelected(
+				{ projectId: activeSessionProjectIdRef.current, chatId: activeSessionChatIdRef.current },
+				scope,
+			)
+		) {
+			return acceptedSessionIdRef.current;
+		}
+
+		if (inflightPrepareRef.current && isSessionScopeSelected(inflightPrepareRef.current.scope, scope)) {
+			return inflightPrepareRef.current.promise;
+		}
+
+		const requestId = nextPrepareRequestIdRef.current + 1;
+		nextPrepareRequestIdRef.current = requestId;
+
+		const promise = (async () => {
+			const sessionId = await prepareRuntimeSessionForComposer({
+				projectId: selection.projectId,
+				chatId: selection.chatId,
+				prepareSession: window.piDesktop.piSession.prepare,
+				requestCommands: window.piDesktop.piSession.getCommands,
+				isStillActive: () =>
+					nextPrepareRequestIdRef.current === requestId &&
+					selectedProjectIdRef.current === selection.projectId &&
+					selectedChatIdRef.current === selection.chatId &&
+					shouldPrepareComposerSession(scope),
+				onPrepared: (preparedSessionId, commands) => {
+					acceptedSessionIdRef.current = preparedSessionId;
+					activeSessionProjectIdRef.current = selection.projectId;
+					activeSessionChatIdRef.current = selection.chatId;
+					setActiveSessionProjectId(selection.projectId);
+					setActiveSessionChatId(selection.chatId);
+					setSessionState((current) =>
+						current.sessionId === preparedSessionId
+							? current
+							: {
+									...current,
+									sessionId: preparedSessionId,
+									status: "idle",
+									statusLabel: "Idle",
+									errorMessage: "",
+									retryMessage: "",
+								},
+					);
+					setRuntimeCommands(commands);
+				},
+			});
+
+			if (
+				sessionId &&
+				nextPrepareRequestIdRef.current === requestId &&
+				selectedProjectIdRef.current === selection.projectId &&
+				selectedChatIdRef.current === selection.chatId
+			) {
+				if (acceptedSessionIdRef.current !== sessionId) {
+					acceptedSessionIdRef.current = sessionId;
+					activeSessionProjectIdRef.current = selection.projectId;
+					activeSessionChatIdRef.current = selection.chatId;
+					setActiveSessionProjectId(selection.projectId);
+					setActiveSessionChatId(selection.chatId);
+					setRuntimeCommands([]);
+					setSessionState((current) =>
+						current.sessionId === sessionId
+							? current
+							: {
+									...current,
+									sessionId,
+									status: "idle",
+									statusLabel: "Idle",
+									errorMessage: "",
+									retryMessage: "",
+								},
+					);
+				}
+				const settingsResult = await window.piDesktop.piSession.getSettings({ sessionId });
+				if (settingsResult.ok) {
+					applyComposerSettingsResult(settingsResult.data);
+				}
+			}
+
+			return sessionId;
+		})();
+
+		inflightPrepareRef.current = { scope, promise };
+		try {
+			return await promise;
+		} finally {
+			if (inflightPrepareRef.current?.promise === promise) {
+				inflightPrepareRef.current = null;
+			}
+		}
+	}, [applyComposerSettingsResult, projectState, shouldPrepareComposerSession]);
+
 	const submitPrompt = useCallback(
 		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
 			nextHistoryRequestIdRef.current += 1;
@@ -617,6 +752,10 @@ export function App() {
 					retryMessage: "",
 				}));
 				return false;
+			}
+
+			if (!projectState.selectedChat?.sessionPath && !hasLiveSession(sessionState)) {
+				await ensurePreparedComposerSession();
 			}
 
 			const requestProjectId = startSelection.projectId;
@@ -777,10 +916,10 @@ export function App() {
 			activeSessionProjectId,
 			applyProjectStateViewResult,
 			defaultComposerSettings,
+			ensurePreparedComposerSession,
 			projectState,
 			refreshRuntimeCommands,
-			sessionState.settings,
-			sessionState.status,
+			sessionState,
 		],
 	);
 
@@ -846,6 +985,20 @@ export function App() {
 	};
 
 	useEffect(() => {
+		const selection = resolvePromptSessionStartSelection(projectState);
+		if (!selection.ok) {
+			return;
+		}
+
+		const scope = { projectId: selection.projectId, chatId: selection.chatId };
+		if (!shouldPrepareComposerSession(scope)) {
+			return;
+		}
+
+		void ensurePreparedComposerSession();
+	}, [ensurePreparedComposerSession, projectState, shouldPrepareComposerSession]);
+
+	useEffect(() => {
 		const selectedChat = projectState.selectedChat;
 		if (!selectedChat?.sessionPath || !selectedChatId) {
 			setTranscriptHydration(createIdleTranscriptHydration());
@@ -889,16 +1042,37 @@ export function App() {
 				return;
 			}
 
-			acceptedSessionIdRef.current = null;
-			setRuntimeCommands([]);
+			const hydratedSessionId = result.data.sessionId;
 			pendingStartRequestRef.current = null;
 			pendingStartEventsRef.current.clear();
+			acceptedSessionIdRef.current = null;
 			activeSessionProjectIdRef.current = selectedProjectId;
 			activeSessionChatIdRef.current = selectedChatId;
 			setActiveSessionProjectId(selectedProjectId);
 			setActiveSessionChatId(selectedChatId);
+			setRuntimeCommands([]);
 			setSessionState(applySessionHistoryResult(result.data));
 			setTranscriptHydration(createLoadedTranscriptHydration(selectedScope));
+
+			await restoreRuntimeCommandsAfterHydration({
+				sessionId: hydratedSessionId,
+				requestCommands: window.piDesktop.piSession.getCommands,
+				attachSession: () =>
+					window.piDesktop.piSession.attach({
+						projectId: selectedProjectId,
+						chatId: selectedChatId,
+						expectedSessionId: hydratedSessionId,
+					}),
+				isStillActive: () =>
+					!cancelled &&
+					nextHistoryRequestIdRef.current === requestId &&
+					selectedProjectIdRef.current === selectedProjectId &&
+					selectedChatIdRef.current === selectedChatId,
+				onRestored: (sessionId, commands) => {
+					acceptedSessionIdRef.current = sessionId;
+					setRuntimeCommands(commands);
+				},
+			});
 		};
 
 		void loadHistory();

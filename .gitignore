@@ -29,3 +29,5 @@ yarn-error.log*
 
 .worktrees/
 docs/codex-screens/
+
+session.jsonl
