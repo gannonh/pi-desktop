@@ -46,6 +46,17 @@ export const PiSessionHistoryInputSchema = z.strictObject({
 	chatId: z.string().min(1),
 });
 
+export const PiSessionPrepareInputSchema = z.strictObject({
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable(),
+});
+
+export const PiSessionAttachInputSchema = z.strictObject({
+	projectId: z.string().min(1).nullable(),
+	chatId: z.string().min(1).nullable(),
+	expectedSessionId: z.string().min(1),
+});
+
 export const PiSessionDisposeInputSchema = z.strictObject({
 	sessionId: z.string().min(1),
 });
@@ -263,6 +274,8 @@ export type PiSessionStartInput = z.infer<typeof PiSessionStartInputSchema>;
 export type PiSessionSubmitInput = z.infer<typeof PiSessionSubmitInputSchema>;
 export type PiSessionAbortInput = z.infer<typeof PiSessionAbortInputSchema>;
 export type PiSessionHistoryInput = z.infer<typeof PiSessionHistoryInputSchema>;
+export type PiSessionPrepareInput = z.infer<typeof PiSessionPrepareInputSchema>;
+export type PiSessionAttachInput = z.infer<typeof PiSessionAttachInputSchema>;
 export type PiSessionDisposeInput = z.infer<typeof PiSessionDisposeInputSchema>;
 export type PiSessionGetSettingsInput = z.infer<typeof PiSessionGetSettingsInputSchema>;
 export type PiSessionGetDefaultSettingsInput = z.infer<typeof PiSessionGetDefaultSettingsInputSchema>;

@@ -76,6 +76,8 @@ const api: PiDesktopApi = {
 		submit: async (input) => safeInvokeParse(IpcChannels.piSessionSubmit, PiSessionActionResultSchema, input),
 		abort: async (input) => safeInvokeParse(IpcChannels.piSessionAbort, PiSessionActionResultSchema, input),
 		history: async (input) => safeInvokeParse(IpcChannels.piSessionHistory, PiSessionHistoryResultSchema, input),
+		prepare: async (input) => safeInvokeParse(IpcChannels.piSessionPrepare, PiSessionStartResultSchema, input),
+		attach: async (input) => safeInvokeParse(IpcChannels.piSessionAttach, PiSessionStartResultSchema, input),
 		dispose: async (input) => safeInvokeParse(IpcChannels.piSessionDispose, PiSessionActionResultSchema, input),
 		getSettings: async (input) =>
 			safeInvokeParse(IpcChannels.piSessionGetSettings, PiSessionSettingsResultSchema, input),

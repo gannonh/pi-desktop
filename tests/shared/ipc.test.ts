@@ -88,6 +88,8 @@ describe("IPC contracts", () => {
 			piSessionSubmit: "pi-session:submit",
 			piSessionAbort: "pi-session:abort",
 			piSessionHistory: "pi-session:history",
+			piSessionPrepare: "pi-session:prepare",
+			piSessionAttach: "pi-session:attach",
 			piSessionDispose: "pi-session:dispose",
 			piSessionGetSettings: "pi-session:getSettings",
 			piSessionGetDefaultSettings: "pi-session:getDefaultSettings",

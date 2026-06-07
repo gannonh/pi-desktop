@@ -12,6 +12,8 @@ import type {
 	ClipboardWriteTextResult,
 	PiSessionAbortInput,
 	PiSessionActionResult,
+	PiSessionAttachInput,
+	PiSessionPrepareInput,
 	PiSessionDisposeInput,
 	PiSessionEvent,
 	PiSessionGetRuntimeCommandsInput,
@@ -81,6 +83,8 @@ export interface PiDesktopApi {
 		submit: (input: PiSessionSubmitInput) => Promise<PiSessionActionResult>;
 		abort: (input: PiSessionAbortInput) => Promise<PiSessionActionResult>;
 		history: (input: PiSessionHistoryInput) => Promise<PiSessionHistoryResult>;
+		prepare: (input: PiSessionPrepareInput) => Promise<PiSessionStartResult>;
+		attach: (input: PiSessionAttachInput) => Promise<PiSessionStartResult>;
 		dispose: (input: PiSessionDisposeInput) => Promise<PiSessionActionResult>;
 		getSettings: (input: PiSessionGetSettingsInput) => Promise<PiSessionSettingsResult>;
 		getDefaultSettings: (input?: PiSessionGetDefaultSettingsInput) => Promise<PiSessionSettingsResult>;
