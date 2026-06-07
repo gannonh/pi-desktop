@@ -15,7 +15,7 @@ export const SessionSummarySchema = z.strictObject({
 
 export const PanelSummarySchema = z.strictObject({
 	id: z.string().min(1),
-	kind: z.enum(["files", "diffs", "terminal"]),
+	kind: z.enum(["files", "changes", "terminal"]),
 	title: z.string().min(1),
 	summary: z.string().min(1),
 });

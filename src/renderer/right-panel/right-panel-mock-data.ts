@@ -16,7 +16,7 @@ export const createMockTab = (
 		terminal: { title: "Terminal", subtitle: "~/pi-desktop" },
 		browser: { title: "Browser", subtitle: "localhost:5173" },
 		files: { title: "Files", subtitle: "Project workspace" },
-		diffs: { title: "PR #11", subtitle: "feat/right-panel-shell" },
+		changes: { title: "Changes", subtitle: "Source control" },
 	};
 
 	return {
@@ -29,7 +29,7 @@ export const createMockTab = (
 };
 
 export const createDefaultMockTabs = (): RightPanelTab[] => [
-	createMockTab("diffs"),
+	createMockTab("changes"),
 	createMockTab("terminal"),
 	createMockTab("browser"),
 ];
@@ -51,13 +51,6 @@ export type MarkdownPanelMockData = {
 	content: string;
 };
 
-export type DiffsPanelMockData = {
-	prTitle: string;
-	status: string;
-	changedFiles: string[];
-	checks: { name: string; status: string }[];
-	summaryRows: { path: string; additions: number; deletions: number }[];
-};
 
 export const resolveTerminalMock = (tab: RightPanelTab): TerminalPanelMockData => ({
 	cwd: tab.subtitle ?? "~/pi-desktop",
@@ -90,22 +83,3 @@ export const resolveMarkdownMock = (tab: RightPanelTab): MarkdownPanelMockData =
 	].join("\n"),
 });
 
-export const resolveDiffsMock = (_tab: RightPanelTab): DiffsPanelMockData => ({
-	prTitle: "M07A.2 right panel tab shell",
-	status: "Open · 3 files changed",
-	changedFiles: [
-		"src/renderer/components/chat-shell.tsx",
-		"src/renderer/styles.css",
-		"tests/renderer/chat-shell.test.ts",
-	],
-	checks: [
-		{ name: "typecheck", status: "passing" },
-		{ name: "unit tests", status: "passing" },
-		{ name: "smoke", status: "pending" },
-	],
-	summaryRows: [
-		{ path: "chat-shell.tsx", additions: 4, deletions: 2 },
-		{ path: "styles.css", additions: 120, deletions: 18 },
-		{ path: "chat-shell.test.ts", additions: 12, deletions: 8 },
-	],
-});

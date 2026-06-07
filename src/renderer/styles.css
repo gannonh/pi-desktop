@@ -1912,6 +1912,124 @@ body.file-workspace--resizing {
 	font-variant-numeric: tabular-nums;
 }
 
+.changes-panel {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	height: 100%;
+	min-height: 0;
+}
+
+.changes-panel__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding: 0.75rem 0.875rem;
+	border-bottom: 1px solid var(--border-subtle);
+}
+
+.changes-panel__title {
+	margin: 0;
+	font-size: var(--type-label);
+	font-weight: 600;
+}
+
+.changes-panel__body {
+	overflow: auto;
+	padding: 0.5rem 0;
+}
+
+.changes-panel__empty {
+	display: grid;
+	gap: 0.75rem;
+	justify-items: start;
+	padding: 1rem 0.875rem;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__empty--error {
+	color: var(--sidebar-warning-color);
+}
+
+.changes-panel__sections {
+	display: grid;
+}
+
+.changes-panel__section + .changes-panel__section {
+	border-top: 1px solid var(--border-subtle);
+}
+
+.changes-panel__section-header {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	width: 100%;
+	padding: 0.5rem 0.875rem;
+	border: 0;
+	background: transparent;
+	color: var(--color-foreground);
+	font-size: var(--type-caption);
+	font-weight: 600;
+	text-align: left;
+}
+
+.changes-panel__section-count,
+.changes-panel__tree-count {
+	margin-left: auto;
+	color: var(--color-muted-foreground);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+}
+
+.changes-panel__tree {
+	display: grid;
+}
+
+.changes-panel__tree-row {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	min-height: 1.5rem;
+	padding: 0.125rem 0.5rem 0.125rem 0;
+	font-size: var(--type-caption);
+}
+
+.changes-panel__tree-row--directory {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	color: var(--color-foreground);
+	text-align: left;
+}
+
+.changes-panel__tree-row--file {
+	color: var(--sidebar-chat-color);
+}
+
+.changes-panel__status-badge {
+	min-width: 1rem;
+	color: var(--color-muted-foreground);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.changes-panel__line-stats {
+	margin-left: auto;
+	color: var(--color-muted-foreground);
+	font-variant-numeric: tabular-nums;
+}
+
+.changes-panel__refresh-icon--spinning {
+	animation: changes-panel-spin 0.8s linear infinite;
+}
+
+@keyframes changes-panel-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .workspace-tabs {
 	scrollbar-width: none;
 }

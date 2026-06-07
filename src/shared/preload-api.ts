@@ -41,6 +41,12 @@ import type {
 	WorkspaceListDirectoryResult,
 	WorkspaceReadFileResult,
 	WorkspaceWriteFileResult,
+	SourceControlBulkPathsInput,
+	SourceControlCheckIgnoredResult,
+	SourceControlGetStatusResult,
+	SourceControlMutationResult,
+	SourceControlPathInput,
+	SourceControlProjectInput,
 } from "./ipc";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
@@ -74,6 +80,17 @@ export interface PiDesktopApi {
 		listDirectory: (input: WorkspaceFilesPathInput) => Promise<WorkspaceListDirectoryResult>;
 		readFile: (input: WorkspaceFilesPathInput) => Promise<WorkspaceReadFileResult>;
 		writeFile: (input: WorkspaceFilesWriteInput) => Promise<WorkspaceWriteFileResult>;
+	};
+	sourceControl: {
+		getStatus: (input: SourceControlProjectInput) => Promise<SourceControlGetStatusResult>;
+		checkIgnored: (input: SourceControlBulkPathsInput) => Promise<SourceControlCheckIgnoredResult>;
+		stage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		unstage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		discard: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		bulkStage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		bulkUnstage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		bulkDiscard: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		initializeRepository: (input: SourceControlProjectInput) => Promise<SourceControlMutationResult>;
 	};
 	clipboard: {
 		writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;

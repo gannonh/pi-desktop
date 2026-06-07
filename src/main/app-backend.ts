@@ -30,8 +30,12 @@ import {
 	ProjectRenameInputSchema,
 	WorkspaceFilesPathInputSchema,
 	WorkspaceFilesWriteInputSchema,
+	SourceControlBulkPathsInputSchema,
+	SourceControlPathInputSchema,
+	SourceControlProjectInputSchema,
 	type AppVersion,
 } from "../shared/ipc";
+import type { GitStatusPayload } from "../shared/source-control/schemas";
 import type {
 	WorkspaceListDirectoryPayload,
 	WorkspaceReadFileStatusPayload,
@@ -53,6 +57,7 @@ import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-norma
 import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
+import { createSourceControlService } from "./source-control/source-control-service";
 import { WorkspacePathError } from "./workspace-files/path-guard";
 import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
@@ -64,6 +69,7 @@ export type AppBackendDeps = {
 	appInfo: AppVersion;
 	projectService: ProjectService;
 	now: () => string;
+	initializeGitRepository?: (projectPath: string) => Promise<void>;
 	env?: NodeJS.ProcessEnv;
 	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
@@ -82,6 +88,9 @@ export type AppBackendResult = IpcResult<
 	| WorkspaceListDirectoryPayload
 	| WorkspaceReadFileStatusPayload
 	| WorkspaceWriteFilePayload
+	| GitStatusPayload
+	| { ignoredPaths: string[] }
+	| Record<string, never>
 >;
 
 export type AppBackend = {
@@ -159,6 +168,11 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				});
 		}
 	};
+	const sourceControlService = createSourceControlService({
+		projectService: deps.projectService,
+		initializeGitRepository: deps.initializeGitRepository ?? (async () => undefined),
+	});
+
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
 		emit: emitPiSessionEvent,
@@ -188,6 +202,17 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				return err("workspace_files.path_invalid", error.message);
 			}
 			return err("workspace_files.operation_failed", toErrorMessage(error));
+		}
+	};
+
+	const handleSourceControlOperation = async <T>(operation: () => Promise<T>): Promise<IpcResult<T>> => {
+		try {
+			return ok(await operation());
+		} catch (error) {
+			if (error instanceof WorkspacePathError) {
+				return err("source_control.path_invalid", error.message);
+			}
+			return err("source_control.operation_failed", toErrorMessage(error));
 		}
 	};
 
@@ -461,6 +486,58 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						const parsed = WorkspaceFilesWriteInputSchema.parse(request.input);
 						const projectRoot = await resolveProjectRoot(parsed.projectId);
 						return writeWorkspaceFile(projectRoot, parsed.relativePath, parsed.content);
+					});
+				case "sourceControl.getStatus":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						return sourceControlService.getStatus(parsed);
+					});
+				case "sourceControl.checkIgnored":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						return sourceControlService.checkIgnored(parsed);
+					});
+				case "sourceControl.stage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlPathInputSchema.parse(request.input);
+						await sourceControlService.stage(parsed);
+						return {};
+					});
+				case "sourceControl.unstage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlPathInputSchema.parse(request.input);
+						await sourceControlService.unstage(parsed);
+						return {};
+					});
+				case "sourceControl.discard":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlPathInputSchema.parse(request.input);
+						await sourceControlService.discard(parsed);
+						return {};
+					});
+				case "sourceControl.bulkStage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						await sourceControlService.bulkStage(parsed);
+						return {};
+					});
+				case "sourceControl.bulkUnstage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						await sourceControlService.bulkUnstage(parsed);
+						return {};
+					});
+				case "sourceControl.bulkDiscard":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						await sourceControlService.bulkDiscard(parsed);
+						return {};
+					});
+				case "sourceControl.initializeRepository":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						await sourceControlService.initializeRepository(parsed);
+						return {};
 					});
 				default:
 					return assertNever(request);

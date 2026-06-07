@@ -29,7 +29,7 @@ export const createDemoWorkspaceState = (): WorkspaceState => ({
 		},
 		{
 			id: "panel-diffs",
-			kind: "diffs",
+			kind: "changes",
 			title: "Diffs",
 			summary: "Agent changes will appear here in Milestone 3.",
 		},

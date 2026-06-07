@@ -15,6 +15,9 @@ import {
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
+	SourceControlCheckIgnoredResultSchema,
+	SourceControlGetStatusResultSchema,
+	SourceControlMutationResultSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
@@ -114,6 +117,25 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.workspaceFilesReadFile, WorkspaceReadFileResultSchema, input),
 		writeFile: async (input) =>
 			safeInvokeParse(IpcChannels.workspaceFilesWriteFile, WorkspaceWriteFileResultSchema, input),
+	},
+	sourceControl: {
+		getStatus: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetStatus, SourceControlGetStatusResultSchema, input),
+		checkIgnored: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlCheckIgnored, SourceControlCheckIgnoredResultSchema, input),
+		stage: async (input) => safeInvokeParse(IpcChannels.sourceControlStage, SourceControlMutationResultSchema, input),
+		unstage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlUnstage, SourceControlMutationResultSchema, input),
+		discard: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlDiscard, SourceControlMutationResultSchema, input),
+		bulkStage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkStage, SourceControlMutationResultSchema, input),
+		bulkUnstage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkUnstage, SourceControlMutationResultSchema, input),
+		bulkDiscard: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkDiscard, SourceControlMutationResultSchema, input),
+		initializeRepository: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlInitializeRepository, SourceControlMutationResultSchema, input),
 	},
 	clipboard: {
 		writeText: async (input) =>

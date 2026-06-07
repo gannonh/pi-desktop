@@ -5,14 +5,14 @@ import { useRightPanel } from "./right-panel-context";
 import type { RightPanelAddMenuItem, RightPanelKind } from "./right-panel-types";
 
 export const rightPanelAddMenuItems: RightPanelAddMenuItem[] = [
-	{ id: "diffs", kind: "diffs", label: "Changes" },
+	{ id: "changes", kind: "changes", label: "Changes" },
 	{ id: "terminal", kind: "terminal", label: "Terminal" },
 	{ id: "browser", kind: "browser", label: "Browser" },
 	{ id: "files", kind: "files", label: "File" },
 ];
 
 const menuIcons: Record<RightPanelKind, typeof GitBranch> = {
-	diffs: GitBranch,
+	changes: GitBranch,
 	terminal: Terminal,
 	browser: Globe,
 	files: File,

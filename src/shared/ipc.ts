@@ -114,6 +114,15 @@ export const IpcChannels = {
 	workspaceFilesListDirectory: "workspace-files:listDirectory",
 	workspaceFilesReadFile: "workspace-files:readFile",
 	workspaceFilesWriteFile: "workspace-files:writeFile",
+	sourceControlGetStatus: "source-control:getStatus",
+	sourceControlCheckIgnored: "source-control:checkIgnored",
+	sourceControlStage: "source-control:stage",
+	sourceControlUnstage: "source-control:unstage",
+	sourceControlDiscard: "source-control:discard",
+	sourceControlBulkStage: "source-control:bulkStage",
+	sourceControlBulkUnstage: "source-control:bulkUnstage",
+	sourceControlBulkDiscard: "source-control:bulkDiscard",
+	sourceControlInitializeRepository: "source-control:initializeRepository",
 	clipboardWriteText: "clipboard:writeText",
 } as const;
 
@@ -177,6 +186,15 @@ export {
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
 };
+
+export {
+	SourceControlBulkPathsInputSchema,
+	SourceControlCheckIgnoredResultSchema,
+	SourceControlGetStatusResultSchema,
+	SourceControlMutationResultSchema,
+	SourceControlPathInputSchema,
+	SourceControlProjectInputSchema,
+} from "./source-control/schemas";
 
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
 export const ProjectStateViewResultSchema = createResultSchema(ProjectStateViewSchema);
@@ -253,3 +271,12 @@ export type {
 	WorkspaceReadFileResult,
 	WorkspaceWriteFileResult,
 };
+
+export type {
+	SourceControlBulkPathsInput,
+	SourceControlCheckIgnoredResult,
+	SourceControlGetStatusResult,
+	SourceControlMutationResult,
+	SourceControlPathInput,
+	SourceControlProjectInput,
+} from "./source-control/schemas";

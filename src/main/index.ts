@@ -94,6 +94,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 			version: app.getVersion(),
 		},
 		projectService,
+		initializeGitRepository,
 		now: () => new Date().toISOString(),
 		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
@@ -173,6 +174,31 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	);
 	ipcMain.handle(IpcChannels.workspaceFilesWriteFile, (_event, input) =>
 		invokeBackend("workspaceFiles.writeFile", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGetStatus, (_event, input) =>
+		invokeBackend("sourceControl.getStatus", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlCheckIgnored, (_event, input) =>
+		invokeBackend("sourceControl.checkIgnored", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlStage, (_event, input) => invokeBackend("sourceControl.stage", input));
+	ipcMain.handle(IpcChannels.sourceControlUnstage, (_event, input) =>
+		invokeBackend("sourceControl.unstage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlDiscard, (_event, input) =>
+		invokeBackend("sourceControl.discard", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlBulkStage, (_event, input) =>
+		invokeBackend("sourceControl.bulkStage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlBulkUnstage, (_event, input) =>
+		invokeBackend("sourceControl.bulkUnstage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlBulkDiscard, (_event, input) =>
+		invokeBackend("sourceControl.bulkDiscard", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlInitializeRepository, (_event, input) =>
+		invokeBackend("sourceControl.initializeRepository", input),
 	);
 	ipcMain.handle(IpcChannels.clipboardWriteText, (_event, input) => {
 		const parsed = ClipboardWriteTextInputSchema.safeParse(input);

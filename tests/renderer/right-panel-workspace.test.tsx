@@ -17,7 +17,7 @@ describe("RightPanelWorkspace", () => {
 		);
 
 		expect(markup).toContain('aria-label="Workspace panel"');
-		expect(markup).toContain("M07A.2 right panel tab shell");
+		expect(markup).toContain('data-testid="workspace-panel-changes"');
 		expect(markup).not.toContain("workspace-tab-strip");
 		expect(markup).not.toContain("Tool timeline");
 	});

@@ -35,6 +35,17 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			readFile: unavailable,
 			writeFile: unavailable,
 		},
+		sourceControl: {
+			getStatus: unavailable,
+			checkIgnored: unavailable,
+			stage: unavailable,
+			unstage: unavailable,
+			discard: unavailable,
+			bulkStage: unavailable,
+			bulkUnstage: unavailable,
+			bulkDiscard: unavailable,
+			initializeRepository: unavailable,
+		},
 		clipboard: {
 			writeText: unavailable,
 		},

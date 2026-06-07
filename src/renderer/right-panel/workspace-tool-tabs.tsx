@@ -3,16 +3,16 @@ import type { RightPanelTab } from "./right-panel-types";
 import { FILE_WORKSPACE_VIEW_ID } from "./workspace-tab-ids";
 import { WORKSPACE_PANEL_ID } from "./workspace-panel-id";
 
-type WorkspaceToolKind = "diffs" | "terminal" | "browser";
+type WorkspaceToolKind = "changes" | "terminal" | "browser";
 
 const toolIcons: Record<WorkspaceToolKind, LucideIcon> = {
-	diffs: GitBranch,
+	changes: GitBranch,
 	terminal: Terminal,
 	browser: Globe,
 };
 
 const toolLabels: Record<WorkspaceToolKind, string> = {
-	diffs: "Changes",
+	changes: "Changes",
 	terminal: "Terminal",
 	browser: "Browser",
 };
@@ -24,7 +24,7 @@ interface WorkspaceToolTabsProps {
 	onSelect: (tabId: string) => void;
 }
 
-const toolTabOrder: WorkspaceToolKind[] = ["diffs", "terminal", "browser"];
+const toolTabOrder: WorkspaceToolKind[] = ["changes", "terminal", "browser"];
 
 export function WorkspaceToolTabs({ tabs, activeTabId, filesActive, onSelect }: WorkspaceToolTabsProps) {
 	const explorerSelected = activeTabId === FILE_WORKSPACE_VIEW_ID;

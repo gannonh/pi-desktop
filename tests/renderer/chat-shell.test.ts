@@ -235,7 +235,7 @@ describe("ChatShell", () => {
 
 		expect(markup).toContain("chat-shell__session-body");
 		expect(markup).toContain('aria-label="Workspace panel"');
-		expect(markup).toContain("M07A.2 right panel tab shell");
+		expect(markup).toContain('data-testid="workspace-panel-changes"');
 		expect(markup).not.toContain("workspace-tab-strip");
 		expect(markup).not.toContain('aria-label="Tool timeline"');
 		expect(markup).not.toContain("coding-panel");

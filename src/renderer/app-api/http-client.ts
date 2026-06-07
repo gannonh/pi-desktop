@@ -216,6 +216,17 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			readFile: (input) => callRpc("workspaceFiles.readFile", input),
 			writeFile: (input) => callRpc("workspaceFiles.writeFile", input),
 		},
+		sourceControl: {
+			getStatus: (input) => callRpc("sourceControl.getStatus", input),
+			checkIgnored: (input) => callRpc("sourceControl.checkIgnored", input),
+			stage: (input) => callRpc("sourceControl.stage", input),
+			unstage: (input) => callRpc("sourceControl.unstage", input),
+			discard: (input) => callRpc("sourceControl.discard", input),
+			bulkStage: (input) => callRpc("sourceControl.bulkStage", input),
+			bulkUnstage: (input) => callRpc("sourceControl.bulkUnstage", input),
+			bulkDiscard: (input) => callRpc("sourceControl.bulkDiscard", input),
+			initializeRepository: (input) => callRpc("sourceControl.initializeRepository", input),
+		},
 		clipboard: {
 			writeText: writeBrowserClipboardText,
 		},

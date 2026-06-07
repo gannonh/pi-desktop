@@ -37,6 +37,7 @@ export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProp
 						tab={activeTab}
 						filesActive={filesActive}
 						selectedProject={selectedProject}
+						changesActive={!filesActive && activeTab?.kind === "changes"}
 					/>
 				</div>
 			)}

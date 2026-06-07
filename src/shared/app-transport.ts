@@ -41,6 +41,12 @@ import {
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
+	SourceControlBulkPathsInputSchema,
+	SourceControlCheckIgnoredResultSchema,
+	SourceControlGetStatusResultSchema,
+	SourceControlMutationResultSchema,
+	SourceControlPathInputSchema,
+	SourceControlProjectInputSchema,
 } from "./ipc";
 
 export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
@@ -103,6 +109,42 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		operation: z.literal("workspaceFiles.writeFile"),
 		input: WorkspaceFilesWriteInputSchema,
 	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getStatus"),
+		input: SourceControlProjectInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.checkIgnored"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.stage"),
+		input: SourceControlPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.unstage"),
+		input: SourceControlPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.discard"),
+		input: SourceControlPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkStage"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkUnstage"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkDiscard"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.initializeRepository"),
+		input: SourceControlProjectInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -147,6 +189,15 @@ export const AppRpcResponseSchemas = {
 	"workspaceFiles.listDirectory": WorkspaceListDirectoryResultSchema,
 	"workspaceFiles.readFile": WorkspaceReadFileResultSchema,
 	"workspaceFiles.writeFile": WorkspaceWriteFileResultSchema,
+	"sourceControl.getStatus": SourceControlGetStatusResultSchema,
+	"sourceControl.checkIgnored": SourceControlCheckIgnoredResultSchema,
+	"sourceControl.stage": SourceControlMutationResultSchema,
+	"sourceControl.unstage": SourceControlMutationResultSchema,
+	"sourceControl.discard": SourceControlMutationResultSchema,
+	"sourceControl.bulkStage": SourceControlMutationResultSchema,
+	"sourceControl.bulkUnstage": SourceControlMutationResultSchema,
+	"sourceControl.bulkDiscard": SourceControlMutationResultSchema,
+	"sourceControl.initializeRepository": SourceControlMutationResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

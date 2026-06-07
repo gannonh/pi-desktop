@@ -959,7 +959,11 @@ describe("workspace files", () => {
 			if (!listed.ok || !("entries" in listed.data)) {
 				throw new Error("Expected workspace directory listing to succeed.");
 			}
-			expect(listed.data.entries.some((entry) => entry.relativePath === "notes.md")).toBe(true);
+			const directoryEntries = listed.data.entries.filter(
+				(entry): entry is { name: string; relativePath: string; kind: "file" | "directory" } =>
+					"relativePath" in entry && "kind" in entry,
+			);
+			expect(directoryEntries.some((entry) => entry.relativePath === "notes.md")).toBe(true);
 
 			const read = await backend.handle({
 				operation: "workspaceFiles.readFile",

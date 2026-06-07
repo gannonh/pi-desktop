@@ -2,7 +2,7 @@ import { createDefaultMockTabs, createMockTab } from "./right-panel-mock-data";
 import type { RightPanelAddMenuItem, RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
 import { FILE_WORKSPACE_VIEW_ID, isWorkspaceFileTabId } from "./workspace-tab-ids";
 
-export const WORKSPACE_TOOL_KINDS = ["diffs", "terminal", "browser"] as const satisfies readonly RightPanelKind[];
+export const WORKSPACE_TOOL_KINDS = ["changes", "terminal", "browser"] as const satisfies readonly RightPanelKind[];
 
 export const createDefaultRightPanelState = (): RightPanelState => {
 	const tabs = createDefaultMockTabs();

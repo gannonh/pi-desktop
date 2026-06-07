@@ -1,18 +1,19 @@
-import { resolveBrowserMock, resolveDiffsMock, resolveTerminalMock } from "./right-panel-mock-data";
+import { resolveBrowserMock, resolveTerminalMock } from "./right-panel-mock-data";
 import type { RightPanelTab } from "./right-panel-types";
 import type { ProjectRecord } from "../../shared/project-state";
+import { ChangesPanel } from "../changes-panel/ChangesPanel";
 import { FileWorkspacePanel } from "../file-workspace/file-workspace-panel";
 import { BrowserPanelMock } from "./browser-panel-mock";
-import { DiffsPanelMock } from "./diffs-panel-mock";
 import { TerminalPanelMock } from "./terminal-panel-mock";
 
 interface RightPanelBodyProps {
 	tab: RightPanelTab | null;
 	filesActive: boolean;
 	selectedProject: ProjectRecord | null;
+	changesActive: boolean;
 }
 
-export function RightPanelBody({ tab, filesActive, selectedProject }: RightPanelBodyProps) {
+export function RightPanelBody({ tab, filesActive, selectedProject, changesActive }: RightPanelBodyProps) {
 	if (filesActive) {
 		return <FileWorkspacePanel project={selectedProject} />;
 	}
@@ -30,8 +31,8 @@ export function RightPanelBody({ tab, filesActive, selectedProject }: RightPanel
 			return <TerminalPanelMock data={resolveTerminalMock(tab)} />;
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
-		case "diffs":
-			return <DiffsPanelMock data={resolveDiffsMock(tab)} />;
+		case "changes":
+			return <ChangesPanel project={selectedProject} isActive={changesActive} />;
 		case "files":
 			return <FileWorkspacePanel project={selectedProject} />;
 	}

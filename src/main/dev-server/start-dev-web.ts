@@ -93,6 +93,7 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 
 	return createAppBackend({
 		appInfo: { name: "pi-desktop web", version: "dev" },
+		initializeGitRepository,
 		projectService: createProjectService({
 			store: createProjectStore(projectStorePath),
 			documentsDir,
