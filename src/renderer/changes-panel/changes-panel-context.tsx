@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GitStatusPayload } from "../../shared/source-control/schemas";
 import { useGitStatusPolling } from "./use-git-status-polling";
 
@@ -33,6 +33,14 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 	const [statusError, setStatusError] = useState<string | null>(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null);
+	const currentProjectIdRef = useRef(projectId);
+
+	useEffect(() => {
+		currentProjectIdRef.current = projectId;
+		setStatus(null);
+		setStatusError(null);
+		setIsGitRepo(null);
+	}, [projectId]);
 
 	const refresh = useCallback(async () => {
 		if (!projectId) {
@@ -44,7 +52,11 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 
 		setIsRefreshing(true);
 		try {
-			const result = await window.piDesktop.sourceControl.getStatus({ projectId });
+			const requestProjectId = projectId;
+			const result = await window.piDesktop.sourceControl.getStatus({ projectId: requestProjectId });
+			if (currentProjectIdRef.current !== requestProjectId) {
+				return;
+			}
 			if (!result.ok) {
 				const message = result.error.message;
 				setStatus(null);
@@ -56,7 +68,9 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 			setStatusError(null);
 			setIsGitRepo(true);
 		} finally {
-			setIsRefreshing(false);
+			if (currentProjectIdRef.current === projectId) {
+				setIsRefreshing(false);
+			}
 		}
 	}, [projectId]);
 

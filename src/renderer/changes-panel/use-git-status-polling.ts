@@ -24,5 +24,5 @@ export const useGitStatusPolling = ({ enabled, refresh }: UseGitStatusPollingInp
 			window.clearInterval(intervalId);
 			runner.dispose();
 		};
-	}, [enabled]);
+	}, [enabled, refresh]);
 };

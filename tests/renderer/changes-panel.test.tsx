@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import type { PiDesktopApi } from "../../src/shared/preload-api";
@@ -19,6 +19,13 @@ const project = {
 	pinned: false,
 	availability: { status: "available" as const, checkedAt: "2026-06-07T00:00:00.000Z" },
 	chats: [],
+};
+
+const otherProject = {
+	...project,
+	id: createProjectId("/tmp/pi-other-project"),
+	displayName: "pi-other-project",
+	path: "/tmp/pi-other-project",
 };
 
 const statusPayload: GitStatusPayload = {
@@ -194,6 +201,44 @@ describe("ChangesPanel", () => {
 				relativePaths: ["README.md", "new.txt"],
 			});
 		});
+	});
+
+	it("ignores stale status results after switching projects", async () => {
+		let resolveFirstStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
+		const getStatus = vi.fn((input: { projectId: string }) => {
+			if (input.projectId === project.id) {
+				return new Promise<{ ok: true; data: GitStatusPayload }>((resolve) => {
+					resolveFirstStatus = resolve;
+				});
+			}
+			return Promise.resolve({
+				ok: true as const,
+				data: {
+					entries: [{ path: "other.ts", status: "modified", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			});
+		});
+		installApi({ getStatus });
+		const { rerender } = render(<ChangesPanel project={project} isActive />);
+
+		rerender(<ChangesPanel project={otherProject} isActive />);
+
+		await screen.findByText("other.ts");
+		await act(async () => {
+			resolveFirstStatus({
+				ok: true,
+				data: {
+					entries: [{ path: "stale.ts", status: "modified", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				},
+			});
+		});
+
+		expect(screen.queryByText("stale.ts")).toBeNull();
+		expect(screen.getByText("other.ts")).toBeTruthy();
 	});
 
 	it("keeps Stage All enabled when staged and unstaged changes coexist", async () => {

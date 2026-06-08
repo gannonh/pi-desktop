@@ -19,6 +19,7 @@ import {
 	getUpstreamStatus,
 	publishBranch,
 	pushRemote,
+	rebaseFromBase,
 	stageFile,
 	unstageFile,
 } from "../../src/main/git/status";
@@ -230,6 +231,12 @@ describe("source control git operations", () => {
 		upstream = await getUpstreamStatus(repo);
 		expect(upstream.ahead).toBe(0);
 		await fetchRemote(repo);
+	});
+
+	it("rejects rebase refs that look like git options", async () => {
+		const repo = await createRepo();
+
+		await expect(rebaseFromBase(repo, "--exec=touch should-not-run")).rejects.toThrow(/must not start/);
 	});
 
 	it("returns branch compare metadata and diff entries", async () => {

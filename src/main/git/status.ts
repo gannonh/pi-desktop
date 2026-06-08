@@ -524,7 +524,15 @@ export const publishBranch = async (worktreePath: string): Promise<void> => {
 	await gitExecFileAsync(["push", "-u", "origin", branch], { cwd: worktreePath });
 };
 
+const assertSafeGitRevision = async (worktreePath: string, ref: string): Promise<void> => {
+	if (ref.startsWith("-")) {
+		throw new Error("Git revision must not start with '-'.");
+	}
+	await gitExecFileAsync(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], { cwd: worktreePath });
+};
+
 export const rebaseFromBase = async (worktreePath: string, baseRef = "origin/main"): Promise<void> => {
+	await assertSafeGitRevision(worktreePath, baseRef);
 	await gitExecFileAsync(["rebase", baseRef], { cwd: worktreePath });
 };
 
