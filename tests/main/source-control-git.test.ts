@@ -110,6 +110,19 @@ describe("source control git operations", () => {
 		]);
 	});
 
+	it("bulk unstages files before the first commit", async () => {
+		repoDir = await mkdtemp(join(tmpdir(), "pi-source-control-unborn-"));
+		await initializeGitRepository(repoDir);
+		await writeFile(join(repoDir, "first.txt"), "first\n", "utf8");
+		await writeFile(join(repoDir, "second.txt"), "second\n", "utf8");
+		await bulkStageFiles(repoDir, ["first.txt", "second.txt"]);
+
+		await bulkUnstageFiles(repoDir, ["first.txt", "second.txt"]);
+
+		const status = await getStatus(repoDir);
+		expect(status.entries.filter((entry) => entry.area === "untracked")).toHaveLength(2);
+	});
+
 	it("discards tracked and untracked changes", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");

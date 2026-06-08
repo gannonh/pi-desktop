@@ -431,9 +431,14 @@ export const bulkUnstageFiles = async (worktreePath: string, filePaths: string[]
 	for (const filePath of filePaths) {
 		assertPathWithinWorktree(worktreePath, filePath);
 	}
+	const headExists = await hasHead(worktreePath);
 	for (let i = 0; i < filePaths.length; i += BULK_CHUNK_SIZE) {
 		const chunk = filePaths.slice(i, i + BULK_CHUNK_SIZE);
-		await gitExecFileAsync(["restore", "--staged", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
+		if (headExists) {
+			await gitExecFileAsync(["restore", "--staged", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
+		} else {
+			await gitExecFileAsync(["rm", "--cached", "-r", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
+		}
 	}
 };
 
@@ -700,15 +705,21 @@ export const createPullRequest = async (
 	worktreePath: string,
 	input: { title: string; body: string },
 ): Promise<SourceControlPullRequestInfo> => {
+	const { stdout: createOutput } = await gitExecFileAsync(
+		["pr", "create", "--title", input.title, "--body", input.body],
+		{ cwd: worktreePath },
+		"gh",
+	);
+	const prRef = createOutput.trim();
 	const { stdout } = await gitExecFileAsync(
-		["pr", "create", "--title", input.title, "--body", input.body, "--json", "title,url,state"],
+		["pr", "view", prRef, "--json", "title,url,state"],
 		{ cwd: worktreePath },
 		"gh",
 	);
 	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string };
 	return {
 		title: parsed.title ?? input.title,
-		url: parsed.url ?? "",
+		url: parsed.url ?? prRef,
 		state: parsePullRequestState(parsed.state ?? "unknown"),
 	};
 };
