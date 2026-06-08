@@ -203,6 +203,24 @@ describe("source control git operations", () => {
 		});
 	});
 
+	it("discards staged changes without clearing unstaged changes for the same file", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), "# staged\n", "utf8");
+		await stageFile(repo, "README.md");
+		await writeFile(join(repo, "README.md"), "# unstaged\n", "utf8");
+
+		await discardChanges(repo, "README.md", "staged");
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([
+			expect.objectContaining({ path: "README.md", area: "unstaged", status: "modified" }),
+		]);
+		expect(await runGit(["diff", "--cached", "--", "README.md"], repo)).toMatchObject({ stdout: "" });
+		expect(await runGit(["diff", "--", "README.md"], repo)).toMatchObject({
+			stdout: expect.stringContaining("+# unstaged"),
+		});
+	});
+
 	it("propagates git status failures", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, ".git", "index"), "not an index\n", "utf8");
@@ -343,6 +361,18 @@ describe("source control git operations", () => {
 
 		expect(compare).toMatchObject({ baseRef: "main", headRef: "feature", ahead: 1, behind: 0 });
 		expect(compare.files).toContainEqual(expect.objectContaining({ path: "feature.txt", status: "added" }));
+	});
+
+	it("returns unquoted branch compare paths", async () => {
+		const repo = await createRepo();
+		await runGit(["checkout", "-b", "feature"], repo);
+		await writeFile(join(repo, "café.txt"), "feature\n", "utf8");
+		await stageFile(repo, "café.txt");
+		await commitStagedChanges(repo, "Add unicode path");
+
+		const compare = await getBranchCompare(repo, { baseRef: "main", headRef: "feature" });
+
+		expect(compare.files).toContainEqual(expect.objectContaining({ path: "café.txt", status: "added" }));
 	});
 
 	it("aborts in-progress merge conflicts", async () => {

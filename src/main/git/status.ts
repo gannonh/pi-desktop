@@ -279,6 +279,29 @@ const hasHead = async (worktreePath: string): Promise<boolean> => {
 	}
 };
 
+const hasUnstagedChange = async (worktreePath: string, filePath: string): Promise<boolean> => {
+	try {
+		await gitExecFileAsync(["diff", "--quiet", "--", literalPathspec(filePath)], { cwd: worktreePath });
+		return false;
+	} catch (error) {
+		if (typeof error === "object" && error !== null && "code" in error && (error as { code?: number }).code === 1) {
+			return true;
+		}
+		throw error;
+	}
+};
+
+const restoreStagedPathFromHead = async (
+	worktreePath: string,
+	filePath: string,
+	options: { preserveWorktree: boolean },
+): Promise<void> => {
+	const args = options.preserveWorktree
+		? ["restore", "--staged", "--source=HEAD", "--", literalPathspec(filePath)]
+		: ["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)];
+	await gitExecFileAsync(args, { cwd: worktreePath });
+};
+
 export const stageFile = async (worktreePath: string, filePath: string): Promise<void> => {
 	assertPathWithinWorktree(worktreePath, filePath);
 	await gitExecFileAsync(["add", "--", literalPathspec(filePath)], { cwd: worktreePath });
@@ -351,6 +374,7 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
 	);
 	if (renameEntry?.oldPath) {
+		const preserveWorktree = await hasUnstagedChange(worktreePath, filePath);
 		assertPathWithinWorktree(worktreePath, renameEntry.oldPath);
 		await gitExecFileAsync(
 			["restore", "--staged", "--", literalPathspec(renameEntry.oldPath), literalPathspec(filePath)],
@@ -361,9 +385,11 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 		await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", literalPathspec(renameEntry.oldPath)], {
 			cwd: worktreePath,
 		});
-		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
-			cleanUntrackedPaths(worktreePath, [targetPath]),
-		);
+		if (!preserveWorktree) {
+			await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+				cleanUntrackedPaths(worktreePath, [targetPath]),
+			);
+		}
 		return;
 	}
 
@@ -379,17 +405,20 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 
 	const trackedInHead = headExists && isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
 	if (trackedInHead) {
-		await gitExecFileAsync(["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)], {
-			cwd: worktreePath,
+		await restoreStagedPathFromHead(worktreePath, filePath, {
+			preserveWorktree: await hasUnstagedChange(worktreePath, filePath),
 		});
 		return;
 	}
 
 	if (trackedInIndex) {
+		const preserveWorktree = await hasUnstagedChange(worktreePath, filePath);
 		await unstageFile(worktreePath, filePath);
-		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
-			cleanUntrackedPaths(worktreePath, [targetPath]),
-		);
+		if (!preserveWorktree) {
+			await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+				cleanUntrackedPaths(worktreePath, [targetPath]),
+			);
+		}
 		return;
 	}
 
@@ -634,22 +663,34 @@ const parseAheadBehind = (stdout: string): { ahead: number; behind: number } => 
 	return { ahead: Number.parseInt(ahead || "0", 10), behind: Number.parseInt(behind || "0", 10) };
 };
 
-const parseNameStatusLine = (line: string): { status: GitFileStatus; path: string; oldPath?: string } | null => {
-	if (!line) {
-		return null;
+const parseNameStatusOutput = (output: string): { status: GitFileStatus; path: string; oldPath?: string }[] => {
+	const fields = output.split("\0").filter(Boolean);
+	const files: { status: GitFileStatus; path: string; oldPath?: string }[] = [];
+	for (let index = 0; index < fields.length; ) {
+		const statusCode = fields[index];
+		index += 1;
+		if (!statusCode) {
+			continue;
+		}
+		if (statusCode.startsWith("R")) {
+			const oldPath = fields[index] ?? "";
+			const filePath = fields[index + 1] ?? oldPath;
+			index += 2;
+			files.push({ status: "renamed", oldPath, path: filePath });
+			continue;
+		}
+		if (statusCode.startsWith("C")) {
+			const oldPath = fields[index] ?? "";
+			const filePath = fields[index + 1] ?? oldPath;
+			index += 2;
+			files.push({ status: "copied", oldPath, path: filePath });
+			continue;
+		}
+		const filePath = fields[index] ?? "";
+		index += 1;
+		files.push({ status: parseStatusChar(statusCode[0]), path: filePath });
 	}
-	const parts = line.split("\t");
-	const statusCode = parts[0];
-	if (!statusCode) {
-		return null;
-	}
-	if (statusCode.startsWith("R")) {
-		return { status: "renamed", oldPath: parts[1], path: parts[2] ?? parts[1] ?? "" };
-	}
-	if (statusCode.startsWith("C")) {
-		return { status: "copied", oldPath: parts[1], path: parts[2] ?? parts[1] ?? "" };
-	}
-	return { status: parseStatusChar(statusCode[0]), path: parts[1] ?? "" };
+	return files.filter((entry) => Boolean(entry.path));
 };
 
 export const getBranchCompare = async (
@@ -664,13 +705,10 @@ export const getBranchCompare = async (
 	);
 	const { ahead, behind } = parseAheadBehind(countOutput);
 	const { stdout: filesOutput } = await gitExecFileAsync(
-		["diff", "--name-status", "--find-renames", `${input.baseRef}...${input.headRef}`],
+		["diff", "--name-status", "-z", "--find-renames", `${input.baseRef}...${input.headRef}`],
 		{ cwd: worktreePath },
 	);
-	const files = filesOutput
-		.split(/\r?\n/)
-		.map(parseNameStatusLine)
-		.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry?.path));
+	const files = parseNameStatusOutput(filesOutput);
 	return { baseRef: input.baseRef, headRef: input.headRef, ahead, behind, files };
 };
 
