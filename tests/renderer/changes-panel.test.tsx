@@ -289,6 +289,75 @@ describe("ChangesPanel", () => {
 		expect(discard).not.toHaveBeenCalled();
 	});
 
+	it("confirms a single-file discard before discarding the row", async () => {
+		const discard = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({ discard });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
+		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
+
+		await waitFor(() => {
+			expect(discard).toHaveBeenCalledWith({ projectId: project.id, relativePath: "README.md", area: "unstaged" });
+		});
+	});
+
+	it("uses delete-focused copy for untracked file discard confirmation", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("new.txt");
+		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[1]);
+
+		await screen.findByRole("alertdialog", { name: "Delete untracked file new.txt?" });
+		expect(screen.getByText("This file is not tracked by git. Deleting it cannot be undone by git.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Delete File" })).toBeTruthy();
+	});
+
+	it("uses delete-focused copy for newly-added file discard confirmation", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "new-feature.ts", status: "added", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("new-feature.ts");
+		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+		await screen.findByRole("alertdialog", { name: "Delete newly-added file new-feature.ts?" });
+		expect(screen.getByText("This file was added to git. Discarding it will remove it from the working tree.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Delete File" })).toBeTruthy();
+	});
+
+	it("uses restore-focused copy for deleted tracked file discard confirmation", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "removed.ts", status: "deleted", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("removed.ts");
+		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+		await screen.findByRole("alertdialog", { name: "Restore deleted file removed.ts?" });
+		expect(screen.getByText("This will restore the tracked file from git.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Restore File" })).toBeTruthy();
+	});
+
 	it("confirms bulk discard before discarding selected rows", async () => {
 		const bulkDiscard = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({ bulkDiscard });
@@ -298,8 +367,8 @@ describe("ChangesPanel", () => {
 		fireEvent.click(screen.getByLabelText("Select README.md"));
 		fireEvent.click(screen.getByLabelText("Select new.txt"));
 		fireEvent.click(screen.getByRole("button", { name: "Discard Selected" }));
-		await screen.findByRole("alertdialog", { name: "Discard changes for 2 selected files?" });
-		expect(screen.getByText("This will permanently delete untracked files.")).toBeTruthy();
+		await screen.findByRole("alertdialog", { name: "Discard 2 selected changes?" });
+		expect(screen.getByText("This affects 1 unstaged change and 1 untracked change.")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
 
 		await waitFor(() => {

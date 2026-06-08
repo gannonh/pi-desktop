@@ -137,13 +137,83 @@ function SourceControlTreeRow({
 
 const selectionKey = (entry: GitStatusEntry) => `${entry.area}:${entry.path}`;
 
-const getDiscardConfirmation = (entries: readonly GitStatusEntry[]): { title: string; description: string } => {
-	const includesUntracked = entries.some((entry) => entry.area === "untracked");
-	const fileText = entries.length === 1 ? entries[0]?.path : `${entries.length} selected files`;
-	const description = includesUntracked
-		? "This will permanently delete untracked files."
-		: "This will restore tracked files to their previous state.";
-	return { title: `Discard changes for ${fileText}?`, description };
+const AREA_DISCARD_LABELS = {
+	staged: "staged",
+	unstaged: "unstaged",
+	untracked: "untracked",
+} satisfies Record<GitStagingArea, string>;
+
+const pluralize = (count: number, singular: string, plural = `${singular}s`) => (count === 1 ? singular : plural);
+
+const joinList = (items: readonly string[]) => {
+	if (items.length <= 1) {
+		return items[0] ?? "";
+	}
+	if (items.length === 2) {
+		return `${items[0]} and ${items[1]}`;
+	}
+	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+};
+
+const formatBulkDiscardAreaSummary = (entries: readonly GitStatusEntry[]) => {
+	const counts = entries.reduce(
+		(accumulator, entry) => {
+			accumulator[entry.area] += 1;
+			return accumulator;
+		},
+		{ staged: 0, unstaged: 0, untracked: 0 } satisfies Record<GitStagingArea, number>,
+	);
+	const parts = (Object.keys(counts) as GitStagingArea[])
+		.filter((area) => counts[area] > 0)
+		.map((area) => `${counts[area]} ${AREA_DISCARD_LABELS[area]} ${pluralize(counts[area], "change")}`);
+	return joinList(parts);
+};
+
+const getDiscardConfirmation = (
+	entries: readonly GitStatusEntry[],
+): { title: string; description: string; actionLabel: string } => {
+	if (entries.length !== 1) {
+		return {
+			title: `Discard ${entries.length} selected changes?`,
+			description: `This affects ${formatBulkDiscardAreaSummary(entries)}.`,
+			actionLabel: "Discard Changes",
+		};
+	}
+
+	const entry = entries[0];
+	if (!entry) {
+		return {
+			title: "Discard selected changes?",
+			description: "This will discard the selected changes.",
+			actionLabel: "Discard Changes",
+		};
+	}
+	if (entry.area === "untracked") {
+		return {
+			title: `Delete untracked file ${entry.path}?`,
+			description: "This file is not tracked by git. Deleting it cannot be undone by git.",
+			actionLabel: "Delete File",
+		};
+	}
+	if (entry.status === "added") {
+		return {
+			title: `Delete newly-added file ${entry.path}?`,
+			description: "This file was added to git. Discarding it will remove it from the working tree.",
+			actionLabel: "Delete File",
+		};
+	}
+	if (entry.status === "deleted") {
+		return {
+			title: `Restore deleted file ${entry.path}?`,
+			description: "This will restore the tracked file from git.",
+			actionLabel: "Restore File",
+		};
+	}
+	return {
+		title: `Discard changes for ${entry.path}?`,
+		description: "This will restore the tracked file to its previous state.",
+		actionLabel: "Discard Changes",
+	};
 };
 
 const conflictLabel = (operation: GitConflictOperation): string | null => {
@@ -724,7 +794,7 @@ function ChangesPanelBody() {
 	};
 	const discardConfirmation = pendingDiscardEntries.length
 		? getDiscardConfirmation(pendingDiscardEntries)
-		: { title: "", description: "" };
+		: { title: "", description: "", actionLabel: "Discard Changes" };
 	const discardPendingEntries = async () => {
 		const entries = pendingDiscardEntries;
 		setPendingDiscardEntries([]);
@@ -766,7 +836,7 @@ function ChangesPanelBody() {
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction variant="destructive" onClick={() => void discardPendingEntries()}>
-							Discard Changes
+							{discardConfirmation.actionLabel}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
