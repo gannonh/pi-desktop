@@ -15,6 +15,14 @@ import {
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
+	SourceControlCheckIgnoredResultSchema,
+	SourceControlCommitResultSchema,
+	SourceControlBranchCompareResultSchema,
+	SourceControlGetDiffResultSchema,
+	SourceControlGetStatusResultSchema,
+	SourceControlMutationResultSchema,
+	SourceControlPullRequestInfoResultSchema,
+	SourceControlUpstreamStatusResultSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
@@ -114,6 +122,48 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.workspaceFilesReadFile, WorkspaceReadFileResultSchema, input),
 		writeFile: async (input) =>
 			safeInvokeParse(IpcChannels.workspaceFilesWriteFile, WorkspaceWriteFileResultSchema, input),
+	},
+	sourceControl: {
+		getStatus: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetStatus, SourceControlGetStatusResultSchema, input),
+		checkIgnored: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlCheckIgnored, SourceControlCheckIgnoredResultSchema, input),
+		stage: async (input) => safeInvokeParse(IpcChannels.sourceControlStage, SourceControlMutationResultSchema, input),
+		unstage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlUnstage, SourceControlMutationResultSchema, input),
+		discard: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlDiscard, SourceControlMutationResultSchema, input),
+		bulkStage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkStage, SourceControlMutationResultSchema, input),
+		bulkUnstage: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkUnstage, SourceControlMutationResultSchema, input),
+		bulkDiscard: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlBulkDiscard, SourceControlMutationResultSchema, input),
+		initializeRepository: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlInitializeRepository, SourceControlMutationResultSchema, input),
+		commit: async (input) => safeInvokeParse(IpcChannels.sourceControlCommit, SourceControlCommitResultSchema, input),
+		getDiff: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetDiff, SourceControlGetDiffResultSchema, input),
+		getUpstreamStatus: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetUpstreamStatus, SourceControlUpstreamStatusResultSchema, input),
+		fetch: async (input) => safeInvokeParse(IpcChannels.sourceControlFetch, SourceControlMutationResultSchema, input),
+		push: async (input) => safeInvokeParse(IpcChannels.sourceControlPush, SourceControlMutationResultSchema, input),
+		pull: async (input) => safeInvokeParse(IpcChannels.sourceControlPull, SourceControlMutationResultSchema, input),
+		sync: async (input) => safeInvokeParse(IpcChannels.sourceControlSync, SourceControlMutationResultSchema, input),
+		fastForward: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlFastForward, SourceControlMutationResultSchema, input),
+		publish: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlPublish, SourceControlMutationResultSchema, input),
+		rebaseFromBase: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlRebaseFromBase, SourceControlMutationResultSchema, input),
+		getBranchCompare: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetBranchCompare, SourceControlBranchCompareResultSchema, input),
+		abortConflict: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlAbortConflict, SourceControlMutationResultSchema, input),
+		createPullRequest: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlCreatePullRequest, SourceControlPullRequestInfoResultSchema, input),
+		getPullRequestInfo: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetPullRequestInfo, SourceControlPullRequestInfoResultSchema, input),
 	},
 	clipboard: {
 		writeText: async (input) =>

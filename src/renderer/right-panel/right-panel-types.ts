@@ -1,4 +1,4 @@
-export type RightPanelKind = "terminal" | "browser" | "files" | "diffs";
+export type RightPanelKind = "terminal" | "browser" | "files" | "changes";
 
 export type RightPanelTab = {
 	id: string;

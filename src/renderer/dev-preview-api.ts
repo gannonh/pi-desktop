@@ -1,4 +1,4 @@
-import type { ProjectStateViewResult } from "../shared/ipc";
+import type { ProjectStateViewResult, SourceControlGetStatusResult } from "../shared/ipc";
 import type { PiSessionEvent, PiSessionSettingsPayload } from "../shared/pi-session";
 import type { PiDesktopApi } from "../shared/preload-api";
 import {
@@ -154,6 +154,14 @@ const projectNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
 	error: {
 		code: "preview.project_not_found",
 		message: "Project not found in preview data.",
+	},
+});
+
+const sourceControlUnavailable = (): Extract<SourceControlGetStatusResult, { ok: false }> => ({
+	ok: false,
+	error: {
+		code: "source_control.unavailable",
+		message: "Source control is unavailable in web preview.",
 	},
 });
 
@@ -747,6 +755,31 @@ export const installDevPreviewApi = () => {
 		},
 		clipboard: {
 			writeText: writeBrowserClipboardText,
+		},
+		sourceControl: {
+			getStatus: async () => sourceControlUnavailable(),
+			checkIgnored: async () => sourceControlUnavailable(),
+			stage: async () => sourceControlUnavailable(),
+			unstage: async () => sourceControlUnavailable(),
+			discard: async () => sourceControlUnavailable(),
+			bulkStage: async () => sourceControlUnavailable(),
+			bulkUnstage: async () => sourceControlUnavailable(),
+			bulkDiscard: async () => sourceControlUnavailable(),
+			initializeRepository: async () => sourceControlUnavailable(),
+			commit: async () => sourceControlUnavailable(),
+			getDiff: async () => sourceControlUnavailable(),
+			getUpstreamStatus: async () => sourceControlUnavailable(),
+			fetch: async () => sourceControlUnavailable(),
+			push: async () => sourceControlUnavailable(),
+			pull: async () => sourceControlUnavailable(),
+			sync: async () => sourceControlUnavailable(),
+			fastForward: async () => sourceControlUnavailable(),
+			publish: async () => sourceControlUnavailable(),
+			rebaseFromBase: async () => sourceControlUnavailable(),
+			getBranchCompare: async () => sourceControlUnavailable(),
+			abortConflict: async () => sourceControlUnavailable(),
+			createPullRequest: async () => sourceControlUnavailable(),
+			getPullRequestInfo: async () => sourceControlUnavailable(),
 		},
 		workspaceFiles: {
 			listDirectory: async ({ projectId, relativePath }) => {

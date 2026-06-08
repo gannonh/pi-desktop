@@ -9,7 +9,7 @@ describe("createDemoWorkspaceState", () => {
 		expect(WorkspaceStateSchema.parse(state)).toEqual(state);
 		expect(state.activeWorkspace.name).toBe("pi-desktop");
 		expect(state.sessions).toHaveLength(2);
-		expect(state.panels.map((panel) => panel.kind)).toEqual(["files", "diffs", "terminal"]);
+		expect(state.panels.map((panel) => panel.kind)).toEqual(["files", "changes", "terminal"]);
 	});
 
 	it("rejects unexpected fields in workspace payloads so IPC drift fails loudly", () => {

@@ -41,6 +41,26 @@ import type {
 	WorkspaceListDirectoryResult,
 	WorkspaceReadFileResult,
 	WorkspaceWriteFileResult,
+	SourceControlBulkDiscardInput,
+	SourceControlBulkPathsInput,
+	SourceControlCheckIgnoredResult,
+	SourceControlCommitInput,
+	SourceControlCommitResult,
+	SourceControlCreatePullRequestInput,
+	SourceControlDiscardInput,
+	SourceControlBranchCompareInput,
+	SourceControlBranchCompareResult,
+	SourceControlGetDiffInput,
+	SourceControlGetDiffResult,
+	SourceControlGetStatusResult,
+	SourceControlMutationResult,
+	SourceControlPathInput,
+	SourceControlProjectInput,
+	SourceControlPullRequestInfoResult,
+	SourceControlRebaseInput,
+	SourceControlRemoteActionInput,
+	SourceControlAbortConflictInput,
+	SourceControlUpstreamStatusResult,
 } from "./ipc";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
@@ -74,6 +94,31 @@ export interface PiDesktopApi {
 		listDirectory: (input: WorkspaceFilesPathInput) => Promise<WorkspaceListDirectoryResult>;
 		readFile: (input: WorkspaceFilesPathInput) => Promise<WorkspaceReadFileResult>;
 		writeFile: (input: WorkspaceFilesWriteInput) => Promise<WorkspaceWriteFileResult>;
+	};
+	sourceControl: {
+		getStatus: (input: SourceControlProjectInput) => Promise<SourceControlGetStatusResult>;
+		checkIgnored: (input: SourceControlBulkPathsInput) => Promise<SourceControlCheckIgnoredResult>;
+		stage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		unstage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		discard: (input: SourceControlDiscardInput) => Promise<SourceControlMutationResult>;
+		bulkStage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		bulkUnstage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		bulkDiscard: (input: SourceControlBulkDiscardInput) => Promise<SourceControlMutationResult>;
+		initializeRepository: (input: SourceControlProjectInput) => Promise<SourceControlMutationResult>;
+		commit: (input: SourceControlCommitInput) => Promise<SourceControlCommitResult>;
+		getDiff: (input: SourceControlGetDiffInput) => Promise<SourceControlGetDiffResult>;
+		getUpstreamStatus: (input: SourceControlProjectInput) => Promise<SourceControlUpstreamStatusResult>;
+		fetch: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		push: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		pull: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		sync: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		fastForward: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		publish: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		rebaseFromBase: (input: SourceControlRebaseInput) => Promise<SourceControlMutationResult>;
+		getBranchCompare: (input: SourceControlBranchCompareInput) => Promise<SourceControlBranchCompareResult>;
+		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
+		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
+		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;
 	};
 	clipboard: {
 		writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;

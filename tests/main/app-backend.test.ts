@@ -1,12 +1,15 @@
+import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createAppBackend } from "../../src/main/app-backend";
+import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
+import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
+import type { ProjectService } from "../../src/main/projects/project-service";
 import type { AppRpcRequest } from "../../src/shared/app-transport";
 import { PiSessionOperationFailedCode } from "../../src/shared/ipc";
-import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
-import type { ProjectService } from "../../src/main/projects/project-service";
 import type { ProjectStateView } from "../../src/shared/project-state";
 
 const emptyState: ProjectStateView = {
@@ -17,6 +20,10 @@ const emptyState: ProjectStateView = {
 	selectedProject: null,
 	selectedChat: null,
 };
+
+const execFileAsync = promisify(execFile);
+const runGit = (args: string[], cwd: string) =>
+	execFileAsync("git", args, { cwd, env: createGitChildProcessEnvironment() });
 
 const createProjectService = (): ProjectService => ({
 	getState: vi.fn(async () => emptyState),
@@ -279,6 +286,135 @@ describe("app backend", () => {
 			chatId: "chat:one",
 			title: "Renamed chat",
 		});
+	});
+
+	it("routes source-control operations through guarded project workspaces", async () => {
+		const repoDir = await mkdtemp(join(tmpdir(), "pi-app-backend-source-control-"));
+		try {
+			await initializeGitRepository(repoDir);
+			await writeFile(join(repoDir, "README.md"), "# hello\n", "utf8");
+			await runGit(["add", "README.md"], repoDir);
+			await runGit(["commit", "-m", "initial"], repoDir);
+			await writeFile(join(repoDir, "README.md"), "# changed\n", "utf8");
+			await writeFile(join(repoDir, "new.txt"), "new\n", "utf8");
+
+			const projectService = createProjectService();
+			vi.mocked(projectService.getSessionWorkspace).mockResolvedValue({
+				projectId: "project:one",
+				displayName: "one",
+				path: repoDir,
+			});
+			const backend = createAppBackend({
+				appInfo: { name: "pi-desktop", version: "dev" },
+				projectService,
+				now: () => "2026-05-15T12:00:00.000Z",
+				initializeGitRepository,
+			});
+
+			await expect(
+				backend.handle({ operation: "sourceControl.getStatus", input: { projectId: "project:one" } }),
+			).resolves.toMatchObject({
+				ok: true,
+				data: { conflictOperation: "unknown" },
+			});
+			await expect(
+				backend.handle({
+					operation: "sourceControl.checkIgnored",
+					input: { projectId: "project:one", relativePaths: ["new.txt"] },
+				}),
+			).resolves.toEqual({ ok: true, data: { ignoredPaths: [] } });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.bulkStage",
+					input: { projectId: "project:one", relativePaths: [] },
+				}),
+			).resolves.toEqual({ ok: true, data: {} });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.stage",
+					input: { projectId: "project:one", relativePath: "README.md" },
+				}),
+			).resolves.toEqual({ ok: true, data: {} });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.getDiff",
+					input: { projectId: "project:one", relativePath: "README.md", kind: "staged" },
+				}),
+			).resolves.toMatchObject({ ok: true, data: { kind: "text", path: "README.md" } });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.commit",
+					input: { projectId: "project:one", message: "Update readme" },
+				}),
+			).resolves.toMatchObject({ ok: true, data: { summary: "Update readme" } });
+			await expect(
+				backend.handle({ operation: "sourceControl.getUpstreamStatus", input: { projectId: "project:one" } }),
+			).resolves.toEqual({ ok: true, data: { hasUpstream: false, ahead: 0, behind: 0 } });
+
+			await runGit(["checkout", "-b", "feature"], repoDir);
+			await writeFile(join(repoDir, "feature.txt"), "feature\n", "utf8");
+			await runGit(["add", "feature.txt"], repoDir);
+			await runGit(["commit", "-m", "feature"], repoDir);
+			await expect(
+				backend.handle({
+					operation: "sourceControl.getBranchCompare",
+					input: { projectId: "project:one", baseRef: "main", headRef: "feature" },
+				}),
+			).resolves.toMatchObject({ ok: true, data: { ahead: 1, behind: 0 } });
+			await expect(
+				backend.handle({ operation: "sourceControl.fetch", input: { projectId: "project:one" } }),
+			).resolves.toEqual({
+				ok: true,
+				data: {},
+			});
+			await expect(
+				backend.handle({
+					operation: "sourceControl.rebaseFromBase",
+					input: { projectId: "project:one", baseRef: "main" },
+				}),
+			).resolves.toEqual({ ok: true, data: {} });
+			await expect(
+				backend.handle({ operation: "sourceControl.push", input: { projectId: "project:one" } }),
+			).resolves.toMatchObject({
+				ok: false,
+				error: { code: "source_control.operation_failed" },
+			});
+			await expect(
+				backend.handle({
+					operation: "sourceControl.createPullRequest",
+					input: { projectId: "project:one", title: "PR", body: "" },
+				}),
+			).resolves.toMatchObject({ ok: false, error: { code: "source_control.operation_failed" } });
+		} finally {
+			await rm(repoDir, { recursive: true, force: true });
+		}
+	});
+
+	it("returns a dedicated source-control code for non-git projects", async () => {
+		const projectDir = await mkdtemp(join(tmpdir(), "pi-app-backend-not-git-"));
+		try {
+			const projectService = createProjectService();
+			vi.mocked(projectService.getSessionWorkspace).mockResolvedValue({
+				projectId: "project:one",
+				displayName: "one",
+				path: projectDir,
+			});
+			const backend = createAppBackend({
+				appInfo: { name: "pi-desktop", version: "dev" },
+				projectService,
+				now: () => "2026-05-15T12:00:00.000Z",
+				initializeGitRepository,
+			});
+
+			await expect(
+				backend.handle({ operation: "sourceControl.getStatus", input: { projectId: "project:one" } }),
+			).resolves.toMatchObject({
+				ok: false,
+				error: { code: "source_control.not_a_git_repo" },
+			});
+		} finally {
+			await rm(projectDir, { recursive: true, force: true });
+		}
 	});
 
 	it("wraps Pi session operation failures in structured results with sanitized messages", async () => {
@@ -959,7 +1095,11 @@ describe("workspace files", () => {
 			if (!listed.ok || !("entries" in listed.data)) {
 				throw new Error("Expected workspace directory listing to succeed.");
 			}
-			expect(listed.data.entries.some((entry) => entry.relativePath === "notes.md")).toBe(true);
+			const directoryEntries = listed.data.entries.filter(
+				(entry): entry is { name: string; relativePath: string; kind: "file" | "directory" } =>
+					"relativePath" in entry && "kind" in entry,
+			);
+			expect(directoryEntries.some((entry) => entry.relativePath === "notes.md")).toBe(true);
 
 			const read = await backend.handle({
 				operation: "workspaceFiles.readFile",

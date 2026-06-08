@@ -24,12 +24,12 @@ describe("right panel workspace integration", () => {
 			</ShellTestProviders>,
 		);
 
-		expect(screen.getByTestId("workspace-panel-diffs")).toBeTruthy();
+		expect(screen.getByTestId("workspace-panel-changes")).toBeTruthy();
 		expect(screen.queryByTestId("workspace-panel-terminal")).toBeNull();
 
 		fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
 		expect(screen.getByTestId("workspace-panel-terminal")).toBeTruthy();
-		expect(screen.queryByTestId("workspace-panel-diffs")).toBeNull();
+		expect(screen.queryByTestId("workspace-panel-changes")).toBeNull();
 
 		fireEvent.click(screen.getByRole("tab", { name: "File explorer" }));
 		expect(screen.getByTestId("workspace-panel-files")).toBeTruthy();

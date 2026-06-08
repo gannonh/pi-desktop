@@ -7,6 +7,7 @@ import {
 	dirtyTabLabels,
 	hasDirtyTabs,
 	markFileSaved,
+	openDiffTab,
 	openFileTab,
 	setActiveFileTab,
 	setDirectoryError,
@@ -40,6 +41,41 @@ describe("file workspace state", () => {
 		expect(loaded.tabs).toHaveLength(1);
 		expect(loaded.tabs[0]?.dirty).toBe(false);
 		expect(loaded.tabs[0]?.buffer).toBe("# Agent\n");
+	});
+
+	it("opens read-only diff tabs with stable diff ids", () => {
+		let state = openDiffTab(createInitialFileWorkspaceState(), {
+			relativePath: "src/index.ts",
+			kind: "unstaged",
+			diff: {
+				kind: "text",
+				path: "src/index.ts",
+				title: "src/index.ts (unstaged)",
+				diffKind: "unstaged",
+				patch: "@@\n",
+			},
+		});
+		state = openDiffTab(state, {
+			relativePath: "src/index.ts",
+			kind: "unstaged",
+			diff: {
+				kind: "text",
+				path: "src/index.ts",
+				title: "src/index.ts (unstaged)",
+				diffKind: "unstaged",
+				patch: "@@\n",
+			},
+		});
+
+		expect(state.tabs).toHaveLength(1);
+		expect(state.tabs[0]).toMatchObject({
+			id: "diff:unstaged:src/index.ts",
+			kind: "diff",
+			relativePath: "src/index.ts",
+			readOnly: true,
+			status: "loaded",
+		});
+		expect(state.activeTabId).toBe("diff:unstaged:src/index.ts");
 	});
 
 	it("keeps dirty in-memory edits when a stale file load finishes", () => {
@@ -83,6 +119,9 @@ describe("file workspace state", () => {
 		const opened = openFileTab(createInitialFileWorkspaceState(), "big.bin");
 		const loaded = applyFileLoadResult(opened, "big.bin", { kind: "too_large" });
 		expect(loaded.tabs[0]?.readOnly).toBe(true);
+		if (loaded.tabs[0]?.kind === "diff") {
+			throw new Error("Expected file tab");
+		}
 		expect(loaded.tabs[0]?.loadKind).toBe("too_large");
 	});
 

@@ -41,6 +41,26 @@ import {
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
+	SourceControlBulkDiscardInputSchema,
+	SourceControlBulkPathsInputSchema,
+	SourceControlCheckIgnoredResultSchema,
+	SourceControlCommitInputSchema,
+	SourceControlCommitResultSchema,
+	SourceControlCreatePullRequestInputSchema,
+	SourceControlDiscardInputSchema,
+	SourceControlBranchCompareInputSchema,
+	SourceControlBranchCompareResultSchema,
+	SourceControlGetDiffInputSchema,
+	SourceControlGetDiffResultSchema,
+	SourceControlGetStatusResultSchema,
+	SourceControlMutationResultSchema,
+	SourceControlPathInputSchema,
+	SourceControlProjectInputSchema,
+	SourceControlRebaseInputSchema,
+	SourceControlRemoteActionInputSchema,
+	SourceControlAbortConflictInputSchema,
+	SourceControlPullRequestInfoResultSchema,
+	SourceControlUpstreamStatusResultSchema,
 } from "./ipc";
 
 export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
@@ -103,6 +123,98 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		operation: z.literal("workspaceFiles.writeFile"),
 		input: WorkspaceFilesWriteInputSchema,
 	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getStatus"),
+		input: SourceControlProjectInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.checkIgnored"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.stage"),
+		input: SourceControlPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.unstage"),
+		input: SourceControlPathInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.discard"),
+		input: SourceControlDiscardInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkStage"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkUnstage"),
+		input: SourceControlBulkPathsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.bulkDiscard"),
+		input: SourceControlBulkDiscardInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.initializeRepository"),
+		input: SourceControlProjectInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.commit"),
+		input: SourceControlCommitInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getDiff"),
+		input: SourceControlGetDiffInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getUpstreamStatus"),
+		input: SourceControlProjectInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.fetch"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.push"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.pull"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.sync"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.fastForward"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.publish"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.rebaseFromBase"),
+		input: SourceControlRebaseInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getBranchCompare"),
+		input: SourceControlBranchCompareInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.abortConflict"),
+		input: SourceControlAbortConflictInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.createPullRequest"),
+		input: SourceControlCreatePullRequestInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.getPullRequestInfo"),
+		input: SourceControlProjectInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -147,6 +259,29 @@ export const AppRpcResponseSchemas = {
 	"workspaceFiles.listDirectory": WorkspaceListDirectoryResultSchema,
 	"workspaceFiles.readFile": WorkspaceReadFileResultSchema,
 	"workspaceFiles.writeFile": WorkspaceWriteFileResultSchema,
+	"sourceControl.getStatus": SourceControlGetStatusResultSchema,
+	"sourceControl.checkIgnored": SourceControlCheckIgnoredResultSchema,
+	"sourceControl.stage": SourceControlMutationResultSchema,
+	"sourceControl.unstage": SourceControlMutationResultSchema,
+	"sourceControl.discard": SourceControlMutationResultSchema,
+	"sourceControl.bulkStage": SourceControlMutationResultSchema,
+	"sourceControl.bulkUnstage": SourceControlMutationResultSchema,
+	"sourceControl.bulkDiscard": SourceControlMutationResultSchema,
+	"sourceControl.initializeRepository": SourceControlMutationResultSchema,
+	"sourceControl.commit": SourceControlCommitResultSchema,
+	"sourceControl.getDiff": SourceControlGetDiffResultSchema,
+	"sourceControl.getUpstreamStatus": SourceControlUpstreamStatusResultSchema,
+	"sourceControl.fetch": SourceControlMutationResultSchema,
+	"sourceControl.push": SourceControlMutationResultSchema,
+	"sourceControl.pull": SourceControlMutationResultSchema,
+	"sourceControl.sync": SourceControlMutationResultSchema,
+	"sourceControl.fastForward": SourceControlMutationResultSchema,
+	"sourceControl.publish": SourceControlMutationResultSchema,
+	"sourceControl.rebaseFromBase": SourceControlMutationResultSchema,
+	"sourceControl.getBranchCompare": SourceControlBranchCompareResultSchema,
+	"sourceControl.abortConflict": SourceControlMutationResultSchema,
+	"sourceControl.createPullRequest": SourceControlPullRequestInfoResultSchema,
+	"sourceControl.getPullRequestInfo": SourceControlPullRequestInfoResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

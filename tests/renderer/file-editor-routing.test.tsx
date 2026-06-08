@@ -9,6 +9,7 @@ import { ensureRangeClientRects } from "./console-test-guard";
 beforeAll(ensureRangeClientRects);
 
 const loadedTab = (relativePath: string, buffer = "content\n"): FileEditorTab => ({
+	kind: "file",
 	id: `file:${relativePath}`,
 	relativePath,
 	title: relativePath.split("/").pop() ?? relativePath,

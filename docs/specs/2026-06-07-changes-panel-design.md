@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft — design interrogation complete; ready for Build
+Implemented — Build completed on `feat/issue-144-m07c-changes-panel`; see `docs/specs/2026-06-07-changes-panel-build-report.md`.
 
 ## Goal
 

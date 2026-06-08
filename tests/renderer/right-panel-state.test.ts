@@ -4,8 +4,10 @@ import {
 	addOrActivateRightPanelTab,
 	addRightPanelTab,
 	createDefaultRightPanelState,
+	isWorkspaceFilesActive,
 	removeRightPanelTab,
 	selectRightPanelTab,
+	selectWorkspaceFileTab,
 } from "../../src/renderer/right-panel/right-panel-state";
 import type { RightPanelKind } from "../../src/renderer/right-panel/right-panel-types";
 
@@ -14,7 +16,7 @@ describe("right panel state", () => {
 		const state = createDefaultRightPanelState();
 
 		expect(state.tabs).toHaveLength(3);
-		expect(state.tabs.map((tab) => tab.kind)).toEqual(["diffs", "terminal", "browser"]);
+		expect(state.tabs.map((tab) => tab.kind)).toEqual(["changes", "terminal", "browser"]);
 		expect(state.activeTabId).toBe(state.tabs[0]?.id);
 	});
 
@@ -59,6 +61,14 @@ describe("right panel state", () => {
 		expect(next.activeTabId).toBe("file-workspace:view");
 	});
 
+	it("activates the file workspace for diff tabs", () => {
+		const next = selectWorkspaceFileTab(createDefaultRightPanelState(), "diff:unstaged:README.md");
+
+		expect(next.activeTabId).toBe("diff:unstaged:README.md");
+		expect(isWorkspaceFilesActive(next)).toBe(true);
+		expect(next.collapsed).toBe(false);
+	});
+
 	it("adds a tab by kind and activates it", () => {
 		const state = createDefaultRightPanelState();
 		const beforeCount = state.tabs.length;
@@ -96,7 +106,7 @@ describe("right panel state", () => {
 });
 
 describe("right panel tab titles", () => {
-	const kinds: RightPanelKind[] = ["terminal", "browser", "files", "diffs"];
+	const kinds: RightPanelKind[] = ["terminal", "browser", "files", "changes"];
 
 	it.each(kinds)("adds a unique title for %s tabs", (kind) => {
 		const first = addRightPanelTab(createDefaultRightPanelState(), kind);

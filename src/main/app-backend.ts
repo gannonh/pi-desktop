@@ -1,5 +1,6 @@
 import type { AppRpcRequest } from "../shared/app-transport";
 import {
+	type AppVersion,
 	ChatBranchInputSchema,
 	ChatCloneInputSchema,
 	ChatCreateInputSchema,
@@ -10,13 +11,13 @@ import {
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionAttachInputSchema,
-	PiSessionPrepareInputSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionGetDefaultSettingsInputSchema,
 	PiSessionGetRuntimeCommandsInputSchema,
 	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
+	PiSessionPrepareInputSchema,
 	PiSessionRemoveQueuedMessageInputSchema,
 	PiSessionSetDefaultModelInputSchema,
 	PiSessionSetDefaultThinkingLevelInputSchema,
@@ -28,15 +29,21 @@ import {
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
+	SourceControlAbortConflictInputSchema,
+	SourceControlBranchCompareInputSchema,
+	SourceControlBulkDiscardInputSchema,
+	SourceControlBulkPathsInputSchema,
+	SourceControlCommitInputSchema,
+	SourceControlCreatePullRequestInputSchema,
+	SourceControlDiscardInputSchema,
+	SourceControlGetDiffInputSchema,
+	SourceControlPathInputSchema,
+	SourceControlProjectInputSchema,
+	SourceControlRebaseInputSchema,
+	SourceControlRemoteActionInputSchema,
 	WorkspaceFilesPathInputSchema,
 	WorkspaceFilesWriteInputSchema,
-	type AppVersion,
 } from "../shared/ipc";
-import type {
-	WorkspaceListDirectoryPayload,
-	WorkspaceReadFileStatusPayload,
-	WorkspaceWriteFilePayload,
-} from "../shared/workspace-files";
 import type {
 	PiSessionActionPayload,
 	PiSessionEvent,
@@ -49,10 +56,24 @@ import type {
 import type { PiSessionRuntimeCommandsPayload } from "../shared/pi-session-commands";
 import type { ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
+import type { GitStatusPayload } from "../shared/source-control/schemas";
+import type {
+	GitBranchCompareResult,
+	GitCommitResult,
+	GitDiffPayload,
+	GitUpstreamStatus,
+	SourceControlPullRequestInfo,
+} from "../shared/source-control/types";
+import type {
+	WorkspaceListDirectoryPayload,
+	WorkspaceReadFileStatusPayload,
+	WorkspaceWriteFilePayload,
+} from "../shared/workspace-files";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
-import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
+import { type LoadPiSessionHistoryInput, loadPiSessionHistory } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
+import { createSourceControlService, NotAGitRepositoryError } from "./source-control/source-control-service";
 import { WorkspacePathError } from "./workspace-files/path-guard";
 import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
@@ -64,6 +85,7 @@ export type AppBackendDeps = {
 	appInfo: AppVersion;
 	projectService: ProjectService;
 	now: () => string;
+	initializeGitRepository?: (projectPath: string) => Promise<void>;
 	env?: NodeJS.ProcessEnv;
 	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
@@ -82,6 +104,14 @@ export type AppBackendResult = IpcResult<
 	| WorkspaceListDirectoryPayload
 	| WorkspaceReadFileStatusPayload
 	| WorkspaceWriteFilePayload
+	| GitStatusPayload
+	| { ignoredPaths: string[] }
+	| GitCommitResult
+	| GitDiffPayload
+	| GitUpstreamStatus
+	| GitBranchCompareResult
+	| SourceControlPullRequestInfo
+	| Record<string, never>
 >;
 
 export type AppBackend = {
@@ -159,6 +189,11 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				});
 		}
 	};
+	const sourceControlService = createSourceControlService({
+		projectService: deps.projectService,
+		initializeGitRepository: deps.initializeGitRepository ?? (async () => undefined),
+	});
+
 	const piSessionRuntime = createPiSessionRuntime({
 		now: deps.now,
 		emit: emitPiSessionEvent,
@@ -188,6 +223,20 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				return err("workspace_files.path_invalid", error.message);
 			}
 			return err("workspace_files.operation_failed", toErrorMessage(error));
+		}
+	};
+
+	const handleSourceControlOperation = async <T>(operation: () => Promise<T>): Promise<IpcResult<T>> => {
+		try {
+			return ok(await operation());
+		} catch (error) {
+			if (error instanceof WorkspacePathError) {
+				return err("source_control.path_invalid", error.message);
+			}
+			if (error instanceof NotAGitRepositoryError) {
+				return err("source_control.not_a_git_repo", toErrorMessage(error));
+			}
+			return err("source_control.operation_failed", toErrorMessage(error));
 		}
 	};
 
@@ -461,6 +510,136 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						const parsed = WorkspaceFilesWriteInputSchema.parse(request.input);
 						const projectRoot = await resolveProjectRoot(parsed.projectId);
 						return writeWorkspaceFile(projectRoot, parsed.relativePath, parsed.content);
+					});
+				case "sourceControl.getStatus":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						return sourceControlService.getStatus(parsed);
+					});
+				case "sourceControl.checkIgnored":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						return sourceControlService.checkIgnored(parsed);
+					});
+				case "sourceControl.stage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlPathInputSchema.parse(request.input);
+						await sourceControlService.stage(parsed);
+						return {};
+					});
+				case "sourceControl.unstage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlPathInputSchema.parse(request.input);
+						await sourceControlService.unstage(parsed);
+						return {};
+					});
+				case "sourceControl.discard":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlDiscardInputSchema.parse(request.input);
+						await sourceControlService.discard(parsed);
+						return {};
+					});
+				case "sourceControl.bulkStage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						await sourceControlService.bulkStage(parsed);
+						return {};
+					});
+				case "sourceControl.bulkUnstage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						await sourceControlService.bulkUnstage(parsed);
+						return {};
+					});
+				case "sourceControl.bulkDiscard":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBulkDiscardInputSchema.parse(request.input);
+						await sourceControlService.bulkDiscard(parsed);
+						return {};
+					});
+				case "sourceControl.initializeRepository":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						await sourceControlService.initializeRepository(parsed);
+						return {};
+					});
+				case "sourceControl.commit":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlCommitInputSchema.parse(request.input);
+						return sourceControlService.commit(parsed);
+					});
+				case "sourceControl.getDiff":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlGetDiffInputSchema.parse(request.input);
+						return sourceControlService.getDiff(parsed);
+					});
+				case "sourceControl.getUpstreamStatus":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						return sourceControlService.getUpstreamStatus(parsed);
+					});
+				case "sourceControl.fetch":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.fetch(parsed);
+						return {};
+					});
+				case "sourceControl.push":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.push(parsed);
+						return {};
+					});
+				case "sourceControl.pull":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.pull(parsed);
+						return {};
+					});
+				case "sourceControl.sync":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.sync(parsed);
+						return {};
+					});
+				case "sourceControl.fastForward":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.fastForward(parsed);
+						return {};
+					});
+				case "sourceControl.publish":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.publish(parsed);
+						return {};
+					});
+				case "sourceControl.rebaseFromBase":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRebaseInputSchema.parse(request.input);
+						await sourceControlService.rebaseFromBase(parsed);
+						return {};
+					});
+				case "sourceControl.getBranchCompare":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlBranchCompareInputSchema.parse(request.input);
+						return sourceControlService.getBranchCompare(parsed);
+					});
+				case "sourceControl.abortConflict":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlAbortConflictInputSchema.parse(request.input);
+						await sourceControlService.abortConflict(parsed);
+						return {};
+					});
+				case "sourceControl.createPullRequest":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlCreatePullRequestInputSchema.parse(request.input);
+						return sourceControlService.createPullRequest(parsed);
+					});
+				case "sourceControl.getPullRequestInfo":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlProjectInputSchema.parse(request.input);
+						return sourceControlService.getPullRequestInfo(parsed);
 					});
 				default:
 					return assertNever(request);

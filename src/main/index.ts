@@ -94,6 +94,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 			version: app.getVersion(),
 		},
 		projectService,
+		initializeGitRepository,
 		now: () => new Date().toISOString(),
 		env: process.env,
 		createAgentSession: shouldUseSmokePiSession() ? createSmokePiAgentSession : undefined,
@@ -173,6 +174,55 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	);
 	ipcMain.handle(IpcChannels.workspaceFilesWriteFile, (_event, input) =>
 		invokeBackend("workspaceFiles.writeFile", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGetStatus, (_event, input) =>
+		invokeBackend("sourceControl.getStatus", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlCheckIgnored, (_event, input) =>
+		invokeBackend("sourceControl.checkIgnored", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlStage, (_event, input) => invokeBackend("sourceControl.stage", input));
+	ipcMain.handle(IpcChannels.sourceControlUnstage, (_event, input) => invokeBackend("sourceControl.unstage", input));
+	ipcMain.handle(IpcChannels.sourceControlDiscard, (_event, input) => invokeBackend("sourceControl.discard", input));
+	ipcMain.handle(IpcChannels.sourceControlBulkStage, (_event, input) =>
+		invokeBackend("sourceControl.bulkStage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlBulkUnstage, (_event, input) =>
+		invokeBackend("sourceControl.bulkUnstage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlBulkDiscard, (_event, input) =>
+		invokeBackend("sourceControl.bulkDiscard", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlInitializeRepository, (_event, input) =>
+		invokeBackend("sourceControl.initializeRepository", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlCommit, (_event, input) => invokeBackend("sourceControl.commit", input));
+	ipcMain.handle(IpcChannels.sourceControlGetDiff, (_event, input) => invokeBackend("sourceControl.getDiff", input));
+	ipcMain.handle(IpcChannels.sourceControlGetUpstreamStatus, (_event, input) =>
+		invokeBackend("sourceControl.getUpstreamStatus", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlFetch, (_event, input) => invokeBackend("sourceControl.fetch", input));
+	ipcMain.handle(IpcChannels.sourceControlPush, (_event, input) => invokeBackend("sourceControl.push", input));
+	ipcMain.handle(IpcChannels.sourceControlPull, (_event, input) => invokeBackend("sourceControl.pull", input));
+	ipcMain.handle(IpcChannels.sourceControlSync, (_event, input) => invokeBackend("sourceControl.sync", input));
+	ipcMain.handle(IpcChannels.sourceControlFastForward, (_event, input) =>
+		invokeBackend("sourceControl.fastForward", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlPublish, (_event, input) => invokeBackend("sourceControl.publish", input));
+	ipcMain.handle(IpcChannels.sourceControlRebaseFromBase, (_event, input) =>
+		invokeBackend("sourceControl.rebaseFromBase", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGetBranchCompare, (_event, input) =>
+		invokeBackend("sourceControl.getBranchCompare", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlAbortConflict, (_event, input) =>
+		invokeBackend("sourceControl.abortConflict", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlCreatePullRequest, (_event, input) =>
+		invokeBackend("sourceControl.createPullRequest", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGetPullRequestInfo, (_event, input) =>
+		invokeBackend("sourceControl.getPullRequestInfo", input),
 	);
 	ipcMain.handle(IpcChannels.clipboardWriteText, (_event, input) => {
 		const parsed = ClipboardWriteTextInputSchema.safeParse(input);
