@@ -1,13 +1,10 @@
 import type { GitStatusEntry } from "../../shared/source-control/types";
 
 const getConflictSortRank = (entry: GitStatusEntry): number => {
-	if ("conflictStatus" in entry && entry.conflictStatus === "unresolved") {
+	if (entry.conflictKind) {
 		return 0;
 	}
-	if ("conflictStatus" in entry && entry.conflictStatus === "resolved_locally") {
-		return 1;
-	}
-	return 2;
+	return 1;
 };
 
 export const compareGitStatusEntries = (left: GitStatusEntry, right: GitStatusEntry): number =>

@@ -9,6 +9,16 @@ import type {
 	SourceControlPullRequestInfo,
 } from "../../shared/source-control/types";
 import { Button } from "../components/ui/button";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
 import {
@@ -122,13 +132,13 @@ function SourceControlTreeRow({
 
 const selectionKey = (entry: GitStatusEntry) => `${entry.area}:${entry.path}`;
 
-const confirmDiscard = (entries: readonly GitStatusEntry[]): boolean => {
+const getDiscardConfirmation = (entries: readonly GitStatusEntry[]): { title: string; description: string } => {
 	const includesUntracked = entries.some((entry) => entry.area === "untracked");
 	const fileText = entries.length === 1 ? entries[0]?.path : `${entries.length} selected files`;
-	const detail = includesUntracked
+	const description = includesUntracked
 		? "This will permanently delete untracked files."
 		: "This will restore tracked files to their previous state.";
-	return window.confirm(`Discard changes for ${fileText}?\n\n${detail}`);
+	return { title: `Discard changes for ${fileText}?`, description };
 };
 
 const conflictLabel = (operation: GitConflictOperation): string | null => {
@@ -523,6 +533,7 @@ function ChangesPanelBody() {
 	const [collapsedTreeDirs, setCollapsedTreeDirs] = useState<ReadonlySet<string>>(new Set());
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
+	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
 
 	useEffect(() => {
 		void refresh();
@@ -623,9 +634,55 @@ function ChangesPanelBody() {
 		const operation = status.conflictOperation;
 		await runMutation(() => window.piDesktop.sourceControl.abortConflict({ projectId, operation }));
 	};
+	const discardConfirmation = pendingDiscardEntries.length
+		? getDiscardConfirmation(pendingDiscardEntries)
+		: { title: "", description: "" };
+	const discardPendingEntries = async () => {
+		const entries = pendingDiscardEntries;
+		setPendingDiscardEntries([]);
+		if (entries.length === 0) {
+			return;
+		}
+		await runMutation(() =>
+			entries.length === 1
+				? window.piDesktop.sourceControl.discard({
+						projectId,
+						relativePath: entries[0]?.path ?? "",
+						area: entries[0]?.area ?? "unstaged",
+					})
+				: window.piDesktop.sourceControl.bulkDiscard({
+						projectId,
+						entries: entries.map((entry) => ({
+							relativePath: entry.path,
+							area: entry.area,
+						})),
+					}),
+		);
+	};
 
 	return (
 		<div className="changes-panel__content">
+			<AlertDialog
+				open={pendingDiscardEntries.length > 0}
+				onOpenChange={(open) => {
+					if (!open) {
+						setPendingDiscardEntries([]);
+					}
+				}}
+			>
+				<AlertDialogContent size="sm">
+					<AlertDialogHeader>
+						<AlertDialogTitle>{discardConfirmation.title}</AlertDialogTitle>
+						<AlertDialogDescription>{discardConfirmation.description}</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction variant="destructive" onClick={() => void discardPendingEntries()}>
+							Discard Changes
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			{conflict ? (
 				<div className="changes-panel__conflict">
 					<span>{conflict}</span>
@@ -683,19 +740,7 @@ function ChangesPanelBody() {
 						type="button"
 						variant="ghost"
 						size="sm"
-						onClick={() =>
-							confirmDiscard(selectedEntries)
-								? void runMutation(() =>
-										window.piDesktop.sourceControl.bulkDiscard({
-											projectId: projectId ?? "",
-											entries: selectedEntries.map((entry) => ({
-												relativePath: entry.path,
-												area: entry.area,
-											})),
-										}),
-									)
-								: undefined
-						}
+						onClick={() => setPendingDiscardEntries(selectedEntries)}
 					>
 						Discard Selected
 					</Button>
@@ -765,17 +810,7 @@ function ChangesPanelBody() {
 													}),
 												)
 											}
-											onDiscard={(entry) =>
-												confirmDiscard([entry])
-													? void runMutation(() =>
-															window.piDesktop.sourceControl.discard({
-																projectId: projectId ?? "",
-																relativePath: entry.path,
-																area: entry.area,
-															}),
-														)
-													: undefined
-											}
+											onDiscard={(entry) => setPendingDiscardEntries([entry])}
 											onToggleDirectory={(key) =>
 												setCollapsedTreeDirs((current) => {
 													const next = new Set(current);

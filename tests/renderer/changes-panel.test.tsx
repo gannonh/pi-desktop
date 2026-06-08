@@ -270,19 +270,19 @@ describe("ChangesPanel", () => {
 
 	it("does not discard a row when confirmation is cancelled", async () => {
 		const discard = vi.fn(async () => ({ ok: true as const, data: {} }));
-		vi.spyOn(window, "confirm").mockReturnValue(false);
 		installApi({ discard });
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
 		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
+		fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
 		expect(discard).not.toHaveBeenCalled();
 	});
 
 	it("confirms bulk discard before discarding selected rows", async () => {
 		const bulkDiscard = vi.fn(async () => ({ ok: true as const, data: {} }));
-		vi.spyOn(window, "confirm").mockReturnValue(true);
 		installApi({ bulkDiscard });
 		render(<ChangesPanel project={project} isActive />);
 
@@ -290,9 +290,11 @@ describe("ChangesPanel", () => {
 		fireEvent.click(screen.getByLabelText("Select README.md"));
 		fireEvent.click(screen.getByLabelText("Select new.txt"));
 		fireEvent.click(screen.getByRole("button", { name: "Discard Selected" }));
+		await screen.findByRole("alertdialog", { name: "Discard changes for 2 selected files?" });
+		expect(screen.getByText("This will permanently delete untracked files.")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
 
 		await waitFor(() => {
-			expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("permanently delete untracked files"));
 			expect(bulkDiscard).toHaveBeenCalledWith({
 				projectId: project.id,
 				entries: [

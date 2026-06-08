@@ -96,6 +96,22 @@ describe("source control git operations", () => {
 		);
 	});
 
+	it("unstages both sides of staged renames", async () => {
+		const repo = await createRepo();
+		await runGit(["mv", "README.md", "RENAMED.md"], repo);
+
+		await unstageFile(repo, "RENAMED.md");
+
+		const status = await getStatus(repo);
+		expect(status.entries.filter((entry) => entry.area === "staged")).toEqual([]);
+		expect(status.entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: "README.md", area: "unstaged", status: "deleted" }),
+				expect.objectContaining({ path: "RENAMED.md", area: "untracked", status: "untracked" }),
+			]),
+		);
+	});
+
 	it("unstages files before the first commit", async () => {
 		repoDir = await mkdtemp(join(tmpdir(), "pi-source-control-unborn-"));
 		await initializeGitRepository(repoDir);
@@ -260,6 +276,47 @@ describe("source control git operations", () => {
 		]);
 		status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
+	});
+
+	it("bulk unstages both sides of staged renames", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "SECOND.md"), "# second\n", "utf8");
+		await stageFile(repo, "SECOND.md");
+		await commitStagedChanges(repo, "Add second");
+		await runGit(["mv", "README.md", "RENAMED.md"], repo);
+		await runGit(["mv", "SECOND.md", "SECOND_RENAMED.md"], repo);
+
+		await bulkUnstageFiles(repo, ["RENAMED.md", "SECOND_RENAMED.md"]);
+
+		const status = await getStatus(repo);
+		expect(status.entries.filter((entry) => entry.area === "staged")).toEqual([]);
+		expect(status.entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ path: "README.md", area: "unstaged", status: "deleted" }),
+				expect.objectContaining({ path: "RENAMED.md", area: "untracked", status: "untracked" }),
+				expect.objectContaining({ path: "SECOND.md", area: "unstaged", status: "deleted" }),
+				expect.objectContaining({ path: "SECOND_RENAMED.md", area: "untracked", status: "untracked" }),
+			]),
+		);
+	});
+
+	it("bulk discards staged renames completely", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "SECOND.md"), "# second\n", "utf8");
+		await stageFile(repo, "SECOND.md");
+		await commitStagedChanges(repo, "Add second");
+		await runGit(["mv", "README.md", "RENAMED.md"], repo);
+		await runGit(["mv", "SECOND.md", "SECOND_RENAMED.md"], repo);
+
+		await bulkDiscardChanges(repo, [
+			{ relativePath: "RENAMED.md", area: "staged" },
+			{ relativePath: "SECOND_RENAMED.md", area: "staged" },
+		]);
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([]);
+		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+		expect(await runGit(["show", "HEAD:SECOND.md"], repo)).toMatchObject({ stdout: "# second\n" });
 	});
 
 	it("rejects paths that escape the repository root", async () => {

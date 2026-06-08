@@ -37,7 +37,6 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 	let branch: string | undefined;
 	let upstreamName: string | undefined;
 	let upstreamAheadBehind: { ahead: number; behind: number } | null = null;
-	let statusSucceeded = false;
 
 	const conflictPromise = detectConflictOperation(worktreePath);
 	const statusArgs = ["-c", "core.quotePath=false", "status", "--porcelain=v2", "--branch", "--untracked-files=all"];
@@ -125,18 +124,14 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 			ignoredPaths.push(decodeGitCQuotedPath(line.slice(2)));
 		}
 	}
-	statusSucceeded = true;
-
-	const upstreamStatus: GitUpstreamStatus | undefined = statusSucceeded
-		? upstreamName
-			? {
-					hasUpstream: true,
-					upstreamName,
-					ahead: upstreamAheadBehind?.ahead ?? 0,
-					behind: upstreamAheadBehind?.behind ?? 0,
-				}
-			: { hasUpstream: false, ahead: 0, behind: 0 }
-		: undefined;
+	const upstreamStatus: GitUpstreamStatus = upstreamName
+		? {
+				hasUpstream: true,
+				upstreamName,
+				ahead: upstreamAheadBehind?.ahead ?? 0,
+				behind: upstreamAheadBehind?.behind ?? 0,
+			}
+		: { hasUpstream: false, ahead: 0, behind: 0 };
 
 	return {
 		entries,
@@ -144,7 +139,7 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 		head,
 		branch,
 		...(options.includeIgnored ? { ignoredPaths } : {}),
-		...(upstreamStatus ? { upstreamStatus } : {}),
+		upstreamStatus,
 	};
 };
 
@@ -317,7 +312,10 @@ export const unstageFile = async (worktreePath: string, filePath: string): Promi
 		await gitExecFileAsync(["rm", "--cached", "-r", "--", literalPathspec(filePath)], { cwd: worktreePath });
 		return;
 	}
-	await gitExecFileAsync(["restore", "--staged", "--", literalPathspec(filePath)], { cwd: worktreePath });
+	const renameEntry = findStagedRenameEntry(await getStatus(worktreePath), filePath);
+	await gitExecFileAsync(["restore", "--staged", "--", ...stagedPathspecsFor(filePath, renameEntry)], {
+		cwd: worktreePath,
+	});
 };
 
 const normalizeGitPathForCompare = (filePath: string): string => filePath.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -358,7 +356,24 @@ const cleanUntrackedPaths = async (worktreePath: string, filePaths: readonly str
 	}
 };
 
-export const discardChanges = async (worktreePath: string, filePath: string, area: GitStagingArea): Promise<void> => {
+const findStagedRenameEntry = (status: GitStatusResult, filePath: string): GitStatusEntry | undefined =>
+	status.entries.find(
+		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
+	);
+
+const stagedPathspecsFor = (filePath: string, renameEntry?: GitStatusEntry): string[] => {
+	if (renameEntry?.oldPath) {
+		return [literalPathspec(renameEntry.oldPath), literalPathspec(filePath)];
+	}
+	return [literalPathspec(filePath)];
+};
+
+export const discardChanges = async (
+	worktreePath: string,
+	filePath: string,
+	area: GitStagingArea,
+	options: { status?: GitStatusResult } = {},
+): Promise<void> => {
 	assertPathWithinWorktree(worktreePath, filePath);
 
 	if (area === "untracked") {
@@ -374,18 +389,13 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 	}
 
 	const headExists = await hasHead(worktreePath);
-	const renameEntry = (await getStatus(worktreePath)).entries.find(
-		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
-	);
+	const renameEntry = findStagedRenameEntry(options.status ?? (await getStatus(worktreePath)), filePath);
 	if (renameEntry?.oldPath) {
 		const preserveWorktree = await hasUnstagedChange(worktreePath, filePath);
 		assertPathWithinWorktree(worktreePath, renameEntry.oldPath);
-		await gitExecFileAsync(
-			["restore", "--staged", "--", literalPathspec(renameEntry.oldPath), literalPathspec(filePath)],
-			{
-				cwd: worktreePath,
-			},
-		);
+		await gitExecFileAsync(["restore", "--staged", "--", ...stagedPathspecsFor(filePath, renameEntry)], {
+			cwd: worktreePath,
+		});
 		await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", literalPathspec(renameEntry.oldPath)], {
 			cwd: worktreePath,
 		});
@@ -439,8 +449,9 @@ export const bulkDiscardChanges = async (
 		return;
 	}
 
+	const status = entries.some((entry) => entry.area === "staged") ? await getStatus(worktreePath) : undefined;
 	for (const entry of entries) {
-		await discardChanges(worktreePath, entry.relativePath, entry.area);
+		await discardChanges(worktreePath, entry.relativePath, entry.area, { status });
 	}
 };
 
@@ -465,10 +476,14 @@ export const bulkUnstageFiles = async (worktreePath: string, filePaths: string[]
 		assertPathWithinWorktree(worktreePath, filePath);
 	}
 	const headExists = await hasHead(worktreePath);
+	const status = headExists ? await getStatus(worktreePath) : undefined;
 	for (let i = 0; i < filePaths.length; i += BULK_CHUNK_SIZE) {
 		const chunk = filePaths.slice(i, i + BULK_CHUNK_SIZE);
 		if (headExists) {
-			await gitExecFileAsync(["restore", "--staged", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
+			const pathspecs = chunk.flatMap((filePath) =>
+				stagedPathspecsFor(filePath, status && findStagedRenameEntry(status, filePath)),
+			);
+			await gitExecFileAsync(["restore", "--staged", "--", ...pathspecs], { cwd: worktreePath });
 		} else {
 			await gitExecFileAsync(["rm", "--cached", "-r", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
 		}
