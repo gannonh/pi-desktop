@@ -6,6 +6,7 @@ import { removeSafeUntrackedDiscardTarget } from "../../shared/git-discard-path-
 import type {
 	GitBranchCompareResult,
 	GitCommitResult,
+	GitConflictKind,
 	GitConflictOperation,
 	GitDiffPayload,
 	GitFileStatus,
@@ -72,7 +73,17 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 			continue;
 		}
 
-		if (line.startsWith("1 ") || line.startsWith("2 ")) {
+		if (line.startsWith("u ")) {
+			const parts = line.split(" ");
+			const conflictStatus = parts[1] ?? "UU";
+			const filePath = decodeGitCQuotedPath(parts.slice(10).join(" "));
+			entries.push({
+				path: filePath,
+				status: parseConflictStatus(conflictStatus),
+				area: "unstaged",
+				conflictKind: parseConflictKind(conflictStatus),
+			});
+		} else if (line.startsWith("1 ") || line.startsWith("2 ")) {
 			const parts = line.split(" ");
 			const xy = parts[1];
 			const indexStatus = xy[0];
@@ -160,6 +171,41 @@ const parseStatusChar = (char: string): GitFileStatus => {
 	}
 };
 
+const parseConflictKind = (status: string): GitConflictKind => {
+	switch (status) {
+		case "DD":
+			return "both_deleted";
+		case "AU":
+			return "added_by_us";
+		case "UD":
+			return "deleted_by_them";
+		case "UA":
+			return "added_by_them";
+		case "DU":
+			return "deleted_by_us";
+		case "AA":
+			return "both_added";
+		case "UU":
+		default:
+			return "both_modified";
+	}
+};
+
+const parseConflictStatus = (status: string): GitFileStatus => {
+	switch (status) {
+		case "DD":
+		case "DU":
+		case "UD":
+			return "deleted";
+		case "AA":
+		case "AU":
+		case "UA":
+			return "added";
+		default:
+			return "modified";
+	}
+};
+
 export const detectConflictOperation = async (worktreePath: string): Promise<GitConflictOperation> => {
 	const gitDir = await resolveGitDir(worktreePath);
 	const mergeHead = path.join(gitDir, "MERGE_HEAD");
@@ -224,6 +270,15 @@ const assertPathWithinWorktree = (worktreePath: string, filePath: string): void 
 
 const literalPathspec = (filePath: string): string => `:(literal)${filePath}`;
 
+const hasHead = async (worktreePath: string): Promise<boolean> => {
+	try {
+		await gitExecFileAsync(["rev-parse", "--verify", "HEAD"], { cwd: worktreePath });
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 export const stageFile = async (worktreePath: string, filePath: string): Promise<void> => {
 	assertPathWithinWorktree(worktreePath, filePath);
 	await gitExecFileAsync(["add", "--", literalPathspec(filePath)], { cwd: worktreePath });
@@ -231,6 +286,10 @@ export const stageFile = async (worktreePath: string, filePath: string): Promise
 
 export const unstageFile = async (worktreePath: string, filePath: string): Promise<void> => {
 	assertPathWithinWorktree(worktreePath, filePath);
+	if (!(await hasHead(worktreePath))) {
+		await gitExecFileAsync(["rm", "--cached", "-r", "--", literalPathspec(filePath)], { cwd: worktreePath });
+		return;
+	}
 	await gitExecFileAsync(["restore", "--staged", "--", literalPathspec(filePath)], { cwd: worktreePath });
 };
 
@@ -287,6 +346,7 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 		return;
 	}
 
+	const headExists = await hasHead(worktreePath);
 	const renameEntry = (await getStatus(worktreePath)).entries.find(
 		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
 	);
@@ -318,7 +378,8 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 	}
 
 	if (trackedInIndex) {
-		const trackedInHead = isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
+		const trackedInHead =
+			headExists && isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
 		if (trackedInHead) {
 			await gitExecFileAsync(
 				["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)],
@@ -328,7 +389,7 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 			);
 			return;
 		}
-		await gitExecFileAsync(["restore", "--staged", "--", literalPathspec(filePath)], { cwd: worktreePath });
+		await unstageFile(worktreePath, filePath);
 		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
 			cleanUntrackedPaths(worktreePath, [targetPath]),
 		);

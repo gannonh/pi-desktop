@@ -96,6 +96,20 @@ describe("source control git operations", () => {
 		);
 	});
 
+	it("unstages files before the first commit", async () => {
+		repoDir = await mkdtemp(join(tmpdir(), "pi-source-control-unborn-"));
+		await initializeGitRepository(repoDir);
+		await writeFile(join(repoDir, "first.txt"), "first\n", "utf8");
+		await stageFile(repoDir, "first.txt");
+
+		await unstageFile(repoDir, "first.txt");
+
+		const status = await getStatus(repoDir);
+		expect(status.entries).toEqual([
+			expect.objectContaining({ path: "first.txt", area: "untracked", status: "untracked" }),
+		]);
+	});
+
 	it("discards tracked and untracked changes", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");
@@ -122,6 +136,18 @@ describe("source control git operations", () => {
 		const status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
 		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
+	it("discards staged additions before the first commit", async () => {
+		repoDir = await mkdtemp(join(tmpdir(), "pi-source-control-unborn-"));
+		await initializeGitRepository(repoDir);
+		await writeFile(join(repoDir, "first.txt"), "first\n", "utf8");
+		await stageFile(repoDir, "first.txt");
+
+		await discardChanges(repoDir, "first.txt", "staged");
+
+		const status = await getStatus(repoDir);
+		expect(status.entries).toEqual([]);
 	});
 
 	it("discards staged renames completely", async () => {
@@ -296,7 +322,11 @@ describe("source control git operations", () => {
 		await commitStagedChanges(repo, "Right change");
 
 		await expect(runGit(["merge", "left"], repo)).rejects.toBeTruthy();
-		expect((await getStatus(repo)).conflictOperation).toBe("merge");
+		const status = await getStatus(repo);
+		expect(status.conflictOperation).toBe("merge");
+		expect(status.entries).toContainEqual(
+			expect.objectContaining({ path: "README.md", area: "unstaged", conflictKind: "both_modified" }),
+		);
 
 		await abortConflictOperation(repo, "merge");
 
