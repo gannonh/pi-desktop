@@ -34,9 +34,11 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null);
 	const currentProjectIdRef = useRef(projectId);
+	const refreshRequestIdRef = useRef(0);
 
 	useEffect(() => {
 		currentProjectIdRef.current = projectId;
+		refreshRequestIdRef.current += 1;
 		setStatus(null);
 		setStatusError(null);
 		setIsGitRepo(null);
@@ -51,10 +53,12 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 		}
 
 		setIsRefreshing(true);
+		const requestId = refreshRequestIdRef.current + 1;
+		refreshRequestIdRef.current = requestId;
 		try {
 			const requestProjectId = projectId;
 			const result = await window.piDesktop.sourceControl.getStatus({ projectId: requestProjectId });
-			if (currentProjectIdRef.current !== requestProjectId) {
+			if (currentProjectIdRef.current !== requestProjectId || refreshRequestIdRef.current !== requestId) {
 				return;
 			}
 			if (!result.ok) {
@@ -68,7 +72,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 			setStatusError(null);
 			setIsGitRepo(true);
 		} finally {
-			if (currentProjectIdRef.current === projectId) {
+			if (currentProjectIdRef.current === projectId && refreshRequestIdRef.current === requestId) {
 				setIsRefreshing(false);
 			}
 		}
@@ -81,6 +85,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 		const result = await window.piDesktop.sourceControl.initializeRepository({ projectId });
 		if (!result.ok) {
 			setStatusError(result.error.message);
+			setIsGitRepo(null);
 			return;
 		}
 		await refresh();

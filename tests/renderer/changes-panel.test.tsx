@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
+import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
 import type { PiDesktopApi } from "../../src/shared/preload-api";
 import type { GitStatusPayload } from "../../src/shared/source-control/schemas";
 import { createProjectId } from "../../src/shared/project-state";
@@ -36,6 +37,20 @@ const statusPayload: GitStatusPayload = {
 	conflictOperation: "unknown",
 	branch: "refs/heads/main",
 };
+
+function ChangesPanelStatusHarness() {
+	const { status, refresh } = useChangesPanel();
+	return (
+		<div>
+			<button type="button" onClick={() => void refresh()}>
+				Refresh harness
+			</button>
+			{status?.entries.map((entry) => (
+				<span key={`${entry.area}:${entry.path}`}>{entry.path}</span>
+			))}
+		</div>
+	);
+}
 
 const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	const getStatus = vi.fn(async () => ({ ok: true as const, data: statusPayload }));
@@ -109,6 +124,25 @@ describe("ChangesPanel", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Initialize repository")).toBeTruthy();
 		});
+	});
+
+	it("shows initialize repository failures", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "Project is not a git repository." },
+			})),
+			initializeRepository: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "Cannot initialize repository." },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Initialize repository");
+		fireEvent.click(screen.getByRole("button", { name: "Initialize repository" }));
+
+		await screen.findByText("Cannot initialize repository.");
 	});
 
 	it("shows an empty state when no project is selected", () => {
@@ -314,6 +348,49 @@ describe("ChangesPanel", () => {
 
 		expect(screen.queryByText("stale.ts")).toBeNull();
 		expect(screen.getByText("other.ts")).toBeTruthy();
+	});
+
+	it("ignores stale status results from older refreshes for the same project", async () => {
+		let resolveFirstStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
+		const getStatus = vi
+			.fn()
+			.mockImplementationOnce(
+				() =>
+					new Promise<{ ok: true; data: GitStatusPayload }>((resolve) => {
+						resolveFirstStatus = resolve;
+					}),
+			)
+			.mockResolvedValue({
+				ok: true as const,
+				data: {
+					entries: [{ path: "newer.ts", status: "modified", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			});
+		installApi({ getStatus });
+		render(
+			<ChangesPanelProvider projectId={project.id} isActive={false}>
+				<ChangesPanelStatusHarness />
+			</ChangesPanelProvider>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Refresh harness" }));
+		fireEvent.click(screen.getByRole("button", { name: "Refresh harness" }));
+		await screen.findByText("newer.ts");
+		await act(async () => {
+			resolveFirstStatus({
+				ok: true,
+				data: {
+					entries: [{ path: "stale.ts", status: "modified", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				},
+			});
+		});
+
+		expect(screen.queryByText("stale.ts")).toBeNull();
+		expect(screen.getByText("newer.ts")).toBeTruthy();
 	});
 
 	it("keeps Stage All enabled when staged and unstaged changes coexist", async () => {
