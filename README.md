@@ -1,4 +1,4 @@
-# pi-desktop
+# pi-desktop - test
 
 `pi-desktop` is an open-source macOS desktop command center for the Pi coding agent CLI.
 
