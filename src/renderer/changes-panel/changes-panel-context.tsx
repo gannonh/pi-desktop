@@ -91,7 +91,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 		await refresh();
 	}, [projectId, refresh]);
 
-	useGitStatusPolling({ enabled: isActive && Boolean(projectId), refresh });
+	useGitStatusPolling({ enabled: isActive && Boolean(projectId), refreshKey: projectId, refresh });
 
 	const value = useMemo(
 		() => ({

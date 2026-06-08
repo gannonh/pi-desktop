@@ -5,15 +5,16 @@ const POLL_INTERVAL_MS = 3_000;
 
 type UseGitStatusPollingInput = {
 	enabled: boolean;
+	refreshKey: string | null;
 	refresh: () => Promise<void>;
 };
 
-export const useGitStatusPolling = ({ enabled, refresh }: UseGitStatusPollingInput): void => {
+export const useGitStatusPolling = ({ enabled, refreshKey, refresh }: UseGitStatusPollingInput): void => {
 	const refreshRef = useRef(refresh);
 	refreshRef.current = refresh;
 
 	useEffect(() => {
-		if (!enabled) {
+		if (!enabled || !refreshKey) {
 			return;
 		}
 
@@ -24,5 +25,5 @@ export const useGitStatusPolling = ({ enabled, refresh }: UseGitStatusPollingInp
 			window.clearInterval(intervalId);
 			runner.dispose();
 		};
-	}, [enabled, refresh]);
+	}, [enabled, refreshKey]);
 };

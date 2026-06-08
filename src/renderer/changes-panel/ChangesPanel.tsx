@@ -233,7 +233,6 @@ function RemoteActions() {
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const upstream = status?.upstreamStatus;
-	const stagedCount = status?.entries.filter((entry) => entry.area === "staged").length ?? 0;
 	const unstagedCount = status?.entries.filter((entry) => entry.area !== "staged").length ?? 0;
 
 	const run = async (

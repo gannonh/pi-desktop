@@ -190,7 +190,6 @@ const parseConflictKind = (status: string): GitConflictKind => {
 			return "deleted_by_us";
 		case "AA":
 			return "both_added";
-		case "UU":
 		default:
 			return "both_modified";
 	}
