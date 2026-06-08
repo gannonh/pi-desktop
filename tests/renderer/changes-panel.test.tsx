@@ -48,7 +48,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	const abortConflict = vi.fn(async () => ({ ok: true as const, data: {} }));
 	window.piDesktop = {
 		...window.piDesktop,
-		sourceControl: {
+			sourceControl: {
 			getStatus,
 			checkIgnored: vi.fn(),
 			stage: vi.fn(async () => ({ ok: true as const, data: {} })),
@@ -70,9 +70,12 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			rebaseFromBase: vi.fn(async () => ({ ok: true as const, data: {} })),
 			getBranchCompare: vi.fn(async () => ({ ok: true as const, data: { baseRef: "main", headRef: "HEAD", ahead: 0, behind: 0, files: [] } })),
 			abortConflict,
-			...overrides,
-		},
-	} as PiDesktopApi;
+				...overrides,
+			},
+			clipboard: {
+				writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
+			},
+		} as PiDesktopApi;
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
@@ -200,6 +203,57 @@ describe("ChangesPanel", () => {
 				projectId: project.id,
 				relativePaths: ["README.md", "new.txt"],
 			});
+		});
+	});
+
+	it("bulk unstages only staged selections", async () => {
+		const bulkUnstage = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{ path: "staged.ts", status: "modified", area: "staged" },
+						{ path: "unstaged.ts", status: "modified", area: "unstaged" },
+					],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			bulkUnstage,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("staged.ts");
+		fireEvent.click(screen.getByLabelText("Select staged.ts"));
+		fireEvent.click(screen.getByLabelText("Select unstaged.ts"));
+		fireEvent.click(screen.getByRole("button", { name: "Unstage Selected" }));
+
+		await waitFor(() => {
+			expect(bulkUnstage).toHaveBeenCalledWith({ projectId: project.id, relativePaths: ["staged.ts"] });
+		});
+	});
+
+	it("copies pull request links instead of rendering remote anchors", async () => {
+		const createPullRequest = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+		}));
+		const writeText = vi.fn(async () => ({ ok: true as const, data: { written: true as const } }));
+		installApi({ createPullRequest });
+		window.piDesktop.clipboard.writeText = writeText;
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
+		await screen.findByText("Feature PR");
+
+		expect(document.querySelector('a[href="https://github.com/gannonh/pi-desktop/pull/1"]')).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Copy PR Link" }));
+
+		await waitFor(() => {
+			expect(writeText).toHaveBeenCalledWith({ text: "https://github.com/gannonh/pi-desktop/pull/1" });
 		});
 	});
 

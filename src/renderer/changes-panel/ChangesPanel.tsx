@@ -438,18 +438,33 @@ function PullRequestArea() {
 	const [body, setBody] = useState("");
 	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [message, setMessage] = useState<string | null>(null);
 
 	const create = async () => {
 		if (!projectId) {
 			return;
 		}
 		setError(null);
+		setMessage(null);
 		const result = await window.piDesktop.sourceControl.createPullRequest({ projectId, title, body });
 		if (!result.ok) {
 			setError(result.error.message);
 			return;
 		}
 		setPullRequest(result.data);
+	};
+
+	const copyPullRequestUrl = async () => {
+		if (!pullRequest?.url) {
+			return;
+		}
+		const result = await window.piDesktop.clipboard.writeText({ text: pullRequest.url });
+		if (!result.ok) {
+			setError(result.error.message);
+			return;
+		}
+		setError(null);
+		setMessage("PR link copied");
 	};
 
 	if (!projectId) {
@@ -459,9 +474,12 @@ function PullRequestArea() {
 	return (
 		<div className="changes-panel__pr">
 			{pullRequest ? (
-				<a href={pullRequest.url} target="_blank" rel="noreferrer">
-					{pullRequest.title}
-				</a>
+				<div className="changes-panel__pr-result">
+					<span>{pullRequest.title}</span>
+					<Button type="button" variant="secondary" size="sm" onClick={() => void copyPullRequestUrl()}>
+						Copy PR Link
+					</Button>
+				</div>
 			) : null}
 			<label>
 				PR title
@@ -484,6 +502,7 @@ function PullRequestArea() {
 					Generate with AI
 				</Button>
 			</div>
+			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
 		</div>
 	);
@@ -505,6 +524,14 @@ function ChangesPanelBody() {
 	const selectedEntries = useMemo(
 		() => (status?.entries ?? []).filter((entry) => selectedKeys.has(selectionKey(entry))),
 		[status?.entries, selectedKeys],
+	);
+	const selectedStageableEntries = useMemo(
+		() => selectedEntries.filter((entry) => entry.area !== "staged"),
+		[selectedEntries],
+	);
+	const selectedStagedEntries = useMemo(
+		() => selectedEntries.filter((entry) => entry.area === "staged"),
+		[selectedEntries],
 	);
 
 	const visibleSections = useMemo(
@@ -620,10 +647,11 @@ function ChangesPanelBody() {
 							void runMutation(() =>
 								window.piDesktop.sourceControl.bulkStage({
 									projectId: projectId ?? "",
-									relativePaths: selectedEntries.map((entry) => entry.path),
+									relativePaths: selectedStageableEntries.map((entry) => entry.path),
 								}),
 							)
 						}
+						disabled={selectedStageableEntries.length === 0}
 					>
 						Stage Selected
 					</Button>
@@ -635,10 +663,11 @@ function ChangesPanelBody() {
 							void runMutation(() =>
 								window.piDesktop.sourceControl.bulkUnstage({
 									projectId: projectId ?? "",
-									relativePaths: selectedEntries.map((entry) => entry.path),
+									relativePaths: selectedStagedEntries.map((entry) => entry.path),
 								}),
 							)
 						}
+						disabled={selectedStagedEntries.length === 0}
 					>
 						Unstage Selected
 					</Button>
