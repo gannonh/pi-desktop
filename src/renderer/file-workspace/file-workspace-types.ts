@@ -3,7 +3,7 @@ import type { GitDiffKind, GitDiffPayload } from "../../shared/source-control/ty
 export type FileViewMode = "preview" | "source" | "split";
 
 export type FileEditorTab = {
-	kind?: "file";
+	kind: "file";
 	id: string;
 	relativePath: string;
 	title: string;
