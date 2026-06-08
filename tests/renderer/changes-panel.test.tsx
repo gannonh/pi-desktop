@@ -405,6 +405,35 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("creates a pull request from the primary source-control action when the PR title is filled", async () => {
+		const createPullRequest = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+		}));
+		installApi({
+			createPullRequest,
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
+		fireEvent.click(screen.getAllByRole("button", { name: "Create PR" })[0]);
+
+		await waitFor(() => {
+			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
+		});
+		expect(screen.getByText("Feature PR")).toBeTruthy();
+	});
+
 	it("uses linked pull request state to disable duplicate create PR actions", async () => {
 		installApi({
 			getStatus: vi.fn(async () => ({

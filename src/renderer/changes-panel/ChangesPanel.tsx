@@ -1,5 +1,5 @@
 import { RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import type {
 	GitBranchCompareResult,
@@ -589,14 +589,10 @@ function PullRequestArea({
 	const [body, setBody] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
+	const titleInputRef = useRef<HTMLInputElement | null>(null);
+	const handledFocusRequestCount = useRef(0);
 
-	useEffect(() => {
-		if (focusRequestCount > 0) {
-			setError("Enter a PR title before creating a pull request.");
-		}
-	}, [focusRequestCount]);
-
-	const create = async () => {
+	const create = useCallback(async () => {
 		if (!projectId) {
 			return;
 		}
@@ -608,7 +604,20 @@ function PullRequestArea({
 			return;
 		}
 		onPullRequestChange(result.data);
-	};
+	}, [body, onPullRequestChange, projectId, title]);
+
+	useEffect(() => {
+		if (focusRequestCount <= handledFocusRequestCount.current) {
+			return;
+		}
+		handledFocusRequestCount.current = focusRequestCount;
+		if (title.trim()) {
+			void create();
+			return;
+		}
+		setError(null);
+		titleInputRef.current?.focus();
+	}, [create, focusRequestCount, title]);
 
 	const copyPullRequestUrl = async () => {
 		if (!pullRequest?.url) {
@@ -639,7 +648,7 @@ function PullRequestArea({
 			) : null}
 			<label>
 				PR title
-				<input value={title} onChange={(event) => setTitle(event.target.value)} />
+				<input ref={titleInputRef} value={title} onChange={(event) => setTitle(event.target.value)} />
 			</label>
 			<label>
 				PR body
