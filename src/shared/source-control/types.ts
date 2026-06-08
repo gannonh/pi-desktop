@@ -36,7 +36,7 @@ export type GitStatusResult = {
 	ignoredPaths?: string[];
 };
 
-export type GitDiffKind = "unstaged" | "staged" | "branch" | "commit";
+export type GitDiffKind = "unstaged" | "staged" | "untracked" | "branch" | "commit";
 
 export type GitDiffPayload =
 	| {

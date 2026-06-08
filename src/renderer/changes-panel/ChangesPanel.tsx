@@ -257,7 +257,7 @@ function RemoteActions() {
 					type="button"
 					variant="secondary"
 					size="sm"
-					disabled={stagedCount > 0 || unstagedCount === 0}
+					disabled={unstagedCount === 0}
 					onClick={() =>
 						void run("Stage all", () =>
 							window.piDesktop.sourceControl.bulkStage({
@@ -566,7 +566,7 @@ function ChangesPanelBody() {
 			return;
 		}
 		setOperationError(null);
-		const diffKind = entry.area === "staged" ? "staged" : "unstaged";
+		const diffKind = entry.area;
 		const result = await window.piDesktop.sourceControl.getDiff({
 			projectId,
 			relativePath: entry.path,

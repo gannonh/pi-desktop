@@ -150,6 +150,34 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("opens untracked files with an untracked diff request", async () => {
+		const getDiff = vi.fn(async () => ({
+			ok: true as const,
+			data: {
+				kind: "unsupported" as const,
+				path: "new.txt",
+				title: "new.txt (untracked)",
+				message: "Untracked file diffs are not displayed yet.",
+				diffKind: "untracked" as const,
+			},
+		}));
+		installApi({ getDiff });
+		render(
+			<ShellTestProviders project={project}>
+				<ChangesPanel project={project} isActive />
+				<FileViewer />
+			</ShellTestProviders>,
+		);
+
+		await screen.findByText("new.txt");
+		fireEvent.click(screen.getByRole("button", { name: /Open diff for new\.txt/ }));
+
+		await waitFor(() => {
+			expect(getDiff).toHaveBeenCalledWith({ projectId: project.id, relativePath: "new.txt", kind: "untracked" });
+			expect(screen.getByTestId("file-diff-state").textContent).toContain("Untracked file diffs");
+		});
+	});
+
 	it("runs bulk actions for selected files", async () => {
 		const bulkStage = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({ bulkStage });
@@ -165,6 +193,32 @@ describe("ChangesPanel", () => {
 				projectId: project.id,
 				relativePaths: ["README.md", "new.txt"],
 			});
+		});
+	});
+
+	it("keeps Stage All enabled when staged and unstaged changes coexist", async () => {
+		const bulkStage = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{ path: "staged.ts", status: "modified", area: "staged" },
+						{ path: "unstaged.ts", status: "modified", area: "unstaged" },
+					],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			bulkStage,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("unstaged.ts");
+		fireEvent.click(screen.getByRole("button", { name: "Stage All" }));
+
+		await waitFor(() => {
+			expect(bulkStage).toHaveBeenCalledWith({ projectId: project.id, relativePaths: ["unstaged.ts"] });
 		});
 	});
 

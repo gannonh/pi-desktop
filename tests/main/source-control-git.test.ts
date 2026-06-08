@@ -108,6 +108,39 @@ describe("source control git operations", () => {
 		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
 	});
 
+	it("discards staged tracked changes and staged additions", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), "# staged\n", "utf8");
+		await writeFile(join(repo, "created.txt"), "created\n", "utf8");
+		await stageFile(repo, "README.md");
+		await stageFile(repo, "created.txt");
+
+		await discardChanges(repo, "README.md");
+		await discardChanges(repo, "created.txt");
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([]);
+		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
+	it("discards staged renames completely", async () => {
+		const repo = await createRepo();
+		await runGit(["mv", "README.md", "RENAMED.md"], repo);
+
+		await discardChanges(repo, "RENAMED.md");
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([]);
+		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
+	it("propagates git status failures", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, ".git", "index"), "not an index\n", "utf8");
+
+		await expect(getStatus(repo)).rejects.toThrow();
+	});
+
 	it("bulk stages, unstages, and discards files", async () => {
 		const repo = await createRepo();
 		await mkdir(join(repo, "src"), { recursive: true });
@@ -145,14 +178,16 @@ describe("source control git operations", () => {
 		expect((await getStatus(repo)).entries).toEqual([]);
 	});
 
-	it("returns text and binary diff payloads", async () => {
+	it("returns text, binary, and untracked diff payloads", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");
 		await writeFile(join(repo, "asset.bin"), Buffer.from([0, 1, 2, 3]));
+		await writeFile(join(repo, "new.txt"), "new\n", "utf8");
 		await stageFile(repo, "asset.bin");
 
 		const textDiff = await getDiff(repo, { relativePath: "README.md", kind: "unstaged" });
 		const binaryDiff = await getDiff(repo, { relativePath: "asset.bin", kind: "staged" });
+		const untrackedDiff = await getDiff(repo, { relativePath: "new.txt", kind: "untracked" });
 
 		expect(textDiff).toMatchObject({ kind: "text", path: "README.md" });
 		if (textDiff.kind !== "text") {
@@ -161,6 +196,16 @@ describe("source control git operations", () => {
 		expect(textDiff.patch).toContain("-# hello");
 		expect(textDiff.patch).toContain("+# changed");
 		expect(binaryDiff.kind).toBe("binary");
+		expect(untrackedDiff).toMatchObject({ kind: "unsupported", path: "new.txt", diffKind: "untracked" });
+	});
+
+	it("returns too_large when diff output exceeds the display limit", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), `${"a".repeat(600 * 1024)}\n`, "utf8");
+
+		const diff = await getDiff(repo, { relativePath: "README.md", kind: "unstaged" });
+
+		expect(diff).toMatchObject({ kind: "too_large", path: "README.md" });
 	});
 
 	it("tracks upstream status and publishes branches", async () => {

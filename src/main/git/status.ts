@@ -2,10 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { decodeGitCQuotedPath } from "../../shared/git-cquoted-path";
-import {
-	removeSafeUntrackedDiscardTarget,
-	removeSafeUntrackedDiscardTargets,
-} from "../../shared/git-discard-path-safety";
+import { removeSafeUntrackedDiscardTarget } from "../../shared/git-discard-path-safety";
 import type {
 	GitBranchCompareResult,
 	GitCommitResult,
@@ -46,76 +43,72 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 	});
 	const conflictOperation = await conflictPromise;
 
-	try {
-		const { stdout } = await statusPromise;
+	const { stdout } = await statusPromise;
 
-		for (const line of stdout.split(/\r?\n/)) {
-			if (!line) {
-				continue;
-			}
-
-			if (line.startsWith("# branch.oid ")) {
-				head = line.slice("# branch.oid ".length).trim();
-				continue;
-			}
-
-			if (line.startsWith("# branch.head ")) {
-				const branchHead = line.slice("# branch.head ".length).trim();
-				branch = branchHead && branchHead !== "(detached)" ? `refs/heads/${branchHead}` : undefined;
-				continue;
-			}
-
-			if (line.startsWith("# branch.upstream ")) {
-				upstreamName = line.slice("# branch.upstream ".length).trim() || undefined;
-				continue;
-			}
-
-			if (line.startsWith("# branch.ab ")) {
-				upstreamAheadBehind = parseBranchAheadBehind(line);
-				continue;
-			}
-
-			if (line.startsWith("1 ") || line.startsWith("2 ")) {
-				const parts = line.split(" ");
-				const xy = parts[1];
-				const indexStatus = xy[0];
-				const worktreeStatus = xy[1];
-
-				if (line.startsWith("2 ")) {
-					const tabParts = line.split("\t");
-					const filePath = decodeGitCQuotedPath(tabParts[0].split(" ").slice(9).join(" "));
-					const oldPath = decodeGitCQuotedPath(tabParts.slice(1).join("\t"));
-					if (indexStatus !== ".") {
-						entries.push({ path: filePath, status: parseStatusChar(indexStatus), area: "staged", oldPath });
-					}
-					if (worktreeStatus !== ".") {
-						entries.push({
-							path: filePath,
-							status: parseStatusChar(worktreeStatus),
-							area: "unstaged",
-							oldPath,
-						});
-					}
-				} else {
-					const filePath = decodeGitCQuotedPath(parts.slice(8).join(" "));
-					if (indexStatus !== ".") {
-						entries.push({ path: filePath, status: parseStatusChar(indexStatus), area: "staged" });
-					}
-					if (worktreeStatus !== ".") {
-						entries.push({ path: filePath, status: parseStatusChar(worktreeStatus), area: "unstaged" });
-					}
-				}
-			} else if (line.startsWith("? ")) {
-				const filePath = decodeGitCQuotedPath(line.slice(2));
-				entries.push({ path: filePath, status: "untracked", area: "untracked" });
-			} else if (line.startsWith("! ")) {
-				ignoredPaths.push(decodeGitCQuotedPath(line.slice(2)));
-			}
+	for (const line of stdout.split(/\r?\n/)) {
+		if (!line) {
+			continue;
 		}
-		statusSucceeded = true;
-	} catch {
-		// Not a git repo or git not available.
+
+		if (line.startsWith("# branch.oid ")) {
+			head = line.slice("# branch.oid ".length).trim();
+			continue;
+		}
+
+		if (line.startsWith("# branch.head ")) {
+			const branchHead = line.slice("# branch.head ".length).trim();
+			branch = branchHead && branchHead !== "(detached)" ? `refs/heads/${branchHead}` : undefined;
+			continue;
+		}
+
+		if (line.startsWith("# branch.upstream ")) {
+			upstreamName = line.slice("# branch.upstream ".length).trim() || undefined;
+			continue;
+		}
+
+		if (line.startsWith("# branch.ab ")) {
+			upstreamAheadBehind = parseBranchAheadBehind(line);
+			continue;
+		}
+
+		if (line.startsWith("1 ") || line.startsWith("2 ")) {
+			const parts = line.split(" ");
+			const xy = parts[1];
+			const indexStatus = xy[0];
+			const worktreeStatus = xy[1];
+
+			if (line.startsWith("2 ")) {
+				const tabParts = line.split("\t");
+				const filePath = decodeGitCQuotedPath(tabParts[0].split(" ").slice(9).join(" "));
+				const oldPath = decodeGitCQuotedPath(tabParts.slice(1).join("\t"));
+				if (indexStatus !== ".") {
+					entries.push({ path: filePath, status: parseStatusChar(indexStatus), area: "staged", oldPath });
+				}
+				if (worktreeStatus !== ".") {
+					entries.push({
+						path: filePath,
+						status: parseStatusChar(worktreeStatus),
+						area: "unstaged",
+						oldPath,
+					});
+				}
+			} else {
+				const filePath = decodeGitCQuotedPath(parts.slice(8).join(" "));
+				if (indexStatus !== ".") {
+					entries.push({ path: filePath, status: parseStatusChar(indexStatus), area: "staged" });
+				}
+				if (worktreeStatus !== ".") {
+					entries.push({ path: filePath, status: parseStatusChar(worktreeStatus), area: "unstaged" });
+				}
+			}
+		} else if (line.startsWith("? ")) {
+			const filePath = decodeGitCQuotedPath(line.slice(2));
+			entries.push({ path: filePath, status: "untracked", area: "untracked" });
+		} else if (line.startsWith("! ")) {
+			ignoredPaths.push(decodeGitCQuotedPath(line.slice(2)));
+		}
 	}
+	statusSucceeded = true;
 
 	const upstreamStatus: GitUpstreamStatus | undefined = statusSucceeded
 		? upstreamName
@@ -240,31 +233,6 @@ export const unstageFile = async (worktreePath: string, filePath: string): Promi
 	await gitExecFileAsync(["restore", "--staged", "--", literalPathspec(filePath)], { cwd: worktreePath });
 };
 
-export const discardChanges = async (worktreePath: string, filePath: string): Promise<void> => {
-	assertPathWithinWorktree(worktreePath, filePath);
-
-	let tracked = false;
-	try {
-		await gitExecFileAsync(["ls-files", "--error-unmatch", "--", literalPathspec(filePath)], {
-			cwd: worktreePath,
-		});
-		tracked = true;
-	} catch {
-		// File is not tracked by git.
-	}
-
-	if (tracked) {
-		await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)], {
-			cwd: worktreePath,
-		});
-		return;
-	}
-
-	await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
-		cleanUntrackedPaths(worktreePath, [targetPath]),
-	);
-};
-
 const normalizeGitPathForCompare = (filePath: string): string => filePath.replace(/\\/g, "/").replace(/\/+$/, "");
 
 const isTrackedPathSpec = (filePath: string, trackedPaths: readonly string[]): boolean => {
@@ -275,13 +243,16 @@ const isTrackedPathSpec = (filePath: string, trackedPaths: readonly string[]): b
 	});
 };
 
-const listTrackedPathSpecs = async (worktreePath: string, filePaths: readonly string[]): Promise<string[]> => {
+const listHeadPathSpecs = async (worktreePath: string, filePaths: readonly string[]): Promise<string[]> => {
 	const trackedPaths: string[] = [];
 	for (let i = 0; i < filePaths.length; i += BULK_CHUNK_SIZE) {
 		const chunk = filePaths.slice(i, i + BULK_CHUNK_SIZE);
-		const { stdout } = await gitExecFileAsync(["ls-files", "-z", "--", ...chunk.map(literalPathspec)], {
-			cwd: worktreePath,
-		});
+		const { stdout } = await gitExecFileAsync(
+			["ls-tree", "-r", "-z", "--name-only", "HEAD", "--", ...chunk.map(literalPathspec)],
+			{
+				cwd: worktreePath,
+			},
+		);
 		for (const trackedPath of stdout.split("\0")) {
 			if (trackedPath) {
 				trackedPaths.push(trackedPath);
@@ -300,32 +271,70 @@ const cleanUntrackedPaths = async (worktreePath: string, filePaths: readonly str
 	}
 };
 
+export const discardChanges = async (worktreePath: string, filePath: string): Promise<void> => {
+	assertPathWithinWorktree(worktreePath, filePath);
+
+	const renameEntry = (await getStatus(worktreePath)).entries.find(
+		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
+	);
+	if (renameEntry?.oldPath) {
+		assertPathWithinWorktree(worktreePath, renameEntry.oldPath);
+		await gitExecFileAsync(
+			["restore", "--staged", "--", literalPathspec(renameEntry.oldPath), literalPathspec(filePath)],
+			{
+				cwd: worktreePath,
+			},
+		);
+		await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", literalPathspec(renameEntry.oldPath)], {
+			cwd: worktreePath,
+		});
+		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+			cleanUntrackedPaths(worktreePath, [targetPath]),
+		);
+		return;
+	}
+
+	let trackedInIndex = false;
+	try {
+		await gitExecFileAsync(["ls-files", "--error-unmatch", "--", literalPathspec(filePath)], {
+			cwd: worktreePath,
+		});
+		trackedInIndex = true;
+	} catch {
+		// File is not tracked by git.
+	}
+
+	if (trackedInIndex) {
+		const trackedInHead = isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
+		if (trackedInHead) {
+			await gitExecFileAsync(
+				["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)],
+				{
+					cwd: worktreePath,
+				},
+			);
+			return;
+		}
+		await gitExecFileAsync(["restore", "--staged", "--", literalPathspec(filePath)], { cwd: worktreePath });
+		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+			cleanUntrackedPaths(worktreePath, [targetPath]),
+		);
+		return;
+	}
+
+	await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+		cleanUntrackedPaths(worktreePath, [targetPath]),
+	);
+};
+
 export const bulkDiscardChanges = async (worktreePath: string, filePaths: string[]): Promise<void> => {
 	if (filePaths.length === 0) {
 		return;
 	}
 
 	for (const filePath of filePaths) {
-		assertPathWithinWorktree(worktreePath, filePath);
+		await discardChanges(worktreePath, filePath);
 	}
-
-	const trackedPathSpecs = await listTrackedPathSpecs(worktreePath, filePaths);
-	const trackedPaths = filePaths.filter((filePath) => isTrackedPathSpec(filePath, trackedPathSpecs));
-	const untrackedPaths = filePaths.filter((filePath) => !isTrackedPathSpec(filePath, trackedPathSpecs));
-
-	await removeSafeUntrackedDiscardTargets(
-		worktreePath,
-		untrackedPaths,
-		(targetPaths) => cleanUntrackedPaths(worktreePath, targetPaths),
-		async () => {
-			for (let i = 0; i < trackedPaths.length; i += BULK_CHUNK_SIZE) {
-				const chunk = trackedPaths.slice(i, i + BULK_CHUNK_SIZE);
-				await gitExecFileAsync(["restore", "--worktree", "--source=HEAD", "--", ...chunk.map(literalPathspec)], {
-					cwd: worktreePath,
-				});
-			}
-		},
-	);
 };
 
 export const bulkStageFiles = async (worktreePath: string, filePaths: string[]): Promise<void> => {
@@ -374,9 +383,15 @@ export const commitStagedChanges = async (worktreePath: string, message: string)
 };
 
 export type GetDiffInput =
-	| { relativePath: string; kind: "unstaged" | "staged" }
+	| { relativePath: string; kind: "unstaged" | "staged" | "untracked" }
 	| { relativePath: string; kind: "branch"; baseRef: string; headRef: string }
 	| { relativePath: string; kind: "commit"; commitRef: string };
+
+const isMaxBufferError = (error: unknown): boolean =>
+	typeof error === "object" &&
+	error !== null &&
+	"code" in error &&
+	(error as { code?: string }).code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
 
 const diffArgsForInput = (input: GetDiffInput): string[] => {
 	const pathspec = literalPathspec(input.relativePath);
@@ -385,6 +400,8 @@ const diffArgsForInput = (input: GetDiffInput): string[] => {
 			return ["diff", "--cached", "--binary", "--", pathspec];
 		case "unstaged":
 			return ["diff", "--binary", "--", pathspec];
+		case "untracked":
+			return [];
 		case "branch":
 			return ["diff", "--binary", `${input.baseRef}...${input.headRef}`, "--", pathspec];
 		case "commit":
@@ -400,6 +417,8 @@ const titleForDiff = (input: GetDiffInput): string => {
 			return `${input.relativePath} (staged)`;
 		case "unstaged":
 			return `${input.relativePath} (unstaged)`;
+		case "untracked":
+			return `${input.relativePath} (untracked)`;
 		case "branch":
 			return `${input.relativePath} (${input.baseRef}...${input.headRef})`;
 		case "commit":
@@ -411,11 +430,36 @@ const titleForDiff = (input: GetDiffInput): string => {
 
 export const getDiff = async (worktreePath: string, input: GetDiffInput): Promise<GitDiffPayload> => {
 	assertPathWithinWorktree(worktreePath, input.relativePath);
-	const { stdout } = await gitExecFileAsync(diffArgsForInput(input), {
-		cwd: worktreePath,
-		maxBuffer: MAX_TEXT_DIFF_BYTES + 1024,
-	});
 	const title = titleForDiff(input);
+
+	if (input.kind === "untracked") {
+		return {
+			kind: "unsupported",
+			path: input.relativePath,
+			title,
+			diffKind: input.kind,
+			message: "Untracked file diffs are not displayed yet.",
+		};
+	}
+
+	let stdout: string;
+	try {
+		({ stdout } = await gitExecFileAsync(diffArgsForInput(input), {
+			cwd: worktreePath,
+			maxBuffer: MAX_TEXT_DIFF_BYTES + 1024,
+		}));
+	} catch (error) {
+		if (isMaxBufferError(error)) {
+			return {
+				kind: "too_large",
+				path: input.relativePath,
+				title,
+				diffKind: input.kind,
+				message: "This diff is too large to display.",
+			};
+		}
+		throw error;
+	}
 
 	if (
 		stdout.includes("GIT binary patch") ||

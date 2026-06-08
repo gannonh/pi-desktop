@@ -61,7 +61,7 @@ export const GitStatusPayloadSchema = z.strictObject({
 
 export const SourceControlEmptyPayloadSchema = z.strictObject({});
 
-export const GitDiffKindSchema = z.enum(["unstaged", "staged", "branch", "commit"]);
+export const GitDiffKindSchema = z.enum(["unstaged", "staged", "untracked", "branch", "commit"]);
 
 export const SourceControlGetDiffInputSchema = z.discriminatedUnion("kind", [
 	z.strictObject({
@@ -73,6 +73,11 @@ export const SourceControlGetDiffInputSchema = z.discriminatedUnion("kind", [
 		projectId: z.string().min(1),
 		relativePath: z.string().min(1),
 		kind: z.literal("staged"),
+	}),
+	z.strictObject({
+		projectId: z.string().min(1),
+		relativePath: z.string().min(1),
+		kind: z.literal("untracked"),
 	}),
 	z.strictObject({
 		projectId: z.string().min(1),
