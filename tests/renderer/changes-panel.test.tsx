@@ -268,6 +268,41 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("does not discard a row when confirmation is cancelled", async () => {
+		const discard = vi.fn(async () => ({ ok: true as const, data: {} }));
+		vi.spyOn(window, "confirm").mockReturnValue(false);
+		installApi({ discard });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+
+		expect(discard).not.toHaveBeenCalled();
+	});
+
+	it("confirms bulk discard before discarding selected rows", async () => {
+		const bulkDiscard = vi.fn(async () => ({ ok: true as const, data: {} }));
+		vi.spyOn(window, "confirm").mockReturnValue(true);
+		installApi({ bulkDiscard });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.click(screen.getByLabelText("Select README.md"));
+		fireEvent.click(screen.getByLabelText("Select new.txt"));
+		fireEvent.click(screen.getByRole("button", { name: "Discard Selected" }));
+
+		await waitFor(() => {
+			expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("permanently delete untracked files"));
+			expect(bulkDiscard).toHaveBeenCalledWith({
+				projectId: project.id,
+				entries: [
+					{ relativePath: "README.md", area: "unstaged" },
+					{ relativePath: "new.txt", area: "untracked" },
+				],
+			});
+		});
+	});
+
 	it("copies pull request links instead of rendering remote anchors", async () => {
 		const createPullRequest = vi.fn(async () => ({
 			ok: true as const,

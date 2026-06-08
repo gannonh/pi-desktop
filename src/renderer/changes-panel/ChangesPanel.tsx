@@ -122,6 +122,15 @@ function SourceControlTreeRow({
 
 const selectionKey = (entry: GitStatusEntry) => `${entry.area}:${entry.path}`;
 
+const confirmDiscard = (entries: readonly GitStatusEntry[]): boolean => {
+	const includesUntracked = entries.some((entry) => entry.area === "untracked");
+	const fileText = entries.length === 1 ? entries[0]?.path : `${entries.length} selected files`;
+	const detail = includesUntracked
+		? "This will permanently delete untracked files."
+		: "This will restore tracked files to their previous state.";
+	return window.confirm(`Discard changes for ${fileText}?\n\n${detail}`);
+};
+
 const conflictLabel = (operation: GitConflictOperation): string | null => {
 	switch (operation) {
 		case "merge":
@@ -676,12 +685,17 @@ function ChangesPanelBody() {
 						variant="ghost"
 						size="sm"
 						onClick={() =>
-							void runMutation(() =>
-								window.piDesktop.sourceControl.bulkDiscard({
-									projectId: projectId ?? "",
-									entries: selectedEntries.map((entry) => ({ relativePath: entry.path, area: entry.area })),
-								}),
-							)
+							confirmDiscard(selectedEntries)
+								? void runMutation(() =>
+										window.piDesktop.sourceControl.bulkDiscard({
+											projectId: projectId ?? "",
+											entries: selectedEntries.map((entry) => ({
+												relativePath: entry.path,
+												area: entry.area,
+											})),
+										}),
+									)
+								: undefined
 						}
 					>
 						Discard Selected
@@ -753,13 +767,15 @@ function ChangesPanelBody() {
 												)
 											}
 											onDiscard={(entry) =>
-												void runMutation(() =>
-													window.piDesktop.sourceControl.discard({
-														projectId: projectId ?? "",
-														relativePath: entry.path,
-														area: entry.area,
-													}),
-												)
+												confirmDiscard([entry])
+													? void runMutation(() =>
+															window.piDesktop.sourceControl.discard({
+																projectId: projectId ?? "",
+																relativePath: entry.path,
+																area: entry.area,
+															}),
+														)
+													: undefined
 											}
 											onToggleDirectory={(key) =>
 												setCollapsedTreeDirs((current) => {
