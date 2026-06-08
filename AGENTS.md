@@ -73,7 +73,7 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 
 ## Cursor Cloud specific instructions
 
-- **Node 24:** `preinstall` rejects any Node major other than 24. Cloud VMs often ship `/exec-daemon/node` (v22) ahead of nvm on `PATH`; prepend the active nvm Node 24 bin directory before `pnpm install` or scripts (see `~/.bashrc` in this environment, or `nvm use 24` then `export PATH="$(dirname "$(nvm which current)"):$PATH"`).
+- **Node 24:** `preinstall` rejects any Node major other than 24. Cloud VMs often ship `/exec-daemon/node` (v22) ahead of nvm on `PATH`, and `nvm which current` may still resolve to that binary. Prepend the installed nvm Node 24 bin directory before `pnpm install` or scripts, e.g. `export PATH="$(find "$HOME/.nvm/versions/node" -maxdepth 1 -type d -name 'v24.*' | sort -V | tail -1)/bin:$PATH"`.
 - **Package manager:** Use Corepack for `pnpm@11.1.1` per [README.md](README.md).
 - **Linux / headless VMs:** Prefer `pnpm dev:web` over `pnpm dev`. Electron desktop dev targets macOS; web preview starts Vite plus the local app data bridge (`/api/rpc`, `/api/events`) in one process. Open the printed Vite URL (default `http://127.0.0.1:5173/`).
 - **Project creation in web preview:** `project.createFromScratch` scans `~/Documents`. Create that directory on minimal Linux images (`mkdir -p ~/Documents`) or scratch-project creation fails with `ENOENT`.
