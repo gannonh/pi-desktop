@@ -347,6 +347,36 @@ describe("ChangesPanel", () => {
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
+	it("disables publish until upstream status is loaded", async () => {
+		let resolveStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
+		const getStatus = vi.fn(
+			() =>
+				new Promise<{ ok: true; data: GitStatusPayload }>((resolve) => {
+					resolveStatus = resolve;
+				}),
+		);
+		installApi({ getStatus });
+		render(<ChangesPanel project={project} isActive />);
+
+		fireEvent.click(screen.getByText("More source control actions"));
+		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(true);
+
+		await act(async () => {
+			resolveStatus({
+				ok: true,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+					upstreamStatus: { hasUpstream: false, ahead: 0, behind: 0 },
+				},
+			});
+		});
+
+		await screen.findByText("No uncommitted changes");
+		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(false);
+	});
+
 	it("ignores stale status results after switching projects", async () => {
 		let resolveFirstStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
 		const getStatus = vi.fn((input: { projectId: string }) => {

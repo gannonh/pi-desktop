@@ -321,7 +321,7 @@ function RemoteActions() {
 							type="button"
 							variant="ghost"
 							size="sm"
-							disabled={upstream?.hasUpstream}
+							disabled={upstream === undefined || upstream.hasUpstream}
 							onClick={() => void run("Publish", () => window.piDesktop.sourceControl.publish({ projectId }))}
 						>
 							Publish
