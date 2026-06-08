@@ -377,18 +377,15 @@ export const discardChanges = async (worktreePath: string, filePath: string, are
 		// File is not tracked by git.
 	}
 
+	const trackedInHead = headExists && isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
+	if (trackedInHead) {
+		await gitExecFileAsync(["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)], {
+			cwd: worktreePath,
+		});
+		return;
+	}
+
 	if (trackedInIndex) {
-		const trackedInHead =
-			headExists && isTrackedPathSpec(filePath, await listHeadPathSpecs(worktreePath, [filePath]));
-		if (trackedInHead) {
-			await gitExecFileAsync(
-				["restore", "--staged", "--worktree", "--source=HEAD", "--", literalPathspec(filePath)],
-				{
-					cwd: worktreePath,
-				},
-			);
-			return;
-		}
 		await unstageFile(worktreePath, filePath);
 		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
 			cleanUntrackedPaths(worktreePath, [targetPath]),

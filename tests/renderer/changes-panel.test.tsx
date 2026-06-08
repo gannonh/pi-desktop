@@ -203,6 +203,27 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("shows source-control actions for a clean working tree", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 1, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+
+		expect(screen.getByText("origin/main")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Push" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
+	});
+
 	it("ignores stale status results after switching projects", async () => {
 		let resolveFirstStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
 		const getStatus = vi.fn((input: { projectId: string }) => {

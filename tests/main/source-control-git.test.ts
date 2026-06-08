@@ -161,6 +161,18 @@ describe("source control git operations", () => {
 		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
 	});
 
+	it("discards staged deletions completely", async () => {
+		const repo = await createRepo();
+		await rm(join(repo, "README.md"));
+		await stageFile(repo, "README.md");
+
+		await discardChanges(repo, "README.md", "staged");
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([]);
+		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
 	it("discards unstaged changes without clearing staged changes for the same file", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, "README.md"), "# staged\n", "utf8");

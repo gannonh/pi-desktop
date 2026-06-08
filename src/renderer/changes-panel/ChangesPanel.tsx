@@ -589,14 +589,6 @@ function ChangesPanelBody() {
 		await runMutation(() => window.piDesktop.sourceControl.abortConflict({ projectId, operation }));
 	};
 
-	if (status && status.entries.length === 0 && !conflict) {
-		return (
-			<div className="changes-panel__empty">
-				<p>No uncommitted changes</p>
-			</div>
-		);
-	}
-
 	return (
 		<div className="changes-panel__content">
 			{conflict ? (
@@ -612,6 +604,11 @@ function ChangesPanelBody() {
 			<RemoteActions />
 			<BranchCompareArea />
 			<PullRequestArea />
+			{status && status.entries.length === 0 && !conflict ? (
+				<div className="changes-panel__empty">
+					<p>No uncommitted changes</p>
+				</div>
+			) : null}
 			{selectedEntries.length > 0 ? (
 				<div className="changes-panel__bulk">
 					<span>{selectedEntries.length} selected</span>
