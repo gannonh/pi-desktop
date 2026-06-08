@@ -1,4 +1,4 @@
-import { GitCommit, RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
+import { RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import type {
@@ -21,6 +21,11 @@ import {
 } from "../components/ui/alert-dialog";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
+import {
+	resolveSourceControlActions,
+	type SourceControlAction,
+	type SourceControlPrimaryActionId,
+} from "./source-control-primary-action-resolver";
 import {
 	buildGitStatusSourceControlTree,
 	compactSourceControlTree,
@@ -169,7 +174,13 @@ const conflictButtonLabel = (operation: GitConflictOperation): string => {
 	}
 };
 
-function CommitArea() {
+function CommitArea({
+	pullRequest,
+	onCreatePullRequestRequested,
+}: {
+	pullRequest: SourceControlPullRequestInfo | null;
+	onCreatePullRequestRequested: () => void;
+}) {
 	const { projectId, status, refresh } = useChangesPanel();
 	const [message, setMessage] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
@@ -214,10 +225,6 @@ function CommitArea() {
 				/>
 			</label>
 			<div className="changes-panel__commit-actions">
-				<Button type="submit" size="sm" disabled={!canCommit}>
-					<GitCommit aria-hidden />
-					{isCommitting ? "Committing..." : "Commit"}
-				</Button>
 				<Button
 					type="button"
 					variant="ghost"
@@ -234,16 +241,69 @@ function CommitArea() {
 					{error}
 				</div>
 			) : null}
+			<SourceControlActions
+				commitMessage={message}
+				isCommitBusy={isCommitting}
+				onCommit={() => void commit()}
+				pullRequest={pullRequest}
+				onCreatePullRequestRequested={onCreatePullRequestRequested}
+			/>
 		</form>
 	);
 }
 
-function RemoteActions() {
+function SourceControlActionButton({
+	action,
+	variant = "ghost",
+	onRun,
+}: {
+	action: SourceControlAction;
+	variant?: "default" | "secondary" | "ghost";
+	onRun: (id: SourceControlPrimaryActionId) => void;
+}) {
+	return (
+		<div className="changes-panel__action-row">
+			<Button
+				type="button"
+				variant={variant}
+				size="sm"
+				disabled={Boolean(action.disabledReason)}
+				title={action.disabledReason}
+				onClick={() => onRun(action.id)}
+			>
+				{action.label}
+			</Button>
+			{action.disabledReason ? <span className="changes-panel__action-reason">{action.disabledReason}</span> : null}
+		</div>
+	);
+}
+
+function SourceControlActions({
+	commitMessage,
+	isCommitBusy,
+	onCommit,
+	pullRequest,
+	onCreatePullRequestRequested,
+}: {
+	commitMessage: string;
+	isCommitBusy: boolean;
+	onCommit: () => void;
+	pullRequest: SourceControlPullRequestInfo | null;
+	onCreatePullRequestRequested: () => void;
+}) {
 	const { projectId, status, refresh } = useChangesPanel();
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [busyActionId, setBusyActionId] = useState<SourceControlPrimaryActionId | null>(null);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const upstream = status?.upstreamStatus;
-	const unstagedCount = status?.entries.filter((entry) => entry.area !== "staged").length ?? 0;
+	const actions = resolveSourceControlActions({
+		projectId,
+		status,
+		commitMessage,
+		isBusy: Boolean(busyActionId) || isCommitBusy,
+		pullRequest,
+	});
 
 	const run = async (
 		label: string,
@@ -264,6 +324,66 @@ function RemoteActions() {
 		return null;
 	}
 
+	const stageablePaths = () =>
+		status?.entries.filter((entry) => entry.area !== "staged").map((entry) => entry.path) ?? [];
+
+	const runAction = async (id: SourceControlPrimaryActionId) => {
+		if (!projectId || busyActionId) {
+			return;
+		}
+		if (id === "commit" || id === "commitStaged") {
+			onCommit();
+			return;
+		}
+		if (id === "createPullRequest") {
+			onCreatePullRequestRequested();
+			return;
+		}
+		if (id === "resolveConflicts") {
+			setError("Resolve conflicts before source control actions.");
+			return;
+		}
+
+		setBusyActionId(id);
+		try {
+			switch (id) {
+				case "stageAll":
+					await run("Stage all", () =>
+						window.piDesktop.sourceControl.bulkStage({
+							projectId,
+							relativePaths: stageablePaths(),
+						}),
+					);
+					break;
+				case "fetch":
+					await run("Fetch", () => window.piDesktop.sourceControl.fetch({ projectId }));
+					break;
+				case "pull":
+					await run("Pull", () => window.piDesktop.sourceControl.pull({ projectId }));
+					break;
+				case "push":
+					await run("Push", () => window.piDesktop.sourceControl.push({ projectId }));
+					break;
+				case "sync":
+					await run("Sync", () => window.piDesktop.sourceControl.sync({ projectId }));
+					break;
+				case "publish":
+					await run("Publish", () => window.piDesktop.sourceControl.publish({ projectId }));
+					break;
+				case "fastForward":
+					await run("Fast-forward", () => window.piDesktop.sourceControl.fastForward({ projectId }));
+					break;
+				case "rebaseFromBase":
+					await run("Rebase", () => window.piDesktop.sourceControl.rebaseFromBase({ projectId }));
+					break;
+				default:
+					break;
+			}
+		} finally {
+			setBusyActionId(null);
+		}
+	};
+
 	return (
 		<div className="changes-panel__remote">
 			<div className="changes-panel__remote-summary">
@@ -271,93 +391,28 @@ function RemoteActions() {
 				<span>{upstream ? `${upstream.ahead} ahead, ${upstream.behind} behind` : "0 ahead, 0 behind"}</span>
 			</div>
 			<div className="changes-panel__remote-actions">
-				<Button
-					type="button"
+				<SourceControlActionButton
+					action={actions.primary}
 					variant="secondary"
-					size="sm"
-					disabled={unstagedCount === 0}
-					onClick={() =>
-						void run("Stage all", () =>
-							window.piDesktop.sourceControl.bulkStage({
-								projectId,
-								relativePaths:
-									status?.entries.filter((entry) => entry.area !== "staged").map((entry) => entry.path) ?? [],
-							}),
-						)
-					}
-				>
-					Stage All
-				</Button>
-				<details className="changes-panel__action-menu">
-					<summary>More source control actions</summary>
-					<div className="changes-panel__action-menu-items">
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => void run("Fetch", () => window.piDesktop.sourceControl.fetch({ projectId }))}
-						>
-							Fetch
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.behind === 0}
-							onClick={() => void run("Pull", () => window.piDesktop.sourceControl.pull({ projectId }))}
-						>
-							Pull
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.ahead === 0}
-							onClick={() => void run("Push", () => window.piDesktop.sourceControl.push({ projectId }))}
-						>
-							Push
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || (upstream.ahead === 0 && upstream.behind === 0)}
-							onClick={() => void run("Sync", () => window.piDesktop.sourceControl.sync({ projectId }))}
-						>
-							Sync
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={upstream === undefined || upstream.hasUpstream}
-							onClick={() => void run("Publish", () => window.piDesktop.sourceControl.publish({ projectId }))}
-						>
-							Publish
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.behind === 0}
-							onClick={() =>
-								void run("Fast-forward", () => window.piDesktop.sourceControl.fastForward({ projectId }))
-							}
-						>
-							Fast-forward
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() =>
-								void run("Rebase", () => window.piDesktop.sourceControl.rebaseFromBase({ projectId }))
-							}
-						>
-							Rebase
-						</Button>
-					</div>
-				</details>
+					onRun={(id) => void runAction(id)}
+				/>
+				<div className="changes-panel__action-menu">
+					<button
+						type="button"
+						className="changes-panel__action-menu-trigger"
+						aria-expanded={isMenuOpen}
+						onClick={() => setIsMenuOpen((open) => !open)}
+					>
+						More source control actions
+					</button>
+					{isMenuOpen ? (
+						<div className="changes-panel__action-menu-items">
+							{actions.dropdown.map((action) => (
+								<SourceControlActionButton key={action.id} action={action} onRun={(id) => void runAction(id)} />
+							))}
+						</div>
+					) : null}
+				</div>
 			</div>
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
@@ -450,13 +505,26 @@ function BranchCompareArea() {
 	);
 }
 
-function PullRequestArea() {
+function PullRequestArea({
+	pullRequest,
+	onPullRequestChange,
+	focusRequestCount,
+}: {
+	pullRequest: SourceControlPullRequestInfo | null;
+	onPullRequestChange: (pullRequest: SourceControlPullRequestInfo | null) => void;
+	focusRequestCount: number;
+}) {
 	const { projectId } = useChangesPanel();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
-	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (focusRequestCount > 0) {
+			setError("Enter a PR title before creating a pull request.");
+		}
+	}, [focusRequestCount]);
 
 	const create = async () => {
 		if (!projectId) {
@@ -469,7 +537,7 @@ function PullRequestArea() {
 			setError(result.error.message);
 			return;
 		}
-		setPullRequest(result.data);
+		onPullRequestChange(result.data);
 	};
 
 	const copyPullRequestUrl = async () => {
@@ -534,10 +602,30 @@ function ChangesPanelBody() {
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
 	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
+	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
+	const [createPullRequestRequestCount, setCreatePullRequestRequestCount] = useState(0);
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	useEffect(() => {
+		if (!projectId) {
+			setPullRequest(null);
+			return;
+		}
+		let cancelled = false;
+		setPullRequest(null);
+		void window.piDesktop.sourceControl.getPullRequestInfo({ projectId }).then((result) => {
+			if (cancelled) {
+				return;
+			}
+			setPullRequest(result.ok ? result.data : null);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [projectId]);
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(
@@ -692,10 +780,16 @@ function ChangesPanelBody() {
 					</Button>
 				</div>
 			) : null}
-			<CommitArea />
-			<RemoteActions />
+			<CommitArea
+				pullRequest={pullRequest}
+				onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
+			/>
 			<BranchCompareArea />
-			<PullRequestArea />
+			<PullRequestArea
+				pullRequest={pullRequest}
+				onPullRequestChange={setPullRequest}
+				focusRequestCount={createPullRequestRequestCount}
+			/>
 			{status && status.entries.length === 0 && !conflict ? (
 				<div className="changes-panel__empty">
 					<p>No uncommitted changes</p>

@@ -63,7 +63,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	const abortConflict = vi.fn(async () => ({ ok: true as const, data: {} }));
 	window.piDesktop = {
 		...window.piDesktop,
-			sourceControl: {
+		sourceControl: {
 			getStatus,
 			checkIgnored: vi.fn(),
 			stage: vi.fn(async () => ({ ok: true as const, data: {} })),
@@ -85,12 +85,20 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			rebaseFromBase: vi.fn(async () => ({ ok: true as const, data: {} })),
 			getBranchCompare: vi.fn(async () => ({ ok: true as const, data: { baseRef: "main", headRef: "HEAD", ahead: 0, behind: 0, files: [] } })),
 			abortConflict,
-				...overrides,
-			},
-			clipboard: {
-				writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
-			},
-		} as PiDesktopApi;
+			createPullRequest: vi.fn(async () => ({
+				ok: true as const,
+				data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "No pull request found." },
+			})),
+			...overrides,
+		},
+		clipboard: {
+			writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
+		},
+	} as PiDesktopApi;
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
@@ -328,6 +336,30 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("uses linked pull request state to disable duplicate create PR actions", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: { title: "Existing PR", url: "https://github.com/gannonh/pi-desktop/pull/2", state: "open" as const },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Existing PR");
+		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+
+		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
+	});
+
 	it("shows source-control actions for a clean working tree", async () => {
 		installApi({
 			getStatus: vi.fn(async () => ({
@@ -376,7 +408,9 @@ describe("ChangesPanel", () => {
 		});
 
 		await screen.findByText("No uncommitted changes");
-		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(false);
+		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Publish" }).some((button) => !button.disabled)).toBe(
+			true,
+		);
 	});
 
 	it("ignores stale status results after switching projects", async () => {
