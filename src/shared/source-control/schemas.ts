@@ -12,7 +12,7 @@ export const SourceControlPathInputSchema = z.strictObject({
 
 export const SourceControlBulkPathsInputSchema = z.strictObject({
 	projectId: z.string().min(1),
-	relativePaths: z.array(z.string().min(1)).min(1),
+	relativePaths: z.array(z.string().min(1)),
 });
 
 export const SourceControlCommitInputSchema = z.strictObject({

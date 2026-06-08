@@ -1,5 +1,6 @@
 import type { AppRpcRequest } from "../shared/app-transport";
 import {
+	type AppVersion,
 	ChatBranchInputSchema,
 	ChatCloneInputSchema,
 	ChatCreateInputSchema,
@@ -10,13 +11,13 @@ import {
 	ChatStandaloneSelectionInputSchema,
 	PiSessionAbortInputSchema,
 	PiSessionAttachInputSchema,
-	PiSessionPrepareInputSchema,
 	PiSessionDisposeInputSchema,
 	PiSessionGetDefaultSettingsInputSchema,
 	PiSessionGetRuntimeCommandsInputSchema,
 	PiSessionGetSettingsInputSchema,
 	PiSessionHistoryInputSchema,
 	PiSessionOperationFailedCode,
+	PiSessionPrepareInputSchema,
 	PiSessionRemoveQueuedMessageInputSchema,
 	PiSessionSetDefaultModelInputSchema,
 	PiSessionSetDefaultThinkingLevelInputSchema,
@@ -28,8 +29,6 @@ import {
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
-	WorkspaceFilesPathInputSchema,
-	WorkspaceFilesWriteInputSchema,
 	SourceControlAbortConflictInputSchema,
 	SourceControlBranchCompareInputSchema,
 	SourceControlBulkDiscardInputSchema,
@@ -42,8 +41,21 @@ import {
 	SourceControlProjectInputSchema,
 	SourceControlRebaseInputSchema,
 	SourceControlRemoteActionInputSchema,
-	type AppVersion,
+	WorkspaceFilesPathInputSchema,
+	WorkspaceFilesWriteInputSchema,
 } from "../shared/ipc";
+import type {
+	PiSessionActionPayload,
+	PiSessionEvent,
+	PiSessionHistoryPayload,
+	PiSessionQueuePayload,
+	PiSessionSettingsPayload,
+	PiSessionStartPayload,
+	PiSessionStatus,
+} from "../shared/pi-session";
+import type { PiSessionRuntimeCommandsPayload } from "../shared/pi-session-commands";
+import type { ProjectStateView } from "../shared/project-state";
+import { err, type IpcResult, ok } from "../shared/result";
 import type { GitStatusPayload } from "../shared/source-control/schemas";
 import type {
 	GitBranchCompareResult,
@@ -57,23 +69,11 @@ import type {
 	WorkspaceReadFileStatusPayload,
 	WorkspaceWriteFilePayload,
 } from "../shared/workspace-files";
-import type {
-	PiSessionActionPayload,
-	PiSessionEvent,
-	PiSessionHistoryPayload,
-	PiSessionQueuePayload,
-	PiSessionSettingsPayload,
-	PiSessionStartPayload,
-	PiSessionStatus,
-} from "../shared/pi-session";
-import type { PiSessionRuntimeCommandsPayload } from "../shared/pi-session-commands";
-import type { ProjectStateView } from "../shared/project-state";
-import { err, type IpcResult, ok } from "../shared/result";
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
-import { loadPiSessionHistory, type LoadPiSessionHistoryInput } from "./pi-session/pi-session-history";
+import { type LoadPiSessionHistoryInput, loadPiSessionHistory } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
-import { createSourceControlService } from "./source-control/source-control-service";
+import { createSourceControlService, NotAGitRepositoryError } from "./source-control/source-control-service";
 import { WorkspacePathError } from "./workspace-files/path-guard";
 import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
@@ -233,7 +233,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			if (error instanceof WorkspacePathError) {
 				return err("source_control.path_invalid", error.message);
 			}
-			if (toErrorMessage(error).toLowerCase().includes("not a git repository")) {
+			if (error instanceof NotAGitRepositoryError) {
 				return err("source_control.not_a_git_repo", toErrorMessage(error));
 			}
 			return err("source_control.operation_failed", toErrorMessage(error));

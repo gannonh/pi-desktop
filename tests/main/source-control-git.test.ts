@@ -1,10 +1,10 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
-import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
+import { isGitRepo } from "../../src/main/git/repo";
 import {
 	abortConflictOperation,
 	bulkDiscardChanges,
@@ -23,7 +23,7 @@ import {
 	stageFile,
 	unstageFile,
 } from "../../src/main/git/status";
-import { isGitRepo } from "../../src/main/git/repo";
+import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
 
 const execFileAsync = promisify(execFile);
 
@@ -57,8 +57,8 @@ describe("source control git operations", () => {
 
 	it("detects git repositories", async () => {
 		const repo = await createRepo();
-		expect(isGitRepo(repo)).toBe(true);
-		expect(isGitRepo(tmpdir())).toBe(false);
+		await expect(isGitRepo(repo)).resolves.toBe(true);
+		await expect(isGitRepo(tmpdir())).resolves.toBe(false);
 	});
 
 	it("returns staged, unstaged, and untracked entries from getStatus", async () => {

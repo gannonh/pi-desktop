@@ -1,12 +1,15 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
-import { createSourceControlService } from "../../src/main/source-control/source-control-service";
 import type { ProjectService } from "../../src/main/projects/project-service";
+import {
+	createSourceControlService,
+	NotAGitRepositoryError,
+} from "../../src/main/source-control/source-control-service";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,6 +72,13 @@ describe("source control service", () => {
 		await expect(service.getStatus({ projectId })).rejects.toThrow(/repository root/);
 	});
 
+	it("rejects non-git projects with a typed error", async () => {
+		repoDir = await mkdtemp(join(tmpdir(), "pi-source-control-service-not-git-"));
+		const service = createService();
+
+		await expect(service.getStatus({ projectId })).rejects.toBeInstanceOf(NotAGitRepositoryError);
+	});
+
 	it("stages files within the project root", async () => {
 		await createRepo();
 		await writeFile(join(repoDir, "tracked.txt"), "tracked\n", "utf8");
@@ -80,6 +90,14 @@ describe("source control service", () => {
 		expect(status.entries).toContainEqual(
 			expect.objectContaining({ path: "tracked.txt", area: "staged", status: "added" }),
 		);
+	});
+
+	it("treats empty bulk stage and unstage operations as no-ops", async () => {
+		await createRepo();
+		const service = createService();
+
+		await expect(service.bulkStage({ projectId, relativePaths: [] })).resolves.toBeUndefined();
+		await expect(service.bulkUnstage({ projectId, relativePaths: [] })).resolves.toBeUndefined();
 	});
 
 	it("rejects paths outside the project root", async () => {

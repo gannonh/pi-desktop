@@ -1,6 +1,5 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import type { GitStatusResult } from "../../shared/source-control/types";
 import type {
 	SourceControlAbortConflictInput,
 	SourceControlBranchCompareInput,
@@ -15,7 +14,7 @@ import type {
 	SourceControlRebaseInput,
 	SourceControlRemoteActionInput,
 } from "../../shared/source-control/schemas";
-import { normalizeRelativePath, WorkspacePathError } from "../workspace-files/path-guard";
+import type { GitStatusResult } from "../../shared/source-control/types";
 import { checkIgnoredPaths } from "../git/check-ignored-paths";
 import { isGitRepo } from "../git/repo";
 import { gitExecFileAsync } from "../git/runner";
@@ -43,6 +42,14 @@ import {
 	unstageFile,
 } from "../git/status";
 import type { ProjectService } from "../projects/project-service";
+import { normalizeRelativePath, WorkspacePathError } from "../workspace-files/path-guard";
+
+export class NotAGitRepositoryError extends Error {
+	constructor() {
+		super("Project is not a git repository.");
+		this.name = "NotAGitRepositoryError";
+	}
+}
 
 export type SourceControlServiceDeps = {
 	projectService: ProjectService;
@@ -62,9 +69,9 @@ const resolveProjectRoot = async (deps: SourceControlServiceDeps, projectId: str
 	return workspace.path;
 };
 
-const assertGitRepo = (projectRoot: string): void => {
-	if (!isGitRepo(projectRoot)) {
-		throw new Error("Project is not a git repository.");
+const assertGitRepo = async (projectRoot: string): Promise<void> => {
+	if (!(await isGitRepo(projectRoot))) {
+		throw new NotAGitRepositoryError();
 	}
 };
 
@@ -106,7 +113,7 @@ export type SourceControlService = {
 export const createSourceControlService = (deps: SourceControlServiceDeps): SourceControlService => {
 	const withProjectRoot = async <T>(projectId: string, operation: (projectRoot: string) => Promise<T>): Promise<T> => {
 		const projectRoot = await resolveProjectRoot(deps, projectId);
-		assertGitRepo(projectRoot);
+		await assertGitRepo(projectRoot);
 		await assertProjectIsRepositoryRoot(projectRoot);
 		return operation(projectRoot);
 	};
@@ -159,7 +166,7 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 
 		initializeRepository: async (input) => {
 			const projectRoot = await resolveProjectRoot(deps, input.projectId);
-			if (isGitRepo(projectRoot)) {
+			if (await isGitRepo(projectRoot)) {
 				return;
 			}
 			await deps.initializeGitRepository(projectRoot);

@@ -1,21 +1,13 @@
-import { existsSync, statSync } from "node:fs";
-import { execFileSync } from "node:child_process";
-import { createGitChildProcessEnvironment } from "../projects/git";
+import { stat } from "node:fs/promises";
+import { gitExecFileAsync } from "./runner";
 
-const gitExecFileSync = (args: string[], options: { cwd: string }): string => {
-	return execFileSync("git", args, {
-		cwd: options.cwd,
-		env: createGitChildProcessEnvironment(),
-		encoding: "utf8",
-	});
-};
-
-export const isGitRepo = (repoPath: string): boolean => {
+export const isGitRepo = async (repoPath: string): Promise<boolean> => {
 	try {
-		if (!existsSync(repoPath) || !statSync(repoPath).isDirectory()) {
+		if (!(await stat(repoPath)).isDirectory()) {
 			return false;
 		}
-		const insideWorkTree = gitExecFileSync(["rev-parse", "--is-inside-work-tree"], { cwd: repoPath }).trim();
+		const { stdout } = await gitExecFileAsync(["rev-parse", "--is-inside-work-tree"], { cwd: repoPath });
+		const insideWorkTree = stdout.trim();
 		if (insideWorkTree === "true") {
 			return true;
 		}
@@ -24,7 +16,8 @@ export const isGitRepo = (repoPath: string): boolean => {
 	}
 
 	try {
-		const bareRepo = gitExecFileSync(["rev-parse", "--is-bare-repository"], { cwd: repoPath }).trim();
+		const { stdout } = await gitExecFileAsync(["rev-parse", "--is-bare-repository"], { cwd: repoPath });
+		const bareRepo = stdout.trim();
 		return bareRepo === "true";
 	} catch {
 		return false;

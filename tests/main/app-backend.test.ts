@@ -1,15 +1,15 @@
+import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { createAppBackend } from "../../src/main/app-backend";
+import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
 import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
+import type { ProjectService } from "../../src/main/projects/project-service";
 import type { AppRpcRequest } from "../../src/shared/app-transport";
 import { PiSessionOperationFailedCode } from "../../src/shared/ipc";
-import type { PiSdkSession } from "../../src/main/pi-session/pi-session-runtime";
-import type { ProjectService } from "../../src/main/projects/project-service";
 import type { ProjectStateView } from "../../src/shared/project-state";
 
 const emptyState: ProjectStateView = {
@@ -323,6 +323,12 @@ describe("app backend", () => {
 					input: { projectId: "project:one", relativePaths: ["new.txt"] },
 				}),
 			).resolves.toEqual({ ok: true, data: { ignoredPaths: [] } });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.bulkStage",
+					input: { projectId: "project:one", relativePaths: [] },
+				}),
+			).resolves.toEqual({ ok: true, data: {} });
 			await expect(
 				backend.handle({
 					operation: "sourceControl.stage",
