@@ -41,11 +41,13 @@ import {
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
 	WorkspaceWriteFileResultSchema,
+	SourceControlBulkDiscardInputSchema,
 	SourceControlBulkPathsInputSchema,
 	SourceControlCheckIgnoredResultSchema,
 	SourceControlCommitInputSchema,
 	SourceControlCommitResultSchema,
 	SourceControlCreatePullRequestInputSchema,
+	SourceControlDiscardInputSchema,
 	SourceControlBranchCompareInputSchema,
 	SourceControlBranchCompareResultSchema,
 	SourceControlGetDiffInputSchema,
@@ -139,7 +141,7 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	}),
 	z.strictObject({
 		operation: z.literal("sourceControl.discard"),
-		input: SourceControlPathInputSchema,
+		input: SourceControlDiscardInputSchema,
 	}),
 	z.strictObject({
 		operation: z.literal("sourceControl.bulkStage"),
@@ -151,7 +153,7 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	}),
 	z.strictObject({
 		operation: z.literal("sourceControl.bulkDiscard"),
-		input: SourceControlBulkPathsInputSchema,
+		input: SourceControlBulkDiscardInputSchema,
 	}),
 	z.strictObject({
 		operation: z.literal("sourceControl.initializeRepository"),

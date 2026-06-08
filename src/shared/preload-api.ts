@@ -41,11 +41,13 @@ import type {
 	WorkspaceListDirectoryResult,
 	WorkspaceReadFileResult,
 	WorkspaceWriteFileResult,
+	SourceControlBulkDiscardInput,
 	SourceControlBulkPathsInput,
 	SourceControlCheckIgnoredResult,
 	SourceControlCommitInput,
 	SourceControlCommitResult,
 	SourceControlCreatePullRequestInput,
+	SourceControlDiscardInput,
 	SourceControlBranchCompareInput,
 	SourceControlBranchCompareResult,
 	SourceControlGetDiffInput,
@@ -98,10 +100,10 @@ export interface PiDesktopApi {
 		checkIgnored: (input: SourceControlBulkPathsInput) => Promise<SourceControlCheckIgnoredResult>;
 		stage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
 		unstage: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
-		discard: (input: SourceControlPathInput) => Promise<SourceControlMutationResult>;
+		discard: (input: SourceControlDiscardInput) => Promise<SourceControlMutationResult>;
 		bulkStage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
 		bulkUnstage: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
-		bulkDiscard: (input: SourceControlBulkPathsInput) => Promise<SourceControlMutationResult>;
+		bulkDiscard: (input: SourceControlBulkDiscardInput) => Promise<SourceControlMutationResult>;
 		initializeRepository: (input: SourceControlProjectInput) => Promise<SourceControlMutationResult>;
 		commit: (input: SourceControlCommitInput) => Promise<SourceControlCommitResult>;
 		getDiff: (input: SourceControlGetDiffInput) => Promise<SourceControlGetDiffResult>;

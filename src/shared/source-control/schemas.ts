@@ -23,6 +23,16 @@ export const SourceControlCommitInputSchema = z.strictObject({
 export const GitFileStatusSchema = z.enum(["modified", "added", "deleted", "renamed", "untracked", "copied"]);
 export const GitStagingAreaSchema = z.enum(["staged", "unstaged", "untracked"]);
 export const GitConflictOperationSchema = z.enum(["merge", "rebase", "cherry-pick", "unknown"]);
+
+export const SourceControlDiscardInputSchema = SourceControlPathInputSchema.extend({
+	area: GitStagingAreaSchema,
+});
+
+export const SourceControlBulkDiscardInputSchema = z.strictObject({
+	projectId: z.string().min(1),
+	entries: z.array(z.strictObject({ relativePath: z.string().min(1), area: GitStagingAreaSchema })).min(1),
+});
+
 export const GitConflictKindSchema = z.enum([
 	"both_modified",
 	"both_added",
@@ -177,7 +187,9 @@ export const SourceControlPullRequestInfoResultSchema = createResultSchema(Sourc
 
 export type SourceControlProjectInput = z.infer<typeof SourceControlProjectInputSchema>;
 export type SourceControlPathInput = z.infer<typeof SourceControlPathInputSchema>;
+export type SourceControlDiscardInput = z.infer<typeof SourceControlDiscardInputSchema>;
 export type SourceControlBulkPathsInput = z.infer<typeof SourceControlBulkPathsInputSchema>;
+export type SourceControlBulkDiscardInput = z.infer<typeof SourceControlBulkDiscardInputSchema>;
 export type SourceControlCommitInput = z.infer<typeof SourceControlCommitInputSchema>;
 export type SourceControlGetDiffInput = z.infer<typeof SourceControlGetDiffInputSchema>;
 export type SourceControlBranchCompareInput = z.infer<typeof SourceControlBranchCompareInputSchema>;

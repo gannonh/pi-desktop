@@ -32,9 +32,11 @@ import {
 	WorkspaceFilesWriteInputSchema,
 	SourceControlAbortConflictInputSchema,
 	SourceControlBranchCompareInputSchema,
+	SourceControlBulkDiscardInputSchema,
 	SourceControlBulkPathsInputSchema,
 	SourceControlCommitInputSchema,
 	SourceControlCreatePullRequestInputSchema,
+	SourceControlDiscardInputSchema,
 	SourceControlGetDiffInputSchema,
 	SourceControlPathInputSchema,
 	SourceControlProjectInputSchema,
@@ -530,7 +532,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					});
 				case "sourceControl.discard":
 					return handleSourceControlOperation(async () => {
-						const parsed = SourceControlPathInputSchema.parse(request.input);
+						const parsed = SourceControlDiscardInputSchema.parse(request.input);
 						await sourceControlService.discard(parsed);
 						return {};
 					});
@@ -548,7 +550,7 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					});
 				case "sourceControl.bulkDiscard":
 					return handleSourceControlOperation(async () => {
-						const parsed = SourceControlBulkPathsInputSchema.parse(request.input);
+						const parsed = SourceControlBulkDiscardInputSchema.parse(request.input);
 						await sourceControlService.bulkDiscard(parsed);
 						return {};
 					});

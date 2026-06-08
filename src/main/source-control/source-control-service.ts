@@ -2,9 +2,11 @@ import type { GitStatusResult } from "../../shared/source-control/types";
 import type {
 	SourceControlAbortConflictInput,
 	SourceControlBranchCompareInput,
+	SourceControlBulkDiscardInput,
 	SourceControlBulkPathsInput,
 	SourceControlCommitInput,
 	SourceControlCreatePullRequestInput,
+	SourceControlDiscardInput,
 	SourceControlGetDiffInput,
 	SourceControlPathInput,
 	SourceControlProjectInput,
@@ -68,10 +70,10 @@ export type SourceControlService = {
 	checkIgnored: (input: SourceControlBulkPathsInput) => Promise<{ ignoredPaths: string[] }>;
 	stage: (input: SourceControlPathInput) => Promise<void>;
 	unstage: (input: SourceControlPathInput) => Promise<void>;
-	discard: (input: SourceControlPathInput) => Promise<void>;
+	discard: (input: SourceControlDiscardInput) => Promise<void>;
 	bulkStage: (input: SourceControlBulkPathsInput) => Promise<void>;
 	bulkUnstage: (input: SourceControlBulkPathsInput) => Promise<void>;
-	bulkDiscard: (input: SourceControlBulkPathsInput) => Promise<void>;
+	bulkDiscard: (input: SourceControlBulkDiscardInput) => Promise<void>;
 	initializeRepository: (input: SourceControlProjectInput) => Promise<void>;
 	commit: (input: SourceControlCommitInput) => ReturnType<typeof commitStagedChanges>;
 	getDiff: (input: SourceControlGetDiffInput) => ReturnType<typeof getDiff>;
@@ -118,7 +120,7 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 
 		discard: (input) =>
 			withProjectRoot(input.projectId, async (projectRoot) => {
-				await discardChanges(projectRoot, assertSafeRelativePath(input.relativePath));
+				await discardChanges(projectRoot, assertSafeRelativePath(input.relativePath), input.area);
 			}),
 
 		bulkStage: (input) =>
@@ -135,8 +137,11 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 
 		bulkDiscard: (input) =>
 			withProjectRoot(input.projectId, async (projectRoot) => {
-				const relativePaths = input.relativePaths.map(assertSafeRelativePath);
-				await bulkDiscardChanges(projectRoot, relativePaths);
+				const entries = input.entries.map((entry) => ({
+					relativePath: assertSafeRelativePath(entry.relativePath),
+					area: entry.area,
+				}));
+				await bulkDiscardChanges(projectRoot, entries);
 			}),
 
 		initializeRepository: async (input) => {

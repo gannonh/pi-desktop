@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { decodeGitCQuotedPath } from "../../shared/git-cquoted-path";
 import { removeSafeUntrackedDiscardTarget } from "../../shared/git-discard-path-safety";
@@ -9,6 +9,7 @@ import type {
 	GitConflictOperation,
 	GitDiffPayload,
 	GitFileStatus,
+	GitStagingArea,
 	GitStatusEntry,
 	GitStatusResult,
 	GitUpstreamStatus,
@@ -271,8 +272,20 @@ const cleanUntrackedPaths = async (worktreePath: string, filePaths: readonly str
 	}
 };
 
-export const discardChanges = async (worktreePath: string, filePath: string): Promise<void> => {
+export const discardChanges = async (worktreePath: string, filePath: string, area: GitStagingArea): Promise<void> => {
 	assertPathWithinWorktree(worktreePath, filePath);
+
+	if (area === "untracked") {
+		await removeSafeUntrackedDiscardTarget(worktreePath, filePath, (targetPath) =>
+			cleanUntrackedPaths(worktreePath, [targetPath]),
+		);
+		return;
+	}
+
+	if (area === "unstaged") {
+		await gitExecFileAsync(["restore", "--worktree", "--", literalPathspec(filePath)], { cwd: worktreePath });
+		return;
+	}
 
 	const renameEntry = (await getStatus(worktreePath)).entries.find(
 		(entry) => entry.area === "staged" && entry.status === "renamed" && entry.path === filePath && entry.oldPath,
@@ -327,13 +340,16 @@ export const discardChanges = async (worktreePath: string, filePath: string): Pr
 	);
 };
 
-export const bulkDiscardChanges = async (worktreePath: string, filePaths: string[]): Promise<void> => {
-	if (filePaths.length === 0) {
+export const bulkDiscardChanges = async (
+	worktreePath: string,
+	entries: { relativePath: string; area: GitStagingArea }[],
+): Promise<void> => {
+	if (entries.length === 0) {
 		return;
 	}
 
-	for (const filePath of filePaths) {
-		await discardChanges(worktreePath, filePath);
+	for (const entry of entries) {
+		await discardChanges(worktreePath, entry.relativePath, entry.area);
 	}
 };
 
@@ -376,6 +392,12 @@ export const commitStagedChanges = async (worktreePath: string, message: string)
 	const summary = message.trim();
 	if (!summary) {
 		throw new Error("Commit message is required.");
+	}
+	const { stdout: rootOutput } = await gitExecFileAsync(["rev-parse", "--show-toplevel"], { cwd: worktreePath });
+	const repositoryRoot = path.resolve(await realpath(rootOutput.trim()));
+	const selectedRoot = path.resolve(await realpath(worktreePath));
+	if (repositoryRoot !== selectedRoot) {
+		throw new Error("Committing from a subdirectory project is not supported.");
 	}
 	await gitExecFileAsync(["commit", "-m", summary], { cwd: worktreePath });
 	const { stdout: shaOutput } = await gitExecFileAsync(["rev-parse", "HEAD"], { cwd: worktreePath });

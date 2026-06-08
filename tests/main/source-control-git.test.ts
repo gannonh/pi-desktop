@@ -101,8 +101,8 @@ describe("source control git operations", () => {
 		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");
 		await writeFile(join(repo, "temp.txt"), "temp\n", "utf8");
 
-		await discardChanges(repo, "README.md");
-		await discardChanges(repo, "temp.txt");
+		await discardChanges(repo, "README.md", "unstaged");
+		await discardChanges(repo, "temp.txt", "untracked");
 
 		const status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
@@ -116,8 +116,8 @@ describe("source control git operations", () => {
 		await stageFile(repo, "README.md");
 		await stageFile(repo, "created.txt");
 
-		await discardChanges(repo, "README.md");
-		await discardChanges(repo, "created.txt");
+		await discardChanges(repo, "README.md", "staged");
+		await discardChanges(repo, "created.txt", "staged");
 
 		const status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
@@ -128,11 +128,28 @@ describe("source control git operations", () => {
 		const repo = await createRepo();
 		await runGit(["mv", "README.md", "RENAMED.md"], repo);
 
-		await discardChanges(repo, "RENAMED.md");
+		await discardChanges(repo, "RENAMED.md", "staged");
 
 		const status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
 		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
+	it("discards unstaged changes without clearing staged changes for the same file", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, "README.md"), "# staged\n", "utf8");
+		await stageFile(repo, "README.md");
+		await writeFile(join(repo, "README.md"), "# unstaged\n", "utf8");
+
+		await discardChanges(repo, "README.md", "unstaged");
+
+		const status = await getStatus(repo);
+		expect(status.entries).toEqual([
+			expect.objectContaining({ path: "README.md", area: "staged", status: "modified" }),
+		]);
+		expect(await runGit(["diff", "--cached", "--", "README.md"], repo)).toMatchObject({
+			stdout: expect.stringContaining("+# staged"),
+		});
 	});
 
 	it("propagates git status failures", async () => {
@@ -156,14 +173,17 @@ describe("source control git operations", () => {
 		status = await getStatus(repo);
 		expect(status.entries.filter((entry) => entry.area === "untracked")).toHaveLength(2);
 
-		await bulkDiscardChanges(repo, ["src/a.ts", "src/b.ts"]);
+		await bulkDiscardChanges(repo, [
+			{ relativePath: "src/a.ts", area: "untracked" },
+			{ relativePath: "src/b.ts", area: "untracked" },
+		]);
 		status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
 	});
 
 	it("rejects paths that escape the repository root", async () => {
 		const repo = await createRepo();
-		await expect(discardChanges(repo, "../../etc/passwd")).rejects.toThrow(/outside the worktree/);
+		await expect(discardChanges(repo, "../../etc/passwd", "unstaged")).rejects.toThrow(/outside the worktree/);
 		await expect(stageFile(repo, "../escape.txt")).rejects.toBeTruthy();
 	});
 
@@ -177,6 +197,17 @@ describe("source control git operations", () => {
 		expect(result.sha).toMatch(/^[a-f0-9]{40}$/);
 		expect(result.summary).toBe("Update readme");
 		expect((await getStatus(repo)).entries).toEqual([]);
+	});
+
+	it("rejects commits from subdirectory projects", async () => {
+		const repo = await createRepo();
+		await mkdir(join(repo, "packages", "app"), { recursive: true });
+		await writeFile(join(repo, "outside.txt"), "outside\n", "utf8");
+		await stageFile(repo, "outside.txt");
+
+		await expect(commitStagedChanges(join(repo, "packages", "app"), "Subdir commit")).rejects.toThrow(
+			/subdirectory project/,
+		);
 	});
 
 	it("returns text, binary, and untracked diff payloads", async () => {

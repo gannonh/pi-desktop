@@ -653,7 +653,7 @@ function ChangesPanelBody() {
 							void runMutation(() =>
 								window.piDesktop.sourceControl.bulkDiscard({
 									projectId: projectId ?? "",
-									relativePaths: selectedEntries.map((entry) => entry.path),
+									entries: selectedEntries.map((entry) => ({ relativePath: entry.path, area: entry.area })),
 								}),
 							)
 						}
@@ -731,6 +731,7 @@ function ChangesPanelBody() {
 													window.piDesktop.sourceControl.discard({
 														projectId: projectId ?? "",
 														relativePath: entry.path,
+														area: entry.area,
 													}),
 												)
 											}

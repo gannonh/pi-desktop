@@ -77,7 +77,7 @@ describe("source control service", () => {
 		const service = createService();
 
 		await expect(service.stage({ projectId, relativePath: "../escape.txt" })).rejects.toThrow();
-		await expect(service.discard({ projectId, relativePath: "../escape.txt" })).rejects.toThrow();
+		await expect(service.discard({ projectId, relativePath: "../escape.txt", area: "unstaged" })).rejects.toThrow();
 	});
 
 	it("commits staged changes for a project", async () => {
