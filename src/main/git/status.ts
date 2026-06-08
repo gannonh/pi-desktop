@@ -1,5 +1,4 @@
-import { existsSync } from "node:fs";
-import { readFile, realpath } from "node:fs/promises";
+import { access, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { decodeGitCQuotedPath } from "../../shared/git-cquoted-path";
 import { removeSafeUntrackedDiscardTarget } from "../../shared/git-discard-path-safety";
@@ -24,6 +23,12 @@ const MAX_TEXT_DIFF_BYTES = 512 * 1024;
 export type GetStatusOptions = {
 	includeIgnored?: boolean;
 };
+
+const pathExists = (filePath: string): Promise<boolean> =>
+	access(filePath).then(
+		() => true,
+		() => false,
+	);
 
 export const getStatus = async (worktreePath: string, options: GetStatusOptions = {}): Promise<GitStatusResult> => {
 	const entries: GitStatusEntry[] = [];
@@ -214,13 +219,13 @@ export const detectConflictOperation = async (worktreePath: string): Promise<Git
 	const rebaseApplyDir = path.join(gitDir, "rebase-apply");
 
 	try {
-		if (existsSync(mergeHead)) {
+		if (await pathExists(mergeHead)) {
 			return "merge";
 		}
-		if (existsSync(rebaseMergeDir) || existsSync(rebaseApplyDir)) {
+		if ((await pathExists(rebaseMergeDir)) || (await pathExists(rebaseApplyDir))) {
 			return "rebase";
 		}
-		if (existsSync(cherryPickHead)) {
+		if (await pathExists(cherryPickHead)) {
 			return "cherry-pick";
 		}
 	} catch {
