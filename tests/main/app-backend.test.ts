@@ -384,6 +384,33 @@ describe("app backend", () => {
 		}
 	});
 
+	it("returns a dedicated source-control code for non-git projects", async () => {
+		const projectDir = await mkdtemp(join(tmpdir(), "pi-app-backend-not-git-"));
+		try {
+			const projectService = createProjectService();
+			vi.mocked(projectService.getSessionWorkspace).mockResolvedValue({
+				projectId: "project:one",
+				displayName: "one",
+				path: projectDir,
+			});
+			const backend = createAppBackend({
+				appInfo: { name: "pi-desktop", version: "dev" },
+				projectService,
+				now: () => "2026-05-15T12:00:00.000Z",
+				initializeGitRepository,
+			});
+
+			await expect(
+				backend.handle({ operation: "sourceControl.getStatus", input: { projectId: "project:one" } }),
+			).resolves.toMatchObject({
+				ok: false,
+				error: { code: "source_control.not_a_git_repo" },
+			});
+		} finally {
+			await rm(projectDir, { recursive: true, force: true });
+		}
+	});
+
 	it("wraps Pi session operation failures in structured results with sanitized messages", async () => {
 		const projectService = createProjectService();
 		const backend = createAppBackend({

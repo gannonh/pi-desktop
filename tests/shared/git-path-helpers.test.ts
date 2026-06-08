@@ -30,6 +30,7 @@ describe("git path helpers", () => {
 		expect(decodeGitCQuotedPath('"space name.txt"')).toBe("space name.txt");
 		expect(decodeGitCQuotedPath('"line\\nquote\\"tab\\tbackslash\\\\.txt"')).toBe('line\nquote"tab\tbackslash\\.txt');
 		expect(decodeGitCQuotedPath('"octal\\040bell\\007.txt"')).toBe("octal bell\u0007.txt");
+		expect(decodeGitCQuotedPath('"caf\\303\\251.txt"')).toBe("café.txt");
 		expect(decodeGitCQuotedPath('"alarm\\aback\\bform\\freturn\\rvertical\\v.txt"')).toBe(
 			"alarm\u0007back\bform\freturn\rvertical\v.txt",
 		);

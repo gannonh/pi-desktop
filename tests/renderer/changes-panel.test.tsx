@@ -114,10 +114,10 @@ describe("ChangesPanel", () => {
 
 	it("shows initialize repository when the project is not a git repo", async () => {
 		installApi({
-			getStatus: vi.fn(async () => ({
-				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "Project is not a git repository." },
-			})),
+				getStatus: vi.fn(async () => ({
+					ok: false as const,
+					error: { code: "source_control.not_a_git_repo", message: "Project is not a git repository." },
+				})),
 		});
 		render(<ChangesPanel project={project} isActive />);
 
@@ -128,10 +128,10 @@ describe("ChangesPanel", () => {
 
 	it("shows initialize repository failures", async () => {
 		installApi({
-			getStatus: vi.fn(async () => ({
-				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "Project is not a git repository." },
-			})),
+				getStatus: vi.fn(async () => ({
+					ok: false as const,
+					error: { code: "source_control.not_a_git_repo", message: "Project is not a git repository." },
+				})),
 			initializeRepository: vi.fn(async () => ({
 				ok: false as const,
 				error: { code: "source_control.operation_failed", message: "Cannot initialize repository." },

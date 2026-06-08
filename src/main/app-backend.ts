@@ -233,6 +233,9 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			if (error instanceof WorkspacePathError) {
 				return err("source_control.path_invalid", error.message);
 			}
+			if (toErrorMessage(error).toLowerCase().includes("not a git repository")) {
+				return err("source_control.not_a_git_repo", toErrorMessage(error));
+			}
 			return err("source_control.operation_failed", toErrorMessage(error));
 		}
 	};

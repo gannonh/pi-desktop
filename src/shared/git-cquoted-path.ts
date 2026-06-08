@@ -41,12 +41,28 @@ export const decodeGitCQuotedPath = (value: string): string => {
 				break;
 			default:
 				if (/[0-7]/.test(escaped)) {
+					const bytes: number[] = [];
 					let octal = escaped;
 					while (index + 1 < value.length - 1 && octal.length < 3 && /[0-7]/.test(value[index + 1])) {
 						index += 1;
 						octal += value[index];
 					}
-					decoded += String.fromCharCode(Number.parseInt(octal, 8));
+					bytes.push(Number.parseInt(octal, 8));
+					while (
+						index + 1 < value.length - 1 &&
+						value[index + 1] === "\\" &&
+						index + 2 < value.length - 1 &&
+						/[0-7]/.test(value[index + 2])
+					) {
+						index += 2;
+						let nextOctal = value[index];
+						while (index + 1 < value.length - 1 && nextOctal.length < 3 && /[0-7]/.test(value[index + 1])) {
+							index += 1;
+							nextOctal += value[index];
+						}
+						bytes.push(Number.parseInt(nextOctal, 8));
+					}
+					decoded += Buffer.from(bytes).toString("utf8");
 				} else {
 					decoded += escaped;
 				}

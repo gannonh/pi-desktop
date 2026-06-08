@@ -65,7 +65,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 				const message = result.error.message;
 				setStatus(null);
 				setStatusError(message);
-				setIsGitRepo(message.toLowerCase().includes("not a git repository") ? false : null);
+				setIsGitRepo(result.error.code === "source_control.not_a_git_repo" ? false : null);
 				return;
 			}
 			setStatus(result.data);
