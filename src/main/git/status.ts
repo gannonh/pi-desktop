@@ -512,6 +512,14 @@ export const getDiff = async (worktreePath: string, input: GetDiffInput): Promis
 	assertPathWithinWorktree(worktreePath, input.relativePath);
 	const title = titleForDiff(input);
 
+	if (input.kind === "branch") {
+		await assertSafeGitRevision(worktreePath, input.baseRef);
+		await assertSafeGitRevision(worktreePath, input.headRef);
+	}
+	if (input.kind === "commit") {
+		await assertSafeGitRevision(worktreePath, input.commitRef);
+	}
+
 	if (input.kind === "untracked") {
 		return {
 			kind: "unsupported",
@@ -643,6 +651,8 @@ export const getBranchCompare = async (
 	worktreePath: string,
 	input: { baseRef: string; headRef: string },
 ): Promise<GitBranchCompareResult> => {
+	await assertSafeGitRevision(worktreePath, input.baseRef);
+	await assertSafeGitRevision(worktreePath, input.headRef);
 	const { stdout: countOutput } = await gitExecFileAsync(
 		["rev-list", "--left-right", "--count", `${input.baseRef}...${input.headRef}`],
 		{ cwd: worktreePath },

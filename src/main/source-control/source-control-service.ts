@@ -1,3 +1,5 @@
+import { realpath } from "node:fs/promises";
+import path from "node:path";
 import type { GitStatusResult } from "../../shared/source-control/types";
 import type {
 	SourceControlAbortConflictInput,
@@ -16,6 +18,7 @@ import type {
 import { normalizeRelativePath, WorkspacePathError } from "../workspace-files/path-guard";
 import { checkIgnoredPaths } from "../git/check-ignored-paths";
 import { isGitRepo } from "../git/repo";
+import { gitExecFileAsync } from "../git/runner";
 import {
 	abortConflictOperation,
 	bulkDiscardChanges,
@@ -65,6 +68,15 @@ const assertGitRepo = (projectRoot: string): void => {
 	}
 };
 
+const assertProjectIsRepositoryRoot = async (projectRoot: string): Promise<void> => {
+	const { stdout } = await gitExecFileAsync(["rev-parse", "--show-toplevel"], { cwd: projectRoot });
+	const repositoryRoot = path.resolve(await realpath(stdout.trim()));
+	const selectedRoot = path.resolve(await realpath(projectRoot));
+	if (repositoryRoot !== selectedRoot) {
+		throw new Error("Source control is only supported from the repository root.");
+	}
+};
+
 export type SourceControlService = {
 	getStatus: (input: SourceControlProjectInput) => Promise<GitStatusResult>;
 	checkIgnored: (input: SourceControlBulkPathsInput) => Promise<{ ignoredPaths: string[] }>;
@@ -95,6 +107,7 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 	const withProjectRoot = async <T>(projectId: string, operation: (projectRoot: string) => Promise<T>): Promise<T> => {
 		const projectRoot = await resolveProjectRoot(deps, projectId);
 		assertGitRepo(projectRoot);
+		await assertProjectIsRepositoryRoot(projectRoot);
 		return operation(projectRoot);
 	};
 

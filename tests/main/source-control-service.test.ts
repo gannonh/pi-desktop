@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -24,12 +24,12 @@ describe("source control service", () => {
 		}
 	});
 
-	const createService = () => {
+	const createService = (projectPath = repoDir) => {
 		const projectService = {
 			getSessionWorkspace: async () => ({
 				projectId,
 				displayName: "test",
-				path: repoDir,
+				path: projectPath,
 			}),
 		} as Pick<ProjectService, "getSessionWorkspace">;
 
@@ -57,6 +57,16 @@ describe("source control service", () => {
 		expect(status.entries).toContainEqual(
 			expect.objectContaining({ path: "new.txt", area: "untracked", status: "untracked" }),
 		);
+	});
+
+	it("rejects source control from repository subdirectories", async () => {
+		await createRepo();
+		const projectPath = join(repoDir, "packages", "app");
+		await mkdir(projectPath, { recursive: true });
+
+		const service = createService(projectPath);
+
+		await expect(service.getStatus({ projectId })).rejects.toThrow(/repository root/);
 	});
 
 	it("stages files within the project root", async () => {

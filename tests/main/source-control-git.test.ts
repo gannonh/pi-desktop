@@ -269,6 +269,17 @@ describe("source control git operations", () => {
 		expect(untrackedDiff).toMatchObject({ kind: "unsupported", path: "new.txt", diffKind: "untracked" });
 	});
 
+	it("rejects diff revision arguments that look like git options", async () => {
+		const repo = await createRepo();
+
+		await expect(
+			getDiff(repo, { relativePath: "README.md", kind: "commit", commitRef: "--output=/tmp/pi-diff" }),
+		).rejects.toThrow(/must not start/);
+		await expect(getBranchCompare(repo, { baseRef: "--exec=touch bad", headRef: "HEAD" })).rejects.toThrow(
+			/must not start/,
+		);
+	});
+
 	it("returns too_large when diff output exceeds the display limit", async () => {
 		const repo = await createRepo();
 		await writeFile(join(repo, "README.md"), `${"a".repeat(600 * 1024)}\n`, "utf8");
