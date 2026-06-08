@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -134,6 +134,18 @@ describe("source control git operations", () => {
 		const status = await getStatus(repo);
 		expect(status.entries).toEqual([]);
 		expect(await runGit(["show", "HEAD:README.md"], repo)).toMatchObject({ stdout: "# hello\n" });
+	});
+
+	it("does not discard ignored files through the untracked path", async () => {
+		const repo = await createRepo();
+		await writeFile(join(repo, ".gitignore"), ".env\n", "utf8");
+		await stageFile(repo, ".gitignore");
+		await commitStagedChanges(repo, "Ignore env files");
+		await writeFile(join(repo, ".env"), "secret\n", "utf8");
+
+		await discardChanges(repo, ".env", "untracked");
+
+		expect(await readFile(join(repo, ".env"), "utf8")).toBe("secret\n");
 	});
 
 	it("discards staged tracked changes and staged additions", async () => {

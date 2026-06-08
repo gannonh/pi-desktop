@@ -349,7 +349,7 @@ const cleanUntrackedPaths = async (worktreePath: string, filePaths: readonly str
 	for (let i = 0; i < filePaths.length; i += BULK_CHUNK_SIZE) {
 		const chunk = filePaths.slice(i, i + BULK_CHUNK_SIZE);
 		if (chunk.length > 0) {
-			await gitExecFileAsync(["clean", "-ffdx", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
+			await gitExecFileAsync(["clean", "-ffd", "--", ...chunk.map(literalPathspec)], { cwd: worktreePath });
 		}
 	}
 };
