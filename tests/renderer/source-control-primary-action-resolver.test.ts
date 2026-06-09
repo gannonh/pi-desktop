@@ -114,6 +114,7 @@ describe("resolveSourceControlActions", () => {
 		});
 		expect(diverged.primary.id).toBe("rebaseFromBase");
 		expect(diverged.primary.label).toBe("Rebase from Upstream");
+		expect(diverged.dropdown.find((action) => action.id === "rebaseFromBase")?.label).toBe("Rebase from Upstream");
 		expect(diverged.byId.sync.disabledReason).toBe("Branch has diverged. Rebase or merge before syncing.");
 		expect(
 			resolve({
@@ -195,5 +196,13 @@ describe("resolveSourceControlActions", () => {
 		});
 
 		expect(actions.byId.createPullRequest.disabledReason).toBe("Pull request already linked.");
+	});
+
+	it("disables create PR while upstream status is still loading", () => {
+		const actions = resolve({
+			status: { ...baseStatus, upstreamStatus: undefined },
+		});
+
+		expect(actions.byId.createPullRequest.disabledReason).toBe("Source control status is loading.");
 	});
 });

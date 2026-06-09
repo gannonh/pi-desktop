@@ -110,6 +110,7 @@ export const resolveSourceControlActions = ({
 				hasMessage ? undefined : "Enter a commit message.",
 			),
 		),
+		// Stable dropdown slot for Orca parity; commit only staged files today, same as `commit`.
 		commitStaged: action(
 			"commitStaged",
 			firstReason(
@@ -169,6 +170,7 @@ export const resolveSourceControlActions = ({
 			"createPullRequest",
 			firstReason(
 				blocksMutations,
+				upstream === undefined ? "Source control status is loading." : undefined,
 				upstream?.hasUpstream ? undefined : "Publish this branch before creating a PR.",
 				pullRequest ? "Pull request already linked." : undefined,
 				upstream && upstream.ahead === 0 ? undefined : "Push outgoing commits before creating a PR.",
@@ -194,9 +196,16 @@ export const resolveSourceControlActions = ({
 		primary = byId.publish;
 	}
 
+	const dropdownAction = (id: (typeof SOURCE_CONTROL_DROPDOWN_ACTION_IDS)[number]) => {
+		if (id === "rebaseFromBase" && hasDiverged) {
+			return { ...byId.rebaseFromBase, label: REBASE_FROM_UPSTREAM_LABEL };
+		}
+		return byId[id];
+	};
+
 	return {
 		primary,
-		dropdown: SOURCE_CONTROL_DROPDOWN_ACTION_IDS.map((id) => byId[id]),
+		dropdown: SOURCE_CONTROL_DROPDOWN_ACTION_IDS.map((id) => dropdownAction(id)),
 		byId,
 	};
 };

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
@@ -523,6 +523,51 @@ describe("ChangesPanel", () => {
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
+	it("closes the source-control action menu after selecting a dropdown action", async () => {
+		const fetch = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			fetch,
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+		expect(screen.getByRole("menu")).toBeTruthy();
+
+		fireEvent.click(screen.getAllByRole("button", { name: "Fetch" })[0]);
+
+		await waitFor(() => {
+			expect(fetch).toHaveBeenCalledWith({ projectId: project.id });
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+	});
+
+	it("trims pull request titles before creating them", async () => {
+		const createPullRequest = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+		}));
+		installApi({ createPullRequest });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "  Feature PR  " } });
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
+
+		await waitFor(() => {
+			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
+		});
+	});
+
 	it("rebases against the configured upstream instead of unsafe sync for a clean diverged branch", async () => {
 		const rebaseFromBase = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({
@@ -550,7 +595,9 @@ describe("ChangesPanel", () => {
 
 		fireEvent.click(screen.getByText("More source control actions"));
 
-		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
+		const menu = screen.getByRole("menu");
+		expect(within(menu).getByRole("button", { name: "Rebase from Upstream" })).toBeTruthy();
+		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
 		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
 	});
 

@@ -404,10 +404,12 @@ function SourceControlActions({
 			return;
 		}
 		if (id === "commit" || id === "commitStaged") {
+			setIsMenuOpen(false);
 			onCommit();
 			return;
 		}
 		if (id === "createPullRequest") {
+			setIsMenuOpen(false);
 			onCreatePullRequestRequested();
 			return;
 		}
@@ -416,6 +418,7 @@ function SourceControlActions({
 			return;
 		}
 
+		setIsMenuOpen(false);
 		setBusyActionId(id);
 		try {
 			switch (id) {
@@ -477,13 +480,19 @@ function SourceControlActions({
 					<button
 						type="button"
 						className="changes-panel__action-menu-trigger"
+						aria-haspopup="menu"
+						aria-controls="changes-panel-source-control-actions-menu"
 						aria-expanded={isMenuOpen}
 						onClick={() => setIsMenuOpen((open) => !open)}
 					>
 						More source control actions
 					</button>
 					{isMenuOpen ? (
-						<div className="changes-panel__action-menu-items">
+						<div
+							id="changes-panel-source-control-actions-menu"
+							className="changes-panel__action-menu-items"
+							role="menu"
+						>
 							{actions.dropdown.map((action) => (
 								<SourceControlActionButton key={action.id} action={action} onRun={(id) => void runAction(id)} />
 							))}
@@ -605,7 +614,11 @@ function PullRequestArea({
 		}
 		setError(null);
 		setMessage(null);
-		const result = await window.piDesktop.sourceControl.createPullRequest({ projectId, title, body });
+		const result = await window.piDesktop.sourceControl.createPullRequest({
+			projectId,
+			title: title.trim(),
+			body,
+		});
 		if (!result.ok) {
 			setError(result.error.message);
 			return;
