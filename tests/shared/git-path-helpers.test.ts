@@ -84,4 +84,23 @@ describe("git path helpers", () => {
 
 		expect(removePaths).toHaveBeenCalledWith(["src/a.txt"]);
 	});
+
+	it("rejects discard targets inside nested git repositories", async () => {
+		const worktree = await createWorktree();
+		await mkdir(join(worktree, "nested", ".git"), { recursive: true });
+		await writeFile(join(worktree, "nested", "file.txt"), "nested\n", "utf8");
+
+		await expect(removeSafeUntrackedDiscardTarget(worktree, "nested", vi.fn())).rejects.toThrow(/nested git/);
+		await expect(removeSafeUntrackedDiscardTarget(worktree, "nested/file.txt", vi.fn())).rejects.toThrow(
+			/nested git/,
+		);
+	});
+
+	it("rejects discard targets that contain nested git repositories below them", async () => {
+		const worktree = await createWorktree();
+		await mkdir(join(worktree, "vendor", "pkg", ".git"), { recursive: true });
+		await writeFile(join(worktree, "vendor", "pkg", "file.txt"), "nested\n", "utf8");
+
+		await expect(removeSafeUntrackedDiscardTarget(worktree, "vendor", vi.fn())).rejects.toThrow(/nested git/);
+	});
 });

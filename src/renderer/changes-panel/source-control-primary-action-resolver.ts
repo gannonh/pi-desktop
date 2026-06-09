@@ -7,6 +7,7 @@ export type SourceControlPrimaryActionId =
 	| "fetch"
 	| "pull"
 	| "push"
+	| "forcePushWithLease"
 	| "sync"
 	| "publish"
 	| "fastForward"
@@ -35,6 +36,7 @@ export const SOURCE_CONTROL_DROPDOWN_ACTION_IDS = [
 	"fetch",
 	"pull",
 	"push",
+	"forcePushWithLease",
 	"sync",
 	"publish",
 	"fastForward",
@@ -49,6 +51,7 @@ const ACTION_LABELS = {
 	fetch: "Fetch",
 	pull: "Pull",
 	push: "Push",
+	forcePushWithLease: "Force Push with Lease",
 	sync: "Sync",
 	publish: "Publish",
 	fastForward: "Fast-forward",
@@ -138,6 +141,15 @@ export const resolveSourceControlActions = ({
 				blocksMutations,
 				upstream?.hasUpstream ? undefined : "Publish this branch before pushing.",
 				upstream && upstream.ahead > 0 ? undefined : "No outgoing commits.",
+			),
+		),
+		forcePushWithLease: action(
+			"forcePushWithLease",
+			firstReason(
+				blocksMutations,
+				upstream?.hasUpstream ? undefined : "Publish this branch before force pushing.",
+				hasDiverged ? undefined : "Only available for diverged branches.",
+				upstream?.upstreamName ? undefined : "Upstream name is unavailable.",
 			),
 		),
 		sync: action(

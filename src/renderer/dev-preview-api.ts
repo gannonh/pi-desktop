@@ -771,6 +771,7 @@ export const installDevPreviewApi = () => {
 			getUpstreamStatus: async () => sourceControlUnavailable(),
 			fetch: async () => sourceControlUnavailable(),
 			push: async () => sourceControlUnavailable(),
+			forcePushWithLease: async () => sourceControlUnavailable(),
 			pull: async () => sourceControlUnavailable(),
 			sync: async () => sourceControlUnavailable(),
 			fastForward: async () => sourceControlUnavailable(),

@@ -4,13 +4,34 @@ import {
 	resolveSourceControlActions,
 	type SourceControlActionResolverInput,
 } from "../../src/renderer/changes-panel/source-control-primary-action-resolver";
-import type { GitStatusResult } from "../../src/shared/source-control/types";
+import type { GitStatusResult, GitUpstreamStatus } from "../../src/shared/source-control/types";
+
+const testUpstreamStatus = (
+	status: Pick<GitUpstreamStatus, "hasUpstream" | "ahead" | "behind"> & Partial<GitUpstreamStatus>,
+): GitUpstreamStatus => {
+	const relation =
+		status.relation ??
+		(!status.hasUpstream
+			? "none"
+			: status.ahead > 0 && status.behind > 0
+				? "diverged"
+				: status.ahead > 0
+					? "ahead"
+					: status.behind > 0
+						? "behind"
+						: "up_to_date");
+	return {
+		...status,
+		relation,
+		isConfigured: status.isConfigured ?? true,
+	};
+};
 
 const baseStatus = {
 	entries: [],
 	conflictOperation: "unknown",
 	branch: "refs/heads/feature",
-	upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+	upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
 } satisfies GitStatusResult;
 
 const resolve = (overrides: Partial<SourceControlActionResolverInput> = {}) =>
@@ -32,6 +53,7 @@ describe("resolveSourceControlActions", () => {
 			"fetch",
 			"pull",
 			"push",
+			"forcePushWithLease",
 			"sync",
 			"publish",
 			"fastForward",
@@ -52,7 +74,12 @@ describe("resolveSourceControlActions", () => {
 					{ path: "staged.ts", status: "modified", area: "staged" },
 					{ path: "unstaged.ts", status: "modified", area: "unstaged" },
 				],
-				upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
+				upstreamStatus: testUpstreamStatus({
+					hasUpstream: true,
+					upstreamName: "origin/feature",
+					ahead: 1,
+					behind: 1,
+				}),
 			},
 		});
 
@@ -97,7 +124,12 @@ describe("resolveSourceControlActions", () => {
 					{ path: "unstaged.ts", status: "modified", area: "unstaged" },
 					{ path: "new.ts", status: "untracked", area: "untracked" },
 				],
-				upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 2, behind: 0 },
+				upstreamStatus: testUpstreamStatus({
+					hasUpstream: true,
+					upstreamName: "origin/feature",
+					ahead: 2,
+					behind: 0,
+				}),
 			},
 		});
 
@@ -109,18 +141,29 @@ describe("resolveSourceControlActions", () => {
 		const diverged = resolve({
 			status: {
 				...baseStatus,
-				upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
+				upstreamStatus: testUpstreamStatus({
+					hasUpstream: true,
+					upstreamName: "origin/feature",
+					ahead: 1,
+					behind: 1,
+				}),
 			},
 		});
 		expect(diverged.primary.id).toBe("rebaseFromBase");
 		expect(diverged.primary.label).toBe("Rebase from Upstream");
 		expect(diverged.dropdown.find((action) => action.id === "rebaseFromBase")?.label).toBe("Rebase from Upstream");
 		expect(diverged.byId.sync.disabledReason).toBe("Branch has diverged. Rebase or merge before syncing.");
+		expect(diverged.byId.forcePushWithLease.disabledReason).toBeUndefined();
 		expect(
 			resolve({
 				status: {
 					...baseStatus,
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 1 },
+					upstreamStatus: testUpstreamStatus({
+						hasUpstream: true,
+						upstreamName: "origin/feature",
+						ahead: 0,
+						behind: 1,
+					}),
 				},
 			}).primary.id,
 		).toBe("pull");
@@ -128,13 +171,21 @@ describe("resolveSourceControlActions", () => {
 			resolve({
 				status: {
 					...baseStatus,
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 0 },
+					upstreamStatus: testUpstreamStatus({
+						hasUpstream: true,
+						upstreamName: "origin/feature",
+						ahead: 1,
+						behind: 0,
+					}),
 				},
 			}).primary.id,
 		).toBe("push");
 		expect(
 			resolve({
-				status: { ...baseStatus, upstreamStatus: { hasUpstream: false, ahead: 0, behind: 0 } },
+				status: {
+					...baseStatus,
+					upstreamStatus: testUpstreamStatus({ hasUpstream: false, ahead: 0, behind: 0, isConfigured: false }),
+				},
 			}).primary.id,
 		).toBe("publish");
 		expect(
@@ -142,7 +193,12 @@ describe("resolveSourceControlActions", () => {
 				pullRequest: null,
 				status: {
 					...baseStatus,
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+					upstreamStatus: testUpstreamStatus({
+						hasUpstream: true,
+						upstreamName: "origin/feature",
+						ahead: 0,
+						behind: 0,
+					}),
 				},
 			}).primary.id,
 		).toBe("createPullRequest");
@@ -152,7 +208,7 @@ describe("resolveSourceControlActions", () => {
 		const actions = resolve({
 			status: {
 				...baseStatus,
-				upstreamStatus: { hasUpstream: true, ahead: 1, behind: 1 },
+				upstreamStatus: testUpstreamStatus({ hasUpstream: true, ahead: 1, behind: 1 }),
 			},
 		});
 
@@ -172,6 +228,7 @@ describe("resolveSourceControlActions", () => {
 		expect(actions.byId.commit.disabledReason).toBe("Select a project.");
 		expect(actions.byId.stageAll.disabledReason).toBe("Select a project.");
 		expect(actions.byId.pull.disabledReason).toBe("Select a project.");
+		expect(actions.byId.forcePushWithLease.disabledReason).toBe("Select a project.");
 		expect(actions.byId.publish.disabledReason).toBe("Select a project.");
 		expect(actions.byId.createPullRequest.disabledReason).toBe("Select a project.");
 	});

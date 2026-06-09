@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import type {
 	GitBranchCompareResult,
+	GitConflictKind,
 	GitConflictOperation,
 	GitStagingArea,
 	GitStatusEntry,
@@ -49,6 +50,26 @@ const groupEntriesByArea = (entries: GitStatusEntry[]): Record<GitStagingArea, G
 		grouped[entry.area].push(entry);
 	}
 	return grouped;
+};
+
+const CONFLICT_KIND_LABELS = {
+	both_modified: "Both modified",
+	both_added: "Both added",
+	both_deleted: "Both deleted",
+	added_by_us: "Added by us",
+	added_by_them: "Added by them",
+	deleted_by_us: "Deleted by us",
+	deleted_by_them: "Deleted by them",
+} satisfies Record<GitConflictKind, string>;
+
+const conflictCompatibilityLabel = (entry: GitStatusEntry): string | null => {
+	if (!entry.conflictKind) {
+		return null;
+	}
+	if (entry.status === "deleted") {
+		return "Choose delete or restore";
+	}
+	return "Resolve before staging";
 };
 
 function SourceControlTreeRow({
@@ -115,6 +136,12 @@ function SourceControlTreeRow({
 				<span className="changes-panel__line-stats">
 					{entry.added ? `+${entry.added}` : null}
 					{entry.removed ? `−${entry.removed}` : null}
+				</span>
+			) : null}
+			{entry.conflictKind ? (
+				<span className="changes-panel__conflict-metadata">
+					<span className="changes-panel__conflict-kind">{CONFLICT_KIND_LABELS[entry.conflictKind]}</span>
+					<span className="changes-panel__conflict-compatibility">{conflictCompatibilityLabel(entry)}</span>
 				</span>
 			) : null}
 			<span className="changes-panel__row-actions">
@@ -438,6 +465,11 @@ function SourceControlActions({
 					break;
 				case "push":
 					await run("Push", () => window.piDesktop.sourceControl.push({ projectId }));
+					break;
+				case "forcePushWithLease":
+					await run("Force push with lease", () =>
+						window.piDesktop.sourceControl.forcePushWithLease({ projectId }),
+					);
 					break;
 				case "sync":
 					await run("Sync", () => window.piDesktop.sourceControl.sync({ projectId }));

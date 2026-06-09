@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160).
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented on the current branch.**
 
 ## Context
 
@@ -63,51 +63,45 @@ Tracking: [#147](https://github.com/gannonh/pi-desktop/issues/147)
 
 Stabilize correctness and safety in less-happy Git states. This wave should make the local Changes panel trustworthy under conflicts, unusual paths, and real remote branch setups.
 
-#### 2.1 Conflict Rows and Resolution State
+#### 2.1 Conflict Rows and Resolution State — ✅ Implemented
 
 Tracking: [#148](https://github.com/gannonh/pi-desktop/issues/148)
 
-**Gap:** Pi Desktop detects merge/rebase/cherry-pick operations and can abort, but does not parse unmerged entries or show conflict kinds per file.
-
-**Goal:** Surface conflict rows with Orca-style conflict metadata and operation status.
+**Shipped:** `getStatus` parses porcelain v2 unmerged entries into typed conflict rows. `ChangesPanel` renders conflict kind labels and compatibility guidance per row while keeping merge, rebase, and cherry-pick operation banners and abort actions visible.
 
 **Acceptance Criteria**
 
-- `git status --porcelain=v2` unmerged entries are parsed into typed conflict rows.
-- Conflict kind and compatibility status are shown in the Changes tree.
-- Merge, rebase, and cherry-pick conflict states stay visible while active.
-- Abort operations refresh status and preserve visible failure feedback.
+- ✅ `git status --porcelain=v2` unmerged entries are parsed into typed conflict rows.
+- ✅ Conflict kind and compatibility status are shown in the Changes tree.
+- ✅ Merge, rebase, and cherry-pick conflict states stay visible while active.
+- ✅ Abort operations refresh status and preserve visible failure feedback.
 
-#### 2.2 Status Fidelity and Edge Cases
+#### 2.2 Status Fidelity and Edge Cases — ✅ Implemented
 
 Tracking: [#149](https://github.com/gannonh/pi-desktop/issues/149)
 
-**Gap:** Pi Desktop's status parser is functional but thinner than Orca's edge-case coverage for line stats, unmerged entries, pathspec literals, symlinks, C-quoted paths, and upstream churn.
-
-**Goal:** Bring core parser and safety behavior up to Orca's local-git reliability level.
+**Shipped:** Status entries are enriched with batched `git diff --numstat -z` line stats for staged and unstaged changes. Literal pathspec handling is covered for spaces, glob characters, non-ASCII paths, and renamed files. Untracked discard safety rejects symlink escapes, nested git repositories, ignored files, and the worktree root.
 
 **Acceptance Criteria**
 
-- Staged, unstaged, and untracked entries include accurate line stats where practical.
-- Pathspec literal handling covers spaces, glob characters, non-ASCII paths, and renamed files.
-- Discard safety covers symlinks, nested repos, ignored paths, and worktree-root rejection.
-- Tests cover the high-risk parser and filesystem safety cases.
+- ✅ Staged, unstaged, and untracked entries include accurate line stats where practical.
+- ✅ Pathspec literal handling covers spaces, glob characters, non-ASCII paths, and renamed files.
+- ✅ Discard safety covers symlinks, nested repos, ignored paths, and worktree-root rejection.
+- ✅ Tests cover the high-risk parser and filesystem safety cases.
 
-#### 2.3 Remote and Upstream Semantics
+#### 2.3 Remote and Upstream Semantics — ✅ Implemented
 
 Tracking: [#150](https://github.com/gannonh/pi-desktop/issues/150)
 
-**Gap:** Pi Desktop remote operations use basic Git commands; Orca handles effective upstreams, explicit push targets, force-with-lease, PR branch remotes, and richer error classification.
-
-**Goal:** Harden remote operations to match Orca's local-git behavior where it applies to selected projects.
+**Shipped:** Upstream status now reports an explicit relation (`none`, `up_to_date`, `ahead`, `behind`, `diverged`) and falls back to same-name `origin/<branch>` refs when branch tracking is missing. Push and pull target configured upstreams or the effective origin ref explicitly. Force-with-lease is exposed through the resolver only for diverged branches. Remote operation failures are translated into actionable messages.
 
 **Acceptance Criteria**
 
-- Upstream status probes same-name origin refs and handles missing configured upstreams.
-- Diverged branches are classified separately from fast-forwardable sync states.
-- Push can target configured upstreams and publish branches safely.
-- Force-with-lease is available only when the resolver recommends it.
-- Pull, sync, and rebase errors are translated into actionable messages.
+- ✅ Upstream status probes same-name origin refs and handles missing configured upstreams.
+- ✅ Diverged branches are classified separately from fast-forwardable sync states.
+- ✅ Push can target configured upstreams and publish branches safely.
+- ✅ Force-with-lease is available only when the resolver recommends it.
+- ✅ Pull, sync, and rebase errors are translated into actionable messages.
 
 ### Wave 3: Git History Panel and Diff Review Improvements
 

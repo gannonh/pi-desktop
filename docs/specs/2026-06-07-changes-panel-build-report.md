@@ -57,23 +57,26 @@
 - AI commit message and PR field controls surface visible prerequisite errors instead of invoking a Pi one-shot adapter. This satisfies the visible-error branch of AC 8 but is not a full Pi generation path.
 - Remote and PR operations depend on local `git`/`gh` availability and repository auth state; failures are returned visibly through the existing source-control error path.
 
-## Wave 1 follow-up (Orca Git parity §1.1–1.2)
+## Orca Git parity follow-ups
 
-Shipped on `wave1` per `docs/specs/2026-06-08-orca-git-parity-roadmap.md`:
+Follow-up waves are tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`:
 
 | Item | Status | Notes |
 |---|---|---|
-| Primary action resolver | Done | `source-control-primary-action-resolver.ts`; `ChangesPanel` dynamic primary + dropdown with disabled reasons |
-| Diverged-branch sync guard | Done | `syncRemote` rejects ahead+behind; resolver promotes rebase over one-click Sync |
-| Destructive discard confirmations | Done | Type-specific `AlertDialog` copy for single and bulk discard |
-| Tests | Done | `tests/renderer/source-control-primary-action-resolver.test.ts`, extended `changes-panel.test.tsx`, `tests/main/source-control-git.test.ts` |
+| Wave 1 primary action resolver | Done | `source-control-primary-action-resolver.ts`; `ChangesPanel` dynamic primary + dropdown with disabled reasons |
+| Wave 1 diverged-branch sync guard | Done | `syncRemote` rejects ahead+behind; resolver promotes rebase over one-click Sync |
+| Wave 1 destructive discard confirmations | Done | Type-specific `AlertDialog` copy for single and bulk discard |
+| Wave 2 conflict rows | Done | Porcelain v2 unmerged entries become typed conflict rows with visible conflict metadata |
+| Wave 2 status fidelity and discard safety | Done | Staged/unstaged line stats, literal pathspec edge cases, and nested-repo discard protection |
+| Wave 2 remote/upstream hardening | Done | Same-name origin fallback, explicit upstream relation, force-with-lease gating, and actionable remote errors |
+| Tests | Done | Focused main, shared, and renderer coverage for Wave 1 and Wave 2 source-control behavior |
 
 ## Known follow-ups
 
 - Replace visible AI prerequisite errors with the planned main-process Pi one-shot generation adapter.
 - Add manual UAT evidence against a real authenticated GitHub remote before release signoff.
-- Continue Orca Git parity from Wave 2 onward (`docs/specs/2026-06-08-orca-git-parity-roadmap.md`).
+- Continue Orca Git parity from Wave 3 onward (`docs/specs/2026-06-08-orca-git-parity-roadmap.md`).
 
 ## Transition
 
-M07C build implementation is complete enough to enter Verify. Wave 1 primary-action and discard-confirmation follow-up shipped on `wave1`. Full `pnpm check` passed on both milestones; final signoff still requires acceptance evidence review against the criteria above.
+M07C build implementation is complete enough to enter Verify. Wave 1 and Wave 2 Orca Git parity follow-ups are implemented. Full `pnpm check` passed for the initial build and Wave 1; Wave 2 has focused verification in its branch. Final signoff still requires acceptance evidence review against the criteria above.

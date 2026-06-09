@@ -450,7 +450,7 @@ Acceptance:
 - Git or filesystem failures display visibly.
 - The feature does not expose arbitrary filesystem access outside the selected project root.
 
-Post-M07C Orca Git parity follow-up (primary-action resolver, diverged-branch sync guard, discard confirmations) ships in Wave 1 — see `docs/specs/2026-06-08-orca-git-parity-roadmap.md`.
+Post-M07C Orca Git parity follow-up is tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`. Wave 1 shipped primary-action and discard-confirmation hardening. Wave 2 implements conflict rows, status fidelity, discard safety, and remote/upstream hardening.
 
 ### M07D: Right Panel - Terminal and Command Output
 

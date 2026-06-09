@@ -28,6 +28,7 @@ import {
 	discardChanges,
 	fastForwardBranch,
 	fetchRemote,
+	forcePushWithLeaseRemote,
 	getBranchCompare,
 	getDiff,
 	getPullRequestInfo,
@@ -99,6 +100,7 @@ export type SourceControlService = {
 	getUpstreamStatus: (input: SourceControlProjectInput) => ReturnType<typeof getUpstreamStatus>;
 	fetch: (input: SourceControlRemoteActionInput) => Promise<void>;
 	push: (input: SourceControlRemoteActionInput) => Promise<void>;
+	forcePushWithLease: (input: SourceControlRemoteActionInput) => Promise<void>;
 	pull: (input: SourceControlRemoteActionInput) => Promise<void>;
 	sync: (input: SourceControlRemoteActionInput) => Promise<void>;
 	fastForward: (input: SourceControlRemoteActionInput) => Promise<void>;
@@ -200,6 +202,8 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 
 		fetch: (input) => withProjectRoot(input.projectId, (projectRoot) => fetchRemote(projectRoot)),
 		push: (input) => withProjectRoot(input.projectId, (projectRoot) => pushRemote(projectRoot)),
+		forcePushWithLease: (input) =>
+			withProjectRoot(input.projectId, (projectRoot) => forcePushWithLeaseRemote(projectRoot)),
 		pull: (input) => withProjectRoot(input.projectId, (projectRoot) => pullRemote(projectRoot)),
 		sync: (input) => withProjectRoot(input.projectId, (projectRoot) => syncRemote(projectRoot)),
 		fastForward: (input) => withProjectRoot(input.projectId, (projectRoot) => fastForwardBranch(projectRoot)),

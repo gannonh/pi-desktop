@@ -349,7 +349,10 @@ describe("app backend", () => {
 			).resolves.toMatchObject({ ok: true, data: { summary: "Update readme" } });
 			await expect(
 				backend.handle({ operation: "sourceControl.getUpstreamStatus", input: { projectId: "project:one" } }),
-			).resolves.toEqual({ ok: true, data: { hasUpstream: false, ahead: 0, behind: 0 } });
+			).resolves.toEqual({
+				ok: true,
+				data: { hasUpstream: false, ahead: 0, behind: 0, isConfigured: false, relation: "none" },
+			});
 
 			await runGit(["checkout", "-b", "feature"], repoDir);
 			await writeFile(join(repoDir, "feature.txt"), "feature\n", "utf8");

@@ -12,6 +12,7 @@ import type {
 	GitStagingArea,
 	GitStatusEntry,
 	GitStatusResult,
+	GitUpstreamRelation,
 	GitUpstreamStatus,
 	SourceControlPullRequestInfo,
 } from "../../shared/source-control/types";
@@ -124,14 +125,21 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 			ignoredPaths.push(decodeGitCQuotedPath(line.slice(2)));
 		}
 	}
-	const upstreamStatus: GitUpstreamStatus = upstreamName
-		? {
+	await applyLineStats(worktreePath, entries);
+
+	const configuredUpstreamStatus: GitUpstreamStatus | null = upstreamName
+		? makeUpstreamStatus({
 				hasUpstream: true,
 				upstreamName,
 				ahead: upstreamAheadBehind?.ahead ?? 0,
 				behind: upstreamAheadBehind?.behind ?? 0,
-			}
-		: { hasUpstream: false, ahead: 0, behind: 0 };
+				isConfigured: true,
+			})
+		: null;
+	const upstreamStatus =
+		configuredUpstreamStatus ??
+		(await resolveSameNameOriginUpstream(worktreePath, branch)) ??
+		makeUpstreamStatus({ hasUpstream: false, ahead: 0, behind: 0, isConfigured: false });
 
 	return {
 		entries,
@@ -154,6 +162,76 @@ const parseBranchAheadBehind = (line: string): { ahead: number; behind: number }
 	};
 };
 
+const classifyUpstreamRelation = (
+	status: Pick<GitUpstreamStatus, "hasUpstream" | "ahead" | "behind">,
+): GitUpstreamRelation => {
+	if (!status.hasUpstream) {
+		return "none";
+	}
+	if (status.ahead > 0 && status.behind > 0) {
+		return "diverged";
+	}
+	if (status.ahead > 0) {
+		return "ahead";
+	}
+	if (status.behind > 0) {
+		return "behind";
+	}
+	return "up_to_date";
+};
+
+const makeUpstreamStatus = (status: Omit<GitUpstreamStatus, "relation">): GitUpstreamStatus => ({
+	...status,
+	relation: classifyUpstreamRelation(status),
+});
+
+const branchNameFromRef = (branch: string | undefined): string | null => {
+	const prefix = "refs/heads/";
+	if (!branch?.startsWith(prefix)) {
+		return null;
+	}
+	return branch.slice(prefix.length) || null;
+};
+
+const countAheadBehind = async (
+	worktreePath: string,
+	baseRef: string,
+	headRef: string,
+): Promise<{ ahead: number; behind: number }> => {
+	const { stdout } = await gitExecFileAsync(["rev-list", "--left-right", "--count", `${baseRef}...${headRef}`], {
+		cwd: worktreePath,
+	});
+	const [behindRaw, aheadRaw] = stdout.trim().split(/\s+/);
+	return {
+		ahead: Number.parseInt(aheadRaw || "0", 10),
+		behind: Number.parseInt(behindRaw || "0", 10),
+	};
+};
+
+const resolveSameNameOriginUpstream = async (
+	worktreePath: string,
+	branch: string | undefined,
+): Promise<GitUpstreamStatus | null> => {
+	const branchName = branchNameFromRef(branch);
+	if (!branchName) {
+		return null;
+	}
+	const remoteRef = `refs/remotes/origin/${branchName}`;
+	try {
+		await gitExecFileAsync(["show-ref", "--verify", "--quiet", remoteRef], { cwd: worktreePath });
+		const { ahead, behind } = await countAheadBehind(worktreePath, `origin/${branchName}`, "HEAD");
+		return makeUpstreamStatus({
+			hasUpstream: true,
+			upstreamName: `origin/${branchName}`,
+			ahead,
+			behind,
+			isConfigured: false,
+		});
+	} catch {
+		return null;
+	}
+};
+
 const parseStatusChar = (char: string): GitFileStatus => {
 	switch (char) {
 		case "M":
@@ -168,6 +246,74 @@ const parseStatusChar = (char: string): GitFileStatus => {
 			return "copied";
 		default:
 			return "modified";
+	}
+};
+
+type LineStats = { added: number; removed: number };
+
+const parseNumstatCount = (value: string): number | null => {
+	if (value === "-") {
+		return null;
+	}
+	const parsed = Number.parseInt(value, 10);
+	return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseNumstatOutput = (output: string): Map<string, LineStats> => {
+	const fields = output.split("\0").filter((field) => field.length > 0);
+	const statsByPath = new Map<string, LineStats>();
+	for (let index = 0; index < fields.length; ) {
+		const header = fields[index];
+		index += 1;
+		const [addedRaw, removedRaw, inlinePath = ""] = header.split("\t");
+		const added = parseNumstatCount(addedRaw ?? "");
+		const removed = parseNumstatCount(removedRaw ?? "");
+		if (added === null || removed === null) {
+			if (!inlinePath) {
+				index += 2;
+			}
+			continue;
+		}
+
+		let filePath = inlinePath;
+		if (!filePath) {
+			// With --numstat -z, renamed and copied paths are emitted as: stats\0old\0new\0.
+			filePath = fields[index + 1] ?? "";
+			index += 2;
+		}
+		if (filePath) {
+			statsByPath.set(filePath, { added, removed });
+		}
+	}
+	return statsByPath;
+};
+
+const readLineStats = async (worktreePath: string, area: Extract<GitStagingArea, "staged" | "unstaged">) => {
+	const args =
+		area === "staged"
+			? ["diff", "--cached", "--numstat", "-z", "--find-renames"]
+			: ["diff", "--numstat", "-z", "--find-renames"];
+	const { stdout } = await gitExecFileAsync(args, { cwd: worktreePath, env: gitOptionalLocksDisabledEnv() });
+	return parseNumstatOutput(stdout);
+};
+
+const applyLineStats = async (worktreePath: string, entries: GitStatusEntry[]): Promise<void> => {
+	const hasStagedEntries = entries.some((entry) => entry.area === "staged");
+	const hasUnstagedEntries = entries.some((entry) => entry.area === "unstaged");
+	const [stagedStats, unstagedStats] = await Promise.all([
+		hasStagedEntries
+			? readLineStats(worktreePath, "staged")
+			: Promise.resolve(new Map<string, { added: number; removed: number }>()),
+		hasUnstagedEntries
+			? readLineStats(worktreePath, "unstaged")
+			: Promise.resolve(new Map<string, { added: number; removed: number }>()),
+	]);
+	for (const entry of entries) {
+		const stats = entry.area === "staged" ? stagedStats.get(entry.path) : unstagedStats.get(entry.path);
+		if (stats) {
+			entry.added = stats.added;
+			entry.removed = stats.removed;
+		}
 	}
 };
 
@@ -631,24 +777,126 @@ export const getDiff = async (worktreePath: string, input: GetDiffInput): Promis
 
 export const getUpstreamStatus = async (worktreePath: string): Promise<GitUpstreamStatus> => {
 	const status = await getStatus(worktreePath);
-	return status.upstreamStatus ?? { hasUpstream: false, ahead: 0, behind: 0 };
+	return status.upstreamStatus ?? makeUpstreamStatus({ hasUpstream: false, ahead: 0, behind: 0, isConfigured: false });
+};
+
+const stripCredentialsFromGitOutput = (output: string): string => output.replace(/(?<=\/\/)([^@\s/]+)@/g, "***@");
+
+const gitErrorOutput = (error: unknown): string => {
+	if (typeof error !== "object" || error === null) {
+		return String(error);
+	}
+	const output = [
+		"stderr" in error ? (error as { stderr?: unknown }).stderr : undefined,
+		"stdout" in error ? (error as { stdout?: unknown }).stdout : undefined,
+	]
+		.map((value) => (Buffer.isBuffer(value) ? value.toString("utf8") : typeof value === "string" ? value : ""))
+		.join("\n")
+		.trim();
+	const message = output || (error instanceof Error ? error.message : String(error));
+	return stripCredentialsFromGitOutput(message);
+};
+
+const actionableGitErrorMessage = (action: string, error: unknown): string => {
+	const output = gitErrorOutput(error);
+	const normalized = output.toLowerCase();
+	if (normalized.includes("authentication failed") || normalized.includes("permission denied")) {
+		return `${action} failed because git authentication was rejected. Check the remote credentials and try again.\n\n${output}`;
+	}
+	if (normalized.includes("no upstream branch") || normalized.includes("no tracking information")) {
+		return `${action} needs an upstream branch. Publish this branch or set an upstream before retrying.\n\n${output}`;
+	}
+	if (normalized.includes("non-fast-forward") || normalized.includes("fetch first")) {
+		return `${action} was rejected because the remote has commits that are not local. Fetch and rebase or merge before pushing.\n\n${output}`;
+	}
+	if (normalized.includes("not possible to fast-forward") || normalized.includes("divergent branches")) {
+		return `${action} could not fast-forward. Fetch and rebase or merge before retrying.\n\n${output}`;
+	}
+	if (normalized.includes("conflict") || normalized.includes("could not apply")) {
+		return `${action} stopped because of conflicts. Resolve the conflicts, then continue or abort the operation.\n\n${output}`;
+	}
+	return `${action} failed.\n\n${output}`;
+};
+
+const runRemoteOperation = async (action: string, operation: () => Promise<void>): Promise<void> => {
+	try {
+		await operation();
+	} catch (error) {
+		throw new Error(actionableGitErrorMessage(action, error));
+	}
 };
 
 export const fetchRemote = async (worktreePath: string): Promise<void> => {
-	await gitExecFileAsync(["fetch", "--all", "--prune"], { cwd: worktreePath });
+	await runRemoteOperation("Fetch", async () => {
+		await gitExecFileAsync(["fetch", "--all", "--prune"], { cwd: worktreePath });
+	});
+};
+
+const remoteBranchFromUpstreamName = (upstreamName: string | undefined): { remote: string; branch: string } | null => {
+	const parts = upstreamName?.split("/") ?? [];
+	if (parts.length < 2 || !parts[0]) {
+		return null;
+	}
+	return { remote: parts[0], branch: parts.slice(1).join("/") };
+};
+
+const pushToUpstream = async (
+	worktreePath: string,
+	options: { forceWithLease: boolean; upstream?: GitUpstreamStatus },
+): Promise<void> => {
+	const upstream = options.upstream ?? (await getUpstreamStatus(worktreePath));
+	if (!upstream.hasUpstream) {
+		throw new Error("No upstream branch is configured for the current branch.");
+	}
+	const forceArgs = options.forceWithLease ? ["--force-with-lease"] : [];
+	if (upstream.isConfigured) {
+		await gitExecFileAsync(["push", ...forceArgs], { cwd: worktreePath });
+		return;
+	}
+	const target = remoteBranchFromUpstreamName(upstream.upstreamName);
+	if (!target) {
+		throw new Error("No upstream branch is configured for the current branch.");
+	}
+	await gitExecFileAsync(["push", ...forceArgs, "-u", target.remote, `HEAD:${target.branch}`], { cwd: worktreePath });
 };
 
 export const pushRemote = async (worktreePath: string): Promise<void> => {
-	await gitExecFileAsync(["push"], { cwd: worktreePath });
+	await runRemoteOperation("Push", async () => {
+		await pushToUpstream(worktreePath, { forceWithLease: false });
+	});
+};
+
+export const forcePushWithLeaseRemote = async (worktreePath: string): Promise<void> => {
+	await runRemoteOperation("Force push with lease", async () => {
+		const upstream = await getUpstreamStatus(worktreePath);
+		if (upstream.relation !== "diverged") {
+			throw new Error("Force push with lease is only available for diverged branches.");
+		}
+		await pushToUpstream(worktreePath, { forceWithLease: true, upstream });
+	});
 };
 
 export const pullRemote = async (worktreePath: string): Promise<void> => {
-	await gitExecFileAsync(["pull", "--ff-only"], { cwd: worktreePath });
+	await runRemoteOperation("Pull", async () => {
+		const upstream = await getUpstreamStatus(worktreePath);
+		if (!upstream.hasUpstream) {
+			throw new Error("No upstream branch is configured for the current branch.");
+		}
+		if (upstream.isConfigured) {
+			await gitExecFileAsync(["pull", "--ff-only"], { cwd: worktreePath });
+			return;
+		}
+		const target = remoteBranchFromUpstreamName(upstream.upstreamName);
+		if (!target) {
+			throw new Error("No upstream branch is configured for the current branch.");
+		}
+		await gitExecFileAsync(["pull", "--ff-only", target.remote, target.branch], { cwd: worktreePath });
+	});
 };
 
 export const syncRemote = async (worktreePath: string): Promise<void> => {
 	const upstream = await getUpstreamStatus(worktreePath);
-	if (upstream.ahead > 0 && upstream.behind > 0) {
+	if (upstream.relation === "diverged" || (upstream.ahead > 0 && upstream.behind > 0)) {
 		throw new Error("Branch has diverged. Rebase or merge before syncing.");
 	}
 	if (upstream.behind > 0) {
@@ -664,8 +912,10 @@ export const fastForwardBranch = async (worktreePath: string): Promise<void> => 
 };
 
 export const publishBranch = async (worktreePath: string): Promise<void> => {
-	const branch = await currentBranchName(worktreePath);
-	await gitExecFileAsync(["push", "-u", "origin", branch], { cwd: worktreePath });
+	await runRemoteOperation("Publish", async () => {
+		const branch = await currentBranchName(worktreePath);
+		await gitExecFileAsync(["push", "-u", "origin", `HEAD:${branch}`], { cwd: worktreePath });
+	});
 };
 
 const assertSafeGitRevision = async (worktreePath: string, ref: string): Promise<void> => {
@@ -677,7 +927,9 @@ const assertSafeGitRevision = async (worktreePath: string, ref: string): Promise
 
 export const rebaseFromBase = async (worktreePath: string, baseRef = "origin/main"): Promise<void> => {
 	await assertSafeGitRevision(worktreePath, baseRef);
-	await gitExecFileAsync(["rebase", baseRef], { cwd: worktreePath });
+	await runRemoteOperation("Rebase", async () => {
+		await gitExecFileAsync(["rebase", baseRef], { cwd: worktreePath });
+	});
 };
 
 const parseAheadBehind = (stdout: string): { ahead: number; behind: number } => {

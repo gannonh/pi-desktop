@@ -128,6 +128,7 @@ export const IpcChannels = {
 	sourceControlGetUpstreamStatus: "source-control:getUpstreamStatus",
 	sourceControlFetch: "source-control:fetch",
 	sourceControlPush: "source-control:push",
+	sourceControlForcePushWithLease: "source-control:forcePushWithLease",
 	sourceControlPull: "source-control:pull",
 	sourceControlSync: "source-control:sync",
 	sourceControlFastForward: "source-control:fastForward",

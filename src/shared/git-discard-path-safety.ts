@@ -1,4 +1,4 @@
-import { lstat, realpath } from "node:fs/promises";
+import { lstat, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 const isENOENT = (error: unknown): boolean =>
@@ -61,10 +61,77 @@ const assertTargetIsWorktreeChild = (
 	}
 };
 
+const pathExists = async (candidatePath: string): Promise<boolean> => {
+	try {
+		await lstat(candidatePath);
+		return true;
+	} catch (error) {
+		if (isENOENT(error)) {
+			return false;
+		}
+		throw error;
+	}
+};
+
+const assertTargetDoesNotContainNestedRepository = async (
+	resolvedWorktreePath: string,
+	resolvedTarget: string,
+	originalFilePath: string,
+): Promise<void> => {
+	let currentPath = resolvedTarget;
+	try {
+		const targetStats = await lstat(resolvedTarget);
+		if (!targetStats.isDirectory()) {
+			currentPath = path.dirname(resolvedTarget);
+		}
+	} catch (error) {
+		if (!isENOENT(error)) {
+			throw error;
+		}
+		currentPath = path.dirname(resolvedTarget);
+	}
+
+	while (isInsideOrEqual(resolvedWorktreePath, currentPath) && currentPath !== resolvedWorktreePath) {
+		if (await pathExists(path.join(currentPath, ".git"))) {
+			throw new Error(`Path "${originalFilePath}" resolves inside a nested git repository`);
+		}
+		currentPath = path.dirname(currentPath);
+	}
+
+	let targetStats: Awaited<ReturnType<typeof lstat>> | undefined;
+	try {
+		targetStats = await lstat(resolvedTarget);
+	} catch (error) {
+		if (!isENOENT(error)) {
+			throw error;
+		}
+	}
+	if (targetStats?.isDirectory()) {
+		await assertDirectoryDescendantsDoNotContainNestedRepository(resolvedTarget, originalFilePath);
+	}
+};
+
+const assertDirectoryDescendantsDoNotContainNestedRepository = async (
+	directoryPath: string,
+	originalFilePath: string,
+): Promise<void> => {
+	const entries = await readdir(directoryPath, { withFileTypes: true });
+	for (const entry of entries) {
+		const entryPath = path.join(directoryPath, entry.name);
+		if (entry.name === ".git" && entry.isDirectory()) {
+			throw new Error(`Path "${originalFilePath}" contains a nested git repository`);
+		}
+		if (entry.isDirectory() && !entry.isSymbolicLink()) {
+			await assertDirectoryDescendantsDoNotContainNestedRepository(entryPath, originalFilePath);
+		}
+	}
+};
+
 const validateUntrackedDiscardTarget = async (worktreePath: string, filePath: string): Promise<string> => {
 	const resolvedWorktreePath = path.resolve(worktreePath);
 	const resolvedTarget = path.resolve(worktreePath, filePath);
 	assertTargetIsWorktreeChild(resolvedWorktreePath, resolvedTarget, filePath);
+	await assertTargetDoesNotContainNestedRepository(resolvedWorktreePath, resolvedTarget, filePath);
 
 	const realWorktreePath = path.resolve(await realpath(worktreePath));
 
