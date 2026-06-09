@@ -96,7 +96,7 @@ _Avoid_: In-session project switcher
 Selecting a project from the composer selects that project and shows the **project start** composer. It does not create a chat row before the first prompt.
 
 **Changes**:
-The right-panel tool tab for local git source control on the selected project: inspect working-tree changes, stage, commit, sync, compare branches, and create or link GitHub pull requests. Chat stays active in the center column.
+The right-panel tool tab for local git source control on the selected project: inspect working-tree changes, stage, commit, sync, compare branches, and create or link GitHub pull requests. Chat stays active in the center column. The commit header **primary action** and overflow menu are resolver-driven from git status, upstream, PR link state, and conflicts (`source-control-primary-action-resolver.ts`). When a branch is **diverged** (simultaneously ahead and behind upstream), one-click Sync is blocked and the UI surfaces an explicit reconcile path (rebase-first).
 _Avoid_: Diffs tab (legacy internal kind name), Checks panel
 
 **PR review**:

@@ -8,7 +8,8 @@
 
 - Base: `156d85e601e11c69db17c12b3d91a502def6bb96`
 - Phase 1-2 checkpoint: `f88b4090f5c0d5231f9aa8bbf4d7d8a02c37d601`
-- Head: current `feat/issue-144-m07c-changes-panel` branch head containing this report
+- Head (M07C): `feat/issue-144-m07c-changes-panel` branch head at initial build completion
+- Wave 1 follow-up: `99a6cfa8a33b49bb377d4be11276e8ee5446052c` on `wave1` ([PR #160](https://github.com/gannonh/pi-desktop/pull/160))
 
 ## Phases completed
 
@@ -56,12 +57,23 @@
 - AI commit message and PR field controls surface visible prerequisite errors instead of invoking a Pi one-shot adapter. This satisfies the visible-error branch of AC 8 but is not a full Pi generation path.
 - Remote and PR operations depend on local `git`/`gh` availability and repository auth state; failures are returned visibly through the existing source-control error path.
 
+## Wave 1 follow-up (Orca Git parity §1.1–1.2)
+
+Shipped on `wave1` per `docs/specs/2026-06-08-orca-git-parity-roadmap.md`:
+
+| Item | Status | Notes |
+|---|---|---|
+| Primary action resolver | Done | `source-control-primary-action-resolver.ts`; `ChangesPanel` dynamic primary + dropdown with disabled reasons |
+| Diverged-branch sync guard | Done | `syncRemote` rejects ahead+behind; resolver promotes rebase over one-click Sync |
+| Destructive discard confirmations | Done | Type-specific `AlertDialog` copy for single and bulk discard |
+| Tests | Done | `tests/renderer/source-control-primary-action-resolver.test.ts`, extended `changes-panel.test.tsx`, `tests/main/source-control-git.test.ts` |
+
 ## Known follow-ups
 
 - Replace visible AI prerequisite errors with the planned main-process Pi one-shot generation adapter.
-- Add richer Orca-equivalent primary-action priority logic and dropdown grouping beyond the compact v1 buttons.
 - Add manual UAT evidence against a real authenticated GitHub remote before release signoff.
+- Continue Orca Git parity from Wave 2 onward (`docs/specs/2026-06-08-orca-git-parity-roadmap.md`).
 
 ## Transition
 
-Build implementation is complete enough to enter Verify. Full `pnpm check` passed; final signoff still requires acceptance evidence review against the criteria above.
+M07C build implementation is complete enough to enter Verify. Wave 1 primary-action and discard-confirmation follow-up shipped on `wave1`. Full `pnpm check` passed on both milestones; final signoff still requires acceptance evidence review against the criteria above.

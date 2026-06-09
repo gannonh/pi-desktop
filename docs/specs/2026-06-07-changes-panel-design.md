@@ -161,18 +161,21 @@ Create `src/renderer/changes-panel/` (feature folder) containing ported/adapted 
 | `use-git-status-polling.ts` | Poll while Changes tab active and project is git repo |
 | `source-control-tree.tsx` | Tree rendering (port from Orca) |
 | `source-control-selection.ts` | Selection helpers (port pure logic) |
-| `CommitArea.tsx` | Commit message, primary/dropdown actions (port) |
+| `CommitArea.tsx` | Commit message and delegates remote actions to `SourceControlActions` |
+| `source-control-primary-action-resolver.ts` | Pure primary/dropdown action resolver (Orca parity; shipped Wave 1) |
 | `BulkActionBar.tsx` | Bulk stage/unstage/discard (port) |
 | `CompareSummary.tsx` | Branch compare header/toolbar (port) |
 | `CreatePullRequestDialog.tsx` | GitHub-only create PR dialog (port, strip GitLab) |
-| `source-control-discard-dialog.tsx` | Discard confirmation (port) |
+
+Discard confirmation is inline in `ChangesPanel.tsx` via shadcn `AlertDialog` and `getDiscardConfirmation` (type-specific copy for untracked, added, deleted, and bulk paths).
 
 Port pure logic from Orca with minimal changes:
 
-- `source-control-primary-action.ts`
-- `source-control-dropdown-items.ts`
+- `source-control-primary-action-resolver.ts` (replaces separate Orca `source-control-primary-action.ts` + `source-control-dropdown-items.ts` modules)
 - `source-control-tree.ts` (builder)
 - `git-status-refresh.ts` (adapt to pi-desktop RPC)
+
+Post-M07C follow-up for primary-action priority, diverged-branch sync blocking, and discard confirmations is tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md` Wave 1 (shipped on `wave1`).
 
 Restyle to pi-desktop CSS variables and shadcn primitives. Do **not** copy Orca Tailwind class strings wholesale where pi-desktop tokens differ.
 

@@ -450,6 +450,8 @@ Acceptance:
 - Git or filesystem failures display visibly.
 - The feature does not expose arbitrary filesystem access outside the selected project root.
 
+Post-M07C Orca Git parity follow-up (primary-action resolver, diverged-branch sync guard, discard confirmations) ships in Wave 1 — see `docs/specs/2026-06-08-orca-git-parity-roadmap.md`.
+
 ### M07D: Right Panel - Terminal and Command Output
 
 Goal: expose shell-command and tool-output activity in a dedicated right-panel surface.

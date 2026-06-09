@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed follow-up roadmap after M07C Changes panel implementation.
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160).
 
 ## Context
 
@@ -21,7 +21,7 @@ This roadmap lists the remaining high-level gaps. Each item is intentionally sho
 
 ## Scope
 
-- Compare Pi Desktop's current `feat/issue-144-m07c-changes-panel` implementation against Orca's Git and Source Control surfaces.
+- Compare Pi Desktop's current Changes panel implementation (`wave1` / M07C base) against Orca's Git and Source Control surfaces.
 - Keep Pi Desktop focused on local desktop UX and selected-project source control.
 - Treat GitLab, SSH/runtime worktrees, and PR review/checks as larger follow-up tracks unless explicitly pulled forward.
 
@@ -31,35 +31,33 @@ This roadmap lists the remaining high-level gaps. Each item is intentionally sho
 
 Ship the core day-to-day Source Control UX first. This wave should make common local workflows predictable before deeper Git edge cases are layered in.
 
-#### 1.1 Primary Action State Machine
+#### 1.1 Primary Action State Machine — ✅ Implemented
 
 Tracking: [#147](https://github.com/gannonh/pi-desktop/issues/147)
 
-**Gap:** Pi Desktop uses simple commit, stage-all, and menu actions; Orca has tested priority logic for commit, stage, push, pull, sync, publish, create PR, busy states, and disabled reasons.
-
-**Goal:** Port an Orca-equivalent primary/dropdown action resolver adapted to `projectId` and Pi Desktop's local project model.
+**Shipped:** `src/renderer/changes-panel/source-control-primary-action-resolver.ts` computes primary and dropdown actions from git status, commit message, upstream, PR state, conflicts, and busy flags. `ChangesPanel` renders resolver output with disabled-reason copy. `syncRemote` in `src/main/git/status.ts` rejects one-click sync when `ahead > 0` and `behind > 0`.
 
 **Acceptance Criteria**
 
-- Primary action changes based on staged changes, unstaged changes, message state, upstream state, PR state, and conflicts.
-- Dropdown exposes stable rows for commit variants, remote operations, publish, rebase, fetch, and create PR.
-- Disabled actions show concise reasons and have unit coverage for priority order.
-- Diverged upstream state (`ahead > 0` and `behind > 0`) does not present one-click `Sync`; users are directed to an explicit reconcile action.
+- ✅ Primary action changes based on staged changes, unstaged changes, message state, upstream state, PR state, and conflicts.
+- ✅ Dropdown exposes stable rows for commit variants, remote operations, publish, rebase, fetch, and create PR.
+- ✅ Disabled actions show concise reasons and have unit coverage for priority order (`tests/renderer/source-control-primary-action-resolver.test.ts`).
+- ✅ Diverged upstream state does not present one-click `Sync`; users are directed to an explicit reconcile action (rebase-first in the resolver; sync rejected in main).
 
-#### 1.2 Destructive Confirmation Flow
+**Wave 2 overlap:** Diverged-vs-fast-forwardable classification and richer upstream probing remain under [§2.3](#23-remote-and-upstream-semantics).
+
+#### 1.2 Destructive Confirmation Flow — ✅ Implemented
 
 Tracking: [#147](https://github.com/gannonh/pi-desktop/issues/147)
 
-**Gap:** Pi Desktop discard actions execute directly; Orca confirms destructive paths with copy specific to delete, restore, discard, and discard-all operations.
-
-**Goal:** Add confirmation dialogs for single-file and bulk discard operations.
+**Shipped:** `ChangesPanel` uses shadcn `AlertDialog` with type-specific discard copy via `getDiscardConfirmation` (untracked/added delete copy, deleted-tracked restore copy, bulk area counts).
 
 **Acceptance Criteria**
 
-- Untracked and newly-added files use delete-focused copy.
-- Deleted tracked files use restore-focused copy.
-- Bulk discard copy includes affected count and area.
-- Confirm/cancel behavior is covered by renderer tests.
+- ✅ Untracked and newly-added files use delete-focused copy.
+- ✅ Deleted tracked files use restore-focused copy.
+- ✅ Bulk discard copy includes affected count and area.
+- ✅ Confirm/cancel behavior is covered by renderer tests (`tests/renderer/changes-panel.test.tsx`).
 
 ### Wave 2: Conflict Rows, Status Fidelity, and Remote/Upstream Hardening
 
