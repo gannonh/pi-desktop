@@ -152,7 +152,17 @@ export const getCommitFiles = async (
 ): Promise<GitCommitFilesResult> => {
 	await assertSafeGitRevision(worktreePath, input.commitRef);
 	const { stdout } = await gitExecFileAsync(
-		["-c", "core.quotePath=false", "diff-tree", "--no-commit-id", "--name-status", "-z", "-r", input.commitRef],
+		[
+			"-c",
+			"core.quotePath=false",
+			"diff-tree",
+			"--root",
+			"--no-commit-id",
+			"--name-status",
+			"-z",
+			"-r",
+			input.commitRef,
+		],
 		{ cwd: worktreePath },
 	);
 	return {

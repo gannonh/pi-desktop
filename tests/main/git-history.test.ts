@@ -84,4 +84,13 @@ describe("git history operations", () => {
 		expect(files.commitRef).toBe(headSha);
 		expect(files.files).toEqual([expect.objectContaining({ path: "src/app.ts", status: "added" })]);
 	});
+
+	it("returns changed files for the root commit", async () => {
+		const repo = await createRepo();
+		const rootSha = (await runGit(["rev-list", "--max-parents=0", "HEAD"], repo)).stdout.trim();
+		const files = await getCommitFiles(repo, { commitRef: rootSha });
+
+		expect(files.commitRef).toBe(rootSha);
+		expect(files.files).toEqual([expect.objectContaining({ path: "README.md", status: "added" })]);
+	});
 });
