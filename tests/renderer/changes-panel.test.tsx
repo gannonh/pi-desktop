@@ -75,7 +75,10 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			initializeRepository,
 			commit,
 			getDiff,
-			getUpstreamStatus: vi.fn(async () => ({ ok: true as const, data: { hasUpstream: false, ahead: 0, behind: 0 } })),
+			getUpstreamStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: { hasUpstream: false, ahead: 0, behind: 0, relation: "none" as const, isConfigured: false },
+			})),
 			fetch: vi.fn(async () => ({ ok: true as const, data: {} })),
 			push: vi.fn(async () => ({ ok: true as const, data: {} })),
 			forcePushWithLease: vi.fn(async () => ({ ok: true as const, data: {} })),

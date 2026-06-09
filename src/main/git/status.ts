@@ -298,9 +298,15 @@ const readLineStats = async (worktreePath: string, area: Extract<GitStagingArea,
 };
 
 const applyLineStats = async (worktreePath: string, entries: GitStatusEntry[]): Promise<void> => {
+	const hasStagedEntries = entries.some((entry) => entry.area === "staged");
+	const hasUnstagedEntries = entries.some((entry) => entry.area === "unstaged");
 	const [stagedStats, unstagedStats] = await Promise.all([
-		readLineStats(worktreePath, "staged"),
-		readLineStats(worktreePath, "unstaged"),
+		hasStagedEntries
+			? readLineStats(worktreePath, "staged")
+			: Promise.resolve(new Map<string, { added: number; removed: number }>()),
+		hasUnstagedEntries
+			? readLineStats(worktreePath, "unstaged")
+			: Promise.resolve(new Map<string, { added: number; removed: number }>()),
 	]);
 	for (const entry of entries) {
 		const stats = entry.area === "staged" ? stagedStats.get(entry.path) : unstagedStats.get(entry.path);
@@ -774,6 +780,8 @@ export const getUpstreamStatus = async (worktreePath: string): Promise<GitUpstre
 	return status.upstreamStatus ?? makeUpstreamStatus({ hasUpstream: false, ahead: 0, behind: 0, isConfigured: false });
 };
 
+const stripCredentialsFromGitOutput = (output: string): string => output.replace(/(?<=\/\/)([^@\s/]+)@/g, "***@");
+
 const gitErrorOutput = (error: unknown): string => {
 	if (typeof error !== "object" || error === null) {
 		return String(error);
@@ -785,7 +793,8 @@ const gitErrorOutput = (error: unknown): string => {
 		.map((value) => (Buffer.isBuffer(value) ? value.toString("utf8") : typeof value === "string" ? value : ""))
 		.join("\n")
 		.trim();
-	return output || (error instanceof Error ? error.message : String(error));
+	const message = output || (error instanceof Error ? error.message : String(error));
+	return stripCredentialsFromGitOutput(message);
 };
 
 const actionableGitErrorMessage = (action: string, error: unknown): string => {

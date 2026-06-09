@@ -1,4 +1,4 @@
-import { lstat, realpath } from "node:fs/promises";
+import { lstat, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 const isENOENT = (error: unknown): boolean =>
@@ -96,6 +96,34 @@ const assertTargetDoesNotContainNestedRepository = async (
 			throw new Error(`Path "${originalFilePath}" resolves inside a nested git repository`);
 		}
 		currentPath = path.dirname(currentPath);
+	}
+
+	let targetStats: Awaited<ReturnType<typeof lstat>> | undefined;
+	try {
+		targetStats = await lstat(resolvedTarget);
+	} catch (error) {
+		if (!isENOENT(error)) {
+			throw error;
+		}
+	}
+	if (targetStats?.isDirectory()) {
+		await assertDirectoryDescendantsDoNotContainNestedRepository(resolvedTarget, originalFilePath);
+	}
+};
+
+const assertDirectoryDescendantsDoNotContainNestedRepository = async (
+	directoryPath: string,
+	originalFilePath: string,
+): Promise<void> => {
+	const entries = await readdir(directoryPath, { withFileTypes: true });
+	for (const entry of entries) {
+		const entryPath = path.join(directoryPath, entry.name);
+		if (entry.name === ".git" && entry.isDirectory()) {
+			throw new Error(`Path "${originalFilePath}" contains a nested git repository`);
+		}
+		if (entry.isDirectory() && !entry.isSymbolicLink()) {
+			await assertDirectoryDescendantsDoNotContainNestedRepository(entryPath, originalFilePath);
+		}
 	}
 };
 
