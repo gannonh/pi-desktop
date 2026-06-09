@@ -146,9 +146,9 @@ describe("GitHistoryPanel", () => {
 			subject: "Second commit",
 		};
 		let resolveFirst: ((value: { ok: true; data: GitCommitFilesResult }) => void) | undefined;
-		const getCommitFiles = vi.fn(({ commitRef }: { commitRef: string }) => {
+		const getCommitFiles = vi.fn(({ commitRef }: { projectId: string; commitRef: string }) => {
 			if (commitRef === historyEntry.sha) {
-				return new Promise((resolve) => {
+				return new Promise<{ ok: true; data: GitCommitFilesResult }>((resolve) => {
 					resolveFirst = resolve;
 				});
 			}
