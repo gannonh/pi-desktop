@@ -8,7 +8,9 @@ import type {
 	SourceControlCommitInput,
 	SourceControlCreatePullRequestInput,
 	SourceControlDiscardInput,
+	SourceControlGetCommitFilesInput,
 	SourceControlGetDiffInput,
+	SourceControlGetHistoryInput,
 	SourceControlPathInput,
 	SourceControlProjectInput,
 	SourceControlRebaseInput,
@@ -16,6 +18,7 @@ import type {
 } from "../../shared/source-control/schemas";
 import type { GitStatusResult } from "../../shared/source-control/types";
 import { checkIgnoredPaths } from "../git/check-ignored-paths";
+import { getCommitFiles, getHistory } from "../git/history";
 import { isGitRepo } from "../git/repo";
 import { gitExecFileAsync } from "../git/runner";
 import {
@@ -107,6 +110,8 @@ export type SourceControlService = {
 	publish: (input: SourceControlRemoteActionInput) => Promise<void>;
 	rebaseFromBase: (input: SourceControlRebaseInput) => Promise<void>;
 	getBranchCompare: (input: SourceControlBranchCompareInput) => ReturnType<typeof getBranchCompare>;
+	getHistory: (input: SourceControlGetHistoryInput) => ReturnType<typeof getHistory>;
+	getCommitFiles: (input: SourceControlGetCommitFilesInput) => ReturnType<typeof getCommitFiles>;
 	abortConflict: (input: SourceControlAbortConflictInput) => Promise<void>;
 	createPullRequest: (input: SourceControlCreatePullRequestInput) => ReturnType<typeof createPullRequest>;
 	getPullRequestInfo: (input: SourceControlProjectInput) => ReturnType<typeof getPullRequestInfo>;
@@ -214,6 +219,10 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 			withProjectRoot(input.projectId, (projectRoot) =>
 				getBranchCompare(projectRoot, { baseRef: input.baseRef, headRef: input.headRef }),
 			),
+		getHistory: (input) =>
+			withProjectRoot(input.projectId, (projectRoot) => getHistory(projectRoot, { limit: input.limit })),
+		getCommitFiles: (input) =>
+			withProjectRoot(input.projectId, (projectRoot) => getCommitFiles(projectRoot, { commitRef: input.commitRef })),
 		abortConflict: (input) =>
 			withProjectRoot(input.projectId, (projectRoot) => abortConflictOperation(projectRoot, input.operation)),
 		createPullRequest: (input) =>

@@ -6,7 +6,8 @@ import type {
 	FileWorkspaceState,
 	FileWorkspaceTab,
 } from "./file-workspace-types";
-import type { GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
+import type { GitDiffContext, GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
+import { formatDiffTabLabel } from "./diff-tab-label";
 
 export const createInitialFileWorkspaceState = (): FileWorkspaceState => ({
 	expandedPaths: [],
@@ -110,9 +111,20 @@ export const openFileTab = (state: FileWorkspaceState, relativePath: string): Fi
 
 export const openDiffTab = (
 	state: FileWorkspaceState,
-	input: { relativePath: string; kind: GitDiffKind; diff: GitDiffPayload; suffix?: string },
+	input: {
+		relativePath: string;
+		kind: GitDiffKind;
+		diff: GitDiffPayload;
+		suffix?: string;
+		diffContext?: GitDiffContext;
+	},
 ): FileWorkspaceState => {
 	const tabId = diffTabIdForPath(input.kind, input.relativePath, input.suffix);
+	const title = formatDiffTabLabel({
+		relativePath: input.relativePath,
+		diffKind: input.kind,
+		diffContext: input.diffContext,
+	});
 	const existing = state.tabs.find((tab) => tab.id === tabId);
 	if (existing) {
 		return {
@@ -121,7 +133,13 @@ export const openDiffTab = (
 			activeTabId: existing.id,
 			tabs: state.tabs.map((tab) =>
 				tab.id === existing.id && tab.kind === "diff"
-					? { ...tab, title: input.diff.title, diff: input.diff, buffer: diffBufferForPayload(input.diff) }
+					? {
+							...tab,
+							title,
+							diff: input.diff,
+							diffContext: input.diffContext,
+							buffer: diffBufferForPayload(input.diff),
+						}
 					: tab,
 			),
 		};
@@ -131,7 +149,7 @@ export const openDiffTab = (
 		kind: "diff",
 		id: tabId,
 		relativePath: input.relativePath,
-		title: input.diff.title,
+		title,
 		dirty: false,
 		savedContent: diffBufferForPayload(input.diff),
 		buffer: diffBufferForPayload(input.diff),
@@ -140,6 +158,7 @@ export const openDiffTab = (
 		readOnly: true,
 		diffKind: input.kind,
 		diff: input.diff,
+		diffContext: input.diffContext,
 	};
 
 	return {

@@ -218,6 +218,12 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.sourceControlGetBranchCompare, (_event, input) =>
 		invokeBackend("sourceControl.getBranchCompare", input),
 	);
+	ipcMain.handle(IpcChannels.sourceControlGetHistory, (_event, input) =>
+		invokeBackend("sourceControl.getHistory", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGetCommitFiles, (_event, input) =>
+		invokeBackend("sourceControl.getCommitFiles", input),
+	);
 	ipcMain.handle(IpcChannels.sourceControlAbortConflict, (_event, input) =>
 		invokeBackend("sourceControl.abortConflict", input),
 	);

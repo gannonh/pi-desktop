@@ -110,6 +110,27 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			publish: vi.fn(async () => ({ ok: true as const, data: {} })),
 			rebaseFromBase: vi.fn(async () => ({ ok: true as const, data: {} })),
 			getBranchCompare: vi.fn(async () => ({ ok: true as const, data: { baseRef: "main", headRef: "HEAD", ahead: 0, behind: 0, files: [] } })),
+			getHistory: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{
+							sha: "b".repeat(40),
+							shortSha: "bbbbbbb",
+							subject: "Second commit",
+							author: "Test Author",
+							authorDate: "2026-06-08T12:00:00-07:00",
+							refs: ["main"],
+						},
+					],
+					incomingCount: 0,
+					outgoingCount: 0,
+				},
+			})),
+			getCommitFiles: vi.fn(async () => ({
+				ok: true as const,
+				data: { commitRef: "b".repeat(40), files: [{ path: "README.md", status: "modified" as const }] },
+			})),
 			abortConflict,
 			createPullRequest: vi.fn(async () => ({
 				ok: true as const,

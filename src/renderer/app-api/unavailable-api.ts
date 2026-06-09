@@ -57,6 +57,8 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			publish: unavailable,
 			rebaseFromBase: unavailable,
 			getBranchCompare: unavailable,
+			getHistory: unavailable,
+			getCommitFiles: unavailable,
 			abortConflict: unavailable,
 			createPullRequest: unavailable,
 			getPullRequestInfo: unavailable,

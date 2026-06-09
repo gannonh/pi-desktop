@@ -1338,6 +1338,22 @@ body.file-workspace--resizing {
 	margin: 0;
 }
 
+.file-viewer__header--diff {
+	align-items: flex-start;
+}
+
+.file-viewer__diff-meta {
+	display: grid;
+	gap: 0.125rem;
+	min-width: 0;
+}
+
+.file-viewer__diff-subtitle {
+	margin: 0;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
 .file-editor {
 	min-height: 0;
 	flex: 1;
@@ -1992,6 +2008,7 @@ body.file-workspace--resizing {
 .changes-panel__commit,
 .changes-panel__remote,
 .changes-panel__compare,
+.changes-panel__history,
 .changes-panel__pr,
 .changes-panel__bulk,
 .changes-panel__conflict {
@@ -2112,6 +2129,105 @@ body.file-workspace--resizing {
 	color: var(--color-foreground);
 	font: inherit;
 	text-align: left;
+}
+
+.changes-panel__history-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.375rem;
+}
+
+.changes-panel__history-title {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+	font-weight: 600;
+}
+
+.changes-panel__history-status {
+	margin: 0;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__history-list {
+	display: grid;
+	gap: 0.125rem;
+	max-height: 14rem;
+	overflow: auto;
+}
+
+.changes-panel__history-boundary {
+	padding: 0.25rem 0.375rem;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--color-muted-foreground) 12%, transparent);
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__history-row {
+	display: grid;
+	gap: 0.125rem;
+	width: 100%;
+	padding: 0.375rem 0.5rem;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--color-foreground);
+	font: inherit;
+	text-align: left;
+}
+
+.changes-panel__history-row:hover,
+.changes-panel__history-row--selected {
+	background: color-mix(in srgb, var(--color-foreground) 6%, transparent);
+}
+
+.changes-panel__history-sha {
+	color: var(--color-muted-foreground);
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__history-subject {
+	font-size: var(--type-body);
+}
+
+.changes-panel__history-meta,
+.changes-panel__history-refs {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__history-commit {
+	display: grid;
+	gap: 0.25rem;
+	padding-top: 0.375rem;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.changes-panel__history-commit-title {
+	margin: 0;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__history-file {
+	border: 0;
+	background: transparent;
+	color: var(--color-foreground);
+	font: inherit;
+	text-align: left;
+}
+
+.changes-panel__spin {
+	animation: changes-panel-spin 0.8s linear infinite;
+}
+
+@keyframes changes-panel-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .changes-panel__section + .changes-panel__section {

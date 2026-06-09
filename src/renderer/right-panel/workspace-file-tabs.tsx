@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { formatDiffTabLabel } from "../file-workspace/diff-tab-label";
 import { getExplorerFileIcon } from "../file-workspace/file-explorer-icons";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { WORKSPACE_PANEL_ID } from "./workspace-panel-id";
@@ -34,6 +35,16 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 		<div ref={listRef} className="workspace-tabs workspace-tabs--files" role="tablist" aria-label="Open files">
 			{tabs.map((tab) => {
 				const selected = tab.id === activeTabId;
+				const tabLabel =
+					tab.kind === "diff"
+						? formatDiffTabLabel({
+								relativePath: tab.relativePath,
+								diffKind: tab.diffKind,
+								diffContext: tab.diffContext,
+							})
+						: tab.dirty
+							? `${tab.title} •`
+							: tab.title;
 				const FileIcon = getExplorerFileIcon(tab.title);
 				return (
 					<div
@@ -52,7 +63,7 @@ export function WorkspaceFileTabs({ activeTabId, onSelect }: WorkspaceFileTabsPr
 							onClick={() => onSelect(tab.id)}
 						>
 							<FileIcon className="workspace-tabs__file-icon" aria-hidden strokeWidth={1.75} />
-							<span className="workspace-tabs__tab-label">{tab.dirty ? `${tab.title} •` : tab.title}</span>
+							<span className="workspace-tabs__tab-label">{tabLabel}</span>
 						</button>
 						<button
 							type="button"

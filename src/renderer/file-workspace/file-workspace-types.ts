@@ -1,4 +1,4 @@
-import type { GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
+import type { GitDiffContext, GitDiffKind, GitDiffPayload } from "../../shared/source-control/types";
 
 export type FileViewMode = "preview" | "source" | "split";
 
@@ -30,6 +30,7 @@ export type FileDiffTab = {
 	readOnly: true;
 	diffKind: GitDiffKind;
 	diff: GitDiffPayload;
+	diffContext?: GitDiffContext;
 };
 
 export type FileWorkspaceTab = FileEditorTab | FileDiffTab;

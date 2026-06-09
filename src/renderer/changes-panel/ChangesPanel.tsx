@@ -22,6 +22,7 @@ import {
 } from "../components/ui/alert-dialog";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
+import { GitHistoryPanel } from "./GitHistoryPanel";
 import {
 	resolveSourceControlActions,
 	type SourceControlAction,
@@ -580,6 +581,7 @@ function BranchCompareArea() {
 			kind: "branch",
 			suffix: `${compare.baseRef}...${compare.headRef}`,
 			diff: result.data,
+			diffContext: { compareRefs: { base: compare.baseRef, head: compare.headRef } },
 		});
 	};
 
@@ -919,6 +921,7 @@ function ChangesPanelBody() {
 				onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
 			/>
 			<BranchCompareArea />
+			<GitHistoryPanel />
 			<PullRequestArea
 				pullRequest={pullRequest}
 				onPullRequestChange={setPullRequest}

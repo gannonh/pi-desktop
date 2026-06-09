@@ -50,7 +50,11 @@ import type {
 	SourceControlDiscardInput,
 	SourceControlBranchCompareInput,
 	SourceControlBranchCompareResult,
+	SourceControlGetCommitFilesInput,
+	SourceControlGetCommitFilesResult,
 	SourceControlGetDiffInput,
+	SourceControlGetHistoryInput,
+	SourceControlGetHistoryResult,
 	SourceControlGetDiffResult,
 	SourceControlGetStatusResult,
 	SourceControlMutationResult,
@@ -117,6 +121,8 @@ export interface PiDesktopApi {
 		publish: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
 		rebaseFromBase: (input: SourceControlRebaseInput) => Promise<SourceControlMutationResult>;
 		getBranchCompare: (input: SourceControlBranchCompareInput) => Promise<SourceControlBranchCompareResult>;
+		getHistory: (input: SourceControlGetHistoryInput) => Promise<SourceControlGetHistoryResult>;
+		getCommitFiles: (input: SourceControlGetCommitFilesInput) => Promise<SourceControlGetCommitFilesResult>;
 		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
 		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
 		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;

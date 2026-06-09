@@ -178,6 +178,43 @@ export const SourceControlPullRequestInfoSchema = z.strictObject({
 	state: z.enum(["open", "closed", "merged", "unknown"]),
 });
 
+export const SourceControlGetHistoryInputSchema = SourceControlProjectInputSchema.extend({
+	limit: z.number().int().positive().max(200).optional(),
+});
+
+export const GitHistoryEntrySchema = z.strictObject({
+	sha: z.string().regex(/^[a-f0-9]{40}$/),
+	shortSha: z.string().min(1),
+	subject: z.string(),
+	author: z.string(),
+	authorDate: z.string(),
+	refs: z.array(z.string()),
+	isOutgoing: z.boolean().optional(),
+});
+
+export const GitHistoryResultSchema = z.strictObject({
+	entries: z.array(GitHistoryEntrySchema),
+	incomingCount: z.number().int().nonnegative(),
+	outgoingCount: z.number().int().nonnegative(),
+	upstreamName: z.string().optional(),
+});
+
+export const SourceControlGetCommitFilesInputSchema = z.strictObject({
+	projectId: z.string().min(1),
+	commitRef: z.string().min(1),
+});
+
+export const GitCommitFileSchema = z.strictObject({
+	path: z.string(),
+	status: GitFileStatusSchema,
+	oldPath: z.string().optional(),
+});
+
+export const GitCommitFilesResultSchema = z.strictObject({
+	commitRef: z.string().min(1),
+	files: z.array(GitCommitFileSchema),
+});
+
 export const SourceControlGetStatusResultSchema = createResultSchema(GitStatusPayloadSchema);
 export const SourceControlMutationResultSchema = createResultSchema(SourceControlEmptyPayloadSchema);
 export const SourceControlCheckIgnoredResultSchema = createResultSchema(
@@ -188,6 +225,8 @@ export const SourceControlCommitResultSchema = createResultSchema(GitCommitResul
 export const SourceControlUpstreamStatusResultSchema = createResultSchema(GitUpstreamStatusSchema);
 export const SourceControlBranchCompareResultSchema = createResultSchema(GitBranchCompareResultSchema);
 export const SourceControlPullRequestInfoResultSchema = createResultSchema(SourceControlPullRequestInfoSchema);
+export const SourceControlGetHistoryResultSchema = createResultSchema(GitHistoryResultSchema);
+export const SourceControlGetCommitFilesResultSchema = createResultSchema(GitCommitFilesResultSchema);
 
 export type SourceControlProjectInput = z.infer<typeof SourceControlProjectInputSchema>;
 export type SourceControlPathInput = z.infer<typeof SourceControlPathInputSchema>;
@@ -210,3 +249,7 @@ export type SourceControlCommitResult = z.infer<typeof SourceControlCommitResult
 export type SourceControlUpstreamStatusResult = z.infer<typeof SourceControlUpstreamStatusResultSchema>;
 export type SourceControlBranchCompareResult = z.infer<typeof SourceControlBranchCompareResultSchema>;
 export type SourceControlPullRequestInfoResult = z.infer<typeof SourceControlPullRequestInfoResultSchema>;
+export type SourceControlGetHistoryInput = z.infer<typeof SourceControlGetHistoryInputSchema>;
+export type SourceControlGetHistoryResult = z.infer<typeof SourceControlGetHistoryResultSchema>;
+export type SourceControlGetCommitFilesInput = z.infer<typeof SourceControlGetCommitFilesInputSchema>;
+export type SourceControlGetCommitFilesResult = z.infer<typeof SourceControlGetCommitFilesResultSchema>;
