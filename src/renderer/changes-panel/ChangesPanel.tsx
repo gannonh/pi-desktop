@@ -690,13 +690,16 @@ function ChangesPanelBody() {
 	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
 	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
 	const [createPullRequestRequestCount, setCreatePullRequestRequestCount] = useState(0);
+	const hasStatus = Boolean(status);
+	const pullRequestBranchKey = status?.branch ?? status?.head ?? null;
+	const pullRequestLookupKey = projectId && hasStatus ? `${projectId}:${pullRequestBranchKey ?? ""}` : null;
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
 
 	useEffect(() => {
-		if (!projectId) {
+		if (!projectId || !pullRequestLookupKey) {
 			setPullRequest(null);
 			return;
 		}
@@ -711,7 +714,7 @@ function ChangesPanelBody() {
 		return () => {
 			cancelled = true;
 		};
-	}, [projectId]);
+	}, [projectId, pullRequestLookupKey]);
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(

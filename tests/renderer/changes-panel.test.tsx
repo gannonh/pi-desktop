@@ -458,6 +458,50 @@ describe("ChangesPanel", () => {
 		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
 	});
 
+	it("refreshes linked pull request state when the current branch changes", async () => {
+		let currentStatus: GitStatusPayload = {
+			entries: [],
+			conflictOperation: "unknown",
+			branch: "refs/heads/feature",
+			upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 0 },
+		};
+		const getPullRequestInfo = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true as const,
+				data: { title: "Existing PR", url: "https://github.com/gannonh/pi-desktop/pull/2", state: "open" as const },
+			})
+			.mockResolvedValue({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "No pull request found." },
+			});
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: currentStatus,
+			})),
+			getPullRequestInfo,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Existing PR");
+		currentStatus = {
+			entries: [],
+			conflictOperation: "unknown",
+			branch: "refs/heads/release",
+			upstreamStatus: { hasUpstream: true, upstreamName: "origin/release", ahead: 0, behind: 0 },
+		};
+		fireEvent.click(screen.getByRole("button", { name: "Refresh source control status" }));
+
+		await waitFor(() => {
+			expect(screen.queryByText("Existing PR")).toBeNull();
+			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
+		});
+		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(
+			true,
+		);
+	});
+
 	it("shows source-control actions for a clean working tree", async () => {
 		installApi({
 			getStatus: vi.fn(async () => ({
