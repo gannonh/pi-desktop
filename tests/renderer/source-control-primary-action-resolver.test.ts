@@ -113,6 +113,7 @@ describe("resolveSourceControlActions", () => {
 			},
 		});
 		expect(diverged.primary.id).toBe("rebaseFromBase");
+		expect(diverged.primary.label).toBe("Rebase from Upstream");
 		expect(diverged.byId.sync.disabledReason).toBe("Branch has diverged. Rebase or merge before syncing.");
 		expect(
 			resolve({
@@ -144,6 +145,18 @@ describe("resolveSourceControlActions", () => {
 				},
 			}).primary.id,
 		).toBe("createPullRequest");
+	});
+
+	it("disables the diverged rebase action when the upstream ref name is unavailable", () => {
+		const actions = resolve({
+			status: {
+				...baseStatus,
+				upstreamStatus: { hasUpstream: true, ahead: 1, behind: 1 },
+			},
+		});
+
+		expect(actions.primary.id).toBe("rebaseFromBase");
+		expect(actions.primary.disabledReason).toBe("Upstream name is unavailable.");
 	});
 
 	it("includes concise disabled reasons for unavailable dropdown actions", () => {

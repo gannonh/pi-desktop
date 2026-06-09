@@ -57,6 +57,8 @@ const ACTION_LABELS = {
 	resolveConflicts: "Resolve Conflicts",
 } satisfies Record<SourceControlPrimaryActionId, string>;
 
+const REBASE_FROM_UPSTREAM_LABEL = "Rebase from Upstream";
+
 const hasProjectReason = (projectId: string | null) => (projectId ? undefined : "Select a project.");
 const statusLoadedReason = (status: GitStatusResult | null) =>
 	status ? undefined : "Source control status is loading.";
@@ -97,6 +99,7 @@ export const resolveSourceControlActions = ({
 	const blocksMutations = firstReason(baseReason, conflictReason(status));
 	const hasMessage = commitMessage.trim().length > 0;
 	const hasDiverged = Boolean(upstream?.hasUpstream && upstream.ahead > 0 && upstream.behind > 0);
+	const divergedRebaseReason = hasDiverged && !upstream?.upstreamName ? "Upstream name is unavailable." : undefined;
 
 	const byId = {
 		commit: action(
@@ -161,7 +164,7 @@ export const resolveSourceControlActions = ({
 				upstream && upstream.behind > 0 ? undefined : "No incoming commits.",
 			),
 		),
-		rebaseFromBase: action("rebaseFromBase", blocksMutations),
+		rebaseFromBase: action("rebaseFromBase", firstReason(blocksMutations, divergedRebaseReason)),
 		createPullRequest: action(
 			"createPullRequest",
 			firstReason(
@@ -182,7 +185,7 @@ export const resolveSourceControlActions = ({
 	} else if (stageable > 0) {
 		primary = byId.stageAll;
 	} else if (hasDiverged) {
-		primary = byId.rebaseFromBase;
+		primary = { ...byId.rebaseFromBase, label: REBASE_FROM_UPSTREAM_LABEL };
 	} else if (upstream?.hasUpstream && upstream.behind > 0) {
 		primary = byId.pull;
 	} else if (upstream?.hasUpstream && upstream.ahead > 0) {

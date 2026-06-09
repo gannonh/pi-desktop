@@ -374,6 +374,8 @@ function SourceControlActions({
 		isBusy: Boolean(busyActionId) || isCommitBusy,
 		pullRequest,
 	});
+	const divergedUpstreamName =
+		upstream?.hasUpstream && upstream.ahead > 0 && upstream.behind > 0 ? upstream.upstreamName : undefined;
 
 	const run = async (
 		label: string,
@@ -444,7 +446,12 @@ function SourceControlActions({
 					await run("Fast-forward", () => window.piDesktop.sourceControl.fastForward({ projectId }));
 					break;
 				case "rebaseFromBase":
-					await run("Rebase", () => window.piDesktop.sourceControl.rebaseFromBase({ projectId }));
+					await run("Rebase", () =>
+						window.piDesktop.sourceControl.rebaseFromBase({
+							projectId,
+							...(divergedUpstreamName ? { baseRef: divergedUpstreamName } : {}),
+						}),
+					);
 					break;
 				default:
 					break;

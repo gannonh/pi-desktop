@@ -479,15 +479,17 @@ describe("ChangesPanel", () => {
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
-	it("shows explicit rebase instead of unsafe sync for a clean diverged branch", async () => {
+	it("rebases against the configured upstream instead of unsafe sync for a clean diverged branch", async () => {
+		const rebaseFromBase = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({
+			rebaseFromBase,
 			getStatus: vi.fn(async () => ({
 				ok: true as const,
 				data: {
 					entries: [],
 					conflictOperation: "unknown",
-					branch: "refs/heads/main",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 1, behind: 1 },
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
 				} satisfies GitStatusPayload,
 			})),
 		});
@@ -496,7 +498,11 @@ describe("ChangesPanel", () => {
 		await screen.findByText("No uncommitted changes");
 
 		expect(screen.getByText("1 ahead, 1 behind")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Rebase from Base" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Rebase from Upstream" }));
+
+		await waitFor(() => {
+			expect(rebaseFromBase).toHaveBeenCalledWith({ projectId: project.id, baseRef: "origin/feature" });
+		});
 
 		fireEvent.click(screen.getByText("More source control actions"));
 
