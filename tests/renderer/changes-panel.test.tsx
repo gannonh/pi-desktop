@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
@@ -63,7 +63,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	const abortConflict = vi.fn(async () => ({ ok: true as const, data: {} }));
 	window.piDesktop = {
 		...window.piDesktop,
-			sourceControl: {
+		sourceControl: {
 			getStatus,
 			checkIgnored: vi.fn(),
 			stage: vi.fn(async () => ({ ok: true as const, data: {} })),
@@ -85,12 +85,20 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			rebaseFromBase: vi.fn(async () => ({ ok: true as const, data: {} })),
 			getBranchCompare: vi.fn(async () => ({ ok: true as const, data: { baseRef: "main", headRef: "HEAD", ahead: 0, behind: 0, files: [] } })),
 			abortConflict,
-				...overrides,
-			},
-			clipboard: {
-				writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
-			},
-		} as PiDesktopApi;
+			createPullRequest: vi.fn(async () => ({
+				ok: true as const,
+				data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "No pull request found." },
+			})),
+			...overrides,
+		},
+		clipboard: {
+			writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
+		},
+	} as PiDesktopApi;
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
@@ -281,6 +289,75 @@ describe("ChangesPanel", () => {
 		expect(discard).not.toHaveBeenCalled();
 	});
 
+	it("confirms a single-file discard before discarding the row", async () => {
+		const discard = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({ discard });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
+		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
+
+		await waitFor(() => {
+			expect(discard).toHaveBeenCalledWith({ projectId: project.id, relativePath: "README.md", area: "unstaged" });
+		});
+	});
+
+	it("uses delete-focused copy for untracked file discard confirmation", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("new.txt");
+		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[1]);
+
+		await screen.findByRole("alertdialog", { name: "Delete untracked file new.txt?" });
+		expect(screen.getByText("This file is not tracked by git. Deleting it cannot be undone by git.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Delete File" })).toBeTruthy();
+	});
+
+	it("uses delete-focused copy for newly-added file discard confirmation", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "new-feature.ts", status: "added", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("new-feature.ts");
+		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+		await screen.findByRole("alertdialog", { name: "Delete newly-added file new-feature.ts?" });
+		expect(screen.getByText("This file was added to git. Discarding it will remove it from the working tree.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Delete File" })).toBeTruthy();
+	});
+
+	it("uses restore-focused copy for deleted tracked file discard confirmation", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "removed.ts", status: "deleted", area: "unstaged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("removed.ts");
+		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+		await screen.findByRole("alertdialog", { name: "Restore deleted file removed.ts?" });
+		expect(screen.getByText("This will restore the tracked file from git.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Restore File" })).toBeTruthy();
+	});
+
 	it("confirms bulk discard before discarding selected rows", async () => {
 		const bulkDiscard = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({ bulkDiscard });
@@ -290,8 +367,8 @@ describe("ChangesPanel", () => {
 		fireEvent.click(screen.getByLabelText("Select README.md"));
 		fireEvent.click(screen.getByLabelText("Select new.txt"));
 		fireEvent.click(screen.getByRole("button", { name: "Discard Selected" }));
-		await screen.findByRole("alertdialog", { name: "Discard changes for 2 selected files?" });
-		expect(screen.getByText("This will permanently delete untracked files.")).toBeTruthy();
+		await screen.findByRole("alertdialog", { name: "Discard 2 selected changes?" });
+		expect(screen.getByText("This affects 1 unstaged change and 1 untracked change.")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
 
 		await waitFor(() => {
@@ -328,6 +405,103 @@ describe("ChangesPanel", () => {
 		});
 	});
 
+	it("creates a pull request from the primary source-control action when the PR title is filled", async () => {
+		const createPullRequest = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+		}));
+		installApi({
+			createPullRequest,
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
+		fireEvent.click(screen.getAllByRole("button", { name: "Create PR" })[0]);
+
+		await waitFor(() => {
+			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
+		});
+		expect(screen.getByText("Feature PR")).toBeTruthy();
+	});
+
+	it("uses linked pull request state to disable duplicate create PR actions", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: { title: "Existing PR", url: "https://github.com/gannonh/pi-desktop/pull/2", state: "open" as const },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Existing PR");
+		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+
+		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
+	});
+
+	it("refreshes linked pull request state when the current branch changes", async () => {
+		let currentStatus: GitStatusPayload = {
+			entries: [],
+			conflictOperation: "unknown",
+			branch: "refs/heads/feature",
+			upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 0 },
+		};
+		const getPullRequestInfo = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true as const,
+				data: { title: "Existing PR", url: "https://github.com/gannonh/pi-desktop/pull/2", state: "open" as const },
+			})
+			.mockResolvedValue({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "No pull request found." },
+			});
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: currentStatus,
+			})),
+			getPullRequestInfo,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Existing PR");
+		currentStatus = {
+			entries: [],
+			conflictOperation: "unknown",
+			branch: "refs/heads/release",
+			upstreamStatus: { hasUpstream: true, upstreamName: "origin/release", ahead: 0, behind: 0 },
+		};
+		fireEvent.click(screen.getByRole("button", { name: "Refresh source control status" }));
+
+		await waitFor(() => {
+			expect(screen.queryByText("Existing PR")).toBeNull();
+			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
+		});
+		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(
+			true,
+		);
+	});
+
 	it("shows source-control actions for a clean working tree", async () => {
 		installApi({
 			getStatus: vi.fn(async () => ({
@@ -347,6 +521,84 @@ describe("ChangesPanel", () => {
 		expect(screen.getByText("origin/main")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Push" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
+	});
+
+	it("closes the source-control action menu after selecting a dropdown action", async () => {
+		const fetch = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			fetch,
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 0, behind: 0 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+		expect(screen.getByRole("menu")).toBeTruthy();
+
+		fireEvent.click(screen.getAllByRole("button", { name: "Fetch" })[0]);
+
+		await waitFor(() => {
+			expect(fetch).toHaveBeenCalledWith({ projectId: project.id });
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+	});
+
+	it("trims pull request titles before creating them", async () => {
+		const createPullRequest = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
+		}));
+		installApi({ createPullRequest });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "  Feature PR  " } });
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
+
+		await waitFor(() => {
+			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
+		});
+	});
+
+	it("rebases against the configured upstream instead of unsafe sync for a clean diverged branch", async () => {
+		const rebaseFromBase = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			rebaseFromBase,
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+
+		expect(screen.getByText("1 ahead, 1 behind")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Rebase from Upstream" }));
+
+		await waitFor(() => {
+			expect(rebaseFromBase).toHaveBeenCalledWith({ projectId: project.id, baseRef: "origin/feature" });
+		});
+
+		fireEvent.click(screen.getByText("More source control actions"));
+
+		const menu = screen.getByRole("menu");
+		expect(within(menu).getByRole("button", { name: "Rebase from Upstream" })).toBeTruthy();
+		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
+		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
 	});
 
 	it("disables publish until upstream status is loaded", async () => {
@@ -376,7 +628,9 @@ describe("ChangesPanel", () => {
 		});
 
 		await screen.findByText("No uncommitted changes");
-		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(false);
+		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Publish" }).some((button) => !button.disabled)).toBe(
+			true,
+		);
 	});
 
 	it("ignores stale status results after switching projects", async () => {

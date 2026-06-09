@@ -1,5 +1,5 @@
-import { GitCommit, RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import type {
 	GitBranchCompareResult,
@@ -21,6 +21,11 @@ import {
 } from "../components/ui/alert-dialog";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
+import {
+	resolveSourceControlActions,
+	type SourceControlAction,
+	type SourceControlPrimaryActionId,
+} from "./source-control-primary-action-resolver";
 import {
 	buildGitStatusSourceControlTree,
 	compactSourceControlTree,
@@ -132,13 +137,83 @@ function SourceControlTreeRow({
 
 const selectionKey = (entry: GitStatusEntry) => `${entry.area}:${entry.path}`;
 
-const getDiscardConfirmation = (entries: readonly GitStatusEntry[]): { title: string; description: string } => {
-	const includesUntracked = entries.some((entry) => entry.area === "untracked");
-	const fileText = entries.length === 1 ? entries[0]?.path : `${entries.length} selected files`;
-	const description = includesUntracked
-		? "This will permanently delete untracked files."
-		: "This will restore tracked files to their previous state.";
-	return { title: `Discard changes for ${fileText}?`, description };
+const AREA_DISCARD_LABELS = {
+	staged: "staged",
+	unstaged: "unstaged",
+	untracked: "untracked",
+} satisfies Record<GitStagingArea, string>;
+
+const pluralize = (count: number, singular: string, plural = `${singular}s`) => (count === 1 ? singular : plural);
+
+const joinList = (items: readonly string[]) => {
+	if (items.length <= 1) {
+		return items[0] ?? "";
+	}
+	if (items.length === 2) {
+		return `${items[0]} and ${items[1]}`;
+	}
+	return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+};
+
+const formatBulkDiscardAreaSummary = (entries: readonly GitStatusEntry[]) => {
+	const counts = entries.reduce(
+		(accumulator, entry) => {
+			accumulator[entry.area] += 1;
+			return accumulator;
+		},
+		{ staged: 0, unstaged: 0, untracked: 0 } satisfies Record<GitStagingArea, number>,
+	);
+	const parts = (Object.keys(counts) as GitStagingArea[])
+		.filter((area) => counts[area] > 0)
+		.map((area) => `${counts[area]} ${AREA_DISCARD_LABELS[area]} ${pluralize(counts[area], "change")}`);
+	return joinList(parts);
+};
+
+const getDiscardConfirmation = (
+	entries: readonly GitStatusEntry[],
+): { title: string; description: string; actionLabel: string } => {
+	if (entries.length !== 1) {
+		return {
+			title: `Discard ${entries.length} selected changes?`,
+			description: `This affects ${formatBulkDiscardAreaSummary(entries)}.`,
+			actionLabel: "Discard Changes",
+		};
+	}
+
+	const entry = entries[0];
+	if (!entry) {
+		return {
+			title: "Discard selected changes?",
+			description: "This will discard the selected changes.",
+			actionLabel: "Discard Changes",
+		};
+	}
+	if (entry.area === "untracked") {
+		return {
+			title: `Delete untracked file ${entry.path}?`,
+			description: "This file is not tracked by git. Deleting it cannot be undone by git.",
+			actionLabel: "Delete File",
+		};
+	}
+	if (entry.status === "added") {
+		return {
+			title: `Delete newly-added file ${entry.path}?`,
+			description: "This file was added to git. Discarding it will remove it from the working tree.",
+			actionLabel: "Delete File",
+		};
+	}
+	if (entry.status === "deleted") {
+		return {
+			title: `Restore deleted file ${entry.path}?`,
+			description: "This will restore the tracked file from git.",
+			actionLabel: "Restore File",
+		};
+	}
+	return {
+		title: `Discard changes for ${entry.path}?`,
+		description: "This will restore the tracked file to its previous state.",
+		actionLabel: "Discard Changes",
+	};
 };
 
 const conflictLabel = (operation: GitConflictOperation): string | null => {
@@ -169,7 +244,13 @@ const conflictButtonLabel = (operation: GitConflictOperation): string => {
 	}
 };
 
-function CommitArea() {
+function CommitArea({
+	pullRequest,
+	onCreatePullRequestRequested,
+}: {
+	pullRequest: SourceControlPullRequestInfo | null;
+	onCreatePullRequestRequested: () => void;
+}) {
 	const { projectId, status, refresh } = useChangesPanel();
 	const [message, setMessage] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
@@ -214,10 +295,6 @@ function CommitArea() {
 				/>
 			</label>
 			<div className="changes-panel__commit-actions">
-				<Button type="submit" size="sm" disabled={!canCommit}>
-					<GitCommit aria-hidden />
-					{isCommitting ? "Committing..." : "Commit"}
-				</Button>
 				<Button
 					type="button"
 					variant="ghost"
@@ -234,16 +311,71 @@ function CommitArea() {
 					{error}
 				</div>
 			) : null}
+			<SourceControlActions
+				commitMessage={message}
+				isCommitBusy={isCommitting}
+				onCommit={() => void commit()}
+				pullRequest={pullRequest}
+				onCreatePullRequestRequested={onCreatePullRequestRequested}
+			/>
 		</form>
 	);
 }
 
-function RemoteActions() {
+function SourceControlActionButton({
+	action,
+	variant = "ghost",
+	onRun,
+}: {
+	action: SourceControlAction;
+	variant?: "default" | "secondary" | "ghost";
+	onRun: (id: SourceControlPrimaryActionId) => void;
+}) {
+	return (
+		<div className="changes-panel__action-row">
+			<Button
+				type="button"
+				variant={variant}
+				size="sm"
+				disabled={Boolean(action.disabledReason)}
+				title={action.disabledReason}
+				onClick={() => onRun(action.id)}
+			>
+				{action.label}
+			</Button>
+			{action.disabledReason ? <span className="changes-panel__action-reason">{action.disabledReason}</span> : null}
+		</div>
+	);
+}
+
+function SourceControlActions({
+	commitMessage,
+	isCommitBusy,
+	onCommit,
+	pullRequest,
+	onCreatePullRequestRequested,
+}: {
+	commitMessage: string;
+	isCommitBusy: boolean;
+	onCommit: () => void;
+	pullRequest: SourceControlPullRequestInfo | null;
+	onCreatePullRequestRequested: () => void;
+}) {
 	const { projectId, status, refresh } = useChangesPanel();
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [busyActionId, setBusyActionId] = useState<SourceControlPrimaryActionId | null>(null);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const upstream = status?.upstreamStatus;
-	const unstagedCount = status?.entries.filter((entry) => entry.area !== "staged").length ?? 0;
+	const actions = resolveSourceControlActions({
+		projectId,
+		status,
+		commitMessage,
+		isBusy: Boolean(busyActionId) || isCommitBusy,
+		pullRequest,
+	});
+	const divergedUpstreamName =
+		upstream?.hasUpstream && upstream.ahead > 0 && upstream.behind > 0 ? upstream.upstreamName : undefined;
 
 	const run = async (
 		label: string,
@@ -264,6 +396,74 @@ function RemoteActions() {
 		return null;
 	}
 
+	const stageablePaths = () =>
+		status?.entries.filter((entry) => entry.area !== "staged").map((entry) => entry.path) ?? [];
+
+	const runAction = async (id: SourceControlPrimaryActionId) => {
+		if (!projectId || busyActionId) {
+			return;
+		}
+		if (id === "commit" || id === "commitStaged") {
+			setIsMenuOpen(false);
+			onCommit();
+			return;
+		}
+		if (id === "createPullRequest") {
+			setIsMenuOpen(false);
+			onCreatePullRequestRequested();
+			return;
+		}
+		if (id === "resolveConflicts") {
+			setError("Resolve conflicts before source control actions.");
+			return;
+		}
+
+		setIsMenuOpen(false);
+		setBusyActionId(id);
+		try {
+			switch (id) {
+				case "stageAll":
+					await run("Stage all", () =>
+						window.piDesktop.sourceControl.bulkStage({
+							projectId,
+							relativePaths: stageablePaths(),
+						}),
+					);
+					break;
+				case "fetch":
+					await run("Fetch", () => window.piDesktop.sourceControl.fetch({ projectId }));
+					break;
+				case "pull":
+					await run("Pull", () => window.piDesktop.sourceControl.pull({ projectId }));
+					break;
+				case "push":
+					await run("Push", () => window.piDesktop.sourceControl.push({ projectId }));
+					break;
+				case "sync":
+					await run("Sync", () => window.piDesktop.sourceControl.sync({ projectId }));
+					break;
+				case "publish":
+					await run("Publish", () => window.piDesktop.sourceControl.publish({ projectId }));
+					break;
+				case "fastForward":
+					await run("Fast-forward", () => window.piDesktop.sourceControl.fastForward({ projectId }));
+					break;
+				case "rebaseFromBase":
+					await run("Rebase", () =>
+						window.piDesktop.sourceControl.rebaseFromBase({
+							projectId,
+							...(divergedUpstreamName ? { baseRef: divergedUpstreamName } : {}),
+						}),
+					);
+					break;
+				default:
+					break;
+			}
+		} finally {
+			setBusyActionId(null);
+		}
+	};
+
 	return (
 		<div className="changes-panel__remote">
 			<div className="changes-panel__remote-summary">
@@ -271,93 +471,34 @@ function RemoteActions() {
 				<span>{upstream ? `${upstream.ahead} ahead, ${upstream.behind} behind` : "0 ahead, 0 behind"}</span>
 			</div>
 			<div className="changes-panel__remote-actions">
-				<Button
-					type="button"
+				<SourceControlActionButton
+					action={actions.primary}
 					variant="secondary"
-					size="sm"
-					disabled={unstagedCount === 0}
-					onClick={() =>
-						void run("Stage all", () =>
-							window.piDesktop.sourceControl.bulkStage({
-								projectId,
-								relativePaths:
-									status?.entries.filter((entry) => entry.area !== "staged").map((entry) => entry.path) ?? [],
-							}),
-						)
-					}
-				>
-					Stage All
-				</Button>
-				<details className="changes-panel__action-menu">
-					<summary>More source control actions</summary>
-					<div className="changes-panel__action-menu-items">
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => void run("Fetch", () => window.piDesktop.sourceControl.fetch({ projectId }))}
+					onRun={(id) => void runAction(id)}
+				/>
+				<div className="changes-panel__action-menu">
+					<button
+						type="button"
+						className="changes-panel__action-menu-trigger"
+						aria-haspopup="menu"
+						aria-controls="changes-panel-source-control-actions-menu"
+						aria-expanded={isMenuOpen}
+						onClick={() => setIsMenuOpen((open) => !open)}
+					>
+						More source control actions
+					</button>
+					{isMenuOpen ? (
+						<div
+							id="changes-panel-source-control-actions-menu"
+							className="changes-panel__action-menu-items"
+							role="menu"
 						>
-							Fetch
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.behind === 0}
-							onClick={() => void run("Pull", () => window.piDesktop.sourceControl.pull({ projectId }))}
-						>
-							Pull
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.ahead === 0}
-							onClick={() => void run("Push", () => window.piDesktop.sourceControl.push({ projectId }))}
-						>
-							Push
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || (upstream.ahead === 0 && upstream.behind === 0)}
-							onClick={() => void run("Sync", () => window.piDesktop.sourceControl.sync({ projectId }))}
-						>
-							Sync
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={upstream === undefined || upstream.hasUpstream}
-							onClick={() => void run("Publish", () => window.piDesktop.sourceControl.publish({ projectId }))}
-						>
-							Publish
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							disabled={!upstream?.hasUpstream || upstream.behind === 0}
-							onClick={() =>
-								void run("Fast-forward", () => window.piDesktop.sourceControl.fastForward({ projectId }))
-							}
-						>
-							Fast-forward
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() =>
-								void run("Rebase", () => window.piDesktop.sourceControl.rebaseFromBase({ projectId }))
-							}
-						>
-							Rebase
-						</Button>
-					</div>
-				</details>
+							{actions.dropdown.map((action) => (
+								<SourceControlActionButton key={action.id} action={action} onRun={(id) => void runAction(id)} />
+							))}
+						</div>
+					) : null}
+				</div>
 			</div>
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
@@ -450,27 +591,53 @@ function BranchCompareArea() {
 	);
 }
 
-function PullRequestArea() {
+function PullRequestArea({
+	pullRequest,
+	onPullRequestChange,
+	focusRequestCount,
+}: {
+	pullRequest: SourceControlPullRequestInfo | null;
+	onPullRequestChange: (pullRequest: SourceControlPullRequestInfo | null) => void;
+	focusRequestCount: number;
+}) {
 	const { projectId } = useChangesPanel();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
-	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
+	const titleInputRef = useRef<HTMLInputElement | null>(null);
+	const handledFocusRequestCount = useRef(0);
 
-	const create = async () => {
+	const create = useCallback(async () => {
 		if (!projectId) {
 			return;
 		}
 		setError(null);
 		setMessage(null);
-		const result = await window.piDesktop.sourceControl.createPullRequest({ projectId, title, body });
+		const result = await window.piDesktop.sourceControl.createPullRequest({
+			projectId,
+			title: title.trim(),
+			body,
+		});
 		if (!result.ok) {
 			setError(result.error.message);
 			return;
 		}
-		setPullRequest(result.data);
-	};
+		onPullRequestChange(result.data);
+	}, [body, onPullRequestChange, projectId, title]);
+
+	useEffect(() => {
+		if (focusRequestCount <= handledFocusRequestCount.current) {
+			return;
+		}
+		handledFocusRequestCount.current = focusRequestCount;
+		if (title.trim()) {
+			void create();
+			return;
+		}
+		setError(null);
+		titleInputRef.current?.focus();
+	}, [create, focusRequestCount, title]);
 
 	const copyPullRequestUrl = async () => {
 		if (!pullRequest?.url) {
@@ -501,7 +668,7 @@ function PullRequestArea() {
 			) : null}
 			<label>
 				PR title
-				<input value={title} onChange={(event) => setTitle(event.target.value)} />
+				<input ref={titleInputRef} value={title} onChange={(event) => setTitle(event.target.value)} />
 			</label>
 			<label>
 				PR body
@@ -534,10 +701,33 @@ function ChangesPanelBody() {
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
 	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
+	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
+	const [createPullRequestRequestCount, setCreatePullRequestRequestCount] = useState(0);
+	const hasStatus = Boolean(status);
+	const pullRequestBranchKey = status?.branch ?? status?.head ?? null;
+	const pullRequestLookupKey = projectId && hasStatus ? `${projectId}:${pullRequestBranchKey ?? ""}` : null;
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	useEffect(() => {
+		if (!projectId || !pullRequestLookupKey) {
+			setPullRequest(null);
+			return;
+		}
+		let cancelled = false;
+		setPullRequest(null);
+		void window.piDesktop.sourceControl.getPullRequestInfo({ projectId }).then((result) => {
+			if (cancelled) {
+				return;
+			}
+			setPullRequest(result.ok ? result.data : null);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [projectId, pullRequestLookupKey]);
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(
@@ -636,7 +826,7 @@ function ChangesPanelBody() {
 	};
 	const discardConfirmation = pendingDiscardEntries.length
 		? getDiscardConfirmation(pendingDiscardEntries)
-		: { title: "", description: "" };
+		: { title: "", description: "", actionLabel: "Discard Changes" };
 	const discardPendingEntries = async () => {
 		const entries = pendingDiscardEntries;
 		setPendingDiscardEntries([]);
@@ -678,7 +868,7 @@ function ChangesPanelBody() {
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction variant="destructive" onClick={() => void discardPendingEntries()}>
-							Discard Changes
+							{discardConfirmation.actionLabel}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -692,10 +882,16 @@ function ChangesPanelBody() {
 					</Button>
 				</div>
 			) : null}
-			<CommitArea />
-			<RemoteActions />
+			<CommitArea
+				pullRequest={pullRequest}
+				onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
+			/>
 			<BranchCompareArea />
-			<PullRequestArea />
+			<PullRequestArea
+				pullRequest={pullRequest}
+				onPullRequestChange={setPullRequest}
+				focusRequestCount={createPullRequestRequestCount}
+			/>
 			{status && status.entries.length === 0 && !conflict ? (
 				<div className="changes-panel__empty">
 					<p>No uncommitted changes</p>

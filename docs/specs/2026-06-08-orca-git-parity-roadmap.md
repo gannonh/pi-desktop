@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed follow-up roadmap after M07C Changes panel implementation.
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160).
 
 ## Context
 
@@ -10,9 +10,18 @@ Pi Desktop now has a live local Changes panel with status, stage/unstage/discard
 
 This roadmap lists the remaining high-level gaps. Each item is intentionally short so future milestone planning can split it into executable specs.
 
+## GitHub Tracking
+
+- Wave 1 local source-control UX: [#147](https://github.com/gannonh/pi-desktop/issues/147)
+- Wave 2 conflict/status/remote hardening: [#148](https://github.com/gannonh/pi-desktop/issues/148), [#149](https://github.com/gannonh/pi-desktop/issues/149), [#150](https://github.com/gannonh/pi-desktop/issues/150)
+- Wave 3 history and diff review: [#151](https://github.com/gannonh/pi-desktop/issues/151), [#152](https://github.com/gannonh/pi-desktop/issues/152)
+- Wave 4 AI generation and recovery: [#153](https://github.com/gannonh/pi-desktop/issues/153), [#154](https://github.com/gannonh/pi-desktop/issues/154)
+- Wave 5 hosted review, settings, and worktree scope: [#155](https://github.com/gannonh/pi-desktop/issues/155), [#156](https://github.com/gannonh/pi-desktop/issues/156), [#157](https://github.com/gannonh/pi-desktop/issues/157)
+- Follow-on UAT gaps: active path/branch clarity [#158](https://github.com/gannonh/pi-desktop/issues/158), local-bare-remote e2e coverage [#159](https://github.com/gannonh/pi-desktop/issues/159)
+
 ## Scope
 
-- Compare Pi Desktop's current `feat/issue-144-m07c-changes-panel` implementation against Orca's Git and Source Control surfaces.
+- Compare Pi Desktop's current Changes panel implementation (`wave1` / M07C base) against Orca's Git and Source Control surfaces.
 - Keep Pi Desktop focused on local desktop UX and selected-project source control.
 - Treat GitLab, SSH/runtime worktrees, and PR review/checks as larger follow-up tracks unless explicitly pulled forward.
 
@@ -22,36 +31,41 @@ This roadmap lists the remaining high-level gaps. Each item is intentionally sho
 
 Ship the core day-to-day Source Control UX first. This wave should make common local workflows predictable before deeper Git edge cases are layered in.
 
-#### 1.1 Primary Action State Machine
+#### 1.1 Primary Action State Machine — ✅ Implemented
 
-**Gap:** Pi Desktop uses simple commit, stage-all, and menu actions; Orca has tested priority logic for commit, stage, push, pull, sync, publish, create PR, busy states, and disabled reasons.
+Tracking: [#147](https://github.com/gannonh/pi-desktop/issues/147)
 
-**Goal:** Port an Orca-equivalent primary/dropdown action resolver adapted to `projectId` and Pi Desktop's local project model.
-
-**Acceptance Criteria**
-
-- Primary action changes based on staged changes, unstaged changes, message state, upstream state, PR state, and conflicts.
-- Dropdown exposes stable rows for commit variants, remote operations, publish, rebase, fetch, and create PR.
-- Disabled actions show concise reasons and have unit coverage for priority order.
-
-#### 1.2 Destructive Confirmation Flow
-
-**Gap:** Pi Desktop discard actions execute directly; Orca confirms destructive paths with copy specific to delete, restore, discard, and discard-all operations.
-
-**Goal:** Add confirmation dialogs for single-file and bulk discard operations.
+**Shipped:** `src/renderer/changes-panel/source-control-primary-action-resolver.ts` computes primary and dropdown actions from git status, commit message, upstream, PR state, conflicts, and busy flags. `ChangesPanel` renders resolver output with disabled-reason copy. `syncRemote` in `src/main/git/status.ts` rejects one-click sync when `ahead > 0` and `behind > 0`.
 
 **Acceptance Criteria**
 
-- Untracked and newly-added files use delete-focused copy.
-- Deleted tracked files use restore-focused copy.
-- Bulk discard copy includes affected count and area.
-- Confirm/cancel behavior is covered by renderer tests.
+- ✅ Primary action changes based on staged changes, unstaged changes, message state, upstream state, PR state, and conflicts.
+- ✅ Dropdown exposes stable rows for commit variants, remote operations, publish, rebase, fetch, and create PR.
+- ✅ Disabled actions show concise reasons and have unit coverage for priority order (`tests/renderer/source-control-primary-action-resolver.test.ts`).
+- ✅ Diverged upstream state does not present one-click `Sync`; users are directed to an explicit reconcile action (rebase-first in the resolver; sync rejected in main).
+
+**Wave 2 overlap:** Diverged-vs-fast-forwardable classification and richer upstream probing remain under [§2.3](#23-remote-and-upstream-semantics).
+
+#### 1.2 Destructive Confirmation Flow — ✅ Implemented
+
+Tracking: [#147](https://github.com/gannonh/pi-desktop/issues/147)
+
+**Shipped:** `ChangesPanel` uses shadcn `AlertDialog` with type-specific discard copy via `getDiscardConfirmation` (untracked/added delete copy, deleted-tracked restore copy, bulk area counts).
+
+**Acceptance Criteria**
+
+- ✅ Untracked and newly-added files use delete-focused copy.
+- ✅ Deleted tracked files use restore-focused copy.
+- ✅ Bulk discard copy includes affected count and area.
+- ✅ Confirm/cancel behavior is covered by renderer tests (`tests/renderer/changes-panel.test.tsx`).
 
 ### Wave 2: Conflict Rows, Status Fidelity, and Remote/Upstream Hardening
 
 Stabilize correctness and safety in less-happy Git states. This wave should make the local Changes panel trustworthy under conflicts, unusual paths, and real remote branch setups.
 
 #### 2.1 Conflict Rows and Resolution State
+
+Tracking: [#148](https://github.com/gannonh/pi-desktop/issues/148)
 
 **Gap:** Pi Desktop detects merge/rebase/cherry-pick operations and can abort, but does not parse unmerged entries or show conflict kinds per file.
 
@@ -66,6 +80,8 @@ Stabilize correctness and safety in less-happy Git states. This wave should make
 
 #### 2.2 Status Fidelity and Edge Cases
 
+Tracking: [#149](https://github.com/gannonh/pi-desktop/issues/149)
+
 **Gap:** Pi Desktop's status parser is functional but thinner than Orca's edge-case coverage for line stats, unmerged entries, pathspec literals, symlinks, C-quoted paths, and upstream churn.
 
 **Goal:** Bring core parser and safety behavior up to Orca's local-git reliability level.
@@ -79,6 +95,8 @@ Stabilize correctness and safety in less-happy Git states. This wave should make
 
 #### 2.3 Remote and Upstream Semantics
 
+Tracking: [#150](https://github.com/gannonh/pi-desktop/issues/150)
+
 **Gap:** Pi Desktop remote operations use basic Git commands; Orca handles effective upstreams, explicit push targets, force-with-lease, PR branch remotes, and richer error classification.
 
 **Goal:** Harden remote operations to match Orca's local-git behavior where it applies to selected projects.
@@ -86,6 +104,7 @@ Stabilize correctness and safety in less-happy Git states. This wave should make
 **Acceptance Criteria**
 
 - Upstream status probes same-name origin refs and handles missing configured upstreams.
+- Diverged branches are classified separately from fast-forwardable sync states.
 - Push can target configured upstreams and publish branches safely.
 - Force-with-lease is available only when the resolver recommends it.
 - Pull, sync, and rebase errors are translated into actionable messages.
@@ -95,6 +114,8 @@ Stabilize correctness and safety in less-happy Git states. This wave should make
 Move from basic change inspection to review-grade Git navigation. This wave should help users understand both local changes and committed history without leaving Pi Desktop.
 
 #### 3.1 Git History Panel
+
+Tracking: [#151](https://github.com/gannonh/pi-desktop/issues/151)
 
 **Gap:** Pi Desktop has branch compare but no Orca-style Git history graph.
 
@@ -108,6 +129,8 @@ Move from basic change inspection to review-grade Git navigation. This wave shou
 - Refresh, loading, and error states are visible.
 
 #### 3.2 Diff Review UX
+
+Tracking: [#152](https://github.com/gannonh/pi-desktop/issues/152)
 
 **Gap:** Pi Desktop renders unified diff text; Orca has richer review affordances around preview/split opening, comments, notes, source links, and commit compare.
 
@@ -126,6 +149,8 @@ Add Pi-assisted workflows where Git operations benefit from agent context. This 
 
 #### 4.1 AI Commit and PR Generation
 
+Tracking: [#153](https://github.com/gannonh/pi-desktop/issues/153)
+
 **Gap:** Pi Desktop's Generate buttons currently show prerequisite errors; Orca supports commit-message and PR-field generation with cancellation, settings, and custom instructions.
 
 **Goal:** Route commit-message and PR-field generation through Pi-owned one-shot generation or session flows.
@@ -138,6 +163,8 @@ Add Pi-assisted workflows where Git operations benefit from agent context. This 
 - No provider secrets are exposed to renderer state.
 
 #### 4.2 Commit Failure Recovery
+
+Tracking: [#154](https://github.com/gannonh/pi-desktop/issues/154)
 
 **Gap:** Pi Desktop displays commit failures; Orca can summarize failures and launch an agent recovery prompt.
 
@@ -156,6 +183,8 @@ Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should av
 
 #### 5.1 Hosted Review Depth
 
+Tracking: [#155](https://github.com/gannonh/pi-desktop/issues/155)
+
 **Gap:** Pi Desktop only creates or views basic GitHub PR metadata; Orca tracks hosted review state, GitHub/GitLab eligibility, checks, comments, merge, and rate limits.
 
 **Goal:** Define and implement the next hosted-review slice after local Changes parity.
@@ -169,6 +198,8 @@ Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should av
 
 #### 5.2 Git Settings Surface
 
+Tracking: [#156](https://github.com/gannonh/pi-desktop/issues/156)
+
 **Gap:** Pi Desktop has no Git settings surface; Orca exposes base-ref defaults, branch prefix behavior, attribution settings, and API budget panels.
 
 **Goal:** Add the minimum Git settings needed to support the selected-project Changes workflow.
@@ -181,6 +212,8 @@ Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should av
 - Settings are documented without duplicating README setup instructions.
 
 #### 5.3 Runtime and Worktree Scope
+
+Tracking: [#157](https://github.com/gannonh/pi-desktop/issues/157)
 
 **Gap:** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management.
 
@@ -196,3 +229,7 @@ Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should av
 ## Verification Notes
 
 Each roadmap item should include focused unit tests for pure logic, main-process temp-repo tests for Git behavior, renderer tests for visible UI states, and at least one Electron UAT path before sign-off.
+
+Remote-workflow milestones should add deterministic e2e coverage using temporary repositories and local bare remotes. Track this under [#159](https://github.com/gannonh/pi-desktop/issues/159). The minimum matrix should cover clean state, unstaged/staged/commit flow, ahead-only `Push`, behind-only fast-forward `Pull`, diverged ahead-and-behind reconcile state, no-upstream `Publish`, destructive discard confirmations, and PR creation with only the `gh` boundary mocked.
+
+The Changes panel should also make the active project path and branch explicit enough to avoid mutating the wrong checkout. Track that UAT gap under [#158](https://github.com/gannonh/pi-desktop/issues/158).

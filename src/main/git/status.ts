@@ -648,6 +648,9 @@ export const pullRemote = async (worktreePath: string): Promise<void> => {
 
 export const syncRemote = async (worktreePath: string): Promise<void> => {
 	const upstream = await getUpstreamStatus(worktreePath);
+	if (upstream.ahead > 0 && upstream.behind > 0) {
+		throw new Error("Branch has diverged. Rebase or merge before syncing.");
+	}
 	if (upstream.behind > 0) {
 		await pullRemote(worktreePath);
 	}

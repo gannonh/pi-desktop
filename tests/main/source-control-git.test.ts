@@ -21,6 +21,7 @@ import {
 	pushRemote,
 	rebaseFromBase,
 	stageFile,
+	syncRemote,
 	unstageFile,
 } from "../../src/main/git/status";
 import { createGitChildProcessEnvironment, initializeGitRepository } from "../../src/main/projects/git";
@@ -411,6 +412,34 @@ describe("source control git operations", () => {
 		upstream = await getUpstreamStatus(repo);
 		expect(upstream.ahead).toBe(0);
 		await fetchRemote(repo);
+	});
+
+	it("rejects sync on diverged branches before running ff-only pull", async () => {
+		const repo = await createRepo();
+		const remote = await createBareRemote();
+		const peer = await mkdtemp(join(tmpdir(), "pi-source-control-peer-"));
+		await runGit(["remote", "add", "origin", remote], repo);
+		await publishBranch(repo);
+
+		try {
+			await writeFile(join(repo, "local.txt"), "local\n", "utf8");
+			await stageFile(repo, "local.txt");
+			await commitStagedChanges(repo, "Local ahead");
+
+			await runGit(["clone", "--branch", "main", remote, peer], tmpdir());
+			await runGit(["config", "user.name", "Pi Desktop Test"], peer);
+			await runGit(["config", "user.email", "pi-desktop@example.invalid"], peer);
+			await writeFile(join(peer, "remote.txt"), "remote\n", "utf8");
+			await runGit(["add", "remote.txt"], peer);
+			await runGit(["commit", "-m", "Remote ahead"], peer);
+			await runGit(["push"], peer);
+			await fetchRemote(repo);
+
+			await expect(getUpstreamStatus(repo)).resolves.toMatchObject({ ahead: 1, behind: 1 });
+			await expect(syncRemote(repo)).rejects.toThrow("Branch has diverged. Rebase or merge before syncing.");
+		} finally {
+			await rm(peer, { recursive: true, force: true });
+		}
 	});
 
 	it("rejects rebase refs that look like git options", async () => {

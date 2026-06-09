@@ -2048,12 +2048,25 @@ body.file-workspace--resizing {
 	position: relative;
 }
 
-.changes-panel__action-menu summary {
+.changes-panel__action-menu-trigger {
 	cursor: pointer;
+	border: 0;
 	border-radius: 6px;
+	background: transparent;
 	color: var(--color-muted-foreground);
 	font-size: var(--type-caption);
 	padding: 0.25rem 0.375rem;
+}
+
+.changes-panel__action-row {
+	display: grid;
+	gap: 0.125rem;
+	justify-items: start;
+}
+
+.changes-panel__action-reason {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
 }
 
 .changes-panel__action-menu-items {
