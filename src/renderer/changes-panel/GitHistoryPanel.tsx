@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GitCommitFilesResult, GitHistoryEntry, GitHistoryResult } from "../../shared/source-control/types";
 import { Button } from "../components/ui/button";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
@@ -29,6 +29,7 @@ export function GitHistoryPanel() {
 	const [commitFiles, setCommitFiles] = useState<GitCommitFilesResult | null>(null);
 	const [commitFilesLoading, setCommitFilesLoading] = useState(false);
 	const [commitFilesError, setCommitFilesError] = useState<string | null>(null);
+	const selectedCommitShaRef = useRef<string | null>(null);
 
 	const refresh = useCallback(async () => {
 		if (!projectId) {
@@ -54,6 +55,7 @@ export function GitHistoryPanel() {
 		if (!projectId) {
 			return;
 		}
+		selectedCommitShaRef.current = entry.sha;
 		setSelectedCommit(entry);
 		setCommitFiles(null);
 		setCommitFilesError(null);
@@ -62,6 +64,9 @@ export function GitHistoryPanel() {
 			projectId,
 			commitRef: entry.sha,
 		});
+		if (selectedCommitShaRef.current !== entry.sha) {
+			return;
+		}
 		setCommitFilesLoading(false);
 		if (!result.ok) {
 			setCommitFilesError(result.error.message);

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { GitCommitFilesResult } from "../../src/shared/source-control/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitHistoryPanel } from "../../src/renderer/changes-panel/GitHistoryPanel";
 import { ChangesPanelProvider } from "../../src/renderer/changes-panel/changes-panel-context";
@@ -18,7 +19,7 @@ const historyEntry = {
 	refs: ["main"],
 };
 
-const installApi = () => {
+const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	const getHistory = vi.fn(async () => ({
 		ok: true as const,
 		data: {
@@ -78,6 +79,7 @@ const installApi = () => {
 			getHistory,
 			getCommitFiles,
 			getDiff,
+			...overrides,
 		},
 	} as PiDesktopApi;
 
@@ -133,6 +135,69 @@ describe("GitHistoryPanel", () => {
 				kind: "commit",
 				commitRef: historyEntry.sha,
 			});
+		});
+	});
+
+	it("ignores stale commit-file responses when selection changes quickly", async () => {
+		const secondEntry = {
+			...historyEntry,
+			sha: "b".repeat(40),
+			shortSha: "bbbbbbb",
+			subject: "Second commit",
+		};
+		let resolveFirst: ((value: { ok: true; data: GitCommitFilesResult }) => void) | undefined;
+		const getCommitFiles = vi.fn(({ commitRef }: { commitRef: string }) => {
+			if (commitRef === historyEntry.sha) {
+				return new Promise((resolve) => {
+					resolveFirst = resolve;
+				});
+			}
+			return Promise.resolve({
+				ok: true as const,
+				data: { commitRef, files: [{ path: "second.txt", status: "added" as const }] },
+			});
+		});
+		installApi({
+			getHistory: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [secondEntry, historyEntry],
+					incomingCount: 0,
+					outgoingCount: 0,
+				},
+			})),
+			getCommitFiles,
+		});
+
+		render(
+			<ChangesPanelProvider projectId={projectId} isActive>
+				<GitHistoryPanel />
+			</ChangesPanelProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Initial commit")).toBeTruthy();
+			expect(screen.getByText("Second commit")).toBeTruthy();
+		});
+
+		fireEvent.click(screen.getByText("Initial commit"));
+		fireEvent.click(screen.getByText("Second commit"));
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /second\.txt/ })).toBeTruthy();
+		});
+
+		resolveFirst?.({
+			ok: true,
+			data: { commitRef: historyEntry.sha, files: [{ path: "README.md", status: "modified" }] },
+		});
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("button", { name: /README\.md/ })).toBeNull();
+			expect(screen.getByRole("button", { name: /second\.txt/ })).toBeTruthy();
 		});
 	});
 });

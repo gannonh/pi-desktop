@@ -1,7 +1,7 @@
 import type { GitFileStatus } from "../../shared/source-control/types";
 import type { GitCommitFilesResult, GitHistoryEntry, GitHistoryResult } from "../../shared/source-control/types";
 import { gitExecFileAsync } from "./runner";
-import { assertSafeGitRevision } from "./status";
+import { assertSafeGitRevision, getUpstreamStatus } from "./status";
 
 const DEFAULT_HISTORY_LIMIT = 50;
 const FIELD_SEPARATOR = "\x1f";
@@ -44,11 +44,6 @@ const parseHistoryLine = (line: string): GitHistoryEntry | null => {
 		authorDate,
 		refs: parseDecorations(decorations ?? ""),
 	};
-};
-
-const parseCount = (stdout: string): number => {
-	const value = Number.parseInt(stdout.trim(), 10);
-	return Number.isFinite(value) && value >= 0 ? value : 0;
 };
 
 const parseNameStatusToken = (token: string): GitFileStatus => {
@@ -110,24 +105,18 @@ export const getHistory = async (worktreePath: string, input: GetHistoryInput = 
 		.map(parseHistoryLine)
 		.filter((entry): entry is GitHistoryEntry => entry !== null);
 
-	const { stdout: upstreamStdout } = await gitExecFileAsync(
-		["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
-		{ cwd: worktreePath },
-	).catch(() => ({ stdout: "" }));
-
-	const upstreamName = upstreamStdout.trim() || undefined;
-	if (!upstreamName) {
+	const upstreamStatus = await getUpstreamStatus(worktreePath);
+	if (!upstreamStatus.hasUpstream || !upstreamStatus.upstreamName) {
 		return { entries, incomingCount: 0, outgoingCount: 0 };
 	}
 
-	const [{ stdout: incomingStdout }, { stdout: outgoingStdout }, { stdout: outgoingShasStdout }] = await Promise.all([
-		gitExecFileAsync(["rev-list", "--count", `HEAD..${upstreamName}`], { cwd: worktreePath }),
-		gitExecFileAsync(["rev-list", "--count", `${upstreamName}..HEAD`], { cwd: worktreePath }),
-		gitExecFileAsync(["rev-list", `${upstreamName}..HEAD`], { cwd: worktreePath }),
-	]);
-
-	const incomingCount = parseCount(incomingStdout);
-	const outgoingCount = parseCount(outgoingStdout);
+	const upstreamName = upstreamStatus.upstreamName;
+	const incomingCount = upstreamStatus.behind;
+	const outgoingCount = upstreamStatus.ahead;
+	const { stdout: outgoingShasStdout } =
+		outgoingCount > 0
+			? await gitExecFileAsync(["rev-list", `${upstreamName}..HEAD`], { cwd: worktreePath })
+			: { stdout: "" };
 	const outgoingShas = new Set(
 		outgoingShasStdout
 			.split(/\r?\n/)

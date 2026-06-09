@@ -71,6 +71,27 @@ describe("git history operations", () => {
 		}
 	});
 
+	it("uses same-name origin upstream when tracking is not configured", async () => {
+		const repo = await createRepo();
+		const remoteDir = await mkdtemp(join(tmpdir(), "pi-git-history-remote-"));
+		try {
+			await runGit(["init", "--bare"], remoteDir);
+			await runGit(["remote", "add", "origin", remoteDir], repo);
+			await runGit(["push", "origin", "main"], repo);
+			await writeFile(join(repo, "README.md"), "# local only\n", "utf8");
+			await stageFile(repo, "README.md");
+			await commitStagedChanges(repo, "Local only");
+
+			const history = await getHistory(repo);
+
+			expect(history.upstreamName).toBe("origin/main");
+			expect(history.outgoingCount).toBe(1);
+			expect(history.entries[0]?.isOutgoing).toBe(true);
+		} finally {
+			await rm(remoteDir, { recursive: true, force: true });
+		}
+	});
+
 	it("returns changed files for a commit", async () => {
 		const repo = await createRepo();
 		await mkdir(join(repo, "src"), { recursive: true });
