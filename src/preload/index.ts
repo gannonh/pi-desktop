@@ -18,7 +18,9 @@ import {
 	SourceControlCheckIgnoredResultSchema,
 	SourceControlCommitResultSchema,
 	SourceControlBranchCompareResultSchema,
+	SourceControlGetCommitFilesResultSchema,
 	SourceControlGetDiffResultSchema,
+	SourceControlGetHistoryResultSchema,
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPullRequestInfoResultSchema,
@@ -160,6 +162,10 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.sourceControlRebaseFromBase, SourceControlMutationResultSchema, input),
 		getBranchCompare: async (input) =>
 			safeInvokeParse(IpcChannels.sourceControlGetBranchCompare, SourceControlBranchCompareResultSchema, input),
+		getHistory: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetHistory, SourceControlGetHistoryResultSchema, input),
+		getCommitFiles: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlGetCommitFiles, SourceControlGetCommitFilesResultSchema, input),
 		abortConflict: async (input) =>
 			safeInvokeParse(IpcChannels.sourceControlAbortConflict, SourceControlMutationResultSchema, input),
 		createPullRequest: async (input) =>

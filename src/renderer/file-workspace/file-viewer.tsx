@@ -1,6 +1,7 @@
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { MenuAnchor, MenuItem, MenuSurface } from "../components/menu";
+import { DiffViewer } from "./diff-viewer";
 import { FileEditor } from "./file-editor";
 import { useFileWorkspace } from "./file-workspace-context";
 import { isMarkdownRelativePath } from "./file-workspace-paths";
@@ -76,24 +77,7 @@ export function FileViewer() {
 	}
 
 	if (activeTab.kind === "diff") {
-		return (
-			<section className="file-viewer file-viewer--diff" data-testid="file-viewer">
-				<header className="file-viewer__header">
-					<div className="file-viewer__breadcrumbs" data-testid="file-viewer-breadcrumbs">
-						{activeTab.title}
-					</div>
-				</header>
-				{activeTab.diff.kind === "text" ? (
-					<pre className="file-viewer__diff" data-testid="file-diff-viewer">
-						{activeTab.diff.patch}
-					</pre>
-				) : (
-					<div className="file-viewer__diff-empty" data-testid="file-diff-state">
-						<p>{activeTab.diff.message}</p>
-					</div>
-				)}
-			</section>
-		);
+		return <DiffViewer tab={activeTab} />;
 	}
 
 	return (

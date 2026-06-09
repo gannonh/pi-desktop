@@ -918,7 +918,7 @@ export const publishBranch = async (worktreePath: string): Promise<void> => {
 	});
 };
 
-const assertSafeGitRevision = async (worktreePath: string, ref: string): Promise<void> => {
+export const assertSafeGitRevision = async (worktreePath: string, ref: string): Promise<void> => {
 	if (ref.startsWith("-")) {
 		throw new Error("Git revision must not start with '-'.");
 	}

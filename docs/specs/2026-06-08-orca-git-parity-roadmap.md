@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented on the current branch.**
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.**
 
 ## Context
 
@@ -107,35 +107,31 @@ Tracking: [#150](https://github.com/gannonh/pi-desktop/issues/150)
 
 Move from basic change inspection to review-grade Git navigation. This wave should help users understand both local changes and committed history without leaving Pi Desktop.
 
-#### 3.1 Git History Panel
+#### 3.1 Git History Panel — ✅ Implemented
 
 Tracking: [#151](https://github.com/gannonh/pi-desktop/issues/151)
 
-**Gap:** Pi Desktop has branch compare but no Orca-style Git history graph.
-
-**Goal:** Add a compact history panel for commits, refs, incoming/outgoing markers, and commit diff opening.
+**Shipped:** `src/main/git/history.ts` adds `getHistory` and `getCommitFiles`. `GitHistoryPanel` in the Changes panel lists recent commits with refs, incoming/outgoing boundaries, changed-file drill-down, and commit diff opening via the shared file-workspace tab model.
 
 **Acceptance Criteria**
 
-- History shows recent commits with author, date, short SHA, subject, and refs.
-- Incoming and outgoing boundaries are represented when upstream data exists.
-- Selecting a commit opens a read-only commit diff in the file workspace.
-- Refresh, loading, and error states are visible.
+- ✅ History shows recent commits with author, date, short SHA, subject, and refs.
+- ✅ Incoming and outgoing boundaries are represented when upstream data exists.
+- ✅ Selecting a commit opens a read-only commit diff in the file workspace.
+- ✅ Refresh, loading, and error states are visible.
 
-#### 3.2 Diff Review UX
+#### 3.2 Diff Review UX — ✅ Implemented
 
 Tracking: [#152](https://github.com/gannonh/pi-desktop/issues/152)
 
-**Gap:** Pi Desktop renders unified diff text; Orca has richer review affordances around preview/split opening, comments, notes, source links, and commit compare.
-
-**Goal:** Improve diff tabs from readable output to a review workspace.
+**Shipped:** `diff-viewer.tsx` and `diff-tab-label.ts` add structured diff metadata, empty/binary/unsupported states, and consistent tab labels for working-tree, branch-compare, and commit diffs.
 
 **Acceptance Criteria**
 
-- Diff tabs preserve file context, diff kind, and compare refs in the title and metadata.
-- Large, binary, unsupported, and empty diffs have clear states.
-- Commit and branch diff opening use the same tab model.
-- Optional source links or comment affordances are scoped in a follow-up design before implementation.
+- ✅ Diff tabs preserve file context, diff kind, and compare refs in the title and metadata.
+- ✅ Large, binary, unsupported, and empty diffs have clear states.
+- ✅ Commit and branch diff opening use the same tab model.
+- ✅ Optional source links or comment affordances are scoped in a follow-up design before implementation.
 
 ### Wave 4: AI Generation and Commit Failure Recovery
 

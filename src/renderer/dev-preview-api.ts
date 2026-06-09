@@ -778,6 +778,8 @@ export const installDevPreviewApi = () => {
 			publish: async () => sourceControlUnavailable(),
 			rebaseFromBase: async () => sourceControlUnavailable(),
 			getBranchCompare: async () => sourceControlUnavailable(),
+			getHistory: async () => sourceControlUnavailable(),
+			getCommitFiles: async () => sourceControlUnavailable(),
 			abortConflict: async () => sourceControlUnavailable(),
 			createPullRequest: async () => sourceControlUnavailable(),
 			getPullRequestInfo: async () => sourceControlUnavailable(),

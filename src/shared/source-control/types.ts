@@ -84,3 +84,36 @@ export type SourceControlPullRequestInfo = {
 	url: string;
 	state: "open" | "closed" | "merged" | "unknown";
 };
+
+export type GitHistoryEntry = {
+	sha: string;
+	shortSha: string;
+	subject: string;
+	author: string;
+	authorDate: string;
+	refs: string[];
+	isOutgoing?: boolean;
+};
+
+export type GitHistoryResult = {
+	entries: GitHistoryEntry[];
+	incomingCount: number;
+	outgoingCount: number;
+	upstreamName?: string;
+};
+
+export type GitCommitFile = {
+	path: string;
+	status: GitFileStatus;
+	oldPath?: string;
+};
+
+export type GitCommitFilesResult = {
+	commitRef: string;
+	files: GitCommitFile[];
+};
+
+export type GitDiffContext = {
+	compareRefs?: { base: string; head: string };
+	commitRef?: string;
+};

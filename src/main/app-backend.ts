@@ -31,6 +31,8 @@ import {
 	ProjectRenameInputSchema,
 	SourceControlAbortConflictInputSchema,
 	SourceControlBranchCompareInputSchema,
+	SourceControlGetCommitFilesInputSchema,
+	SourceControlGetHistoryInputSchema,
 	SourceControlBulkDiscardInputSchema,
 	SourceControlBulkPathsInputSchema,
 	SourceControlCommitInputSchema,
@@ -630,6 +632,16 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handleSourceControlOperation(async () => {
 						const parsed = SourceControlBranchCompareInputSchema.parse(request.input);
 						return sourceControlService.getBranchCompare(parsed);
+					});
+				case "sourceControl.getHistory":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlGetHistoryInputSchema.parse(request.input);
+						return sourceControlService.getHistory(parsed);
+					});
+				case "sourceControl.getCommitFiles":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlGetCommitFilesInputSchema.parse(request.input);
+						return sourceControlService.getCommitFiles(parsed);
 					});
 				case "sourceControl.abortConflict":
 					return handleSourceControlOperation(async () => {

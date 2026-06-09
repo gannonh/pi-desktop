@@ -125,6 +125,8 @@ describe("IPC contracts", () => {
 			sourceControlPublish: "source-control:publish",
 			sourceControlRebaseFromBase: "source-control:rebaseFromBase",
 			sourceControlGetBranchCompare: "source-control:getBranchCompare",
+			sourceControlGetHistory: "source-control:getHistory",
+			sourceControlGetCommitFiles: "source-control:getCommitFiles",
 			sourceControlAbortConflict: "source-control:abortConflict",
 			sourceControlCreatePullRequest: "source-control:createPullRequest",
 			sourceControlGetPullRequestInfo: "source-control:getPullRequestInfo",
