@@ -203,6 +203,9 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	);
 	ipcMain.handle(IpcChannels.sourceControlFetch, (_event, input) => invokeBackend("sourceControl.fetch", input));
 	ipcMain.handle(IpcChannels.sourceControlPush, (_event, input) => invokeBackend("sourceControl.push", input));
+	ipcMain.handle(IpcChannels.sourceControlForcePushWithLease, (_event, input) =>
+		invokeBackend("sourceControl.forcePushWithLease", input),
+	);
 	ipcMain.handle(IpcChannels.sourceControlPull, (_event, input) => invokeBackend("sourceControl.pull", input));
 	ipcMain.handle(IpcChannels.sourceControlSync, (_event, input) => invokeBackend("sourceControl.sync", input));
 	ipcMain.handle(IpcChannels.sourceControlFastForward, (_event, input) =>

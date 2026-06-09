@@ -53,11 +53,15 @@ export const GitStatusEntrySchema = z.strictObject({
 	removed: z.number().int().nonnegative().optional(),
 });
 
+export const GitUpstreamRelationSchema = z.enum(["none", "up_to_date", "ahead", "behind", "diverged"]);
+
 export const GitUpstreamStatusSchema = z.strictObject({
 	hasUpstream: z.boolean(),
 	upstreamName: z.string().optional(),
 	ahead: z.number().int().nonnegative(),
 	behind: z.number().int().nonnegative(),
+	relation: GitUpstreamRelationSchema.optional(),
+	isConfigured: z.boolean().optional(),
 });
 
 export const GitStatusPayloadSchema = z.strictObject({

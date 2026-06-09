@@ -110,6 +110,7 @@ export interface PiDesktopApi {
 		getUpstreamStatus: (input: SourceControlProjectInput) => Promise<SourceControlUpstreamStatusResult>;
 		fetch: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
 		push: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
+		forcePushWithLease: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
 		pull: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
 		sync: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;
 		fastForward: (input: SourceControlRemoteActionInput) => Promise<SourceControlMutationResult>;

@@ -20,11 +20,15 @@ export type GitStatusEntry = {
 	removed?: number;
 };
 
+export type GitUpstreamRelation = "none" | "up_to_date" | "ahead" | "behind" | "diverged";
+
 export type GitUpstreamStatus = {
 	hasUpstream: boolean;
 	upstreamName?: string;
 	ahead: number;
 	behind: number;
+	relation?: GitUpstreamRelation;
+	isConfigured?: boolean;
 };
 
 export type GitStatusResult = {

@@ -180,6 +180,10 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		input: SourceControlRemoteActionInputSchema,
 	}),
 	z.strictObject({
+		operation: z.literal("sourceControl.forcePushWithLease"),
+		input: SourceControlRemoteActionInputSchema,
+	}),
+	z.strictObject({
 		operation: z.literal("sourceControl.pull"),
 		input: SourceControlRemoteActionInputSchema,
 	}),
@@ -273,6 +277,7 @@ export const AppRpcResponseSchemas = {
 	"sourceControl.getUpstreamStatus": SourceControlUpstreamStatusResultSchema,
 	"sourceControl.fetch": SourceControlMutationResultSchema,
 	"sourceControl.push": SourceControlMutationResultSchema,
+	"sourceControl.forcePushWithLease": SourceControlMutationResultSchema,
 	"sourceControl.pull": SourceControlMutationResultSchema,
 	"sourceControl.sync": SourceControlMutationResultSchema,
 	"sourceControl.fastForward": SourceControlMutationResultSchema,

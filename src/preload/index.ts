@@ -148,6 +148,8 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.sourceControlGetUpstreamStatus, SourceControlUpstreamStatusResultSchema, input),
 		fetch: async (input) => safeInvokeParse(IpcChannels.sourceControlFetch, SourceControlMutationResultSchema, input),
 		push: async (input) => safeInvokeParse(IpcChannels.sourceControlPush, SourceControlMutationResultSchema, input),
+		forcePushWithLease: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlForcePushWithLease, SourceControlMutationResultSchema, input),
 		pull: async (input) => safeInvokeParse(IpcChannels.sourceControlPull, SourceControlMutationResultSchema, input),
 		sync: async (input) => safeInvokeParse(IpcChannels.sourceControlSync, SourceControlMutationResultSchema, input),
 		fastForward: async (input) =>

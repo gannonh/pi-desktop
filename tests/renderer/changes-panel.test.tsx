@@ -78,6 +78,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			getUpstreamStatus: vi.fn(async () => ({ ok: true as const, data: { hasUpstream: false, ahead: 0, behind: 0 } })),
 			fetch: vi.fn(async () => ({ ok: true as const, data: {} })),
 			push: vi.fn(async () => ({ ok: true as const, data: {} })),
+			forcePushWithLease: vi.fn(async () => ({ ok: true as const, data: {} })),
 			pull: vi.fn(async () => ({ ok: true as const, data: {} })),
 			sync: vi.fn(async () => ({ ok: true as const, data: {} })),
 			fastForward: vi.fn(async () => ({ ok: true as const, data: {} })),
@@ -570,8 +571,10 @@ describe("ChangesPanel", () => {
 
 	it("rebases against the configured upstream instead of unsafe sync for a clean diverged branch", async () => {
 		const rebaseFromBase = vi.fn(async () => ({ ok: true as const, data: {} }));
+		const forcePushWithLease = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({
 			rebaseFromBase,
+			forcePushWithLease,
 			getStatus: vi.fn(async () => ({
 				ok: true as const,
 				data: {
@@ -597,8 +600,14 @@ describe("ChangesPanel", () => {
 
 		const menu = screen.getByRole("menu");
 		expect(within(menu).getByRole("button", { name: "Rebase from Upstream" })).toBeTruthy();
+		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Force Push with Lease" }).disabled).toBe(false);
 		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
 		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
+		fireEvent.click(within(menu).getByRole("button", { name: "Force Push with Lease" }));
+
+		await waitFor(() => {
+			expect(forcePushWithLease).toHaveBeenCalledWith({ projectId: project.id });
+		});
 	});
 
 	it("disables publish until upstream status is loaded", async () => {
@@ -740,18 +749,24 @@ describe("ChangesPanel", () => {
 		});
 	});
 
-	it("shows conflict operation badges and aborts merge operations", async () => {
+	it("shows conflict operation metadata and aborts merge operations", async () => {
 		const abortConflict = vi.fn(async () => ({ ok: true as const, data: {} }));
 		installApi({
 			getStatus: vi.fn(async () => ({
 				ok: true as const,
-				data: { entries: [], conflictOperation: "merge", branch: "refs/heads/main" } satisfies GitStatusPayload,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "unstaged", conflictKind: "both_modified" }],
+					conflictOperation: "merge",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
 			})),
 			abortConflict,
 		});
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("Merge in progress");
+		expect(screen.getByText("Both modified")).toBeTruthy();
+		expect(screen.getByText("Resolve before staging")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Abort merge" }));
 
 		await waitFor(() => {

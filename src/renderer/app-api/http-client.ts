@@ -231,6 +231,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			getUpstreamStatus: (input) => callRpc("sourceControl.getUpstreamStatus", input),
 			fetch: (input) => callRpc("sourceControl.fetch", input),
 			push: (input) => callRpc("sourceControl.push", input),
+			forcePushWithLease: (input) => callRpc("sourceControl.forcePushWithLease", input),
 			pull: (input) => callRpc("sourceControl.pull", input),
 			sync: (input) => callRpc("sourceControl.sync", input),
 			fastForward: (input) => callRpc("sourceControl.fastForward", input),

@@ -590,6 +590,12 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						await sourceControlService.push(parsed);
 						return {};
 					});
+				case "sourceControl.forcePushWithLease":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);
+						await sourceControlService.forcePushWithLease(parsed);
+						return {};
+					});
 				case "sourceControl.pull":
 					return handleSourceControlOperation(async () => {
 						const parsed = SourceControlRemoteActionInputSchema.parse(request.input);

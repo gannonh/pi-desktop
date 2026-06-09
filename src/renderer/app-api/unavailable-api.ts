@@ -50,6 +50,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			getUpstreamStatus: unavailable,
 			fetch: unavailable,
 			push: unavailable,
+			forcePushWithLease: unavailable,
 			pull: unavailable,
 			sync: unavailable,
 			fastForward: unavailable,

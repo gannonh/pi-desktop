@@ -32,6 +32,7 @@ describe("resolveSourceControlActions", () => {
 			"fetch",
 			"pull",
 			"push",
+			"forcePushWithLease",
 			"sync",
 			"publish",
 			"fastForward",
@@ -116,6 +117,7 @@ describe("resolveSourceControlActions", () => {
 		expect(diverged.primary.label).toBe("Rebase from Upstream");
 		expect(diverged.dropdown.find((action) => action.id === "rebaseFromBase")?.label).toBe("Rebase from Upstream");
 		expect(diverged.byId.sync.disabledReason).toBe("Branch has diverged. Rebase or merge before syncing.");
+		expect(diverged.byId.forcePushWithLease.disabledReason).toBeUndefined();
 		expect(
 			resolve({
 				status: {
@@ -172,6 +174,7 @@ describe("resolveSourceControlActions", () => {
 		expect(actions.byId.commit.disabledReason).toBe("Select a project.");
 		expect(actions.byId.stageAll.disabledReason).toBe("Select a project.");
 		expect(actions.byId.pull.disabledReason).toBe("Select a project.");
+		expect(actions.byId.forcePushWithLease.disabledReason).toBe("Select a project.");
 		expect(actions.byId.publish.disabledReason).toBe("Select a project.");
 		expect(actions.byId.createPullRequest.disabledReason).toBe("Select a project.");
 	});

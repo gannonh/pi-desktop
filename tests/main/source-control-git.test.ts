@@ -13,6 +13,7 @@ import {
 	commitStagedChanges,
 	discardChanges,
 	fetchRemote,
+	forcePushWithLeaseRemote,
 	getBranchCompare,
 	getDiff,
 	getStatus,
@@ -64,7 +65,7 @@ describe("source control git operations", () => {
 
 	it("returns staged, unstaged, and untracked entries from getStatus", async () => {
 		const repo = await createRepo();
-		await writeFile(join(repo, "README.md"), "# changed\n", "utf8");
+		await writeFile(join(repo, "README.md"), "# changed\nsecond line\n", "utf8");
 		await writeFile(join(repo, "new.txt"), "new\n", "utf8");
 		await runGit(["add", "README.md"], repo);
 
@@ -72,7 +73,7 @@ describe("source control git operations", () => {
 
 		expect(status.entries).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ path: "README.md", area: "staged", status: "modified" }),
+				expect.objectContaining({ path: "README.md", area: "staged", status: "modified", added: 2, removed: 1 }),
 				expect.objectContaining({ path: "new.txt", area: "untracked", status: "untracked" }),
 			]),
 		);
@@ -320,6 +321,28 @@ describe("source control git operations", () => {
 		expect(await runGit(["show", "HEAD:SECOND.md"], repo)).toMatchObject({ stdout: "# second\n" });
 	});
 
+	it("handles literal pathspecs with spaces, glob characters, and non-ASCII paths", async () => {
+		const repo = await createRepo();
+		const paths = ["space name.txt", "glob[chars].txt", "café.txt"];
+		for (const filePath of paths) {
+			await writeFile(join(repo, filePath), `${filePath}\n`, "utf8");
+		}
+
+		await bulkStageFiles(repo, paths);
+		let status = await getStatus(repo);
+		expect(status.entries).toEqual(
+			expect.arrayContaining(paths.map((filePath) => expect.objectContaining({ path: filePath, area: "staged" }))),
+		);
+
+		await bulkUnstageFiles(repo, paths);
+		status = await getStatus(repo);
+		expect(status.entries).toEqual(
+			expect.arrayContaining(
+				paths.map((filePath) => expect.objectContaining({ path: filePath, area: "untracked" })),
+			),
+		);
+	});
+
 	it("rejects paths that escape the repository root", async () => {
 		const repo = await createRepo();
 		await expect(discardChanges(repo, "../../etc/passwd", "unstaged")).rejects.toThrow(/outside the worktree/);
@@ -396,22 +419,48 @@ describe("source control git operations", () => {
 		await runGit(["remote", "add", "origin", remote], repo);
 
 		let upstream = await getUpstreamStatus(repo);
-		expect(upstream.hasUpstream).toBe(false);
+		expect(upstream).toMatchObject({ hasUpstream: false, relation: "none" });
 
 		await publishBranch(repo);
 		upstream = await getUpstreamStatus(repo);
-		expect(upstream).toMatchObject({ hasUpstream: true, ahead: 0, behind: 0 });
+		expect(upstream).toMatchObject({ hasUpstream: true, ahead: 0, behind: 0, relation: "up_to_date" });
 
 		await writeFile(join(repo, "README.md"), "# local ahead\n", "utf8");
 		await stageFile(repo, "README.md");
 		await commitStagedChanges(repo, "Local ahead");
 		upstream = await getUpstreamStatus(repo);
-		expect(upstream.ahead).toBe(1);
+		expect(upstream).toMatchObject({ ahead: 1, relation: "ahead" });
 
 		await pushRemote(repo);
 		upstream = await getUpstreamStatus(repo);
 		expect(upstream.ahead).toBe(0);
 		await fetchRemote(repo);
+	});
+
+	it("uses same-name origin refs as effective upstreams when branch tracking is missing", async () => {
+		const repo = await createRepo();
+		const remote = await createBareRemote();
+		await runGit(["remote", "add", "origin", remote], repo);
+		await publishBranch(repo);
+		await runGit(["branch", "--unset-upstream"], repo);
+
+		let upstream = await getUpstreamStatus(repo);
+		expect(upstream).toMatchObject({
+			hasUpstream: true,
+			upstreamName: "origin/main",
+			isConfigured: false,
+			relation: "up_to_date",
+		});
+
+		await writeFile(join(repo, "same-name.txt"), "same-name\n", "utf8");
+		await stageFile(repo, "same-name.txt");
+		await commitStagedChanges(repo, "Same-name origin push");
+		upstream = await getUpstreamStatus(repo);
+		expect(upstream).toMatchObject({ ahead: 1, relation: "ahead" });
+
+		await pushRemote(repo);
+		upstream = await getUpstreamStatus(repo);
+		expect(upstream).toMatchObject({ ahead: 0, isConfigured: true, relation: "up_to_date" });
 	});
 
 	it("rejects sync on diverged branches before running ff-only pull", async () => {
@@ -435,8 +484,11 @@ describe("source control git operations", () => {
 			await runGit(["push"], peer);
 			await fetchRemote(repo);
 
-			await expect(getUpstreamStatus(repo)).resolves.toMatchObject({ ahead: 1, behind: 1 });
+			await expect(getUpstreamStatus(repo)).resolves.toMatchObject({ ahead: 1, behind: 1, relation: "diverged" });
 			await expect(syncRemote(repo)).rejects.toThrow("Branch has diverged. Rebase or merge before syncing.");
+
+			await forcePushWithLeaseRemote(repo);
+			await expect(getUpstreamStatus(repo)).resolves.toMatchObject({ ahead: 0, behind: 0, relation: "up_to_date" });
 		} finally {
 			await rm(peer, { recursive: true, force: true });
 		}
