@@ -479,6 +479,31 @@ describe("ChangesPanel", () => {
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
+	it("shows explicit rebase instead of unsafe sync for a clean diverged branch", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 1, behind: 1 },
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+
+		expect(screen.getByText("1 ahead, 1 behind")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Rebase from Base" })).toBeTruthy();
+
+		fireEvent.click(screen.getByText("More source control actions"));
+
+		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
+		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
+	});
+
 	it("disables publish until upstream status is loaded", async () => {
 		let resolveStatus: (value: { ok: true; data: GitStatusPayload }) => void = () => {};
 		const getStatus = vi.fn(

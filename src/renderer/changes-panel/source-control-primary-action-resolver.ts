@@ -82,6 +82,8 @@ const action = (id: SourceControlPrimaryActionId, disabledReason?: string): Sour
 	disabledReason,
 });
 
+const DIVERGED_BRANCH_REASON = "Branch has diverged. Rebase or merge before syncing.";
+
 export const resolveSourceControlActions = ({
 	projectId,
 	status,
@@ -94,6 +96,7 @@ export const resolveSourceControlActions = ({
 	const baseReason = firstReason(hasProjectReason(projectId), busyReason(isBusy), statusLoadedReason(status));
 	const blocksMutations = firstReason(baseReason, conflictReason(status));
 	const hasMessage = commitMessage.trim().length > 0;
+	const hasDiverged = Boolean(upstream?.hasUpstream && upstream.ahead > 0 && upstream.behind > 0);
 
 	const byId = {
 		commit: action(
@@ -138,6 +141,7 @@ export const resolveSourceControlActions = ({
 			firstReason(
 				blocksMutations,
 				upstream?.hasUpstream ? undefined : "Set an upstream before syncing.",
+				hasDiverged ? DIVERGED_BRANCH_REASON : undefined,
 				upstream && (upstream.ahead > 0 || upstream.behind > 0) ? undefined : "Branch is up to date.",
 			),
 		),
@@ -177,8 +181,8 @@ export const resolveSourceControlActions = ({
 		primary = byId.commit;
 	} else if (stageable > 0) {
 		primary = byId.stageAll;
-	} else if (upstream?.hasUpstream && upstream.ahead > 0 && upstream.behind > 0) {
-		primary = byId.sync;
+	} else if (hasDiverged) {
+		primary = byId.rebaseFromBase;
 	} else if (upstream?.hasUpstream && upstream.behind > 0) {
 		primary = byId.pull;
 	} else if (upstream?.hasUpstream && upstream.ahead > 0) {

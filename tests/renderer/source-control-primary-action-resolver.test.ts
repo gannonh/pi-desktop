@@ -105,15 +105,15 @@ describe("resolveSourceControlActions", () => {
 		expect(actions.primary.disabledReason).toBeUndefined();
 	});
 
-	it("prioritizes sync, pull, push, publish, then create PR for clean working trees", () => {
-		expect(
-			resolve({
-				status: {
-					...baseStatus,
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
-				},
-			}).primary.id,
-		).toBe("sync");
+	it("prioritizes explicit rebase, pull, push, publish, then create PR for clean working trees", () => {
+		const diverged = resolve({
+			status: {
+				...baseStatus,
+				upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
+			},
+		});
+		expect(diverged.primary.id).toBe("rebaseFromBase");
+		expect(diverged.byId.sync.disabledReason).toBe("Branch has diverged. Rebase or merge before syncing.");
 		expect(
 			resolve({
 				status: {

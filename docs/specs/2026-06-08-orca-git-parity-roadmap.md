@@ -33,6 +33,7 @@ Ship the core day-to-day Source Control UX first. This wave should make common l
 - Primary action changes based on staged changes, unstaged changes, message state, upstream state, PR state, and conflicts.
 - Dropdown exposes stable rows for commit variants, remote operations, publish, rebase, fetch, and create PR.
 - Disabled actions show concise reasons and have unit coverage for priority order.
+- Diverged upstream state (`ahead > 0` and `behind > 0`) does not present one-click `Sync`; users are directed to an explicit reconcile action.
 
 #### 1.2 Destructive Confirmation Flow
 
@@ -86,6 +87,7 @@ Stabilize correctness and safety in less-happy Git states. This wave should make
 **Acceptance Criteria**
 
 - Upstream status probes same-name origin refs and handles missing configured upstreams.
+- Diverged branches are classified separately from fast-forwardable sync states.
 - Push can target configured upstreams and publish branches safely.
 - Force-with-lease is available only when the resolver recommends it.
 - Pull, sync, and rebase errors are translated into actionable messages.
@@ -196,3 +198,5 @@ Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should av
 ## Verification Notes
 
 Each roadmap item should include focused unit tests for pure logic, main-process temp-repo tests for Git behavior, renderer tests for visible UI states, and at least one Electron UAT path before sign-off.
+
+Remote-workflow milestones should add deterministic e2e coverage using temporary repositories and local bare remotes. The minimum matrix should cover clean state, unstaged/staged/commit flow, ahead-only `Push`, behind-only fast-forward `Pull`, diverged ahead-and-behind reconcile state, no-upstream `Publish`, destructive discard confirmations, and PR creation with only the `gh` boundary mocked.
