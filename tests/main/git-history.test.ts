@@ -114,4 +114,25 @@ describe("git history operations", () => {
 		expect(files.commitRef).toBe(rootSha);
 		expect(files.files).toEqual([expect.objectContaining({ path: "README.md", status: "added" })]);
 	});
+
+	it("returns empty history for repositories with no commits", async () => {
+		repoDir = await mkdtemp(join(tmpdir(), "pi-git-history-"));
+		await initializeGitRepository(repoDir);
+
+		const history = await getHistory(repoDir);
+
+		expect(history).toEqual({ entries: [], incomingCount: 0, outgoingCount: 0 });
+	});
+
+	it("includes commits with empty subjects", async () => {
+		const repo = await createRepo();
+		await runGit(["commit", "--allow-empty-message", "--allow-empty", "-m", ""], repo);
+
+		const history = await getHistory(repo);
+
+		expect(history.entries[0]).toMatchObject({
+			subject: "",
+			shortSha: expect.stringMatching(/^[a-f0-9]{7,}$/),
+		});
+	});
 });

@@ -1,5 +1,4 @@
-import type { GitDiffKind } from "../../shared/source-control/types";
-import type { GitDiffContext } from "../../shared/source-control/types";
+import type { GitDiffContext, GitDiffKind } from "../../shared/source-control/types";
 
 const DIFF_KIND_LABELS: Record<GitDiffKind, string> = {
 	unstaged: "Unstaged",

@@ -78,6 +78,34 @@ describe("file workspace state", () => {
 		expect(state.activeTabId).toBe("diff:unstaged:src/index.ts");
 	});
 
+	it("keeps savedContent in sync when reopening an existing diff tab", () => {
+		let state = openDiffTab(createInitialFileWorkspaceState(), {
+			relativePath: "src/index.ts",
+			kind: "unstaged",
+			diff: {
+				kind: "text",
+				path: "src/index.ts",
+				title: "src/index.ts (unstaged)",
+				diffKind: "unstaged",
+				patch: "@@\n-old\n",
+			},
+		});
+		state = openDiffTab(state, {
+			relativePath: "src/index.ts",
+			kind: "unstaged",
+			diff: {
+				kind: "text",
+				path: "src/index.ts",
+				title: "src/index.ts (unstaged)",
+				diffKind: "unstaged",
+				patch: "@@\n+new\n",
+			},
+		});
+
+		expect(state.tabs[0]?.buffer).toBe("@@\n+new\n");
+		expect(state.tabs[0]?.savedContent).toBe("@@\n+new\n");
+	});
+
 	it("keeps dirty in-memory edits when a stale file load finishes", () => {
 		let state = openFileTab(createInitialFileWorkspaceState(), "AGENTS.md");
 		state = applyFileLoadResult(state, "AGENTS.md", { kind: "text", content: "saved" });

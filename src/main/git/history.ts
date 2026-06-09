@@ -1,5 +1,9 @@
-import type { GitFileStatus } from "../../shared/source-control/types";
-import type { GitCommitFilesResult, GitHistoryEntry, GitHistoryResult } from "../../shared/source-control/types";
+import type {
+	GitCommitFilesResult,
+	GitFileStatus,
+	GitHistoryEntry,
+	GitHistoryResult,
+} from "../../shared/source-control/types";
 import { gitExecFileAsync } from "./runner";
 import { assertSafeGitRevision, getUpstreamStatus } from "./status";
 
@@ -33,7 +37,7 @@ const parseHistoryLine = (line: string): GitHistoryEntry | null => {
 		return null;
 	}
 	const [sha, shortSha, subject, author, authorDate, decorations] = parts;
-	if (!sha || !shortSha || !subject || !author || !authorDate) {
+	if (!sha || !shortSha || !author || !authorDate) {
 		return null;
 	}
 	return {
@@ -94,6 +98,11 @@ const parseCommitFiles = (stdout: string): GitCommitFilesResult["files"] => {
 
 export const getHistory = async (worktreePath: string, input: GetHistoryInput = {}): Promise<GitHistoryResult> => {
 	const limit = input.limit ?? DEFAULT_HISTORY_LIMIT;
+	try {
+		await gitExecFileAsync(["rev-parse", "--verify", "HEAD"], { cwd: worktreePath });
+	} catch {
+		return { entries: [], incomingCount: 0, outgoingCount: 0 };
+	}
 	const format = ["%H", "%h", "%s", "%an", "%aI", "%d"].join(FIELD_SEPARATOR);
 	const { stdout: logStdout } = await gitExecFileAsync(
 		["-c", "core.quotePath=false", "log", `-n`, String(limit), `--format=${format}`, "HEAD"],

@@ -29,6 +29,7 @@ export function GitHistoryPanel() {
 	const [commitFiles, setCommitFiles] = useState<GitCommitFilesResult | null>(null);
 	const [commitFilesLoading, setCommitFilesLoading] = useState(false);
 	const [commitFilesError, setCommitFilesError] = useState<string | null>(null);
+	const [diffError, setDiffError] = useState<string | null>(null);
 	const selectedCommitShaRef = useRef<string | null>(null);
 
 	const refresh = useCallback(async () => {
@@ -59,6 +60,7 @@ export function GitHistoryPanel() {
 		setSelectedCommit(entry);
 		setCommitFiles(null);
 		setCommitFilesError(null);
+		setDiffError(null);
 		setCommitFilesLoading(true);
 		const result = await window.piDesktop.sourceControl.getCommitFiles({
 			projectId,
@@ -86,9 +88,10 @@ export function GitHistoryPanel() {
 			commitRef,
 		});
 		if (!result.ok) {
-			setCommitFilesError(result.error.message);
+			setDiffError(result.error.message);
 			return;
 		}
+		setDiffError(null);
 		fileWorkspace?.openDiff({
 			relativePath,
 			kind: "commit",
@@ -168,6 +171,11 @@ export function GitHistoryPanel() {
 					</p>
 					{commitFilesLoading ? <p className="changes-panel__history-status">Loading changed files…</p> : null}
 					{commitFilesError ? <p className="changes-panel__error">{commitFilesError}</p> : null}
+					{diffError ? (
+						<p className="changes-panel__error" data-testid="history-diff-error">
+							{diffError}
+						</p>
+					) : null}
 					{commitFiles?.files.map((file) => (
 						<button
 							key={`${file.status}:${file.path}`}

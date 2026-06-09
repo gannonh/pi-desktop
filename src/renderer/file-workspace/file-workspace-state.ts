@@ -139,6 +139,7 @@ export const openDiffTab = (
 							diff: input.diff,
 							diffContext: input.diffContext,
 							buffer: diffBufferForPayload(input.diff),
+							savedContent: diffBufferForPayload(input.diff),
 						}
 					: tab,
 			),

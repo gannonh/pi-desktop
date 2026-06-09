@@ -200,4 +200,35 @@ describe("GitHistoryPanel", () => {
 			expect(screen.getByRole("button", { name: /second\.txt/ })).toBeTruthy();
 		});
 	});
+
+	it("shows diff-open failures separately from commit-file load errors", async () => {
+		installApi({
+			getDiff: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "git_error", message: "Failed to load diff" },
+			})),
+		});
+
+		render(
+			<ChangesPanelProvider projectId={projectId} isActive>
+				<GitHistoryPanel />
+			</ChangesPanelProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Initial commit")).toBeTruthy();
+		});
+
+		fireEvent.click(screen.getByText("Initial commit"));
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /README\.md/ })).toBeTruthy();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /README\.md/ }));
+
+		await waitFor(() => {
+			expect(screen.getByTestId("history-diff-error").textContent).toContain("Failed to load diff");
+		});
+	});
 });
