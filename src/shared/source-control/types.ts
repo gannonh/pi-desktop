@@ -27,8 +27,8 @@ export type GitUpstreamStatus = {
 	upstreamName?: string;
 	ahead: number;
 	behind: number;
-	relation?: GitUpstreamRelation;
-	isConfigured?: boolean;
+	relation: GitUpstreamRelation;
+	isConfigured: boolean;
 };
 
 export type GitStatusResult = {

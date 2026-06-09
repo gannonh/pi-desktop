@@ -840,13 +840,16 @@ const remoteBranchFromUpstreamName = (upstreamName: string | undefined): { remot
 	return { remote: parts[0], branch: parts.slice(1).join("/") };
 };
 
-const pushToUpstream = async (worktreePath: string, options: { forceWithLease: boolean }): Promise<void> => {
-	const upstream = await getUpstreamStatus(worktreePath);
+const pushToUpstream = async (
+	worktreePath: string,
+	options: { forceWithLease: boolean; upstream?: GitUpstreamStatus },
+): Promise<void> => {
+	const upstream = options.upstream ?? (await getUpstreamStatus(worktreePath));
 	if (!upstream.hasUpstream) {
 		throw new Error("No upstream branch is configured for the current branch.");
 	}
 	const forceArgs = options.forceWithLease ? ["--force-with-lease"] : [];
-	if (upstream.isConfigured !== false) {
+	if (upstream.isConfigured) {
 		await gitExecFileAsync(["push", ...forceArgs], { cwd: worktreePath });
 		return;
 	}
@@ -869,7 +872,7 @@ export const forcePushWithLeaseRemote = async (worktreePath: string): Promise<vo
 		if (upstream.relation !== "diverged") {
 			throw new Error("Force push with lease is only available for diverged branches.");
 		}
-		await pushToUpstream(worktreePath, { forceWithLease: true });
+		await pushToUpstream(worktreePath, { forceWithLease: true, upstream });
 	});
 };
 
@@ -879,7 +882,7 @@ export const pullRemote = async (worktreePath: string): Promise<void> => {
 		if (!upstream.hasUpstream) {
 			throw new Error("No upstream branch is configured for the current branch.");
 		}
-		if (upstream.isConfigured !== false) {
+		if (upstream.isConfigured) {
 			await gitExecFileAsync(["pull", "--ff-only"], { cwd: worktreePath });
 			return;
 		}

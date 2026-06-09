@@ -6,6 +6,7 @@ import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
 import type { PiDesktopApi } from "../../src/shared/preload-api";
 import type { GitStatusPayload } from "../../src/shared/source-control/schemas";
+import type { GitUpstreamStatus } from "../../src/shared/source-control/types";
 import { createProjectId } from "../../src/shared/project-state";
 import { FileViewer } from "../../src/renderer/file-workspace/file-viewer";
 import { ShellTestProviders } from "./shell-test-providers";
@@ -27,6 +28,27 @@ const otherProject = {
 	id: createProjectId("/tmp/pi-other-project"),
 	displayName: "pi-other-project",
 	path: "/tmp/pi-other-project",
+};
+
+const testUpstreamStatus = (
+	status: Pick<GitUpstreamStatus, "hasUpstream" | "ahead" | "behind"> & Partial<GitUpstreamStatus>,
+): GitUpstreamStatus => {
+	const relation =
+		status.relation ??
+		(!status.hasUpstream
+			? "none"
+			: status.ahead > 0 && status.behind > 0
+				? "diverged"
+				: status.ahead > 0
+					? "ahead"
+					: status.behind > 0
+						? "behind"
+						: "up_to_date");
+	return {
+		...status,
+		relation,
+		isConfigured: status.isConfigured ?? true,
+	};
 };
 
 const statusPayload: GitStatusPayload = {
@@ -422,7 +444,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/feature",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
 				} satisfies GitStatusPayload,
 			})),
 		});
@@ -446,7 +468,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/feature",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
 				} satisfies GitStatusPayload,
 			})),
 			getPullRequestInfo: vi.fn(async () => ({
@@ -467,7 +489,7 @@ describe("ChangesPanel", () => {
 			entries: [],
 			conflictOperation: "unknown",
 			branch: "refs/heads/feature",
-			upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 0 },
+			upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 0 }),
 		};
 		const getPullRequestInfo = vi
 			.fn()
@@ -493,7 +515,7 @@ describe("ChangesPanel", () => {
 			entries: [],
 			conflictOperation: "unknown",
 			branch: "refs/heads/release",
-			upstreamStatus: { hasUpstream: true, upstreamName: "origin/release", ahead: 0, behind: 0 },
+			upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/release", ahead: 0, behind: 0 }),
 		};
 		fireEvent.click(screen.getByRole("button", { name: "Refresh source control status" }));
 
@@ -514,7 +536,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/main",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 1, behind: 0 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/main", ahead: 1, behind: 0 }),
 				} satisfies GitStatusPayload,
 			})),
 		});
@@ -537,7 +559,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/main",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/main", ahead: 0, behind: 0 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/main", ahead: 0, behind: 0 }),
 				} satisfies GitStatusPayload,
 			})),
 		});
@@ -584,7 +606,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/feature",
-					upstreamStatus: { hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 1, behind: 1 }),
 				} satisfies GitStatusPayload,
 			})),
 		});
@@ -634,7 +656,7 @@ describe("ChangesPanel", () => {
 					entries: [],
 					conflictOperation: "unknown",
 					branch: "refs/heads/main",
-					upstreamStatus: { hasUpstream: false, ahead: 0, behind: 0 },
+					upstreamStatus: testUpstreamStatus({ hasUpstream: false, ahead: 0, behind: 0, isConfigured: false }),
 				},
 			});
 		});

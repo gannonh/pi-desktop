@@ -60,8 +60,8 @@ export const GitUpstreamStatusSchema = z.strictObject({
 	upstreamName: z.string().optional(),
 	ahead: z.number().int().nonnegative(),
 	behind: z.number().int().nonnegative(),
-	relation: GitUpstreamRelationSchema.optional(),
-	isConfigured: z.boolean().optional(),
+	relation: GitUpstreamRelationSchema,
+	isConfigured: z.boolean(),
 });
 
 export const GitStatusPayloadSchema = z.strictObject({
