@@ -58,7 +58,7 @@ export const isNoPullRequestErrorMessage = (message: string): boolean =>
 	);
 
 export const isGhUnavailableMessage = (message: string): boolean =>
-	/ENOENT|not found|command not found|spawn gh/i.test(message);
+	/ENOENT|(?:^|[^\w])gh(?:\s|$).*command not found|spawn gh/i.test(message);
 
 export const getGhAuthStatus = async (): Promise<SourceControlGhAuthStatus> => {
 	try {
@@ -92,14 +92,14 @@ export const getGhAuthStatus = async (): Promise<SourceControlGhAuthStatus> => {
 
 export const assertGhCommandSucceeded = (error: unknown, context: string): never => {
 	const message = combinedGhOutput(error);
+	if (isNoPullRequestErrorMessage(message)) {
+		throw new PullRequestNotFoundError();
+	}
 	if (isGhUnavailableMessage(message)) {
 		throw new GhUnavailableError();
 	}
 	if (isGhAuthErrorMessage(message)) {
 		throw new GhAuthRequiredError();
-	}
-	if (isNoPullRequestErrorMessage(message)) {
-		throw new PullRequestNotFoundError();
 	}
 	throw new Error(`${context}: ${message.trim() || "GitHub CLI command failed."}`);
 };

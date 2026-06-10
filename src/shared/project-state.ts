@@ -30,7 +30,7 @@ const migrateProjectRecord = (value: unknown): unknown => {
 
 	return {
 		...value,
-		gitSettings: value.gitSettings === undefined ? DEFAULT_PROJECT_GIT_SETTINGS : value.gitSettings,
+		gitSettings: isRecord(value.gitSettings) ? value.gitSettings : DEFAULT_PROJECT_GIT_SETTINGS,
 	};
 };
 

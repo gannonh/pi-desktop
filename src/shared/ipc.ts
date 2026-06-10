@@ -73,8 +73,17 @@ export const ClipboardWriteTextInputSchema = z.strictObject({
 	text: z.string(),
 });
 
+const isHttpOrHttpsUrl = (url: string): boolean => {
+	try {
+		const protocol = new URL(url).protocol;
+		return protocol === "http:" || protocol === "https:";
+	} catch {
+		return false;
+	}
+};
+
 export const OpenExternalInputSchema = z.strictObject({
-	url: z.string().url(),
+	url: z.string().url().refine(isHttpOrHttpsUrl, "External URL must use http or https."),
 });
 
 export const OpenExternalResultSchema = createResultSchema(

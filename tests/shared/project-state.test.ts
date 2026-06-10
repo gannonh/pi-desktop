@@ -382,6 +382,35 @@ describe("project state contracts", () => {
 		expect(parsed.sessionUiByPath).toEqual({});
 	});
 
+	it("migrates projects with missing or null git settings to defaults", () => {
+		const baseProject = {
+			id: "project:/tmp/pi-desktop",
+			displayName: "pi-desktop",
+			path: "/tmp/pi-desktop",
+			createdAt: "2026-05-12T09:00:00.000Z",
+			updatedAt: "2026-05-12T09:00:00.000Z",
+			lastOpenedAt: "2026-05-12T09:00:00.000Z",
+			pinned: false,
+			availability: { status: "available" as const },
+		};
+
+		const withoutGitSettings = ProjectStoreSchema.parse({
+			projects: [baseProject],
+			selectedProjectId: baseProject.id,
+			selectedChatId: null,
+			chatsByProject: {},
+		});
+		expect(withoutGitSettings.projects[0]?.gitSettings).toEqual(DEFAULT_PROJECT_GIT_SETTINGS);
+
+		const withNullGitSettings = ProjectStoreSchema.parse({
+			projects: [{ ...baseProject, gitSettings: null }],
+			selectedProjectId: baseProject.id,
+			selectedChatId: null,
+			chatsByProject: {},
+		});
+		expect(withNullGitSettings.projects[0]?.gitSettings).toEqual(DEFAULT_PROJECT_GIT_SETTINGS);
+	});
+
 	it("migrates legacy project chat records with draft Pi session defaults", () => {
 		const parsed = ProjectStoreSchema.parse({
 			projects: [

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	AppVersionResultSchema,
 	ChatBranchInputSchema,
+	OpenExternalInputSchema,
 	ChatCloneInputSchema,
 	ChatCreateInputSchema,
 	ChatForkInputSchema,
@@ -139,6 +140,20 @@ describe("IPC contracts", () => {
 			sourceControlGetGhAuthStatus: "source-control:getGhAuthStatus",
 			clipboardWriteText: "clipboard:writeText",
 		});
+	});
+
+	it("accepts http and https URLs for openExternal", () => {
+		expect(OpenExternalInputSchema.parse({ url: "https://github.com/org/repo/pull/1" })).toEqual({
+			url: "https://github.com/org/repo/pull/1",
+		});
+		expect(OpenExternalInputSchema.parse({ url: "http://localhost:5173/" })).toEqual({
+			url: "http://localhost:5173/",
+		});
+	});
+
+	it("rejects non-http(s) URLs for openExternal", () => {
+		expect(OpenExternalInputSchema.safeParse({ url: "file:///etc/passwd" }).success).toBe(false);
+		expect(OpenExternalInputSchema.safeParse({ url: "javascript:alert(1)" }).success).toBe(false);
 	});
 
 	it("validates successful app version results", () => {
