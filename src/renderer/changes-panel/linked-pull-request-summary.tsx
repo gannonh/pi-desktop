@@ -10,11 +10,7 @@ type LinkedPullRequestSummaryProps = {
 	onCopyLink: () => void;
 };
 
-export function LinkedPullRequestSummary({
-	pullRequest,
-	onOpenInBrowser,
-	onCopyLink,
-}: LinkedPullRequestSummaryProps) {
+export function LinkedPullRequestSummary({ pullRequest, onOpenInBrowser, onCopyLink }: LinkedPullRequestSummaryProps) {
 	const stateDisplay = getPullRequestStateDisplay(pullRequest.state);
 
 	return (
@@ -22,9 +18,7 @@ export function LinkedPullRequestSummary({
 			<div className="changes-panel__linked-pr-heading">
 				<Badge variant={stateDisplay.variant}>{stateDisplay.label}</Badge>
 				<span className="changes-panel__linked-pr-title">{pullRequest.title}</span>
-				{pullRequest.number ? (
-					<span className="changes-panel__linked-pr-number">#{pullRequest.number}</span>
-				) : null}
+				{pullRequest.number ? <span className="changes-panel__linked-pr-number">#{pullRequest.number}</span> : null}
 			</div>
 			<div className="changes-panel__linked-pr-actions">
 				<Button type="button" variant="secondary" size="sm" onClick={onOpenInBrowser}>

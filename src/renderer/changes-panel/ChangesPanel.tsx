@@ -709,11 +709,7 @@ function BranchCompareArea() {
 	);
 }
 
-function PullRequestArea({
-	focusRequestCount,
-}: {
-	focusRequestCount: number;
-}) {
+function PullRequestArea({ focusRequestCount }: { focusRequestCount: number }) {
 	const { projectId, status, defaultBaseRef, pullRequest, ghAuthStatus, pullRequestLookupError, setPullRequest } =
 		useChangesPanel();
 	const [title, setTitle] = useState("");
@@ -1208,7 +1204,10 @@ function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
 							disabled={!project || isRefreshing}
 							onClick={() => void refresh()}
 						>
-							<RefreshCw className={isRefreshing ? "changes-panel__refresh-icon--spinning" : undefined} aria-hidden />
+							<RefreshCw
+								className={isRefreshing ? "changes-panel__refresh-icon--spinning" : undefined}
+								aria-hidden
+							/>
 						</Button>
 					</div>
 				</header>
@@ -1231,11 +1230,7 @@ export function ChangesPanel({ project, isActive, onProjectState }: ChangesPanel
 	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
 
 	return (
-		<ChangesPanelProvider
-			projectId={project?.id ?? null}
-			defaultBaseRef={defaultBaseRef}
-			isActive={isActive}
-		>
+		<ChangesPanelProvider projectId={project?.id ?? null} defaultBaseRef={defaultBaseRef} isActive={isActive}>
 			<ChangesPanelChrome project={project} isActive={isActive} onProjectState={onProjectState} />
 		</ChangesPanelProvider>
 	);

@@ -25,7 +25,9 @@ describe("gh auth helpers", () => {
 
 	it("parses authenticated gh auth status output", () => {
 		expect(
-			parseGhAuthStatus("github.com\n  ✓ Logged in to github.com account gannonh (keyring)\n  - Active account: true"),
+			parseGhAuthStatus(
+				"github.com\n  ✓ Logged in to github.com account gannonh (keyring)\n  - Active account: true",
+			),
 		).toEqual({ authenticated: true, account: "gannonh" });
 	});
 
@@ -88,14 +90,14 @@ describe("gh auth helpers", () => {
 		expect(() => assertGhCommandSucceeded({ stderr: "spawn gh ENOENT" }, "Create pull request failed")).toThrow(
 			GhUnavailableError,
 		);
-		expect(() => assertGhCommandSucceeded({ stderr: "not logged in to github.com" }, "Create pull request failed")).toThrow(
-			GhAuthRequiredError,
-		);
+		expect(() =>
+			assertGhCommandSucceeded({ stderr: "not logged in to github.com" }, "Create pull request failed"),
+		).toThrow(GhAuthRequiredError);
 		expect(() =>
 			assertGhCommandSucceeded({ stderr: "no pull requests found for branch" }, "Load pull request failed"),
 		).toThrow(PullRequestNotFoundError);
-		expect(() =>
-			assertGhCommandSucceeded({ stderr: "HTTP 404: Not Found" }, "Load pull request failed"),
-		).toThrow("Load pull request failed: HTTP 404: Not Found");
+		expect(() => assertGhCommandSucceeded({ stderr: "HTTP 404: Not Found" }, "Load pull request failed")).toThrow(
+			"Load pull request failed: HTTP 404: Not Found",
+		);
 	});
 });

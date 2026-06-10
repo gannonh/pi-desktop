@@ -5,9 +5,7 @@ export type PullRequestStateDisplay = {
 	variant: "default" | "secondary" | "destructive" | "outline";
 };
 
-export const getPullRequestStateDisplay = (
-	state: SourceControlPullRequestInfo["state"],
-): PullRequestStateDisplay => {
+export const getPullRequestStateDisplay = (state: SourceControlPullRequestInfo["state"]): PullRequestStateDisplay => {
 	switch (state) {
 		case "open":
 			return { label: "Open", variant: "default" };

@@ -15,7 +15,13 @@ interface RightPanelBodyProps {
 	onProjectState?: (result: ProjectStateViewResult) => void;
 }
 
-export function RightPanelBody({ tab, filesActive, selectedProject, changesActive, onProjectState }: RightPanelBodyProps) {
+export function RightPanelBody({
+	tab,
+	filesActive,
+	selectedProject,
+	changesActive,
+	onProjectState,
+}: RightPanelBodyProps) {
 	if (filesActive) {
 		return <FileWorkspacePanel project={selectedProject} />;
 	}
@@ -34,9 +40,7 @@ export function RightPanelBody({ tab, filesActive, selectedProject, changesActiv
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
 		case "changes":
-			return (
-				<ChangesPanel project={selectedProject} isActive={changesActive} onProjectState={onProjectState} />
-			);
+			return <ChangesPanel project={selectedProject} isActive={changesActive} onProjectState={onProjectState} />;
 		case "files":
 			return <FileWorkspacePanel project={selectedProject} />;
 	}

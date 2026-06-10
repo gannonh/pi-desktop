@@ -80,11 +80,7 @@ import type {
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
 import { type LoadPiSessionHistoryInput, loadPiSessionHistory } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
-import {
-	GhAuthRequiredError,
-	GhUnavailableError,
-	PullRequestNotFoundError,
-} from "./git/gh-auth";
+import { GhAuthRequiredError, GhUnavailableError, PullRequestNotFoundError } from "./git/gh-auth";
 import {
 	createSourceControlService,
 	NotAGitRepositoryError,

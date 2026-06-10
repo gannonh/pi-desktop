@@ -84,8 +84,8 @@ describe("gh pull request commands", () => {
 	it("maps gh auth failures to GhAuthRequiredError", async () => {
 		mockedGitExecFileAsync.mockRejectedValue({ stderr: "HTTP 401: authentication failed" });
 
-		await expect(
-			createPullRequest(worktreePath, { title: "Wave 5.1", body: "Hosted review slice" }),
-		).rejects.toThrow(GhAuthRequiredError);
+		await expect(createPullRequest(worktreePath, { title: "Wave 5.1", body: "Hosted review slice" })).rejects.toThrow(
+			GhAuthRequiredError,
+		);
 	});
 });

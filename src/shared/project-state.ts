@@ -66,9 +66,8 @@ export const ChatMetadataSchema = z.strictObject({
 	lastOpenedAt: z.string().datetime().nullable(),
 });
 
-export const resolveProjectDefaultBaseRef = (
-	project: Pick<ProjectRecord, "gitSettings"> | null | undefined,
-): string => project?.gitSettings?.defaultBaseRef ?? DEFAULT_BASE_REF;
+export const resolveProjectDefaultBaseRef = (project: Pick<ProjectRecord, "gitSettings"> | null | undefined): string =>
+	project?.gitSettings?.defaultBaseRef ?? DEFAULT_BASE_REF;
 
 const deriveLegacyChatCwd = (projectId: string, projectPath: string | undefined): string => {
 	if (projectPath !== undefined && projectPath.length > 0) {
