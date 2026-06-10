@@ -29,4 +29,22 @@ describe("resolvePullRequestCompareRefs", () => {
 			}),
 		).toEqual({ baseRef: "main", headRef: "feat/test" });
 	});
+
+	it("falls back to main when upstream tracks the current branch", () => {
+		expect(
+			resolvePullRequestCompareRefs({
+				entries: [],
+				conflictOperation: "unknown",
+				branch: "refs/heads/feat/test",
+				upstreamStatus: {
+					hasUpstream: true,
+					upstreamName: "origin/feat/test",
+					ahead: 0,
+					behind: 0,
+					relation: "up_to_date",
+					isConfigured: true,
+				},
+			}),
+		).toEqual({ baseRef: "main", headRef: "feat/test" });
+	});
 });
