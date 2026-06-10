@@ -263,7 +263,7 @@ describe("session command palette actions", () => {
 		);
 	});
 
-	it("delegates fork and clone actions to the branch helper", () => {
+	it("does not delegate fork and clone when sessionPath is null", () => {
 		const fork = vi.fn();
 		const clone = vi.fn();
 		vi.stubGlobal("window", {

@@ -85,6 +85,7 @@ describe("useColumnResize", () => {
 			result.current.onResizeStart(event);
 		});
 
+		expect(event.preventDefault).toHaveBeenCalled();
 		expect(document.body.style.cursor).toBe("col-resize");
 		expect(document.body.style.userSelect).toBe("none");
 
