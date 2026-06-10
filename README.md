@@ -44,10 +44,16 @@ Starts the browser preview and a local app data bridge. The preview uses the sam
 ## Check
 
 ```bash
+pnpm check:pre-push
+```
+
+`pnpm check:pre-push` runs the fast local gate: formatting, linting, typechecking, and unit tests. The pre-push hook uses this gate by default.
+
+```bash
 pnpm check
 ```
 
-`pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and Electron/web smoke tests.
+`pnpm check` runs formatting, linting, typechecking, unit tests, coverage, and Electron/web smoke tests. To run the full gate during push, use `FULL_PRE_PUSH=1 git push`.
 
 Smoke tests run headless by default so they do not steal focus while you work. To watch them locally, use `pnpm test:smoke:headed` or set `PI_DESKTOP_SMOKE_HEADED=1`.
 

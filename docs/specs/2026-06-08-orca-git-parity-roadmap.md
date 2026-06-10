@@ -141,7 +141,7 @@ Add Pi-assisted workflows where Git operations benefit from agent context. This 
 
 Tracking: [#153](https://github.com/gannonh/pi-desktop/issues/153)
 
-**Shipped:** Source-control generation now gathers staged diff or branch-compare context in the main process, builds bounded prompts, and uses a Pi-owned text generation boundary. The Changes panel Generate actions draft commit messages and PR title/body fields with loading, cancel, success, and error states. Renderer IPC receives only generated text fields.
+**Shipped:** Source-control generation now gathers staged diff or branch-compare context in the main process, builds bounded prompts, and uses a Pi-owned text generation boundary. The Changes panel Generate actions draft commit messages and PR title/body fields with loading, cancel, success, and error states. PR generation avoids same-branch tracking refs as the default base and falls back to `main` until Wave 5 adds configurable base refs. Renderer IPC receives only generated text fields.
 
 **Acceptance Criteria**
 
