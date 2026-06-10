@@ -154,7 +154,7 @@ export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, chil
 		return () => {
 			cancelled = true;
 		};
-	}, [projectId, isGitRepo, pullRequestLookupKey]);
+	}, [projectId, isGitRepo]);
 
 	const value = useMemo(
 		() => ({
