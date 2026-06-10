@@ -30,14 +30,22 @@ export const useSourceControlGeneration = <T>({
 
 	const cancel = useCallback(async () => {
 		const requestId = activeRequestIdRef.current;
+		if (!requestId) {
+			return;
+		}
+
+		const result = await window.piDesktop.sourceControl.cancelGeneration({ requestId });
+		if (!result.ok) {
+			setState("error");
+			setError(result.error.message);
+			return;
+		}
+
 		generationRef.current += 1;
 		activeRequestIdRef.current = null;
 		setState("idle");
 		setError(null);
 		setSuccessMessage(null);
-		if (requestId) {
-			await window.piDesktop.sourceControl.cancelGeneration({ requestId });
-		}
 	}, []);
 
 	const generate = useCallback(async () => {
