@@ -141,7 +141,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			})),
 			getPullRequestInfo: vi.fn(async () => ({
 				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "No pull request found." },
+				error: { code: "source_control.no_linked_pull_request", message: "No pull request found." },
 			})),
 			getGhAuthStatus: vi.fn(async () => ({
 				ok: true as const,
@@ -571,7 +571,7 @@ describe("ChangesPanel", () => {
 		await screen.findByText("README.md");
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
-		await screen.findByText("Feature PR");
+		await screen.findByTestId("linked-pull-request");
 
 		expect(document.querySelector('a[href="https://github.com/gannonh/pi-desktop/pull/1"]')).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Copy PR Link" }));
@@ -607,7 +607,7 @@ describe("ChangesPanel", () => {
 		await waitFor(() => {
 			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
 		});
-		expect(screen.getByText("Feature PR")).toBeTruthy();
+		expect(screen.getAllByText("Feature PR").length).toBeGreaterThan(0);
 	});
 
 	it("renders linked pull request summary with state badge and PR number", async () => {
@@ -634,9 +634,10 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByTestId("linked-pull-request");
-		expect(screen.getByText("Open")).toBeTruthy();
-		expect(screen.getByText("Hosted review slice")).toBeTruthy();
-		expect(screen.getByText("#155")).toBeTruthy();
+		const linkedPullRequest = screen.getByTestId("linked-pull-request");
+		expect(within(linkedPullRequest).getByText("Open")).toBeTruthy();
+		expect(screen.getAllByText("Hosted review slice").length).toBeGreaterThan(0);
+		expect(within(linkedPullRequest).getByText("#155")).toBeTruthy();
 	});
 
 	it("opens linked pull requests in the browser instead of rendering remote anchors", async () => {
@@ -727,7 +728,7 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
-		await screen.findByText("Existing PR");
+		await screen.findByTestId("linked-pull-request");
 		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
 
 		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
@@ -748,7 +749,7 @@ describe("ChangesPanel", () => {
 			})
 			.mockResolvedValue({
 				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "No pull request found." },
+				error: { code: "source_control.no_linked_pull_request", message: "No pull request found." },
 			});
 		installApi({
 			getStatus: vi.fn(async () => ({
@@ -759,7 +760,7 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
-		await screen.findByText("Existing PR");
+		await screen.findByTestId("linked-pull-request");
 		currentStatus = {
 			entries: [],
 			conflictOperation: "unknown",
@@ -769,7 +770,7 @@ describe("ChangesPanel", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Refresh source control status" }));
 
 		await waitFor(() => {
-			expect(screen.queryByText("Existing PR")).toBeNull();
+			expect(screen.queryByTestId("linked-pull-request")).toBeNull();
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
 		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(

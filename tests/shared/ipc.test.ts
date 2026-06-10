@@ -77,6 +77,8 @@ describe("IPC contracts", () => {
 			projectLocateFolder: "project:locateFolder",
 			projectSetPinned: "project:setPinned",
 			projectCheckAvailability: "project:checkAvailability",
+			projectGetGitSettings: "project:getGitSettings",
+			projectSetGitSettings: "project:setGitSettings",
 			chatCreate: "chat:create",
 			chatCreateStandalone: "chat:createStandalone",
 			chatSelect: "chat:select",

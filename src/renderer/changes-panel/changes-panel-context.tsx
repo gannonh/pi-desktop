@@ -128,7 +128,6 @@ export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, chil
 				return;
 			}
 			if (result.error.code === "source_control.no_linked_pull_request") {
-				setPullRequest(null);
 				setPullRequestLookupError(null);
 				return;
 			}
