@@ -80,9 +80,12 @@ const unavailableNativeOperation = async () => {
 };
 
 const openExternalUrl = async (url: string) => {
-	const command = process.platform === "win32" ? "cmd" : process.platform === "darwin" ? "open" : "xdg-open";
-	const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-	await execFileAsync(command, args);
+	if (process.platform === "win32") {
+		await execFileAsync("rundll32", ["url.dll,FileProtocolHandler", url]);
+		return;
+	}
+	const command = process.platform === "darwin" ? "open" : "xdg-open";
+	await execFileAsync(command, [url]);
 };
 
 export const resolveDevWebUserDataDir = (

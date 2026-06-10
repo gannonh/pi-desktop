@@ -1056,10 +1056,12 @@ export const createPullRequest = async (
 		"Load created pull request failed",
 	);
 	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string; number?: number };
+	const { state, number } = parsePullRequestPayload(parsed);
 	return {
-		...parsePullRequestPayload(parsed),
 		title: parsed.title ?? input.title,
 		url: parsed.url ?? prRef,
+		state,
+		number,
 	};
 };
 

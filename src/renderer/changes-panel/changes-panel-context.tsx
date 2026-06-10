@@ -57,19 +57,28 @@ export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, chil
 		setGhAuthStatus(null);
 	}, [projectId]);
 
+	const refreshGhAuthStatus = useCallback(async (requestProjectId: string, requestId: number) => {
+		const result = await window.piDesktop.sourceControl.getGhAuthStatus();
+		if (currentProjectIdRef.current !== requestProjectId || refreshRequestIdRef.current !== requestId) {
+			return;
+		}
+		setGhAuthStatus(result.ok ? result.data : null);
+	}, []);
+
 	const refresh = useCallback(async () => {
 		if (!projectId) {
 			setStatus(null);
 			setStatusError(null);
 			setIsGitRepo(null);
+			setGhAuthStatus(null);
 			return;
 		}
 
 		setIsRefreshing(true);
 		const requestId = refreshRequestIdRef.current + 1;
 		refreshRequestIdRef.current = requestId;
+		const requestProjectId = projectId;
 		try {
-			const requestProjectId = projectId;
 			const result = await window.piDesktop.sourceControl.getStatus({ projectId: requestProjectId });
 			if (currentProjectIdRef.current !== requestProjectId || refreshRequestIdRef.current !== requestId) {
 				return;
@@ -78,18 +87,23 @@ export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, chil
 				const message = result.error.message;
 				setStatus(null);
 				setStatusError(message);
-				setIsGitRepo(result.error.code === "source_control.not_a_git_repo" ? false : null);
+				const notGitRepo = result.error.code === "source_control.not_a_git_repo";
+				setIsGitRepo(notGitRepo ? false : null);
+				if (notGitRepo) {
+					setGhAuthStatus(null);
+				}
 				return;
 			}
 			setStatus(result.data);
 			setStatusError(null);
 			setIsGitRepo(true);
+			await refreshGhAuthStatus(requestProjectId, requestId);
 		} finally {
 			if (currentProjectIdRef.current === projectId && refreshRequestIdRef.current === requestId) {
 				setIsRefreshing(false);
 			}
 		}
-	}, [projectId]);
+	}, [projectId, refreshGhAuthStatus]);
 
 	const initializeRepository = useCallback(async () => {
 		if (!projectId) {
@@ -138,23 +152,6 @@ export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, chil
 			cancelled = true;
 		};
 	}, [projectId, pullRequestLookupKey]);
-
-	useEffect(() => {
-		if (!projectId || !isGitRepo) {
-			setGhAuthStatus(null);
-			return;
-		}
-		let cancelled = false;
-		void window.piDesktop.sourceControl.getGhAuthStatus().then((result) => {
-			if (cancelled) {
-				return;
-			}
-			setGhAuthStatus(result.ok ? result.data : null);
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [projectId, isGitRepo]);
 
 	const value = useMemo(
 		() => ({

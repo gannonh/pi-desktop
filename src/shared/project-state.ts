@@ -8,12 +8,17 @@ export const ProjectAvailabilitySchema = z.discriminatedUnion("status", [
 
 export const DEFAULT_BASE_REF = "main";
 
+const GIT_REF_INVALID_CHAR_PATTERN = /[\s~^:?*[\]\\@]|\.\./;
+
+export const isValidGitRefName = (ref: string): boolean =>
+	!ref.startsWith("-") && !GIT_REF_INVALID_CHAR_PATTERN.test(ref);
+
 export const ProjectGitSettingsSchema = z.strictObject({
 	defaultBaseRef: z
 		.string()
 		.trim()
 		.min(1, "Default base ref is required.")
-		.refine((ref) => !ref.startsWith("-"), "Git ref must not start with '-'."),
+		.refine(isValidGitRefName, "Git ref contains invalid characters."),
 });
 
 export const DEFAULT_PROJECT_GIT_SETTINGS = {

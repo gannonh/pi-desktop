@@ -58,7 +58,7 @@ export const isNoPullRequestErrorMessage = (message: string): boolean =>
 	);
 
 export const isGhUnavailableMessage = (message: string): boolean =>
-	/ENOENT|(?:^|[^\w])gh(?:\s|$).*command not found|spawn gh/i.test(message);
+	/ENOENT|spawn gh|(?:^|[^\w])gh(?::|\s|$).*command not found|command not found:\s*gh(?:\s|$)/i.test(message);
 
 export const getGhAuthStatus = async (): Promise<SourceControlGhAuthStatus> => {
 	try {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
-import { DEFAULT_BASE_REF } from "../../shared/project-state";
+import { DEFAULT_BASE_REF, isValidGitRefName } from "../../shared/project-state";
 import { Button } from "../components/ui/button";
 import {
 	Dialog,
@@ -47,8 +47,8 @@ export function GitSettingsDialog({
 			setError("Default base ref is required.");
 			return;
 		}
-		if (trimmed.startsWith("-")) {
-			setError("Git ref must not start with '-'.");
+		if (!isValidGitRefName(trimmed)) {
+			setError("Git ref contains invalid characters.");
 			return;
 		}
 

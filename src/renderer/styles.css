@@ -2000,8 +2000,8 @@ body.file-workspace--resizing {
 .changes-panel__git-settings-field input {
 	padding: 0.375rem 0.5rem;
 	border: 1px solid var(--border-subtle);
-	border-radius: var(--radius-sm);
-	background: var(--surface-elevated);
+	border-radius: var(--radius-control);
+	background: var(--color-background);
 	color: inherit;
 	font: inherit;
 }

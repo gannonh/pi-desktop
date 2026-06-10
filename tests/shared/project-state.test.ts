@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	DEFAULT_PROJECT_GIT_SETTINGS,
+	ProjectGitSettingsSchema,
 	createEmptyProjectStore,
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
+	isValidGitRefName,
 	ProjectStoreSchema,
 	sortChats,
 	sortProjects,
@@ -409,6 +411,19 @@ describe("project state contracts", () => {
 			chatsByProject: {},
 		});
 		expect(withNullGitSettings.projects[0]?.gitSettings).toEqual(DEFAULT_PROJECT_GIT_SETTINGS);
+	});
+
+	it("rejects invalid git ref names in project git settings", () => {
+		expect(isValidGitRefName("main")).toBe(true);
+		expect(isValidGitRefName("develop")).toBe(true);
+		expect(isValidGitRefName("-bad")).toBe(false);
+		expect(isValidGitRefName("main branch")).toBe(false);
+		expect(isValidGitRefName("feat..fix")).toBe(false);
+		expect(isValidGitRefName("HEAD~1")).toBe(false);
+
+		expect(() => ProjectGitSettingsSchema.parse({ defaultBaseRef: "main branch" })).toThrow(
+			"Git ref contains invalid characters.",
+		);
 	});
 
 	it("migrates legacy project chat records with draft Pi session defaults", () => {

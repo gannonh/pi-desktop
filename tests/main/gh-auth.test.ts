@@ -41,6 +41,8 @@ describe("gh auth helpers", () => {
 	it("classifies gh auth, unavailable, and missing PR messages", () => {
 		expect(isGhAuthErrorMessage("not logged in to github.com")).toBe(true);
 		expect(isGhUnavailableMessage("spawn gh ENOENT")).toBe(true);
+		expect(isGhUnavailableMessage("bash: gh: command not found")).toBe(true);
+		expect(isGhUnavailableMessage("zsh: command not found: gh")).toBe(true);
 		expect(isGhUnavailableMessage("HTTP 404: Not Found")).toBe(false);
 		expect(isGhUnavailableMessage("pull request not found")).toBe(false);
 		expect(isNoPullRequestErrorMessage("no pull requests found for branch")).toBe(true);
