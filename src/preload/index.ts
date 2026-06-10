@@ -3,6 +3,7 @@ import type { z } from "zod";
 import {
 	AppVersionResultSchema,
 	ClipboardWriteTextResultSchema,
+	OpenExternalResultSchema,
 	IpcChannels,
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
@@ -26,6 +27,7 @@ import {
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPullRequestInfoResultSchema,
+	SourceControlGhAuthStatusResultSchema,
 	SourceControlUpstreamStatusResultSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
@@ -53,6 +55,7 @@ const safeInvokeParse = async <TResult extends IpcResult<unknown>>(
 const api: PiDesktopApi = {
 	app: {
 		getVersion: async () => safeInvokeParse(IpcChannels.appGetVersion, AppVersionResultSchema),
+		openExternal: async (input) => safeInvokeParse(IpcChannels.appOpenExternal, OpenExternalResultSchema, input),
 	},
 	project: {
 		getState: async () => safeInvokeParse(IpcChannels.projectGetState, ProjectStateViewResultSchema),
@@ -174,6 +177,8 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.sourceControlCreatePullRequest, SourceControlPullRequestInfoResultSchema, input),
 		getPullRequestInfo: async (input) =>
 			safeInvokeParse(IpcChannels.sourceControlGetPullRequestInfo, SourceControlPullRequestInfoResultSchema, input),
+		getGhAuthStatus: async () =>
+			safeInvokeParse(IpcChannels.sourceControlGetGhAuthStatus, SourceControlGhAuthStatusResultSchema),
 		generateCommitMessage: async (input) =>
 			safeInvokeParse(
 				IpcChannels.sourceControlGenerateCommitMessage,

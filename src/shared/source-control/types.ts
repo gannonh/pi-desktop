@@ -83,6 +83,14 @@ export type SourceControlPullRequestInfo = {
 	title: string;
 	url: string;
 	state: "open" | "closed" | "merged" | "unknown";
+	number?: number;
+};
+
+export type SourceControlGhAuthStatus = {
+	ghAvailable: boolean;
+	authenticated: boolean;
+	account: string | null;
+	remediation: string | null;
 };
 
 export type GitHistoryEntry = {

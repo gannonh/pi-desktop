@@ -66,6 +66,7 @@ describe("IPC contracts", () => {
 	it("uses stable project and chat channel names", () => {
 		expect(IpcChannels).toEqual({
 			appGetVersion: "app:getVersion",
+			appOpenExternal: "app:openExternal",
 			projectGetState: "project:getState",
 			projectCreateFromScratch: "project:createFromScratch",
 			projectAddExistingFolder: "project:addExistingFolder",
@@ -133,6 +134,7 @@ describe("IPC contracts", () => {
 			sourceControlAbortConflict: "source-control:abortConflict",
 			sourceControlCreatePullRequest: "source-control:createPullRequest",
 			sourceControlGetPullRequestInfo: "source-control:getPullRequestInfo",
+			sourceControlGetGhAuthStatus: "source-control:getGhAuthStatus",
 			clipboardWriteText: "clipboard:writeText",
 		});
 	});

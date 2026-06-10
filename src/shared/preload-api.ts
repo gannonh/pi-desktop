@@ -10,6 +10,8 @@ import type {
 	ChatStandaloneSelectionInput,
 	ClipboardWriteTextInput,
 	ClipboardWriteTextResult,
+	OpenExternalInput,
+	OpenExternalResult,
 	PiSessionAbortInput,
 	PiSessionActionResult,
 	PiSessionAttachInput,
@@ -66,6 +68,7 @@ import type {
 	SourceControlPathInput,
 	SourceControlProjectInput,
 	SourceControlPullRequestInfoResult,
+	SourceControlGhAuthStatusResult,
 	SourceControlRebaseInput,
 	SourceControlRemoteActionInput,
 	SourceControlAbortConflictInput,
@@ -76,6 +79,7 @@ import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 export interface PiDesktopApi {
 	app: {
 		getVersion: () => Promise<AppVersionResult>;
+		openExternal: (input: OpenExternalInput) => Promise<OpenExternalResult>;
 	};
 	project: {
 		getState: () => Promise<ProjectStateViewResult>;
@@ -131,6 +135,7 @@ export interface PiDesktopApi {
 		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
 		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
 		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;
+		getGhAuthStatus: () => Promise<SourceControlGhAuthStatusResult>;
 		generateCommitMessage: (
 			input: SourceControlGenerationRequestInput,
 		) => Promise<SourceControlGenerateCommitMessageResult>;

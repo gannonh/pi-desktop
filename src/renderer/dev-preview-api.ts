@@ -437,6 +437,10 @@ export const installDevPreviewApi = () => {
 	const api: PiDesktopApi = {
 		app: {
 			getVersion: async () => ({ ok: true, data: { name: "pi-desktop web preview", version: "dev" } }),
+			openExternal: async (input) => {
+				window.open(input.url, "_blank", "noopener,noreferrer");
+				return { ok: true, data: { opened: true as const } };
+			},
 		},
 		project: {
 			getState: ok,
@@ -783,6 +787,7 @@ export const installDevPreviewApi = () => {
 			abortConflict: async () => sourceControlUnavailable(),
 			createPullRequest: async () => sourceControlUnavailable(),
 			getPullRequestInfo: async () => sourceControlUnavailable(),
+			getGhAuthStatus: async () => sourceControlUnavailable(),
 			generateCommitMessage: async () => sourceControlUnavailable(),
 			generatePullRequestFields: async () => sourceControlUnavailable(),
 			cancelGeneration: async () => sourceControlUnavailable(),

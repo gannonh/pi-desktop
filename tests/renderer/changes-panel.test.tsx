@@ -142,6 +142,15 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 				ok: false as const,
 				error: { code: "source_control.operation_failed", message: "No pull request found." },
 			})),
+			getGhAuthStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					ghAvailable: true,
+					authenticated: true,
+					account: "gannonh",
+					remediation: null,
+				},
+			})),
 			generateCommitMessage: vi.fn(async () => ({
 				ok: true as const,
 				data: { message: "feat(changes): generated commit" },
@@ -155,6 +164,10 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 		},
 		clipboard: {
 			writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
+		},
+		app: {
+			getVersion: vi.fn(async () => ({ ok: true as const, data: { name: "pi-desktop", version: "test" } })),
+			openExternal: vi.fn(async () => ({ ok: true as const, data: { opened: true as const } })),
 		},
 	} as PiDesktopApi;
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
@@ -594,6 +607,105 @@ describe("ChangesPanel", () => {
 			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
 		});
 		expect(screen.getByText("Feature PR")).toBeTruthy();
+	});
+
+	it("renders linked pull request summary with state badge and PR number", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByTestId("linked-pull-request");
+		expect(screen.getByText("Open")).toBeTruthy();
+		expect(screen.getByText("Hosted review slice")).toBeTruthy();
+		expect(screen.getByText("#155")).toBeTruthy();
+	});
+
+	it("opens linked pull requests in the browser instead of rendering remote anchors", async () => {
+		const openExternal = vi.fn(async () => ({ ok: true as const, data: { opened: true as const } }));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+				},
+			})),
+		});
+		window.piDesktop.app.openExternal = openExternal;
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByTestId("linked-pull-request");
+		expect(document.querySelector('a[href="https://github.com/gannonh/pi-desktop/pull/155"]')).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Open in Browser" }));
+
+		await waitFor(() => {
+			expect(openExternal).toHaveBeenCalledWith({ url: "https://github.com/gannonh/pi-desktop/pull/155" });
+		});
+	});
+
+	it("shows actionable gh auth remediation when GitHub is not authenticated", async () => {
+		installApi({
+			getGhAuthStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					ghAvailable: true,
+					authenticated: false,
+					account: null,
+					remediation: "Run `gh auth login` in a terminal to connect GitHub.",
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Run `gh auth login` in a terminal to connect GitHub.");
+	});
+
+	it("shows create PR auth failures from gh", async () => {
+		installApi({
+			createPullRequest: vi.fn(async () => ({
+				ok: false as const,
+				error: {
+					code: "source_control.gh_auth_required",
+					message: "GitHub is not authenticated. Run `gh auth login` in a terminal and try again.",
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
+
+		await screen.findByText("GitHub is not authenticated. Run `gh auth login` in a terminal and try again.");
 	});
 
 	it("uses linked pull request state to disable duplicate create PR actions", async () => {

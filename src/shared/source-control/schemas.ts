@@ -199,6 +199,14 @@ export const SourceControlPullRequestInfoSchema = z.strictObject({
 	title: z.string(),
 	url: z.string(),
 	state: z.enum(["open", "closed", "merged", "unknown"]),
+	number: z.number().int().positive().optional(),
+});
+
+export const SourceControlGhAuthStatusSchema = z.strictObject({
+	ghAvailable: z.boolean(),
+	authenticated: z.boolean(),
+	account: z.string().nullable(),
+	remediation: z.string().nullable(),
 });
 
 export const SourceControlGetHistoryInputSchema = SourceControlProjectInputSchema.extend({
@@ -248,6 +256,7 @@ export const SourceControlCommitResultSchema = createResultSchema(GitCommitResul
 export const SourceControlUpstreamStatusResultSchema = createResultSchema(GitUpstreamStatusSchema);
 export const SourceControlBranchCompareResultSchema = createResultSchema(GitBranchCompareResultSchema);
 export const SourceControlPullRequestInfoResultSchema = createResultSchema(SourceControlPullRequestInfoSchema);
+export const SourceControlGhAuthStatusResultSchema = createResultSchema(SourceControlGhAuthStatusSchema);
 export const SourceControlGetHistoryResultSchema = createResultSchema(GitHistoryResultSchema);
 export const SourceControlGetCommitFilesResultSchema = createResultSchema(GitCommitFilesResultSchema);
 export const SourceControlGenerateCommitMessageResultSchema = createResultSchema(
@@ -278,6 +287,7 @@ export type SourceControlCommitResult = z.infer<typeof SourceControlCommitResult
 export type SourceControlUpstreamStatusResult = z.infer<typeof SourceControlUpstreamStatusResultSchema>;
 export type SourceControlBranchCompareResult = z.infer<typeof SourceControlBranchCompareResultSchema>;
 export type SourceControlPullRequestInfoResult = z.infer<typeof SourceControlPullRequestInfoResultSchema>;
+export type SourceControlGhAuthStatusResult = z.infer<typeof SourceControlGhAuthStatusResultSchema>;
 export type SourceControlGetHistoryInput = z.infer<typeof SourceControlGetHistoryInputSchema>;
 export type SourceControlGetHistoryResult = z.infer<typeof SourceControlGetHistoryResultSchema>;
 export type SourceControlGetCommitFilesInput = z.infer<typeof SourceControlGetCommitFilesInputSchema>;
