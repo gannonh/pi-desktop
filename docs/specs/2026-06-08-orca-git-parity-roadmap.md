@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.**
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adr/0005-source-control-worktree-scope.md).
 
 ## Context
 
@@ -197,20 +197,22 @@ Tracking: [#156](https://github.com/gannonh/pi-desktop/issues/156)
 - Settings changes affect source-control operations without restarting the app.
 - Settings are documented without duplicating README setup instructions.
 
-#### 5.3 Runtime and Worktree Scope
+#### 5.3 Runtime and Worktree Scope — ✅ Boundary recorded
 
 Tracking: [#157](https://github.com/gannonh/pi-desktop/issues/157)
 
-**Gap:** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management.
+**Shipped:** [ADR 0005: Source-control worktree and runtime scope](../adr/0005-source-control-worktree-scope.md) records selected-project-only boundaries for the current milestone. Follow-up revisit triggers live in [2026-06-10-worktree-scope-followups.md](./2026-06-10-worktree-scope-followups.md). No product implementation in this wave.
+
+**Gap (resolved for current milestone):** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management. ADR 0005 defers Orca porting until a future milestone with explicit UX ownership.
 
 **Goal:** Decide which runtime/worktree concepts belong in Pi Desktop before porting any of Orca's broader machinery.
 
 **Acceptance Criteria**
 
-- A follow-up ADR or spec states whether Pi Desktop adopts multi-worktree Git UX.
-- SSH/runtime Git operations remain out of scope until cloud/runtime milestones adopt them.
-- Branch rename/delete/worktree cleanup are not added without selected-project UX ownership.
-- Existing selected-project behavior stays simple and predictable.
+- ✅ [ADR 0005](../adr/0005-source-control-worktree-scope.md) states Pi Desktop does **not** adopt multi-worktree Git UX in the current milestone.
+- ✅ SSH/runtime Git operations remain out of scope until cloud/runtime milestones adopt them.
+- ✅ Branch rename/delete/worktree cleanup are not added without selected-project UX ownership.
+- ✅ Existing selected-project Changes behavior stays simple and predictable.
 
 ## Verification Notes
 

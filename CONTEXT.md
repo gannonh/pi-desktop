@@ -95,6 +95,10 @@ _Avoid_: In-session project switcher
 **Composer project selection**:
 Selecting a project from the composer selects that project and shows the **project start** composer. It does not create a chat row before the first prompt.
 
+**Selected project**:
+The one local project record whose path (`ProjectRecord.path`) anchors filesystem access, Changes git operations, and Pi session workspace context. Pi Desktop does not manage multiple git worktrees per repository in the current milestone; parallel branches are out of app scope unless a future worktree milestone explicitly adopts them (see `docs/adr/0005-source-control-worktree-scope.md`).
+_Avoid_: Worktree, checkout (as product nouns for the project model), active repo
+
 **Changes**:
 The right-panel tool tab for local git source control on the selected project: inspect working-tree changes, stage, commit, sync, compare branches, and create or link GitHub pull requests. Chat stays active in the center column. The commit header **primary action** and overflow menu are resolver-driven from git status, upstream, PR link state, and conflicts (`source-control-primary-action-resolver.ts`). Conflict rows show typed conflict metadata and resolution guidance. Status rows include line stats where practical and preserve literal paths such as spaces, glob characters, and non-ASCII names. Upstream state uses an explicit relation (`none`, `up_to_date`, `ahead`, `behind`, `diverged`) and can use same-name `origin/<branch>` refs when configured tracking is missing. When a branch is **diverged** (simultaneously ahead and behind upstream), one-click Sync is blocked and the UI surfaces explicit reconcile actions. AI generation for commit messages and PR fields belongs to this surface but runs through main-process Pi boundaries; renderer state receives generated text only. Commit failures open recovery guidance and can start or resume the relevant Pi project session with failure context.
 _Avoid_: Diffs tab (legacy internal kind name), Checks panel
