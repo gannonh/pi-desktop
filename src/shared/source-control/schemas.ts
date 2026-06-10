@@ -172,6 +172,29 @@ export const SourceControlCreatePullRequestInputSchema = z.strictObject({
 	body: z.string(),
 });
 
+export const SourceControlGenerationRequestInputSchema = z.strictObject({
+	projectId: z.string().min(1),
+	requestId: z.string().min(1),
+});
+
+export const SourceControlGeneratePullRequestFieldsInputSchema = SourceControlGenerationRequestInputSchema.extend({
+	baseRef: z.string().min(1),
+	headRef: z.string().min(1),
+});
+
+export const SourceControlCancelGenerationInputSchema = z.strictObject({
+	requestId: z.string().min(1),
+});
+
+export const SourceControlGeneratedCommitMessageSchema = z.strictObject({
+	message: z.string().trim().min(1),
+});
+
+export const SourceControlGeneratedPullRequestFieldsSchema = z.strictObject({
+	title: z.string().trim().min(1),
+	body: z.string(),
+});
+
 export const SourceControlPullRequestInfoSchema = z.strictObject({
 	title: z.string(),
 	url: z.string(),
@@ -227,6 +250,12 @@ export const SourceControlBranchCompareResultSchema = createResultSchema(GitBran
 export const SourceControlPullRequestInfoResultSchema = createResultSchema(SourceControlPullRequestInfoSchema);
 export const SourceControlGetHistoryResultSchema = createResultSchema(GitHistoryResultSchema);
 export const SourceControlGetCommitFilesResultSchema = createResultSchema(GitCommitFilesResultSchema);
+export const SourceControlGenerateCommitMessageResultSchema = createResultSchema(
+	SourceControlGeneratedCommitMessageSchema,
+);
+export const SourceControlGeneratePullRequestFieldsResultSchema = createResultSchema(
+	SourceControlGeneratedPullRequestFieldsSchema,
+);
 
 export type SourceControlProjectInput = z.infer<typeof SourceControlProjectInputSchema>;
 export type SourceControlPathInput = z.infer<typeof SourceControlPathInputSchema>;
@@ -253,3 +282,12 @@ export type SourceControlGetHistoryInput = z.infer<typeof SourceControlGetHistor
 export type SourceControlGetHistoryResult = z.infer<typeof SourceControlGetHistoryResultSchema>;
 export type SourceControlGetCommitFilesInput = z.infer<typeof SourceControlGetCommitFilesInputSchema>;
 export type SourceControlGetCommitFilesResult = z.infer<typeof SourceControlGetCommitFilesResultSchema>;
+export type SourceControlGenerationRequestInput = z.infer<typeof SourceControlGenerationRequestInputSchema>;
+export type SourceControlGeneratePullRequestFieldsInput = z.infer<
+	typeof SourceControlGeneratePullRequestFieldsInputSchema
+>;
+export type SourceControlCancelGenerationInput = z.infer<typeof SourceControlCancelGenerationInputSchema>;
+export type SourceControlGenerateCommitMessageResult = z.infer<typeof SourceControlGenerateCommitMessageResultSchema>;
+export type SourceControlGeneratePullRequestFieldsResult = z.infer<
+	typeof SourceControlGeneratePullRequestFieldsResultSchema
+>;

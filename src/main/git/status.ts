@@ -645,22 +645,6 @@ const currentBranchName = async (worktreePath: string): Promise<string> => {
 	return branch;
 };
 
-export const commitStagedChanges = async (worktreePath: string, message: string): Promise<GitCommitResult> => {
-	const summary = message.trim();
-	if (!summary) {
-		throw new Error("Commit message is required.");
-	}
-	const { stdout: rootOutput } = await gitExecFileAsync(["rev-parse", "--show-toplevel"], { cwd: worktreePath });
-	const repositoryRoot = path.resolve(await realpath(rootOutput.trim()));
-	const selectedRoot = path.resolve(await realpath(worktreePath));
-	if (repositoryRoot !== selectedRoot) {
-		throw new Error("Committing from a subdirectory project is not supported.");
-	}
-	await gitExecFileAsync(["commit", "-m", summary], { cwd: worktreePath });
-	const { stdout: shaOutput } = await gitExecFileAsync(["rev-parse", "HEAD"], { cwd: worktreePath });
-	return { sha: shaOutput.trim(), summary };
-};
-
 export type GetDiffInput =
 	| { relativePath: string; kind: "unstaged" | "staged" | "untracked" }
 	| { relativePath: string; kind: "branch"; baseRef: string; headRef: string }
@@ -824,6 +808,24 @@ const runRemoteOperation = async (action: string, operation: () => Promise<void>
 	} catch (error) {
 		throw new Error(actionableGitErrorMessage(action, error));
 	}
+};
+
+export const commitStagedChanges = async (worktreePath: string, message: string): Promise<GitCommitResult> => {
+	const summary = message.trim();
+	if (!summary) {
+		throw new Error("Commit message is required.");
+	}
+	const { stdout: rootOutput } = await gitExecFileAsync(["rev-parse", "--show-toplevel"], { cwd: worktreePath });
+	const repositoryRoot = path.resolve(await realpath(rootOutput.trim()));
+	const selectedRoot = path.resolve(await realpath(worktreePath));
+	if (repositoryRoot !== selectedRoot) {
+		throw new Error("Committing from a subdirectory project is not supported.");
+	}
+	await runRemoteOperation("Commit", async () => {
+		await gitExecFileAsync(["commit", "-m", summary], { cwd: worktreePath });
+	});
+	const { stdout: shaOutput } = await gitExecFileAsync(["rev-parse", "HEAD"], { cwd: worktreePath });
+	return { sha: shaOutput.trim(), summary };
 };
 
 export const fetchRemote = async (worktreePath: string): Promise<void> => {

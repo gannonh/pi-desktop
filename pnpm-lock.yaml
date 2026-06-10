@@ -56,6 +56,9 @@ importers:
       '@codemirror/view':
         specifier: 6.43.0
         version: 6.43.0
+      '@earendil-works/pi-ai':
+        specifier: 0.74.0
+        version: 0.74.0(ws@8.20.1)(zod@4.4.3)
       '@earendil-works/pi-coding-agent':
         specifier: 0.74.0
         version: 0.74.0(ws@8.20.1)(zod@4.4.3)

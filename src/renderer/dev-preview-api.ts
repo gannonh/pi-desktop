@@ -783,6 +783,9 @@ export const installDevPreviewApi = () => {
 			abortConflict: async () => sourceControlUnavailable(),
 			createPullRequest: async () => sourceControlUnavailable(),
 			getPullRequestInfo: async () => sourceControlUnavailable(),
+			generateCommitMessage: async () => sourceControlUnavailable(),
+			generatePullRequestFields: async () => sourceControlUnavailable(),
+			cancelGeneration: async () => sourceControlUnavailable(),
 		},
 		workspaceFiles: {
 			listDirectory: async ({ projectId, relativePath }) => {

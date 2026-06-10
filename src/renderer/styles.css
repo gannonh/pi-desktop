@@ -2105,6 +2105,30 @@ body.file-workspace--resizing {
 	font-size: var(--type-caption);
 }
 
+.changes-panel__commit-failure-details {
+	margin: 0 0.625rem;
+	font-size: var(--type-caption);
+}
+
+.changes-panel__commit-failure-details summary {
+	cursor: pointer;
+	color: var(--color-muted-foreground);
+}
+
+.changes-panel__commit-failure-output {
+	margin: 0.5rem 0 0;
+	max-height: 12rem;
+	overflow: auto;
+	padding: 0.5rem;
+	border-radius: var(--radius-sm);
+	background: var(--color-muted);
+	color: var(--color-foreground);
+	font-family: var(--font-mono);
+	font-size: var(--type-caption);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .changes-panel__conflict {
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;

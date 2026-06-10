@@ -47,6 +47,11 @@ import {
 	SourceControlCommitInputSchema,
 	SourceControlCommitResultSchema,
 	SourceControlCreatePullRequestInputSchema,
+	SourceControlCancelGenerationInputSchema,
+	SourceControlGenerateCommitMessageResultSchema,
+	SourceControlGeneratePullRequestFieldsInputSchema,
+	SourceControlGeneratePullRequestFieldsResultSchema,
+	SourceControlGenerationRequestInputSchema,
 	SourceControlDiscardInputSchema,
 	SourceControlBranchCompareInputSchema,
 	SourceControlBranchCompareResultSchema,
@@ -231,6 +236,18 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		operation: z.literal("sourceControl.getPullRequestInfo"),
 		input: SourceControlProjectInputSchema,
 	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.generateCommitMessage"),
+		input: SourceControlGenerationRequestInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.generatePullRequestFields"),
+		input: SourceControlGeneratePullRequestFieldsInputSchema,
+	}),
+	z.strictObject({
+		operation: z.literal("sourceControl.cancelGeneration"),
+		input: SourceControlCancelGenerationInputSchema,
+	}),
 ]);
 
 export type AppRpcRequest = z.infer<typeof AppRpcRequestSchema>;
@@ -301,6 +318,9 @@ export const AppRpcResponseSchemas = {
 	"sourceControl.abortConflict": SourceControlMutationResultSchema,
 	"sourceControl.createPullRequest": SourceControlPullRequestInfoResultSchema,
 	"sourceControl.getPullRequestInfo": SourceControlPullRequestInfoResultSchema,
+	"sourceControl.generateCommitMessage": SourceControlGenerateCommitMessageResultSchema,
+	"sourceControl.generatePullRequestFields": SourceControlGeneratePullRequestFieldsResultSchema,
+	"sourceControl.cancelGeneration": SourceControlMutationResultSchema,
 } as const satisfies Record<AppRpcOperation, z.ZodTypeAny>;
 
 export const PiSessionEventEnvelopeSchema = z.strictObject({

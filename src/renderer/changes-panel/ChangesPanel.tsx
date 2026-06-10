@@ -34,7 +34,16 @@ import {
 	flattenSourceControlTree,
 	type SourceControlTreeNode,
 } from "./source-control-tree";
+import { requestCommitRecoverySession } from "../session/commit-recovery-session-bridge";
+import {
+	buildCommitFailureRecoveryPrompt,
+	stagedFilesForRecovery,
+	summarizeCommitFailure,
+} from "./commit-failure-recovery";
+import { CommitFailureRecoveryDialog } from "./CommitFailureRecoveryDialog";
 import { SECTION_LABELS, SECTION_ORDER, STATUS_LABELS, type SourceControlSection } from "./status-display";
+import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
+import { useSourceControlGeneration } from "./use-source-control-generation";
 
 type ChangesPanelProps = {
 	project: ProjectRecord | null;
@@ -282,22 +291,43 @@ function CommitArea({
 	const { projectId, status, refresh } = useChangesPanel();
 	const [message, setMessage] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [commitFailureMessage, setCommitFailureMessage] = useState<string | null>(null);
+	const [recoveryError, setRecoveryError] = useState<string | null>(null);
 	const [isCommitting, setIsCommitting] = useState(false);
+	const [isRecovering, setIsRecovering] = useState(false);
 	const stagedCount = status?.entries.filter((entry) => entry.area === "staged").length ?? 0;
 	const canCommit = Boolean(projectId && message.trim() && stagedCount > 0 && !isCommitting);
+	const commitFailurePresentation = commitFailureMessage ? summarizeCommitFailure(commitFailureMessage) : null;
+	const commitGeneration = useSourceControlGeneration({
+		run: (requestId) => {
+			if (!projectId) {
+				return Promise.resolve({
+					ok: false as const,
+					error: { code: "source_control.operation_failed", message: "Select a project first." },
+				});
+			}
+			return window.piDesktop.sourceControl.generateCommitMessage({ projectId, requestId });
+		},
+		onSuccess: (data) => {
+			setMessage(data.message);
+			setCommitFailureMessage(null);
+			setRecoveryError(null);
+		},
+	});
 
 	const commit = async () => {
 		if (!projectId || !canCommit) {
 			return;
 		}
 		setIsCommitting(true);
-		setError(null);
+		setCommitFailureMessage(null);
+		setRecoveryError(null);
 		setFeedback(null);
-		const result = await window.piDesktop.sourceControl.commit({ projectId, message: message.trim() });
+		const commitMessage = message.trim();
+		const result = await window.piDesktop.sourceControl.commit({ projectId, message: commitMessage });
 		setIsCommitting(false);
 		if (!result.ok) {
-			setError(result.error.message);
+			setCommitFailureMessage(result.error.message);
 			return;
 		}
 		setFeedback(`Committed ${result.data.summary}`);
@@ -305,48 +335,98 @@ function CommitArea({
 		await refresh();
 	};
 
+	const dismissCommitFailure = () => {
+		if (isRecovering) {
+			return;
+		}
+		setCommitFailureMessage(null);
+		setRecoveryError(null);
+	};
+
+	const recoverFromCommitFailure = async () => {
+		if (!projectId || !commitFailureMessage) {
+			return;
+		}
+		setRecoveryError(null);
+		setIsRecovering(true);
+		const prompt = buildCommitFailureRecoveryPrompt({
+			commitMessage: message.trim(),
+			failureOutput: commitFailureMessage,
+			changedFiles: stagedFilesForRecovery(status?.entries ?? []),
+		});
+		const started = await requestCommitRecoverySession({ projectId, prompt });
+		setIsRecovering(false);
+		if (!started) {
+			setRecoveryError("Unable to start Pi recovery for this project.");
+			return;
+		}
+		setCommitFailureMessage(null);
+	};
+
 	return (
-		<form
-			className="changes-panel__commit"
-			onSubmit={(event) => {
-				event.preventDefault();
-				void commit();
-			}}
-		>
-			<label className="changes-panel__commit-label">
-				<span>Commit message</span>
-				<textarea
-					className="changes-panel__commit-input"
-					value={message}
-					onChange={(event) => setMessage(event.target.value)}
-					rows={3}
-				/>
-			</label>
-			<div className="changes-panel__commit-actions">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => setError("Pi-backed commit message generation is not configured for this project yet.")}
-				>
-					<WandSparkles aria-hidden />
-					Generate
-				</Button>
-			</div>
-			{feedback ? <p className="changes-panel__feedback">{feedback}</p> : null}
-			{error ? (
-				<div className="changes-panel__error" role="dialog" aria-label="Commit failed">
-					{error}
-				</div>
-			) : null}
-			<SourceControlActions
-				commitMessage={message}
-				isCommitBusy={isCommitting}
-				onCommit={() => void commit()}
-				pullRequest={pullRequest}
-				onCreatePullRequestRequested={onCreatePullRequestRequested}
+		<>
+			<CommitFailureRecoveryDialog
+				open={Boolean(commitFailurePresentation)}
+				presentation={commitFailurePresentation ?? { summary: "Commit failed.", details: "" }}
+				isRecovering={isRecovering}
+				recoveryError={recoveryError}
+				onDismiss={dismissCommitFailure}
+				onRecover={() => void recoverFromCommitFailure()}
 			/>
-		</form>
+			<form
+				className="changes-panel__commit"
+				onSubmit={(event) => {
+					event.preventDefault();
+					void commit();
+				}}
+			>
+				<label className="changes-panel__commit-label">
+					<span>Commit message</span>
+					<textarea
+						className="changes-panel__commit-input"
+						value={message}
+						onChange={(event) => setMessage(event.target.value)}
+						rows={3}
+					/>
+				</label>
+				<div className="changes-panel__commit-actions">
+					{commitGeneration.isGenerating ? (
+						<Button type="button" variant="ghost" size="sm" onClick={() => void commitGeneration.cancel()}>
+							Cancel generation
+						</Button>
+					) : (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							disabled={stagedCount === 0}
+							title={stagedCount === 0 ? "Stage changes before generating a commit message." : undefined}
+							onClick={() => void commitGeneration.generate()}
+						>
+							<WandSparkles aria-hidden />
+							Generate
+						</Button>
+					)}
+				</div>
+				{commitGeneration.isGenerating ? (
+					<p className="changes-panel__feedback" aria-live="polite">
+						Generating commit message…
+					</p>
+				) : null}
+				{commitGeneration.successMessage ? (
+					<p className="changes-panel__feedback">{commitGeneration.successMessage}</p>
+				) : null}
+				{commitGeneration.error ? <p className="changes-panel__error">{commitGeneration.error}</p> : null}
+				{feedback ? <p className="changes-panel__feedback">{feedback}</p> : null}
+				<SourceControlActions
+					commitMessage={message}
+					isCommitBusy={isCommitting}
+					onCommit={() => void commit()}
+					pullRequest={pullRequest}
+					onCreatePullRequestRequested={onCreatePullRequestRequested}
+				/>
+			</form>
+		</>
 	);
 }
 
@@ -634,13 +714,35 @@ function PullRequestArea({
 	onPullRequestChange: (pullRequest: SourceControlPullRequestInfo | null) => void;
 	focusRequestCount: number;
 }) {
-	const { projectId } = useChangesPanel();
+	const { projectId, status } = useChangesPanel();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
 	const titleInputRef = useRef<HTMLInputElement | null>(null);
 	const handledFocusRequestCount = useRef(0);
+	const compareRefs = resolvePullRequestCompareRefs(status);
+	const pullRequestGeneration = useSourceControlGeneration({
+		run: (requestId) => {
+			if (!projectId) {
+				return Promise.resolve({
+					ok: false as const,
+					error: { code: "source_control.operation_failed", message: "Select a project first." },
+				});
+			}
+			return window.piDesktop.sourceControl.generatePullRequestFields({
+				projectId,
+				requestId,
+				baseRef: compareRefs.baseRef,
+				headRef: compareRefs.headRef,
+			});
+		},
+		onSuccess: (data) => {
+			setTitle(data.title);
+			setBody(data.body);
+			setError(null);
+		},
+	});
 
 	const create = useCallback(async () => {
 		if (!projectId) {
@@ -712,15 +814,25 @@ function PullRequestArea({
 				<Button type="button" variant="secondary" size="sm" disabled={!title.trim()} onClick={() => void create()}>
 					Create PR
 				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => setError("Pi-backed PR field generation is not configured for this project yet.")}
-				>
-					Generate with AI
-				</Button>
+				{pullRequestGeneration.isGenerating ? (
+					<Button type="button" variant="ghost" size="sm" onClick={() => void pullRequestGeneration.cancel()}>
+						Cancel generation
+					</Button>
+				) : (
+					<Button type="button" variant="ghost" size="sm" onClick={() => void pullRequestGeneration.generate()}>
+						Generate with AI
+					</Button>
+				)}
 			</div>
+			{pullRequestGeneration.isGenerating ? (
+				<p className="changes-panel__feedback" aria-live="polite">
+					Generating PR title and body…
+				</p>
+			) : null}
+			{pullRequestGeneration.successMessage ? (
+				<p className="changes-panel__feedback">{pullRequestGeneration.successMessage}</p>
+			) : null}
+			{pullRequestGeneration.error ? <p className="changes-panel__error">{pullRequestGeneration.error}</p> : null}
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
 		</div>
