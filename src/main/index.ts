@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import { type AppRpcOperation, AppRpcRequestSchema } from "../shared/app-transport";
-import { ClipboardWriteTextInputSchema, IpcChannels } from "../shared/ipc";
+import { ClipboardWriteTextInputSchema, IpcChannels, OpenExternalInputSchema } from "../shared/ipc";
 import { err, ok } from "../shared/result";
 import { type AppBackend, createAppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
@@ -233,6 +233,7 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.sourceControlGetPullRequestInfo, (_event, input) =>
 		invokeBackend("sourceControl.getPullRequestInfo", input),
 	);
+	ipcMain.handle(IpcChannels.sourceControlGetGhAuthStatus, () => invokeBackend("sourceControl.getGhAuthStatus"));
 	ipcMain.handle(IpcChannels.sourceControlGenerateCommitMessage, (_event, input) =>
 		invokeBackend("sourceControl.generateCommitMessage", input),
 	);
@@ -249,6 +250,14 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		}
 		clipboard.writeText(parsed.data.text);
 		return ok({ written: true as const });
+	});
+	ipcMain.handle(IpcChannels.appOpenExternal, async (_event, input) => {
+		const parsed = OpenExternalInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("app.open_external_invalid", "External URL input is invalid.");
+		}
+		await shell.openExternal(parsed.data.url);
+		return ok({ opened: true as const });
 	});
 };
 

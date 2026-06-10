@@ -26,6 +26,7 @@ import {
 	PiSessionStartInputSchema,
 	PiSessionSubmitInputSchema,
 	PiSessionUpdateQueuedMessageInputSchema,
+	OpenExternalInputSchema,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -68,6 +69,7 @@ import type {
 	GitDiffPayload,
 	GitUpstreamStatus,
 	SourceControlPullRequestInfo,
+	SourceControlGhAuthStatus,
 } from "../shared/source-control/types";
 import type {
 	WorkspaceListDirectoryPayload,
@@ -77,13 +79,18 @@ import type {
 import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-normalizer";
 import { type LoadPiSessionHistoryInput, loadPiSessionHistory } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
-import type { ProjectService } from "./projects/project-service";
+import {
+	GhAuthRequiredError,
+	GhUnavailableError,
+	PullRequestNotFoundError,
+} from "./git/gh-auth";
 import {
 	createSourceControlService,
 	NotAGitRepositoryError,
 	SourceControlGenerationCancelledError,
 	type SourceControlTextGenerator,
 } from "./source-control/source-control-service";
+import type { ProjectService } from "./projects/project-service";
 import { WorkspacePathError } from "./workspace-files/path-guard";
 import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
@@ -101,6 +108,7 @@ export type AppBackendDeps = {
 	createAgentSession?: CreateAgentSession;
 	loadSessionHistory?: (input: LoadPiSessionHistoryInput) => PiSessionHistoryPayload;
 	sourceControlTextGenerator?: SourceControlTextGenerator;
+	openExternal?: (url: string) => Promise<void>;
 };
 
 export type AppBackendResult = IpcResult<
@@ -122,6 +130,8 @@ export type AppBackendResult = IpcResult<
 	| GitUpstreamStatus
 	| GitBranchCompareResult
 	| SourceControlPullRequestInfo
+	| SourceControlGhAuthStatus
+	| { opened: true }
 	| { message: string }
 	| { title: string; body: string }
 	| Record<string, never>
@@ -251,6 +261,15 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			if (error instanceof NotAGitRepositoryError) {
 				return err("source_control.not_a_git_repo", toErrorMessage(error));
 			}
+			if (error instanceof GhUnavailableError) {
+				return err("source_control.gh_unavailable", toErrorMessage(error));
+			}
+			if (error instanceof GhAuthRequiredError) {
+				return err("source_control.gh_auth_required", toErrorMessage(error));
+			}
+			if (error instanceof PullRequestNotFoundError) {
+				return err("source_control.no_linked_pull_request", toErrorMessage(error));
+			}
 			if (error instanceof SourceControlGenerationCancelledError) {
 				return err("source_control.generation_cancelled", toErrorMessage(error));
 			}
@@ -280,6 +299,18 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			switch (request.operation) {
 				case "app.getVersion":
 					return Promise.resolve(ok(deps.appInfo));
+				case "app.openExternal": {
+					const parsed = OpenExternalInputSchema.parse(request.input);
+					if (!deps.openExternal) {
+						return Promise.resolve(
+							err("app.open_external_unavailable", "Opening external URLs is unavailable in this runtime."),
+						);
+					}
+					return deps
+						.openExternal(parsed.url)
+						.then(() => ok({ opened: true as const }))
+						.catch((error) => err("app.open_external_failed", toErrorMessage(error)));
+				}
 				case "project.getState":
 					return handleProjectOperation(() => deps.projectService.getState());
 				case "project.createFromScratch":
@@ -675,6 +706,8 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 						const parsed = SourceControlProjectInputSchema.parse(request.input);
 						return sourceControlService.getPullRequestInfo(parsed);
 					});
+				case "sourceControl.getGhAuthStatus":
+					return handleSourceControlOperation(async () => sourceControlService.getGhAuthStatus());
 				case "sourceControl.generateCommitMessage":
 					return handleSourceControlOperation(async () => {
 						const parsed = SourceControlGenerationRequestInputSchema.parse(request.input);

@@ -7,6 +7,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 	return {
 		app: {
 			getVersion: unavailable,
+			openExternal: unavailable,
 		},
 		project: {
 			getState: unavailable,
@@ -62,6 +63,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			abortConflict: unavailable,
 			createPullRequest: unavailable,
 			getPullRequestInfo: unavailable,
+			getGhAuthStatus: unavailable,
 			generateCommitMessage: unavailable,
 			generatePullRequestFields: unavailable,
 			cancelGeneration: unavailable,

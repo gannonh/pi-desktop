@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GitStatusPayload } from "../../shared/source-control/schemas";
+import type { SourceControlGhAuthStatus, SourceControlPullRequestInfo } from "../../shared/source-control/types";
 import { useGitStatusPolling } from "./use-git-status-polling";
 
 export type ChangesPanelContextValue = {
@@ -8,8 +9,12 @@ export type ChangesPanelContextValue = {
 	statusError: string | null;
 	isRefreshing: boolean;
 	isGitRepo: boolean | null;
+	pullRequest: SourceControlPullRequestInfo | null;
+	pullRequestLookupError: string | null;
+	ghAuthStatus: SourceControlGhAuthStatus | null;
 	refresh: () => Promise<void>;
 	initializeRepository: () => Promise<void>;
+	setPullRequest: (pullRequest: SourceControlPullRequestInfo | null) => void;
 };
 
 const ChangesPanelContext = createContext<ChangesPanelContextValue | null>(null);
@@ -33,6 +38,9 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 	const [statusError, setStatusError] = useState<string | null>(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null);
+	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
+	const [pullRequestLookupError, setPullRequestLookupError] = useState<string | null>(null);
+	const [ghAuthStatus, setGhAuthStatus] = useState<SourceControlGhAuthStatus | null>(null);
 	const currentProjectIdRef = useRef(projectId);
 	const refreshRequestIdRef = useRef(0);
 
@@ -42,6 +50,9 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 		setStatus(null);
 		setStatusError(null);
 		setIsGitRepo(null);
+		setPullRequest(null);
+		setPullRequestLookupError(null);
+		setGhAuthStatus(null);
 	}, [projectId]);
 
 	const refresh = useCallback(async () => {
@@ -93,6 +104,57 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 
 	useGitStatusPolling({ enabled: isActive && Boolean(projectId), refreshKey: projectId, refresh });
 
+	const pullRequestBranchKey = status?.branch ?? status?.head ?? null;
+	const pullRequestLookupKey = projectId && status ? `${projectId}:${pullRequestBranchKey ?? ""}` : null;
+
+	useEffect(() => {
+		if (!projectId || !pullRequestLookupKey) {
+			setPullRequest(null);
+			setPullRequestLookupError(null);
+			return;
+		}
+		let cancelled = false;
+		setPullRequest(null);
+		setPullRequestLookupError(null);
+		void window.piDesktop.sourceControl.getPullRequestInfo({ projectId }).then((result) => {
+			if (cancelled) {
+				return;
+			}
+			if (result.ok) {
+				setPullRequest(result.data);
+				setPullRequestLookupError(null);
+				return;
+			}
+			if (result.error.code === "source_control.no_linked_pull_request") {
+				setPullRequest(null);
+				setPullRequestLookupError(null);
+				return;
+			}
+			setPullRequest(null);
+			setPullRequestLookupError(result.error.message);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [projectId, pullRequestLookupKey]);
+
+	useEffect(() => {
+		if (!projectId || !isGitRepo) {
+			setGhAuthStatus(null);
+			return;
+		}
+		let cancelled = false;
+		void window.piDesktop.sourceControl.getGhAuthStatus().then((result) => {
+			if (cancelled) {
+				return;
+			}
+			setGhAuthStatus(result.ok ? result.data : null);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [projectId, isGitRepo, pullRequestLookupKey]);
+
 	const value = useMemo(
 		() => ({
 			projectId,
@@ -100,10 +162,25 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 			statusError,
 			isRefreshing,
 			isGitRepo,
+			pullRequest,
+			pullRequestLookupError,
+			ghAuthStatus,
 			refresh,
 			initializeRepository,
+			setPullRequest,
 		}),
-		[projectId, status, statusError, isRefreshing, isGitRepo, refresh, initializeRepository],
+		[
+			projectId,
+			status,
+			statusError,
+			isRefreshing,
+			isGitRepo,
+			pullRequest,
+			pullRequestLookupError,
+			ghAuthStatus,
+			refresh,
+			initializeRepository,
+		],
 	);
 
 	return <ChangesPanelContext.Provider value={value}>{children}</ChangesPanelContext.Provider>;

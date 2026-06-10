@@ -42,8 +42,11 @@ import {
 } from "./commit-failure-recovery";
 import { CommitFailureRecoveryDialog } from "./CommitFailureRecoveryDialog";
 import { SECTION_LABELS, SECTION_ORDER, STATUS_LABELS, type SourceControlSection } from "./status-display";
+import { LinkedPullRequestSummary } from "./linked-pull-request-summary";
+import { getPullRequestStateDisplay } from "./pull-request-state-display";
 import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
 import { useSourceControlGeneration } from "./use-source-control-generation";
+import { Badge } from "../components/ui/badge";
 
 type ChangesPanelProps = {
 	project: ProjectRecord | null;
@@ -281,14 +284,8 @@ const conflictButtonLabel = (operation: GitConflictOperation): string => {
 	}
 };
 
-function CommitArea({
-	pullRequest,
-	onCreatePullRequestRequested,
-}: {
-	pullRequest: SourceControlPullRequestInfo | null;
-	onCreatePullRequestRequested: () => void;
-}) {
-	const { projectId, status, refresh } = useChangesPanel();
+function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestRequested: () => void }) {
+	const { projectId, status, refresh, pullRequest } = useChangesPanel();
 	const [message, setMessage] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [commitFailureMessage, setCommitFailureMessage] = useState<string | null>(null);
@@ -706,15 +703,11 @@ function BranchCompareArea() {
 }
 
 function PullRequestArea({
-	pullRequest,
-	onPullRequestChange,
 	focusRequestCount,
 }: {
-	pullRequest: SourceControlPullRequestInfo | null;
-	onPullRequestChange: (pullRequest: SourceControlPullRequestInfo | null) => void;
 	focusRequestCount: number;
 }) {
-	const { projectId, status } = useChangesPanel();
+	const { projectId, status, pullRequest, ghAuthStatus, pullRequestLookupError, setPullRequest } = useChangesPanel();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -759,8 +752,8 @@ function PullRequestArea({
 			setError(result.error.message);
 			return;
 		}
-		onPullRequestChange(result.data);
-	}, [body, onPullRequestChange, projectId, title]);
+		setPullRequest(result.data);
+	}, [body, projectId, setPullRequest, title]);
 
 	useEffect(() => {
 		if (focusRequestCount <= handledFocusRequestCount.current) {
@@ -788,19 +781,38 @@ function PullRequestArea({
 		setMessage("PR link copied");
 	};
 
+	const openPullRequestInBrowser = async () => {
+		if (!pullRequest?.url) {
+			return;
+		}
+		const result = await window.piDesktop.app.openExternal({ url: pullRequest.url });
+		if (!result.ok) {
+			setError(result.error.message);
+			return;
+		}
+		setError(null);
+		setMessage("Opened pull request in browser");
+	};
+
+	const ghRemediation = ghAuthStatus?.remediation ?? pullRequestLookupError;
+
 	if (!projectId) {
 		return null;
 	}
 
 	return (
 		<div className="changes-panel__pr">
+			{ghRemediation ? (
+				<p className="changes-panel__gh-auth-notice" role="status">
+					{ghRemediation}
+				</p>
+			) : null}
 			{pullRequest ? (
-				<div className="changes-panel__pr-result">
-					<span>{pullRequest.title}</span>
-					<Button type="button" variant="secondary" size="sm" onClick={() => void copyPullRequestUrl()}>
-						Copy PR Link
-					</Button>
-				</div>
+				<LinkedPullRequestSummary
+					pullRequest={pullRequest}
+					onOpenInBrowser={() => void openPullRequestInBrowser()}
+					onCopyLink={() => void copyPullRequestUrl()}
+				/>
 			) : null}
 			<label>
 				PR title
@@ -847,33 +859,11 @@ function ChangesPanelBody() {
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
 	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
-	const [pullRequest, setPullRequest] = useState<SourceControlPullRequestInfo | null>(null);
 	const [createPullRequestRequestCount, setCreatePullRequestRequestCount] = useState(0);
-	const hasStatus = Boolean(status);
-	const pullRequestBranchKey = status?.branch ?? status?.head ?? null;
-	const pullRequestLookupKey = projectId && hasStatus ? `${projectId}:${pullRequestBranchKey ?? ""}` : null;
 
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
-
-	useEffect(() => {
-		if (!projectId || !pullRequestLookupKey) {
-			setPullRequest(null);
-			return;
-		}
-		let cancelled = false;
-		setPullRequest(null);
-		void window.piDesktop.sourceControl.getPullRequestInfo({ projectId }).then((result) => {
-			if (cancelled) {
-				return;
-			}
-			setPullRequest(result.ok ? result.data : null);
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [projectId, pullRequestLookupKey]);
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(
@@ -1028,17 +1018,10 @@ function ChangesPanelBody() {
 					</Button>
 				</div>
 			) : null}
-			<CommitArea
-				pullRequest={pullRequest}
-				onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
-			/>
+			<CommitArea onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)} />
 			<BranchCompareArea />
 			<GitHistoryPanel />
-			<PullRequestArea
-				pullRequest={pullRequest}
-				onPullRequestChange={setPullRequest}
-				focusRequestCount={createPullRequestRequestCount}
-			/>
+			<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
 			{status && status.entries.length === 0 && !conflict ? (
 				<div className="changes-panel__empty">
 					<p>No uncommitted changes</p>
@@ -1178,12 +1161,23 @@ function ChangesPanelBody() {
 }
 
 function ChangesPanelChrome({ project }: ChangesPanelProps) {
-	const { refresh, isRefreshing } = useChangesPanel();
+	const { refresh, isRefreshing, pullRequest } = useChangesPanel();
+	const linkedPullRequestState = pullRequest ? getPullRequestStateDisplay(pullRequest.state) : null;
 
 	return (
 		<div className="changes-panel" data-testid="workspace-panel-changes">
 			<header className="changes-panel__header">
-				<h2 className="changes-panel__title">Changes</h2>
+				<div className="changes-panel__header-copy">
+					<h2 className="changes-panel__title">Changes</h2>
+					{pullRequest ? (
+						<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
+							<Badge variant={linkedPullRequestState?.variant ?? "outline"}>
+								{linkedPullRequestState?.label ?? "PR"}
+							</Badge>
+							<span className="changes-panel__header-pr-title">{pullRequest.title}</span>
+						</div>
+					) : null}
+				</div>
 				<Button
 					type="button"
 					variant="ghost"

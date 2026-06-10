@@ -68,6 +68,16 @@ export const ClipboardWriteTextInputSchema = z.strictObject({
 	text: z.string(),
 });
 
+export const OpenExternalInputSchema = z.strictObject({
+	url: z.string().url(),
+});
+
+export const OpenExternalResultSchema = createResultSchema(
+	z.strictObject({
+		opened: z.literal(true),
+	}),
+);
+
 export const ClipboardWriteTextResultSchema = createResultSchema(
 	z.strictObject({
 		written: z.literal(true),
@@ -140,10 +150,12 @@ export const IpcChannels = {
 	sourceControlAbortConflict: "source-control:abortConflict",
 	sourceControlCreatePullRequest: "source-control:createPullRequest",
 	sourceControlGetPullRequestInfo: "source-control:getPullRequestInfo",
+	sourceControlGetGhAuthStatus: "source-control:getGhAuthStatus",
 	sourceControlGenerateCommitMessage: "source-control:generateCommitMessage",
 	sourceControlGeneratePullRequestFields: "source-control:generatePullRequestFields",
 	sourceControlCancelGeneration: "source-control:cancelGeneration",
 	clipboardWriteText: "clipboard:writeText",
+	appOpenExternal: "app:openExternal",
 } as const;
 
 export const PiSessionOperationFailedCode = "pi_session.operation_failed";
@@ -236,6 +248,7 @@ export {
 	SourceControlRebaseInputSchema,
 	SourceControlRemoteActionInputSchema,
 	SourceControlPullRequestInfoResultSchema,
+	SourceControlGhAuthStatusResultSchema,
 	SourceControlUpstreamStatusResultSchema,
 } from "./source-control/schemas";
 
@@ -270,6 +283,8 @@ export {
 
 export type ClipboardWriteTextInput = z.infer<typeof ClipboardWriteTextInputSchema>;
 export type ClipboardWriteTextResult = z.infer<typeof ClipboardWriteTextResultSchema>;
+export type OpenExternalInput = z.infer<typeof OpenExternalInputSchema>;
+export type OpenExternalResult = z.infer<typeof OpenExternalResultSchema>;
 export type AppVersion = z.infer<typeof AppVersionSchema>;
 export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
@@ -342,6 +357,7 @@ export type {
 	SourceControlPathInput,
 	SourceControlProjectInput,
 	SourceControlPullRequestInfoResult,
+	SourceControlGhAuthStatusResult,
 	SourceControlRebaseInput,
 	SourceControlRemoteActionInput,
 	SourceControlUpstreamStatusResult,

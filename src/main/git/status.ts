@@ -17,6 +17,7 @@ import type {
 	SourceControlPullRequestInfo,
 } from "../../shared/source-control/types";
 import { gitExecFileAsync, gitOptionalLocksDisabledEnv } from "./runner";
+import { assertGhCommandSucceeded } from "./gh-auth";
 
 const BULK_CHUNK_SIZE = 100;
 const MAX_TEXT_DIFF_BYTES = 512 * 1024;
@@ -1015,43 +1016,61 @@ const parsePullRequestState = (value: string): SourceControlPullRequestInfo["sta
 	return "unknown";
 };
 
+const parsePullRequestPayload = (parsed: {
+	title?: string;
+	url?: string;
+	state?: string;
+	number?: number;
+}): SourceControlPullRequestInfo => ({
+	title: parsed.title ?? "Pull request",
+	url: parsed.url ?? "",
+	state: parsePullRequestState(parsed.state ?? "unknown"),
+	number: typeof parsed.number === "number" ? parsed.number : undefined,
+});
+
+const runGhCommand = async (
+	worktreePath: string,
+	args: string[],
+	context: string,
+): Promise<{ stdout: string; stderr: string }> => {
+	try {
+		return await gitExecFileAsync(args, { cwd: worktreePath }, "gh");
+	} catch (error) {
+		return assertGhCommandSucceeded(error, context);
+	}
+};
+
 export const createPullRequest = async (
 	worktreePath: string,
 	input: { title: string; body: string },
 ): Promise<SourceControlPullRequestInfo> => {
-	const { stdout: createOutput } = await gitExecFileAsync(
+	const { stdout: createOutput } = await runGhCommand(
+		worktreePath,
 		["pr", "create", "--title", input.title, "--body", input.body],
-		{ cwd: worktreePath },
-		"gh",
+		"Create pull request failed",
 	);
 	const prRef = createOutput.trim();
-	const { stdout } = await gitExecFileAsync(
-		["pr", "view", prRef, "--json", "title,url,state"],
-		{ cwd: worktreePath },
-		"gh",
+	const { stdout } = await runGhCommand(
+		worktreePath,
+		["pr", "view", prRef, "--json", "title,url,state,number"],
+		"Load created pull request failed",
 	);
-	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string };
+	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string; number?: number };
 	return {
+		...parsePullRequestPayload(parsed),
 		title: parsed.title ?? input.title,
 		url: parsed.url ?? prRef,
-		state: parsePullRequestState(parsed.state ?? "unknown"),
 	};
 };
 
 export const getPullRequestInfo = async (worktreePath: string): Promise<SourceControlPullRequestInfo> => {
-	const { stdout } = await gitExecFileAsync(
-		["pr", "view", "--json", "title,url,state"],
-		{
-			cwd: worktreePath,
-		},
-		"gh",
+	const { stdout } = await runGhCommand(
+		worktreePath,
+		["pr", "view", "--json", "title,url,state,number"],
+		"Load pull request failed",
 	);
-	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string };
-	return {
-		title: parsed.title ?? "Pull request",
-		url: parsed.url ?? "",
-		state: parsePullRequestState(parsed.state ?? "unknown"),
-	};
+	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string; number?: number };
+	return parsePullRequestPayload(parsed);
 };
 
 const assertNever = (value: never): never => {

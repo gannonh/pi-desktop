@@ -36,6 +36,8 @@ import {
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
 	ProjectStateViewResultSchema,
+	OpenExternalInputSchema,
+	OpenExternalResultSchema,
 	WorkspaceFilesPathInputSchema,
 	WorkspaceFilesWriteInputSchema,
 	WorkspaceListDirectoryResultSchema,
@@ -69,11 +71,13 @@ import {
 	SourceControlRemoteActionInputSchema,
 	SourceControlAbortConflictInputSchema,
 	SourceControlPullRequestInfoResultSchema,
+	SourceControlGhAuthStatusResultSchema,
 	SourceControlUpstreamStatusResultSchema,
 } from "./ipc";
 
 export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 	z.strictObject({ operation: z.literal("app.getVersion"), input: z.undefined().optional() }),
+	z.strictObject({ operation: z.literal("app.openExternal"), input: OpenExternalInputSchema }),
 	z.strictObject({ operation: z.literal("project.getState"), input: z.undefined().optional() }),
 	z.strictObject({ operation: z.literal("project.createFromScratch"), input: z.undefined().optional() }),
 	z.strictObject({ operation: z.literal("project.addExistingFolder"), input: z.undefined().optional() }),
@@ -237,6 +241,10 @@ export const AppRpcRequestSchema = z.discriminatedUnion("operation", [
 		input: SourceControlProjectInputSchema,
 	}),
 	z.strictObject({
+		operation: z.literal("sourceControl.getGhAuthStatus"),
+		input: z.undefined().optional(),
+	}),
+	z.strictObject({
 		operation: z.literal("sourceControl.generateCommitMessage"),
 		input: SourceControlGenerationRequestInputSchema,
 	}),
@@ -255,6 +263,7 @@ export type AppRpcOperation = AppRpcRequest["operation"];
 
 export const AppRpcResponseSchemas = {
 	"app.getVersion": AppVersionResultSchema,
+	"app.openExternal": OpenExternalResultSchema,
 	"project.getState": ProjectStateViewResultSchema,
 	"project.createFromScratch": ProjectStateViewResultSchema,
 	"project.addExistingFolder": ProjectStateViewResultSchema,
@@ -318,6 +327,7 @@ export const AppRpcResponseSchemas = {
 	"sourceControl.abortConflict": SourceControlMutationResultSchema,
 	"sourceControl.createPullRequest": SourceControlPullRequestInfoResultSchema,
 	"sourceControl.getPullRequestInfo": SourceControlPullRequestInfoResultSchema,
+	"sourceControl.getGhAuthStatus": SourceControlGhAuthStatusResultSchema,
 	"sourceControl.generateCommitMessage": SourceControlGenerateCommitMessageResultSchema,
 	"sourceControl.generatePullRequestFields": SourceControlGeneratePullRequestFieldsResultSchema,
 	"sourceControl.cancelGeneration": SourceControlMutationResultSchema,
