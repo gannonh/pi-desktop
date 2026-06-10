@@ -1,6 +1,7 @@
-import { RefreshCw, RotateCcw, WandSparkles } from "lucide-react";
+import { RefreshCw, RotateCcw, Settings, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ProjectRecord } from "../../shared/project-state";
+import type { ProjectStateViewResult } from "../../shared/ipc";
+import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
 import type {
 	GitBranchCompareResult,
 	GitConflictKind,
@@ -41,6 +42,7 @@ import {
 	summarizeCommitFailure,
 } from "./commit-failure-recovery";
 import { CommitFailureRecoveryDialog } from "./CommitFailureRecoveryDialog";
+import { GitSettingsDialog } from "./GitSettingsDialog";
 import { SECTION_LABELS, SECTION_ORDER, STATUS_LABELS, type SourceControlSection } from "./status-display";
 import { LinkedPullRequestSummary } from "./linked-pull-request-summary";
 import { getPullRequestStateDisplay } from "./pull-request-state-display";
@@ -51,6 +53,7 @@ import { Badge } from "../components/ui/badge";
 type ChangesPanelProps = {
 	project: ProjectRecord | null;
 	isActive: boolean;
+	onProjectState?: (result: ProjectStateViewResult) => void;
 };
 
 const groupEntriesByArea = (entries: GitStatusEntry[]): Record<GitStagingArea, GitStatusEntry[]> => {
@@ -466,7 +469,7 @@ function SourceControlActions({
 	pullRequest: SourceControlPullRequestInfo | null;
 	onCreatePullRequestRequested: () => void;
 }) {
-	const { projectId, status, refresh } = useChangesPanel();
+	const { projectId, status, refresh, defaultBaseRef } = useChangesPanel();
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busyActionId, setBusyActionId] = useState<SourceControlPrimaryActionId | null>(null);
@@ -562,7 +565,7 @@ function SourceControlActions({
 					await run("Rebase", () =>
 						window.piDesktop.sourceControl.rebaseFromBase({
 							projectId,
-							...(divergedUpstreamName ? { baseRef: divergedUpstreamName } : {}),
+							baseRef: divergedUpstreamName ?? defaultBaseRef,
 						}),
 					);
 					break;
@@ -617,12 +620,16 @@ function SourceControlActions({
 }
 
 function BranchCompareArea() {
-	const { projectId } = useChangesPanel();
+	const { projectId, defaultBaseRef } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
-	const [baseRef, setBaseRef] = useState("main");
+	const [baseRef, setBaseRef] = useState(defaultBaseRef);
 	const [headRef, setHeadRef] = useState("HEAD");
 	const [compare, setCompare] = useState<GitBranchCompareResult | null>(null);
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		setBaseRef(defaultBaseRef);
+	}, [defaultBaseRef]);
 
 	const runCompare = async () => {
 		if (!projectId) {
@@ -707,14 +714,15 @@ function PullRequestArea({
 }: {
 	focusRequestCount: number;
 }) {
-	const { projectId, status, pullRequest, ghAuthStatus, pullRequestLookupError, setPullRequest } = useChangesPanel();
+	const { projectId, status, defaultBaseRef, pullRequest, ghAuthStatus, pullRequestLookupError, setPullRequest } =
+		useChangesPanel();
 	const [title, setTitle] = useState("");
 	const [body, setBody] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
 	const titleInputRef = useRef<HTMLInputElement | null>(null);
 	const handledFocusRequestCount = useRef(0);
-	const compareRefs = resolvePullRequestCompareRefs(status);
+	const compareRefs = resolvePullRequestCompareRefs(status, defaultBaseRef);
 	const pullRequestGeneration = useSourceControlGeneration({
 		run: (requestId) => {
 			if (!projectId) {
@@ -1160,46 +1168,75 @@ function ChangesPanelBody() {
 	);
 }
 
-function ChangesPanelChrome({ project }: ChangesPanelProps) {
+function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
 	const { refresh, isRefreshing, pullRequest } = useChangesPanel();
+	const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
+	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
 	const linkedPullRequestState = pullRequest ? getPullRequestStateDisplay(pullRequest.state) : null;
 
 	return (
-		<div className="changes-panel" data-testid="workspace-panel-changes">
-			<header className="changes-panel__header">
-				<div className="changes-panel__header-copy">
-					<h2 className="changes-panel__title">Changes</h2>
-					{pullRequest ? (
-						<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
-							<Badge variant={linkedPullRequestState?.variant ?? "outline"}>
-								{linkedPullRequestState?.label ?? "PR"}
-							</Badge>
-							<span className="changes-panel__header-pr-title">{pullRequest.title}</span>
-						</div>
-					) : null}
+		<>
+			<div className="changes-panel" data-testid="workspace-panel-changes">
+				<header className="changes-panel__header">
+					<div className="changes-panel__header-copy">
+						<h2 className="changes-panel__title">Changes</h2>
+						{pullRequest ? (
+							<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
+								<Badge variant={linkedPullRequestState?.variant ?? "outline"}>
+									{linkedPullRequestState?.label ?? "PR"}
+								</Badge>
+								<span className="changes-panel__header-pr-title">{pullRequest.title}</span>
+							</div>
+						) : null}
+					</div>
+					<div className="changes-panel__header-actions">
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							aria-label="Git settings"
+							disabled={!project}
+							onClick={() => setGitSettingsOpen(true)}
+						>
+							<Settings aria-hidden />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							aria-label="Refresh source control status"
+							disabled={!project || isRefreshing}
+							onClick={() => void refresh()}
+						>
+							<RefreshCw className={isRefreshing ? "changes-panel__refresh-icon--spinning" : undefined} aria-hidden />
+						</Button>
+					</div>
+				</header>
+				<div className="changes-panel__body">
+					<ChangesPanelBody />
 				</div>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					aria-label="Refresh source control status"
-					disabled={!project || isRefreshing}
-					onClick={() => void refresh()}
-				>
-					<RefreshCw className={isRefreshing ? "changes-panel__refresh-icon--spinning" : undefined} aria-hidden />
-				</Button>
-			</header>
-			<div className="changes-panel__body">
-				<ChangesPanelBody />
 			</div>
-		</div>
+			<GitSettingsDialog
+				open={gitSettingsOpen}
+				projectId={project?.id ?? null}
+				initialDefaultBaseRef={defaultBaseRef}
+				onOpenChange={setGitSettingsOpen}
+				onSaved={onProjectState}
+			/>
+		</>
 	);
 }
 
-export function ChangesPanel({ project, isActive }: ChangesPanelProps) {
+export function ChangesPanel({ project, isActive, onProjectState }: ChangesPanelProps) {
+	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
+
 	return (
-		<ChangesPanelProvider projectId={project?.id ?? null} isActive={isActive}>
-			<ChangesPanelChrome project={project} isActive={isActive} />
+		<ChangesPanelProvider
+			projectId={project?.id ?? null}
+			defaultBaseRef={defaultBaseRef}
+			isActive={isActive}
+		>
+			<ChangesPanelChrome project={project} isActive={isActive} onProjectState={onProjectState} />
 		</ChangesPanelProvider>
 	);
 }

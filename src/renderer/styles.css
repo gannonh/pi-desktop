@@ -1978,6 +1978,34 @@ body.file-workspace--resizing {
 	font-weight: 600;
 }
 
+.changes-panel__header-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.125rem;
+}
+
+.changes-panel__git-settings-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.changes-panel__git-settings-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	font-size: var(--type-caption);
+}
+
+.changes-panel__git-settings-field input {
+	padding: 0.375rem 0.5rem;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-sm);
+	background: var(--surface-elevated);
+	color: inherit;
+	font: inherit;
+}
+
 .changes-panel__body {
 	overflow: auto;
 	padding: 0.5rem 0;

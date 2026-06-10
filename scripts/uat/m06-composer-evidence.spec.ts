@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { launchElectronApp } from "../../tests/smoke/electron-launch";
-import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStore } from "../../src/shared/project-state";
 
 const evidenceDir = process.env.UAT_EVIDENCE_DIR;
 if (!evidenceDir) {
@@ -72,6 +72,7 @@ test.describe("M06 composer UAT capture", () => {
 					lastOpenedAt: now,
 					pinned: false,
 					availability: { status: "available", checkedAt: now },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: projectId,
@@ -112,6 +113,7 @@ test.describe("M06 composer UAT capture", () => {
 					lastOpenedAt: now,
 					pinned: false,
 					availability: { status: "available", checkedAt: now },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: projectId,
@@ -152,6 +154,7 @@ test.describe("M06 composer UAT capture", () => {
 					lastOpenedAt: now,
 					pinned: false,
 					availability: { status: "available", checkedAt: now },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: projectId,
@@ -200,6 +203,7 @@ test.describe("M06 composer UAT capture", () => {
 					lastOpenedAt: now,
 					pinned: false,
 					availability: { status: "available", checkedAt: now },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: projectId,

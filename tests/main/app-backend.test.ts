@@ -67,6 +67,8 @@ const createProjectService = (): ProjectService => ({
 	forkChat: vi.fn(async () => emptyState),
 	cloneChat: vi.fn(async () => emptyState),
 	branchChat: vi.fn(async () => emptyState),
+	getGitSettings: vi.fn(async () => ({ defaultBaseRef: "main" })),
+	setGitSettings: vi.fn(async () => emptyState),
 });
 
 type ProjectStateMethod =

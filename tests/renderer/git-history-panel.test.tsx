@@ -94,7 +94,7 @@ describe("GitHistoryPanel", () => {
 	it("loads history and shows incoming/outgoing boundaries", async () => {
 		const { getHistory } = installApi();
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -110,7 +110,7 @@ describe("GitHistoryPanel", () => {
 		const { getCommitFiles, getDiff } = installApi();
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -170,7 +170,7 @@ describe("GitHistoryPanel", () => {
 		});
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -210,7 +210,7 @@ describe("GitHistoryPanel", () => {
 		});
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);

@@ -34,6 +34,8 @@ import type {
 	PiSessionStartResult,
 	PiSessionSubmitInput,
 	PiSessionUpdateQueuedMessageInput,
+	ProjectGitSettingsInput,
+	ProjectGitSettingsResult,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
@@ -91,6 +93,8 @@ export interface PiDesktopApi {
 		openInFinder: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 		locateFolder: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 		setPinned: (input: ProjectPinnedInput) => Promise<ProjectStateViewResult>;
+		getGitSettings: (input: ProjectIdInput) => Promise<ProjectGitSettingsResult>;
+		setGitSettings: (input: ProjectGitSettingsInput) => Promise<ProjectStateViewResult>;
 		checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 	};
 	chat: {

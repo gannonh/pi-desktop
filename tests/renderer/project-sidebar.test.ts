@@ -9,6 +9,7 @@ import type {
 	ProjectWithChats,
 	StandaloneChatMetadata,
 } from "../../src/shared/project-state";
+import { DEFAULT_PROJECT_GIT_SETTINGS } from "../../src/shared/project-state";
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -52,6 +53,7 @@ const createProject = (chats: ChatMetadata[], overrides: Partial<ProjectWithChat
 	lastOpenedAt: "2026-05-12T09:00:00.000Z",
 	pinned: false,
 	availability: { status: "available" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	chats,
 	...overrides,
 });

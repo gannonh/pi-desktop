@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	DEFAULT_PROJECT_GIT_SETTINGS,
 	createEmptyProjectStore,
 	createProjectId,
 	createProjectStateView,
@@ -30,6 +31,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T10:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:alpha",
@@ -40,6 +42,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: true,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -57,6 +60,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T08:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:newer",
@@ -67,6 +71,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T11:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -84,6 +89,7 @@ describe("project state contracts", () => {
 			lastOpenedAt: "2026-05-12T08:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" as const },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 		};
 		const idleProject = {
 			id: createProjectId("/tmp/skills"),
@@ -94,6 +100,7 @@ describe("project state contracts", () => {
 			lastOpenedAt: "2026-05-12T11:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" as const },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 		};
 
 		store.projects = [idleProject, activeProject];
@@ -134,6 +141,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:alpha",
@@ -144,6 +152,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -253,6 +262,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T09:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 				{
 					id: "project:other",
@@ -263,6 +273,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T10:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: "project:selected",
@@ -383,6 +394,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T09:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: "project:/tmp/pi-desktop",

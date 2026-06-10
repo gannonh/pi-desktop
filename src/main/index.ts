@@ -127,6 +127,12 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.projectOpenInFinder, (_event, input) => invokeBackend("project.openInFinder", input));
 	ipcMain.handle(IpcChannels.projectLocateFolder, (_event, input) => invokeBackend("project.locateFolder", input));
 	ipcMain.handle(IpcChannels.projectSetPinned, (_event, input) => invokeBackend("project.setPinned", input));
+	ipcMain.handle(IpcChannels.projectGetGitSettings, (_event, input) =>
+		invokeBackend("project.getGitSettings", input),
+	);
+	ipcMain.handle(IpcChannels.projectSetGitSettings, (_event, input) =>
+		invokeBackend("project.setGitSettings", input),
+	);
 	ipcMain.handle(IpcChannels.projectCheckAvailability, (_event, input) =>
 		invokeBackend("project.checkAvailability", input),
 	);

@@ -1,3 +1,4 @@
+import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectRecord } from "../../shared/project-state";
 import { RightPanelBody } from "./right-panel-body";
 import { useRightPanel } from "./right-panel-context";
@@ -5,9 +6,10 @@ import { WORKSPACE_PANEL_ID } from "./workspace-panel-id";
 
 interface RightPanelWorkspaceProps {
 	selectedProject: ProjectRecord | null;
+	onProjectState?: (result: ProjectStateViewResult) => void;
 }
 
-export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProps) {
+export function RightPanelWorkspace({ selectedProject, onProjectState }: RightPanelWorkspaceProps) {
 	const { state, activeTab, filesActive } = useRightPanel();
 
 	if (state.collapsed) {
@@ -38,6 +40,7 @@ export function RightPanelWorkspace({ selectedProject }: RightPanelWorkspaceProp
 						filesActive={filesActive}
 						selectedProject={selectedProject}
 						changesActive={!filesActive && activeTab?.kind === "changes"}
+						onProjectState={onProjectState}
 					/>
 				</div>
 			)}

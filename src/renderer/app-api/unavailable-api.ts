@@ -19,6 +19,8 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			openInFinder: unavailable,
 			locateFolder: unavailable,
 			setPinned: unavailable,
+			getGitSettings: unavailable,
+			setGitSettings: unavailable,
 			checkAvailability: unavailable,
 		},
 		chat: {

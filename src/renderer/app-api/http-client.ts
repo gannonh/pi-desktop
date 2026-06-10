@@ -172,6 +172,8 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			openInFinder: (input) => callRpc("project.openInFinder", input),
 			locateFolder: (input) => callRpc("project.locateFolder", input),
 			setPinned: (input) => callRpc("project.setPinned", input),
+			getGitSettings: (input) => callRpc("project.getGitSettings", input),
+			setGitSettings: (input) => callRpc("project.setGitSettings", input),
 			checkAvailability: (input) => callRpc("project.checkAvailability", input),
 		},
 		chat: {

@@ -49,7 +49,12 @@ import {
 	type PiSessionUpdateQueuedMessageInput,
 	PiSessionUpdateQueuedMessageInputSchema,
 } from "./pi-session";
-import { type ProjectStateView, ProjectStateViewSchema } from "./project-state";
+import {
+	type ProjectGitSettings,
+	ProjectGitSettingsSchema,
+	type ProjectStateView,
+	ProjectStateViewSchema,
+} from "./project-state";
 import { createResultSchema, type IpcResult } from "./result";
 import {
 	type WorkspaceFilesPathInput,
@@ -95,6 +100,8 @@ export const IpcChannels = {
 	projectOpenInFinder: "project:openInFinder",
 	projectLocateFolder: "project:locateFolder",
 	projectSetPinned: "project:setPinned",
+	projectGetGitSettings: "project:getGitSettings",
+	projectSetGitSettings: "project:setGitSettings",
 	projectCheckAvailability: "project:checkAvailability",
 	chatCreate: "chat:create",
 	chatCreateStandalone: "chat:createStandalone",
@@ -179,6 +186,11 @@ export const ProjectPinnedInputSchema = z.strictObject({
 	pinned: z.boolean(),
 });
 
+export const ProjectGitSettingsInputSchema = z.strictObject({
+	projectId: z.string().min(1),
+	defaultBaseRef: ProjectGitSettingsSchema.shape.defaultBaseRef,
+});
+
 export const ChatCreateInputSchema = z.strictObject({
 	projectId: z.string().min(1),
 });
@@ -254,6 +266,7 @@ export {
 
 export const AppVersionResultSchema = createResultSchema(AppVersionSchema);
 export const ProjectStateViewResultSchema = createResultSchema(ProjectStateViewSchema);
+export const ProjectGitSettingsResultSchema = createResultSchema(ProjectGitSettingsSchema);
 
 export {
 	PiSessionAbortInputSchema,
@@ -289,6 +302,8 @@ export type AppVersion = z.infer<typeof AppVersionSchema>;
 export type ProjectIdInput = z.infer<typeof ProjectIdInputSchema>;
 export type ProjectRenameInput = z.infer<typeof ProjectRenameInputSchema>;
 export type ProjectPinnedInput = z.infer<typeof ProjectPinnedInputSchema>;
+export type ProjectGitSettingsInput = z.infer<typeof ProjectGitSettingsInputSchema>;
+export type ProjectGitSettingsResult = IpcResult<ProjectGitSettings>;
 export type ChatCreateInput = z.infer<typeof ChatCreateInputSchema>;
 export type ChatStandaloneCreateInput = z.infer<typeof ChatStandaloneCreateInputSchema>;
 export type ChatSelectionInput = z.infer<typeof ChatSelectionInputSchema>;
@@ -299,6 +314,7 @@ export type ChatCloneInput = z.infer<typeof ChatCloneInputSchema>;
 export type ChatBranchInput = z.infer<typeof ChatBranchInputSchema>;
 export type AppVersionResult = IpcResult<AppVersion>;
 export type ProjectStateViewResult = IpcResult<ProjectStateView>;
+export type { ProjectGitSettings };
 export type {
 	PiSessionAbortInput,
 	PiSessionActionResult,

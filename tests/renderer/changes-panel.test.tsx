@@ -9,7 +9,7 @@ import type { CommitRecoverySessionRequest } from "../../src/renderer/session/co
 import type { PiDesktopApi } from "../../src/shared/preload-api";
 import type { GitStatusPayload } from "../../src/shared/source-control/schemas";
 import type { GitUpstreamStatus } from "../../src/shared/source-control/types";
-import { createProjectId } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS } from "../../src/shared/project-state";
 import { FileViewer } from "../../src/renderer/file-workspace/file-viewer";
 import { ShellTestProviders } from "./shell-test-providers";
 
@@ -22,6 +22,7 @@ const project = {
 	lastOpenedAt: "2026-06-07T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available" as const, checkedAt: "2026-06-07T00:00:00.000Z" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	chats: [],
 };
 
@@ -973,7 +974,7 @@ describe("ChangesPanel", () => {
 			});
 		installApi({ getStatus });
 		render(
-			<ChangesPanelProvider projectId={project.id} isActive={false}>
+			<ChangesPanelProvider projectId={project.id} defaultBaseRef="main" isActive={false}>
 				<ChangesPanelStatusHarness />
 			</ChangesPanelProvider>,
 		);

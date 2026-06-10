@@ -9,7 +9,7 @@ import {
 	takeBufferedSessionEvents,
 } from "../../src/renderer/session/session-scope";
 import { createInitialSessionState, reduceSessionEvent } from "../../src/renderer/session/session-state";
-import { createProjectId, type ProjectStateView } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStateView } from "../../src/shared/project-state";
 
 const now = "2026-05-14T12:00:00.000Z";
 
@@ -104,6 +104,7 @@ describe("resolvePromptSessionStartSelection", () => {
 			lastOpenedAt: now,
 			pinned: false,
 			availability: { status: "available" as const },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			chats: [projectChat],
 		};
 

@@ -6,7 +6,35 @@ export const ProjectAvailabilitySchema = z.discriminatedUnion("status", [
 	z.strictObject({ status: z.literal("unavailable"), checkedAt: z.string().datetime(), reason: z.string().min(1) }),
 ]);
 
-export const ProjectRecordSchema = z.strictObject({
+export const DEFAULT_BASE_REF = "main";
+
+export const ProjectGitSettingsSchema = z.strictObject({
+	defaultBaseRef: z
+		.string()
+		.trim()
+		.min(1, "Default base ref is required.")
+		.refine((ref) => !ref.startsWith("-"), "Git ref must not start with '-'."),
+});
+
+export const DEFAULT_PROJECT_GIT_SETTINGS = {
+	defaultBaseRef: DEFAULT_BASE_REF,
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);
+
+const migrateProjectRecord = (value: unknown): unknown => {
+	if (!isRecord(value)) {
+		return value;
+	}
+
+	return {
+		...value,
+		gitSettings: value.gitSettings === undefined ? DEFAULT_PROJECT_GIT_SETTINGS : value.gitSettings,
+	};
+};
+
+export const ProjectRecordCoreSchema = z.strictObject({
 	id: z.string().min(1),
 	displayName: z.string().min(1),
 	path: z.string().min(1),
@@ -15,7 +43,10 @@ export const ProjectRecordSchema = z.strictObject({
 	lastOpenedAt: z.string().datetime(),
 	pinned: z.boolean(),
 	availability: ProjectAvailabilitySchema,
+	gitSettings: ProjectGitSettingsSchema.default(DEFAULT_PROJECT_GIT_SETTINGS),
 });
+
+export const ProjectRecordSchema = z.preprocess(migrateProjectRecord, ProjectRecordCoreSchema);
 
 export const ChatStatusSchema = z.enum(["idle", "running", "failed"]);
 export const ChatSourceSchema = z.enum(["draft", "pi-session"]);
@@ -35,8 +66,9 @@ export const ChatMetadataSchema = z.strictObject({
 	lastOpenedAt: z.string().datetime().nullable(),
 });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === "object" && value !== null && !Array.isArray(value);
+export const resolveProjectDefaultBaseRef = (
+	project: Pick<ProjectRecord, "gitSettings"> | null | undefined,
+): string => project?.gitSettings?.defaultBaseRef ?? DEFAULT_BASE_REF;
 
 const deriveLegacyChatCwd = (projectId: string, projectPath: string | undefined): string => {
 	if (projectPath !== undefined && projectPath.length > 0) {
@@ -94,9 +126,11 @@ const migrateLegacyProjectStore = (value: unknown): unknown => {
 				: chats,
 		]),
 	);
+	const projects = Array.isArray(value.projects) ? value.projects.map(migrateProjectRecord) : value.projects;
 
 	return {
 		...value,
+		projects,
 		chatsByProject,
 	};
 };
@@ -125,7 +159,7 @@ export const ProjectStoreSchema = z.preprocess(
 	}),
 );
 
-export const ProjectWithChatsSchema = ProjectRecordSchema.extend({
+export const ProjectWithChatsSchema = ProjectRecordCoreSchema.extend({
 	chats: z.array(ChatMetadataSchema),
 });
 
@@ -141,6 +175,7 @@ export const ProjectStateViewSchema = z.strictObject({
 export type ChatStatus = z.infer<typeof ChatStatusSchema>;
 export type ChatSource = z.infer<typeof ChatSourceSchema>;
 export type ProjectAvailability = z.infer<typeof ProjectAvailabilitySchema>;
+export type ProjectGitSettings = z.infer<typeof ProjectGitSettingsSchema>;
 export type ProjectRecord = z.infer<typeof ProjectRecordSchema>;
 export type ChatMetadata = z.infer<typeof ChatMetadataSchema>;
 export type StandaloneChatMetadata = z.infer<typeof StandaloneChatMetadataSchema>;
@@ -160,15 +195,18 @@ export const createEmptyProjectStore = (): ProjectStore => ({
 
 export const createProjectId = (path: string): string => `project:${path}`;
 
-const getProjectActivityAt = (project: ProjectRecord, chats: readonly Pick<ChatMetadata, "updatedAt">[]): string => {
+const getProjectActivityAt = (
+	project: Pick<ProjectRecord, "lastOpenedAt">,
+	chats: readonly Pick<ChatMetadata, "updatedAt">[],
+): string => {
 	const latestChatActivity = chats.reduce((latest, chat) => (chat.updatedAt > latest ? chat.updatedAt : latest), "");
 
 	return latestChatActivity > project.lastOpenedAt ? latestChatActivity : project.lastOpenedAt;
 };
 
 const compareProjectsByRecency = (
-	left: ProjectRecord,
-	right: ProjectRecord,
+	left: Pick<ProjectRecord, "pinned" | "lastOpenedAt" | "displayName">,
+	right: Pick<ProjectRecord, "pinned" | "lastOpenedAt" | "displayName">,
 	leftActivityAt: string,
 	rightActivityAt: string,
 ): number => {
@@ -184,10 +222,18 @@ const compareProjectsByRecency = (
 	return left.displayName.localeCompare(right.displayName);
 };
 
-export const sortProjects = (projects: readonly ProjectRecord[]): ProjectRecord[] =>
+export const sortProjects = <T extends Pick<ProjectRecord, "pinned" | "lastOpenedAt" | "displayName">>(
+	projects: readonly T[],
+): T[] =>
 	[...projects].sort((left, right) => compareProjectsByRecency(left, right, left.lastOpenedAt, right.lastOpenedAt));
 
-export const sortProjectsWithChats = (projects: readonly ProjectWithChats[]): ProjectWithChats[] =>
+export const sortProjectsWithChats = <
+	T extends Pick<ProjectRecord, "pinned" | "lastOpenedAt" | "displayName"> & {
+		chats: readonly Pick<ChatMetadata, "updatedAt">[];
+	},
+>(
+	projects: readonly T[],
+): T[] =>
 	[...projects].sort((left, right) =>
 		compareProjectsByRecency(
 			left,
