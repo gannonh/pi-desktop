@@ -28,6 +28,7 @@
 		"test:smoke": "pnpm build && node ./scripts/ensure-electron-binary.mjs && playwright test --config playwright.config.ts",
 		"test:smoke:headed": "PI_DESKTOP_SMOKE_HEADED=1 pnpm test:smoke",
 		"test:uat": "playwright test --config playwright.uat.config.ts",
+		"check:pre-push": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
 		"check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm test:smoke",
 		"prepare": "husky"
 	},

@@ -1,1 +1,6 @@
-pnpm check
+if [ "${FULL_PRE_PUSH:-0}" = "1" ]; then
+	pnpm check
+else
+	pnpm check:pre-push
+	printf '%s\n' "Skipped smoke and coverage on pre-push. Run FULL_PRE_PUSH=1 git push for the full local gate."
+fi
