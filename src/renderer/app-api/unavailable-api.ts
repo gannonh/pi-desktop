@@ -62,6 +62,9 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			abortConflict: unavailable,
 			createPullRequest: unavailable,
 			getPullRequestInfo: unavailable,
+			generateCommitMessage: unavailable,
+			generatePullRequestFields: unavailable,
+			cancelGeneration: unavailable,
 		},
 		clipboard: {
 			writeText: unavailable,

@@ -243,6 +243,9 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			abortConflict: (input) => callRpc("sourceControl.abortConflict", input),
 			createPullRequest: (input) => callRpc("sourceControl.createPullRequest", input),
 			getPullRequestInfo: (input) => callRpc("sourceControl.getPullRequestInfo", input),
+			generateCommitMessage: (input) => callRpc("sourceControl.generateCommitMessage", input),
+			generatePullRequestFields: (input) => callRpc("sourceControl.generatePullRequestFields", input),
+			cancelGeneration: (input) => callRpc("sourceControl.cancelGeneration", input),
 		},
 		clipboard: {
 			writeText: writeBrowserClipboardText,

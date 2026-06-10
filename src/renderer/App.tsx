@@ -35,6 +35,11 @@ import {
 	takeBufferedSessionEvents,
 } from "./session/session-scope";
 import {
+	defaultCommitRecoverySessionDeps,
+	resolveCommitRecoverySessionTarget,
+} from "./changes-panel/commit-failure-recovery-action";
+import { registerCommitRecoverySessionHandler } from "./session/commit-recovery-session-bridge";
+import {
 	applySessionHistoryResult,
 	applySessionStartResult,
 	createInitialSessionState,
@@ -740,9 +745,16 @@ export function App() {
 	}, [applyComposerSettingsResult, projectState, shouldPrepareComposerSession]);
 
 	const submitPrompt = useCallback(
-		async (prompt: string, delivery?: PiSessionDelivery, images?: PiSessionImageContent[]) => {
+		async (
+			prompt: string,
+			delivery?: PiSessionDelivery,
+			images?: PiSessionImageContent[],
+			targetScope?: SessionScope,
+		) => {
 			nextHistoryRequestIdRef.current += 1;
-			const startSelection = resolvePromptSessionStartSelection(projectState);
+			const startSelection = targetScope
+				? { ok: true as const, projectId: targetScope.projectId, chatId: targetScope.chatId }
+				: resolvePromptSessionStartSelection(projectState);
 			if (!startSelection.ok) {
 				setSessionState((current) => ({
 					...current,
@@ -754,7 +766,7 @@ export function App() {
 				return false;
 			}
 
-			if (!projectState.selectedChat?.sessionPath && !hasLiveSession(sessionState)) {
+			if (!targetScope && !projectState.selectedChat?.sessionPath && !hasLiveSession(sessionState)) {
 				await ensurePreparedComposerSession();
 			}
 
@@ -922,6 +934,32 @@ export function App() {
 			sessionState,
 		],
 	);
+
+	useEffect(() => {
+		registerCommitRecoverySessionHandler(async ({ projectId, prompt }) => {
+			const target = await resolveCommitRecoverySessionTarget(projectId, defaultCommitRecoverySessionDeps());
+			if (!target.ok) {
+				setStatusMessage({
+					source: "project",
+					tone: "error",
+					message: target.message,
+					scope: { projectId, chatId: selectedChatIdRef.current },
+				});
+				return false;
+			}
+
+			selectedProjectIdRef.current = target.projectId;
+			selectedChatIdRef.current = target.chatId;
+			return submitPrompt(prompt, undefined, undefined, {
+				projectId: target.projectId,
+				chatId: target.chatId,
+			});
+		});
+
+		return () => {
+			registerCommitRecoverySessionHandler(null);
+		};
+	}, [submitPrompt]);
 
 	const sessionCommandPaletteActions = useSessionCommandPaletteActions({
 		selectedProjectId,

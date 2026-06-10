@@ -5,9 +5,12 @@ import type {
 	SourceControlBranchCompareInput,
 	SourceControlBulkDiscardInput,
 	SourceControlBulkPathsInput,
+	SourceControlCancelGenerationInput,
 	SourceControlCommitInput,
 	SourceControlCreatePullRequestInput,
 	SourceControlDiscardInput,
+	SourceControlGeneratePullRequestFieldsInput,
+	SourceControlGenerationRequestInput,
 	SourceControlGetCommitFilesInput,
 	SourceControlGetDiffInput,
 	SourceControlGetHistoryInput,
@@ -19,6 +22,7 @@ import type {
 import type { GitStatusResult } from "../../shared/source-control/types";
 import { checkIgnoredPaths } from "../git/check-ignored-paths";
 import { getCommitFiles, getHistory } from "../git/history";
+import { getPullRequestGenerationContext, getStagedGenerationContext } from "../git/generation-context";
 import { isGitRepo } from "../git/repo";
 import { gitExecFileAsync } from "../git/runner";
 import {
@@ -47,6 +51,23 @@ import {
 } from "../git/status";
 import type { ProjectService } from "../projects/project-service";
 import { normalizeRelativePath, WorkspacePathError } from "../workspace-files/path-guard";
+import {
+	buildCommitMessagePrompt,
+	buildPullRequestPrompt,
+	COMMIT_MESSAGE_SYSTEM_PROMPT,
+	normalizeCommitMessage,
+	parsePullRequestGeneration,
+	PULL_REQUEST_SYSTEM_PROMPT,
+} from "./source-control-prompts";
+import {
+	createPiSourceControlTextGenerator,
+	createSourceControlGenerationRegistry,
+	type SourceControlGenerationRegistry,
+	type SourceControlTextGenerator,
+} from "./source-control-text-generator";
+
+export { SourceControlGenerationCancelledError } from "./source-control-text-generator";
+export type { SourceControlTextGenerator } from "./source-control-text-generator";
 
 export class NotAGitRepositoryError extends Error {
 	constructor() {
@@ -58,6 +79,9 @@ export class NotAGitRepositoryError extends Error {
 export type SourceControlServiceDeps = {
 	projectService: ProjectService;
 	initializeGitRepository: (projectPath: string) => Promise<void>;
+	textGenerator?: SourceControlTextGenerator;
+	generationRegistry?: SourceControlGenerationRegistry;
+	env?: NodeJS.ProcessEnv;
 };
 
 const assertSafeRelativePath = (relativePath: string): string => {
@@ -115,9 +139,17 @@ export type SourceControlService = {
 	abortConflict: (input: SourceControlAbortConflictInput) => Promise<void>;
 	createPullRequest: (input: SourceControlCreatePullRequestInput) => ReturnType<typeof createPullRequest>;
 	getPullRequestInfo: (input: SourceControlProjectInput) => ReturnType<typeof getPullRequestInfo>;
+	generateCommitMessage: (input: SourceControlGenerationRequestInput) => Promise<{ message: string }>;
+	generatePullRequestFields: (
+		input: SourceControlGeneratePullRequestFieldsInput,
+	) => Promise<{ title: string; body: string }>;
+	cancelGeneration: (input: SourceControlCancelGenerationInput) => Promise<void>;
 };
 
 export const createSourceControlService = (deps: SourceControlServiceDeps): SourceControlService => {
+	const textGenerator = deps.textGenerator ?? createPiSourceControlTextGenerator({ env: deps.env });
+	const generationRegistry = deps.generationRegistry ?? createSourceControlGenerationRegistry();
+
 	const withProjectRoot = async <T>(projectId: string, operation: (projectRoot: string) => Promise<T>): Promise<T> => {
 		const projectRoot = await resolveProjectRoot(deps, projectId);
 		await assertGitRepo(projectRoot);
@@ -230,5 +262,50 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 				createPullRequest(projectRoot, { title: input.title, body: input.body }),
 			),
 		getPullRequestInfo: (input) => withProjectRoot(input.projectId, (projectRoot) => getPullRequestInfo(projectRoot)),
+
+		generateCommitMessage: async (input) => {
+			const controller = generationRegistry.start(input.requestId);
+			try {
+				return await withProjectRoot(input.projectId, async (projectRoot) => {
+					const context = await getStagedGenerationContext(projectRoot);
+					const raw = await textGenerator.generate({
+						workspacePath: projectRoot,
+						systemPrompt: COMMIT_MESSAGE_SYSTEM_PROMPT,
+						userPrompt: buildCommitMessagePrompt(context),
+						signal: controller.signal,
+						env: deps.env,
+					});
+					return { message: normalizeCommitMessage(raw) };
+				});
+			} finally {
+				generationRegistry.finish(input.requestId);
+			}
+		},
+
+		generatePullRequestFields: async (input) => {
+			const controller = generationRegistry.start(input.requestId);
+			try {
+				return await withProjectRoot(input.projectId, async (projectRoot) => {
+					const context = await getPullRequestGenerationContext(projectRoot, {
+						baseRef: input.baseRef,
+						headRef: input.headRef,
+					});
+					const raw = await textGenerator.generate({
+						workspacePath: projectRoot,
+						systemPrompt: PULL_REQUEST_SYSTEM_PROMPT,
+						userPrompt: buildPullRequestPrompt(context),
+						signal: controller.signal,
+						env: deps.env,
+					});
+					return parsePullRequestGeneration(raw);
+				});
+			} finally {
+				generationRegistry.finish(input.requestId);
+			}
+		},
+
+		cancelGeneration: async (input) => {
+			generationRegistry.cancel(input.requestId);
+		},
 	};
 };

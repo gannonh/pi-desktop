@@ -37,6 +37,9 @@ import {
 	SourceControlBulkPathsInputSchema,
 	SourceControlCommitInputSchema,
 	SourceControlCreatePullRequestInputSchema,
+	SourceControlCancelGenerationInputSchema,
+	SourceControlGeneratePullRequestFieldsInputSchema,
+	SourceControlGenerationRequestInputSchema,
 	SourceControlDiscardInputSchema,
 	SourceControlGetDiffInputSchema,
 	SourceControlPathInputSchema,
@@ -75,7 +78,12 @@ import { sanitizeRuntimeErrorMessage } from "./pi-session/pi-session-event-norma
 import { type LoadPiSessionHistoryInput, loadPiSessionHistory } from "./pi-session/pi-session-history";
 import { createPiSessionRuntime } from "./pi-session/pi-session-runtime";
 import type { ProjectService } from "./projects/project-service";
-import { createSourceControlService, NotAGitRepositoryError } from "./source-control/source-control-service";
+import {
+	createSourceControlService,
+	NotAGitRepositoryError,
+	SourceControlGenerationCancelledError,
+	type SourceControlTextGenerator,
+} from "./source-control/source-control-service";
 import { WorkspacePathError } from "./workspace-files/path-guard";
 import { listDirectory, readWorkspaceFile, writeWorkspaceFile } from "./workspace-files/workspace-files-service";
 
@@ -92,6 +100,7 @@ export type AppBackendDeps = {
 	createSessionManager?: CreateSessionManager;
 	createAgentSession?: CreateAgentSession;
 	loadSessionHistory?: (input: LoadPiSessionHistoryInput) => PiSessionHistoryPayload;
+	sourceControlTextGenerator?: SourceControlTextGenerator;
 };
 
 export type AppBackendResult = IpcResult<
@@ -113,6 +122,8 @@ export type AppBackendResult = IpcResult<
 	| GitUpstreamStatus
 	| GitBranchCompareResult
 	| SourceControlPullRequestInfo
+	| { message: string }
+	| { title: string; body: string }
 	| Record<string, never>
 >;
 
@@ -194,6 +205,8 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 	const sourceControlService = createSourceControlService({
 		projectService: deps.projectService,
 		initializeGitRepository: deps.initializeGitRepository ?? (async () => undefined),
+		textGenerator: deps.sourceControlTextGenerator,
+		env: deps.env,
 	});
 
 	const piSessionRuntime = createPiSessionRuntime({
@@ -237,6 +250,9 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 			}
 			if (error instanceof NotAGitRepositoryError) {
 				return err("source_control.not_a_git_repo", toErrorMessage(error));
+			}
+			if (error instanceof SourceControlGenerationCancelledError) {
+				return err("source_control.generation_cancelled", toErrorMessage(error));
 			}
 			return err("source_control.operation_failed", toErrorMessage(error));
 		}
@@ -658,6 +674,22 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 					return handleSourceControlOperation(async () => {
 						const parsed = SourceControlProjectInputSchema.parse(request.input);
 						return sourceControlService.getPullRequestInfo(parsed);
+					});
+				case "sourceControl.generateCommitMessage":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlGenerationRequestInputSchema.parse(request.input);
+						return sourceControlService.generateCommitMessage(parsed);
+					});
+				case "sourceControl.generatePullRequestFields":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlGeneratePullRequestFieldsInputSchema.parse(request.input);
+						return sourceControlService.generatePullRequestFields(parsed);
+					});
+				case "sourceControl.cancelGeneration":
+					return handleSourceControlOperation(async () => {
+						const parsed = SourceControlCancelGenerationInputSchema.parse(request.input);
+						await sourceControlService.cancelGeneration(parsed);
+						return {};
 					});
 				default:
 					return assertNever(request);

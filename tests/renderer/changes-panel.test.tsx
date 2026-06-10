@@ -4,6 +4,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
+import { registerCommitRecoverySessionHandler } from "../../src/renderer/session/commit-recovery-session-bridge";
+import type { CommitRecoverySessionRequest } from "../../src/renderer/session/commit-recovery-session-bridge";
 import type { PiDesktopApi } from "../../src/shared/preload-api";
 import type { GitStatusPayload } from "../../src/shared/source-control/schemas";
 import type { GitUpstreamStatus } from "../../src/shared/source-control/types";
@@ -140,6 +142,15 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 				ok: false as const,
 				error: { code: "source_control.operation_failed", message: "No pull request found." },
 			})),
+			generateCommitMessage: vi.fn(async () => ({
+				ok: true as const,
+				data: { message: "feat(changes): generated commit" },
+			})),
+			generatePullRequestFields: vi.fn(async () => ({
+				ok: true as const,
+				data: { title: "Generated PR", body: "Generated body" },
+			})),
+			cancelGeneration: vi.fn(async () => ({ ok: true as const, data: {} })),
 			...overrides,
 		},
 		clipboard: {
@@ -151,6 +162,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 
 describe("ChangesPanel", () => {
 	afterEach(() => {
+		registerCommitRecoverySessionHandler(null);
 		vi.restoreAllMocks();
 	});
 
@@ -229,6 +241,109 @@ describe("ChangesPanel", () => {
 			expect(commit).toHaveBeenCalledWith({ projectId: project.id, message: "Ship it" });
 			expect(screen.getByText("Committed Ship it")).toBeTruthy();
 		});
+	});
+
+	it("shows commit failure summary with expandable git output", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			commit: vi.fn(async () => ({
+				ok: false as const,
+				error: {
+					code: "source_control.operation_failed",
+					message: "Commit failed.\n\nerror: gpg failed to sign the data",
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("Commit message"), { target: { value: "Ship it" } });
+		fireEvent.click(screen.getByRole("button", { name: "Commit" }));
+
+		await screen.findByRole("alertdialog", { name: "Commit failed" });
+		expect(screen.getByText("Commit failed.")).toBeTruthy();
+		expect(screen.queryByText("error: gpg failed to sign the data")).toBeNull();
+
+		fireEvent.click(screen.getByText("Show git output"));
+		expect(screen.getByText(/error: gpg failed to sign the data/)).toBeTruthy();
+	});
+
+	it("dismisses commit failure recovery without launching Pi", async () => {
+		const recover = vi.fn<(request: CommitRecoverySessionRequest) => Promise<boolean>>(async () => true);
+		registerCommitRecoverySessionHandler(recover);
+
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			commit: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "Commit failed.\n\nhook declined" },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("Commit message"), { target: { value: "Ship it" } });
+		fireEvent.click(screen.getByRole("button", { name: "Commit" }));
+		await screen.findByRole("alertdialog", { name: "Commit failed" });
+		fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+		expect(screen.queryByRole("alertdialog", { name: "Commit failed" })).toBeNull();
+		expect(recover).not.toHaveBeenCalled();
+	});
+
+	it("starts Pi recovery with failure output and staged files in the prompt", async () => {
+		const recover = vi.fn<(request: CommitRecoverySessionRequest) => Promise<boolean>>(async () => true);
+		registerCommitRecoverySessionHandler(recover);
+
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{ path: "README.md", status: "modified", area: "staged" },
+						{ path: "notes.txt", status: "untracked", area: "untracked" },
+					],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			commit: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "Commit failed.\n\nhook declined" },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("Commit message"), { target: { value: "Ship it" } });
+		fireEvent.click(screen.getByRole("button", { name: "Commit" }));
+		await screen.findByRole("alertdialog", { name: "Commit failed" });
+		fireEvent.click(screen.getByRole("button", { name: "Recover with Pi" }));
+
+		await waitFor(() => {
+			expect(recover).toHaveBeenCalledTimes(1);
+			const request = recover.mock.calls[0]?.[0];
+			expect(request?.projectId).toBe(project.id);
+			expect(request?.prompt).toContain("Ship it");
+			expect(request?.prompt).toContain("README.md (staged, modified)");
+			expect(request?.prompt).toContain("hook declined");
+			expect(request?.prompt).toContain("Requested validation");
+		});
+		expect(screen.queryByRole("alertdialog", { name: "Commit failed" })).toBeNull();
 	});
 
 	it("opens changed files as diff tabs", async () => {
@@ -817,6 +932,120 @@ describe("ChangesPanel", () => {
 
 		await waitFor(() => {
 			expect(abortConflict).toHaveBeenCalledWith({ projectId: project.id, operation: "merge" });
+		});
+	});
+
+	it("generates a commit message and fills the textarea on success", async () => {
+		const generateCommitMessage = vi.fn(async () => ({
+			ok: true as const,
+			data: { message: "feat(changes): generated commit" },
+		}));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			generateCommitMessage,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByLabelText("Commit message");
+		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+
+		await waitFor(() => {
+			expect(generateCommitMessage).toHaveBeenCalled();
+			expect((screen.getByLabelText("Commit message") as HTMLTextAreaElement).value).toBe(
+				"feat(changes): generated commit",
+			);
+			expect(screen.getByText("Draft generated")).toBeTruthy();
+		});
+	});
+
+	it("disables commit generation while loading and cancels in-flight requests", async () => {
+		let resolveGeneration: ((value: { ok: true; data: { message: string } }) => void) | undefined;
+		const generateCommitMessage = vi.fn(
+			() =>
+				new Promise<{ ok: true; data: { message: string } }>((resolve) => {
+					resolveGeneration = resolve;
+				}),
+		);
+		const cancelGeneration = vi.fn(async () => ({ ok: true as const, data: {} }));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			generateCommitMessage,
+			cancelGeneration,
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByLabelText("Commit message");
+		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+
+		expect(await screen.findByText("Generating commit message…")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Cancel generation" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Generate" })).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }));
+		await waitFor(() => {
+			expect(cancelGeneration).toHaveBeenCalled();
+		});
+
+		resolveGeneration?.({ ok: true, data: { message: "stale draft" } });
+		expect((screen.getByLabelText("Commit message") as HTMLTextAreaElement).value).toBe("");
+	});
+
+	it("shows commit generation errors from the main process", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [{ path: "README.md", status: "modified", area: "staged" }],
+					conflictOperation: "unknown",
+					branch: "refs/heads/main",
+				} satisfies GitStatusPayload,
+			})),
+			generateCommitMessage: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.operation_failed", message: "No Pi model is configured for this project." },
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByLabelText("Commit message");
+		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("No Pi model is configured for this project.")).toBeTruthy();
+		});
+	});
+
+	it("generates pull request fields and surfaces loading and error states", async () => {
+		const generatePullRequestFields = vi.fn(async () => ({
+			ok: true as const,
+			data: { title: "Generated PR", body: "Generated body" },
+		}));
+		installApi({ generatePullRequestFields });
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByLabelText("PR title");
+		fireEvent.click(screen.getByRole("button", { name: "Generate with AI" }));
+
+		await waitFor(() => {
+			expect(generatePullRequestFields).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: project.id, baseRef: "main", headRef: "main" }),
+			);
+			expect((screen.getByLabelText("PR title") as HTMLInputElement).value).toBe("Generated PR");
+			expect((screen.getByLabelText("PR body") as HTMLTextAreaElement).value).toBe("Generated body");
 		});
 	});
 });

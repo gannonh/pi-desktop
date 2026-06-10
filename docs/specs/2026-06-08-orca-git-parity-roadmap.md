@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.**
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.**
 
 ## Context
 
@@ -137,35 +137,31 @@ Tracking: [#152](https://github.com/gannonh/pi-desktop/issues/152)
 
 Add Pi-assisted workflows where Git operations benefit from agent context. This wave should keep Pi as the source of AI behavior while matching Orca's recovery and drafting affordances.
 
-#### 4.1 AI Commit and PR Generation
+#### 4.1 AI Commit and PR Generation — ✅ Implemented
 
 Tracking: [#153](https://github.com/gannonh/pi-desktop/issues/153)
 
-**Gap:** Pi Desktop's Generate buttons currently show prerequisite errors; Orca supports commit-message and PR-field generation with cancellation, settings, and custom instructions.
-
-**Goal:** Route commit-message and PR-field generation through Pi-owned one-shot generation or session flows.
+**Shipped:** Source-control generation now gathers staged diff or branch-compare context in the main process, builds bounded prompts, and uses a Pi-owned text generation boundary. The Changes panel Generate actions draft commit messages and PR title/body fields with loading, cancel, success, and error states. PR generation avoids same-branch tracking refs as the default base and falls back to `main` until Wave 5 adds configurable base refs. Renderer IPC receives only generated text fields.
 
 **Acceptance Criteria**
 
-- Commit-message generation can draft from staged diff context.
-- PR title/body generation can draft from branch compare context.
-- Generation has loading, cancel, success, and error states.
-- No provider secrets are exposed to renderer state.
+- ✅ Commit-message generation can draft from staged diff context.
+- ✅ PR title/body generation can draft from branch compare context.
+- ✅ Generation has loading, cancel, success, and error states.
+- ✅ No provider secrets are exposed to renderer state.
 
-#### 4.2 Commit Failure Recovery
+#### 4.2 Commit Failure Recovery — ✅ Implemented
 
 Tracking: [#154](https://github.com/gannonh/pi-desktop/issues/154)
 
-**Gap:** Pi Desktop displays commit failures; Orca can summarize failures and launch an agent recovery prompt.
-
-**Goal:** Add Pi-assisted recovery for failed commits without hiding the original Git error.
+**Shipped:** Failed commits open a recovery dialog with a concise summary, expandable raw Git output, dismiss action, and Recover with Pi action. Recovery chooses the relevant project chat, starts or resumes a Pi session, and submits a prompt containing the commit message, staged files, original failure output, and requested validation.
 
 **Acceptance Criteria**
 
-- Commit failures show a concise summary and expandable details.
-- A recovery action opens or resumes the relevant Pi project session.
-- The prompt includes failure output, changed files, and requested validation.
-- The user can still dismiss the dialog without launching Pi.
+- ✅ Commit failures show a concise summary and expandable details.
+- ✅ A recovery action opens or resumes the relevant Pi project session.
+- ✅ The prompt includes failure output, changed files, and requested validation.
+- ✅ The user can still dismiss the dialog without launching Pi.
 
 ### Wave 5: Hosted Review, Git Settings, and Runtime/Worktree Decisions
 

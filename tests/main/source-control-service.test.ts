@@ -121,6 +121,22 @@ describe("source control service", () => {
 		expect((await service.getStatus({ projectId })).entries).toEqual([]);
 	});
 
+	it("rejects empty commit messages", async () => {
+		await createRepo();
+		const service = createService();
+
+		await expect(service.commit({ projectId, message: "   " })).rejects.toThrow(/Commit message is required/);
+	});
+
+	it("preserves git output when commit fails", async () => {
+		await createRepo();
+		const service = createService();
+
+		await expect(service.commit({ projectId, message: "Empty commit attempt" })).rejects.toThrow(
+			/Commit failed\.\n\n.*nothing to commit, working tree clean/s,
+		);
+	});
+
 	it("returns guarded diff payloads for project files", async () => {
 		await createRepo();
 		await writeFile(join(repoDir, "README.md"), "# service diff\n", "utf8");

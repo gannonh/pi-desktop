@@ -3,6 +3,7 @@
 For this project, check these locations first:
 
 - ADRs: `docs/adr/`
+  - Source-control AI generation boundary: `docs/adr/0004-source-control-ai-generation-boundary.md`
 - Diagrams: `docs/diagrams/`
 - Specs and plans: `docs/specs/`
   - CLI parity audit: `docs/specs/_archive/2026-05-25-cli-parity-source-inventory.md` and `docs/specs/_archive/2026-05-25-cli-parity-coverage-matrix.md`

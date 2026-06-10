@@ -47,6 +47,11 @@ import type {
 	SourceControlCommitInput,
 	SourceControlCommitResult,
 	SourceControlCreatePullRequestInput,
+	SourceControlCancelGenerationInput,
+	SourceControlGenerateCommitMessageResult,
+	SourceControlGeneratePullRequestFieldsInput,
+	SourceControlGeneratePullRequestFieldsResult,
+	SourceControlGenerationRequestInput,
 	SourceControlDiscardInput,
 	SourceControlBranchCompareInput,
 	SourceControlBranchCompareResult,
@@ -126,6 +131,13 @@ export interface PiDesktopApi {
 		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
 		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
 		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;
+		generateCommitMessage: (
+			input: SourceControlGenerationRequestInput,
+		) => Promise<SourceControlGenerateCommitMessageResult>;
+		generatePullRequestFields: (
+			input: SourceControlGeneratePullRequestFieldsInput,
+		) => Promise<SourceControlGeneratePullRequestFieldsResult>;
+		cancelGeneration: (input: SourceControlCancelGenerationInput) => Promise<SourceControlMutationResult>;
 	};
 	clipboard: {
 		writeText: (input: ClipboardWriteTextInput) => Promise<ClipboardWriteTextResult>;

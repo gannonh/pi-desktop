@@ -21,6 +21,8 @@ import {
 	SourceControlGetCommitFilesResultSchema,
 	SourceControlGetDiffResultSchema,
 	SourceControlGetHistoryResultSchema,
+	SourceControlGenerateCommitMessageResultSchema,
+	SourceControlGeneratePullRequestFieldsResultSchema,
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPullRequestInfoResultSchema,
@@ -172,6 +174,20 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.sourceControlCreatePullRequest, SourceControlPullRequestInfoResultSchema, input),
 		getPullRequestInfo: async (input) =>
 			safeInvokeParse(IpcChannels.sourceControlGetPullRequestInfo, SourceControlPullRequestInfoResultSchema, input),
+		generateCommitMessage: async (input) =>
+			safeInvokeParse(
+				IpcChannels.sourceControlGenerateCommitMessage,
+				SourceControlGenerateCommitMessageResultSchema,
+				input,
+			),
+		generatePullRequestFields: async (input) =>
+			safeInvokeParse(
+				IpcChannels.sourceControlGeneratePullRequestFields,
+				SourceControlGeneratePullRequestFieldsResultSchema,
+				input,
+			),
+		cancelGeneration: async (input) =>
+			safeInvokeParse(IpcChannels.sourceControlCancelGeneration, SourceControlMutationResultSchema, input),
 	},
 	clipboard: {
 		writeText: async (input) =>

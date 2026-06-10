@@ -304,11 +304,18 @@ describe("app backend", () => {
 				displayName: "one",
 				path: repoDir,
 			});
+			const sourceControlTextGenerator = {
+				generate: vi
+					.fn()
+					.mockResolvedValueOnce("feat: update readme")
+					.mockResolvedValueOnce('{"title":"Feature branch","body":"## Summary\\nGenerated body"}'),
+			};
 			const backend = createAppBackend({
 				appInfo: { name: "pi-desktop", version: "dev" },
 				projectService,
 				now: () => "2026-05-15T12:00:00.000Z",
 				initializeGitRepository,
+				sourceControlTextGenerator,
 			});
 
 			await expect(
@@ -343,6 +350,18 @@ describe("app backend", () => {
 			).resolves.toMatchObject({ ok: true, data: { kind: "text", path: "README.md" } });
 			await expect(
 				backend.handle({
+					operation: "sourceControl.generateCommitMessage",
+					input: { projectId: "project:one", requestId: "commit-generation" },
+				}),
+			).resolves.toEqual({ ok: true, data: { message: "feat: update readme" } });
+			expect(sourceControlTextGenerator.generate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workspacePath: repoDir,
+					userPrompt: expect.stringContaining("README.md"),
+				}),
+			);
+			await expect(
+				backend.handle({
 					operation: "sourceControl.commit",
 					input: { projectId: "project:one", message: "Update readme" },
 				}),
@@ -364,6 +383,23 @@ describe("app backend", () => {
 					input: { projectId: "project:one", baseRef: "main", headRef: "feature" },
 				}),
 			).resolves.toMatchObject({ ok: true, data: { ahead: 1, behind: 0 } });
+			await expect(
+				backend.handle({
+					operation: "sourceControl.generatePullRequestFields",
+					input: {
+						projectId: "project:one",
+						requestId: "pr-generation",
+						baseRef: "main",
+						headRef: "feature",
+					},
+				}),
+			).resolves.toEqual({
+				ok: true,
+				data: { title: "Feature branch", body: "## Summary\nGenerated body" },
+			});
+			await expect(
+				backend.handle({ operation: "sourceControl.cancelGeneration", input: { requestId: "pr-generation" } }),
+			).resolves.toEqual({ ok: true, data: {} });
 			await expect(
 				backend.handle({ operation: "sourceControl.fetch", input: { projectId: "project:one" } }),
 			).resolves.toEqual({

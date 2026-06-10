@@ -233,6 +233,15 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	ipcMain.handle(IpcChannels.sourceControlGetPullRequestInfo, (_event, input) =>
 		invokeBackend("sourceControl.getPullRequestInfo", input),
 	);
+	ipcMain.handle(IpcChannels.sourceControlGenerateCommitMessage, (_event, input) =>
+		invokeBackend("sourceControl.generateCommitMessage", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlGeneratePullRequestFields, (_event, input) =>
+		invokeBackend("sourceControl.generatePullRequestFields", input),
+	);
+	ipcMain.handle(IpcChannels.sourceControlCancelGeneration, (_event, input) =>
+		invokeBackend("sourceControl.cancelGeneration", input),
+	);
 	ipcMain.handle(IpcChannels.clipboardWriteText, (_event, input) => {
 		const parsed = ClipboardWriteTextInputSchema.safeParse(input);
 		if (!parsed.success) {
