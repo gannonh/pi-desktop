@@ -26,6 +26,7 @@ import {
 	PiSessionStartInputSchema,
 	PiSessionSubmitInputSchema,
 	PiSessionUpdateQueuedMessageInputSchema,
+	ProjectGitSettingsInputSchema,
 	ProjectIdInputSchema,
 	ProjectPinnedInputSchema,
 	ProjectRenameInputSchema,
@@ -59,7 +60,7 @@ import type {
 	PiSessionStatus,
 } from "../shared/pi-session";
 import type { PiSessionRuntimeCommandsPayload } from "../shared/pi-session-commands";
-import type { ProjectStateView } from "../shared/project-state";
+import type { ProjectGitSettings, ProjectStateView } from "../shared/project-state";
 import { err, type IpcResult, ok } from "../shared/result";
 import type { GitStatusPayload } from "../shared/source-control/schemas";
 import type {
@@ -106,6 +107,7 @@ export type AppBackendDeps = {
 export type AppBackendResult = IpcResult<
 	| AppVersion
 	| ProjectStateView
+	| ProjectGitSettings
 	| PiSessionStartPayload
 	| PiSessionActionPayload
 	| PiSessionHistoryPayload
@@ -225,6 +227,16 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 		}
 	};
 
+	const handleProjectGitSettingsOperation = async (
+		operation: () => Promise<ProjectGitSettings>,
+	): Promise<AppBackendResult> => {
+		try {
+			return ok(await operation());
+		} catch (error) {
+			return err("project.operation_failed", toErrorMessage(error));
+		}
+	};
+
 	const resolveProjectRoot = async (projectId: string): Promise<string> => {
 		const workspace = await deps.projectService.getSessionWorkspace({ projectId });
 		return workspace.path;
@@ -309,6 +321,14 @@ export const createAppBackend = (deps: AppBackendDeps): AppBackend => {
 				case "project.setPinned":
 					return handleProjectOperation(() =>
 						deps.projectService.setPinned(ProjectPinnedInputSchema.parse(request.input)),
+					);
+				case "project.getGitSettings":
+					return handleProjectGitSettingsOperation(() =>
+						deps.projectService.getGitSettings(ProjectIdInputSchema.parse(request.input)),
+					);
+				case "project.setGitSettings":
+					return handleProjectOperation(() =>
+						deps.projectService.setGitSettings(ProjectGitSettingsInputSchema.parse(request.input)),
 					);
 				case "project.checkAvailability":
 					return handleProjectOperation(() =>

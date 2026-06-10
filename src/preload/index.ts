@@ -11,6 +11,7 @@ import {
 	PiSessionRuntimeCommandsResultSchema,
 	PiSessionSettingsResultSchema,
 	PiSessionStartResultSchema,
+	ProjectGitSettingsResultSchema,
 	ProjectStateViewResultSchema,
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
@@ -68,6 +69,10 @@ const api: PiDesktopApi = {
 		locateFolder: async (input) =>
 			safeInvokeParse(IpcChannels.projectLocateFolder, ProjectStateViewResultSchema, input),
 		setPinned: async (input) => safeInvokeParse(IpcChannels.projectSetPinned, ProjectStateViewResultSchema, input),
+		getGitSettings: async (input) =>
+			safeInvokeParse(IpcChannels.projectGetGitSettings, ProjectGitSettingsResultSchema, input),
+		setGitSettings: async (input) =>
+			safeInvokeParse(IpcChannels.projectSetGitSettings, ProjectStateViewResultSchema, input),
 		checkAvailability: async (input) =>
 			safeInvokeParse(IpcChannels.projectCheckAvailability, ProjectStateViewResultSchema, input),
 	},

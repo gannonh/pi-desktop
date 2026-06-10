@@ -4,6 +4,7 @@ import { useGitStatusPolling } from "./use-git-status-polling";
 
 export type ChangesPanelContextValue = {
 	projectId: string | null;
+	defaultBaseRef: string;
 	status: GitStatusPayload | null;
 	statusError: string | null;
 	isRefreshing: boolean;
@@ -24,11 +25,12 @@ export const useChangesPanel = (): ChangesPanelContextValue => {
 
 type ChangesPanelProviderProps = {
 	projectId: string | null;
+	defaultBaseRef: string;
 	isActive: boolean;
 	children: ReactNode;
 };
 
-export function ChangesPanelProvider({ projectId, isActive, children }: ChangesPanelProviderProps) {
+export function ChangesPanelProvider({ projectId, defaultBaseRef, isActive, children }: ChangesPanelProviderProps) {
 	const [status, setStatus] = useState<GitStatusPayload | null>(null);
 	const [statusError, setStatusError] = useState<string | null>(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
@@ -96,6 +98,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 	const value = useMemo(
 		() => ({
 			projectId,
+			defaultBaseRef,
 			status,
 			statusError,
 			isRefreshing,
@@ -103,7 +106,7 @@ export function ChangesPanelProvider({ projectId, isActive, children }: ChangesP
 			refresh,
 			initializeRepository,
 		}),
-		[projectId, status, statusError, isRefreshing, isGitRepo, refresh, initializeRepository],
+		[projectId, defaultBaseRef, status, statusError, isRefreshing, isGitRepo, refresh, initializeRepository],
 	);
 
 	return <ChangesPanelContext.Provider value={value}>{children}</ChangesPanelContext.Provider>;

@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { useFileWorkspace } from "../../src/renderer/file-workspace/file-workspace-context";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
-import type { ProjectRecord } from "../../src/shared/project-state";
+import { DEFAULT_PROJECT_GIT_SETTINGS, type ProjectRecord } from "../../src/shared/project-state";
 import {
 	captureConsoleMessages,
 	ensureRangeClientRects,
@@ -58,6 +58,7 @@ const project: ProjectRecord = {
 	lastOpenedAt: "2026-05-12T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 };
 
 describe("file workspace interactions", () => {

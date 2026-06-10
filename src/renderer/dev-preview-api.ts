@@ -5,6 +5,7 @@ import {
 	type ChatMetadata,
 	createProjectId,
 	createProjectStateView,
+	DEFAULT_PROJECT_GIT_SETTINGS,
 	getNextNewProjectName,
 	type ProjectRecord,
 	type ProjectStore,
@@ -27,6 +28,7 @@ const project = (path: string, overrides: Partial<ProjectRecord> = {}): ProjectR
 	lastOpenedAt: now,
 	pinned: false,
 	availability: { status: "available", checkedAt: now },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	...overrides,
 });
 
@@ -513,6 +515,26 @@ export const installDevPreviewApi = () => {
 				}
 				const { project, projectIndex } = result;
 				store.projects[projectIndex] = { ...project, pinned, updatedAt: new Date().toISOString() };
+				return ok();
+			},
+			getGitSettings: async ({ projectId }) => {
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				return { ok: true as const, data: result.project.gitSettings };
+			},
+			setGitSettings: async ({ projectId, defaultBaseRef }) => {
+				const result = findProject(projectId);
+				if (!result.ok) {
+					return result;
+				}
+				const { project, projectIndex } = result;
+				store.projects[projectIndex] = {
+					...project,
+					gitSettings: { defaultBaseRef },
+					updatedAt: new Date().toISOString(),
+				};
 				return ok();
 			},
 			checkAvailability: ok,

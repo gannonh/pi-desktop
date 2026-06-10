@@ -8,6 +8,7 @@ import type { ProjectStoreFile } from "../../src/main/projects/project-store";
 import {
 	createEmptyProjectStore,
 	createProjectId,
+	DEFAULT_PROJECT_GIT_SETTINGS,
 	type ChatMetadata,
 	type ProjectStateView,
 	type ProjectStore,
@@ -116,6 +117,7 @@ const createProject = (path: string, overrides: Partial<ProjectStore["projects"]
 	lastOpenedAt: firstNow,
 	pinned: false,
 	availability: { status: "available" as const },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	...overrides,
 });
 
@@ -1986,5 +1988,33 @@ describe("project service", () => {
 			lastOpenedAt: secondNow,
 		});
 		expect(memoryStore.read().standaloneChats[0]?.lastOpenedAt).toBe(secondNow);
+	});
+
+	it("returns default git settings for a project", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-git-settings-get-"));
+		const project = createProject(projectPath);
+		const { service } = await createService({
+			initialStore: { ...createEmptyProjectStore(), projects: [project], selectedProjectId: project.id },
+		});
+
+		await expect(service.getGitSettings({ projectId: project.id })).resolves.toEqual({
+			defaultBaseRef: "main",
+		});
+	});
+
+	it("persists git settings on a project", async () => {
+		const projectPath = await mkdtemp(join(tmpdir(), "pi-git-settings-set-"));
+		const project = createProject(projectPath);
+		const { memoryStore, service } = await createService({
+			initialStore: { ...createEmptyProjectStore(), projects: [project], selectedProjectId: project.id },
+		});
+
+		const view = await service.setGitSettings({ projectId: project.id, defaultBaseRef: "develop" });
+
+		expect(view.projects[0]?.gitSettings).toEqual({ defaultBaseRef: "develop" });
+		expect(memoryStore.read().projects[0]?.gitSettings).toEqual({ defaultBaseRef: "develop" });
+		await expect(service.getGitSettings({ projectId: project.id })).resolves.toEqual({
+			defaultBaseRef: "develop",
+		});
 	});
 });

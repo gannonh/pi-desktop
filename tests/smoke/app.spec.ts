@@ -4,7 +4,7 @@ import { waitForAppShell, waitForProjectStartHeading, waitForSelectedProject } f
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStore } from "../../src/shared/project-state";
 
 const expectHeadingTargetToReachFirstAction = async (
 	window: Page,
@@ -189,6 +189,7 @@ test("renders the selected project chat start state", async () => {
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: projectId,
@@ -239,6 +240,7 @@ test("streams a Pi session response in the selected project", async () => {
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: null,
@@ -295,6 +297,7 @@ test("refreshes project recovery UI after a Pi session start finds the folder mi
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: projectId,
@@ -352,6 +355,7 @@ test("renders resumed session history with markdown in the session layout", asyn
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: projectId,
@@ -424,6 +428,7 @@ test("renders an empty selected chat as a centered start state before streaming"
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: projectId,
@@ -500,6 +505,7 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: missingProjectId,
@@ -510,6 +516,7 @@ test("selects a missing project from the sidebar so recovery actions are reachab
 				lastOpenedAt: "2026-05-12T11:00:00.000Z",
 				pinned: false,
 				availability: { status: "missing", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: availableProjectId,
