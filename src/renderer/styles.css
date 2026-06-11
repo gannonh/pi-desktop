@@ -222,7 +222,7 @@ button:disabled {
 	border-bottom-color: transparent;
 }
 
-.app-shell__workspace-toggle {
+.app-shell__workspace-toggle.workspace-tab-strip__action {
 	position: absolute;
 	top: 0;
 	right: 0.2rem;
