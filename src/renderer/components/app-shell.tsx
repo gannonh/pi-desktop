@@ -198,7 +198,7 @@ export function AppShell({
 								<WorkspaceTabStrip />
 							</div>
 							<div className="app-shell__workspace-body">
-								<RightPanelWorkspace selectedProject={state.selectedProject} />
+								<RightPanelWorkspace selectedProject={state.selectedProject} onProjectState={onProjectState} />
 							</div>
 						</FileWorkspaceProvider>
 					</aside>

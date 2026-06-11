@@ -75,7 +75,22 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			getBranchCompare: vi.fn(),
 			abortConflict: vi.fn(),
 			createPullRequest: vi.fn(),
-			getPullRequestInfo: vi.fn(),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: false as const,
+				error: { code: "source_control.no_linked_pull_request", message: "No pull request found." },
+			})),
+			getGhAuthStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					ghAvailable: true,
+					authenticated: true,
+					account: "test-user",
+					remediation: null,
+				},
+			})),
+			generateCommitMessage: vi.fn(),
+			generatePullRequestFields: vi.fn(),
+			cancelGeneration: vi.fn(),
 			getHistory,
 			getCommitFiles,
 			getDiff,
@@ -94,7 +109,7 @@ describe("GitHistoryPanel", () => {
 	it("loads history and shows incoming/outgoing boundaries", async () => {
 		const { getHistory } = installApi();
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -110,7 +125,7 @@ describe("GitHistoryPanel", () => {
 		const { getCommitFiles, getDiff } = installApi();
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -170,7 +185,7 @@ describe("GitHistoryPanel", () => {
 		});
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);
@@ -210,7 +225,7 @@ describe("GitHistoryPanel", () => {
 		});
 
 		render(
-			<ChangesPanelProvider projectId={projectId} isActive>
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
 				<GitHistoryPanel />
 			</ChangesPanelProvider>,
 		);

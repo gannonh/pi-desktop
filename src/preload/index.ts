@@ -3,6 +3,7 @@ import type { z } from "zod";
 import {
 	AppVersionResultSchema,
 	ClipboardWriteTextResultSchema,
+	OpenExternalResultSchema,
 	IpcChannels,
 	PiSessionActionResultSchema,
 	PiSessionEventSchema,
@@ -11,6 +12,7 @@ import {
 	PiSessionRuntimeCommandsResultSchema,
 	PiSessionSettingsResultSchema,
 	PiSessionStartResultSchema,
+	ProjectGitSettingsResultSchema,
 	ProjectStateViewResultSchema,
 	WorkspaceListDirectoryResultSchema,
 	WorkspaceReadFileResultSchema,
@@ -26,6 +28,7 @@ import {
 	SourceControlGetStatusResultSchema,
 	SourceControlMutationResultSchema,
 	SourceControlPullRequestInfoResultSchema,
+	SourceControlGhAuthStatusResultSchema,
 	SourceControlUpstreamStatusResultSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
@@ -53,6 +56,7 @@ const safeInvokeParse = async <TResult extends IpcResult<unknown>>(
 const api: PiDesktopApi = {
 	app: {
 		getVersion: async () => safeInvokeParse(IpcChannels.appGetVersion, AppVersionResultSchema),
+		openExternal: async (input) => safeInvokeParse(IpcChannels.appOpenExternal, OpenExternalResultSchema, input),
 	},
 	project: {
 		getState: async () => safeInvokeParse(IpcChannels.projectGetState, ProjectStateViewResultSchema),
@@ -68,6 +72,10 @@ const api: PiDesktopApi = {
 		locateFolder: async (input) =>
 			safeInvokeParse(IpcChannels.projectLocateFolder, ProjectStateViewResultSchema, input),
 		setPinned: async (input) => safeInvokeParse(IpcChannels.projectSetPinned, ProjectStateViewResultSchema, input),
+		getGitSettings: async (input) =>
+			safeInvokeParse(IpcChannels.projectGetGitSettings, ProjectGitSettingsResultSchema, input),
+		setGitSettings: async (input) =>
+			safeInvokeParse(IpcChannels.projectSetGitSettings, ProjectStateViewResultSchema, input),
 		checkAvailability: async (input) =>
 			safeInvokeParse(IpcChannels.projectCheckAvailability, ProjectStateViewResultSchema, input),
 	},
@@ -174,6 +182,8 @@ const api: PiDesktopApi = {
 			safeInvokeParse(IpcChannels.sourceControlCreatePullRequest, SourceControlPullRequestInfoResultSchema, input),
 		getPullRequestInfo: async (input) =>
 			safeInvokeParse(IpcChannels.sourceControlGetPullRequestInfo, SourceControlPullRequestInfoResultSchema, input),
+		getGhAuthStatus: async () =>
+			safeInvokeParse(IpcChannels.sourceControlGetGhAuthStatus, SourceControlGhAuthStatusResultSchema),
 		generateCommitMessage: async (input) =>
 			safeInvokeParse(
 				IpcChannels.sourceControlGenerateCommitMessage,

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptyProjectStore } from "../../src/shared/project-state";
+import { createEmptyProjectStore, DEFAULT_PROJECT_GIT_SETTINGS } from "../../src/shared/project-state";
 import { createProjectStore } from "../../src/main/projects/project-store";
 
 const createTempStorePath = async () => join(await mkdtemp(join(tmpdir(), "pi-project-store-")), "state", "store.json");
@@ -30,6 +30,7 @@ describe("project store", () => {
 					lastOpenedAt: "2026-05-12T10:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: "project:/tmp/pi-desktop",

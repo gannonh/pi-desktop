@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createUnavailablePiDesktopApi } from "../../src/renderer/app-api/unavailable-api";
 import { FileWorkspacePanel } from "../../src/renderer/file-workspace/file-workspace-panel";
 import { ShellTestProviders } from "./shell-test-providers";
-import type { ProjectRecord } from "../../src/shared/project-state";
+import { DEFAULT_PROJECT_GIT_SETTINGS, type ProjectRecord } from "../../src/shared/project-state";
 
 const createProject = (id: string, displayName: string): ProjectRecord => ({
 	id,
@@ -16,6 +16,7 @@ const createProject = (id: string, displayName: string): ProjectRecord => ({
 	lastOpenedAt: "2026-05-12T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 });
 
 describe("file workspace stale loads", () => {

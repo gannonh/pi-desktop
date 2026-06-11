@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type {
-	ChatMetadata,
-	ProjectStateView,
-	ProjectWithChats,
-	StandaloneChatMetadata,
+import {
+	DEFAULT_PROJECT_GIT_SETTINGS,
+	type ChatMetadata,
+	type ProjectStateView,
+	type ProjectWithChats,
+	type StandaloneChatMetadata,
 } from "../../src/shared/project-state";
 import {
 	createProjectSidebarRows,
@@ -22,6 +23,7 @@ const createProject = (overrides: Partial<ProjectWithChats> = {}): ProjectWithCh
 	lastOpenedAt: "2026-05-12T09:00:00.000Z",
 	pinned: false,
 	availability: { status: "available" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	chats: [],
 	...overrides,
 });

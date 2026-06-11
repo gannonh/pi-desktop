@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.**
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5 (§5.1–5.3) is implemented on `wave5`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adr/0005-source-control-worktree-scope.md).
 
 ## Context
 
@@ -167,50 +167,48 @@ Tracking: [#154](https://github.com/gannonh/pi-desktop/issues/154)
 
 Decide which broader Orca Git surfaces belong in Pi Desktop. This wave should avoid accidental scope creep by recording product boundaries before implementation.
 
-#### 5.1 Hosted Review Depth
+#### 5.1 Hosted Review Depth — ✅ Implemented
 
 Tracking: [#155](https://github.com/gannonh/pi-desktop/issues/155)
 
-**Gap:** Pi Desktop only creates or views basic GitHub PR metadata; Orca tracks hosted review state, GitHub/GitLab eligibility, checks, comments, merge, and rate limits.
-
-**Goal:** Define and implement the next hosted-review slice after local Changes parity.
+**Shipped:** Linked GitHub PR summary in Changes (`LinkedPullRequestSummary`, header state badge), `gh` auth status probe, actionable errors, and `app.openExternal` for Open in Browser. Deferred scope in [2026-06-10-hosted-review-deferred.md](./2026-06-10-hosted-review-deferred.md).
 
 **Acceptance Criteria**
 
-- Linked GitHub PR state is shown consistently in Changes or a dedicated review tab.
-- PR checks, comments, and merge actions are either implemented or explicitly deferred in a follow-up spec.
-- GitLab support remains documented as out of scope unless the milestone adopts it.
-- Authentication and CLI prerequisite failures are visible and actionable.
+- ✅ Linked GitHub PR state is shown consistently in Changes or a dedicated review tab.
+- ✅ PR checks, comments, and merge actions are either implemented or explicitly deferred in a follow-up spec.
+- ✅ GitLab support remains documented as out of scope unless the milestone adopts it.
+- ✅ Authentication and CLI prerequisite failures are visible and actionable.
 
-#### 5.2 Git Settings Surface
+#### 5.2 Git Settings Surface — ✅ Implemented
 
 Tracking: [#156](https://github.com/gannonh/pi-desktop/issues/156)
 
-**Gap:** Pi Desktop has no Git settings surface; Orca exposes base-ref defaults, branch prefix behavior, attribution settings, and API budget panels.
-
-**Goal:** Add the minimum Git settings needed to support the selected-project Changes workflow.
+**Shipped:** Per-project `gitSettings.defaultBaseRef` in the project store, Changes panel Git settings dialog, and wiring into compare/rebase/PR ref resolution. Documented in [2026-06-10-git-settings.md](./2026-06-10-git-settings.md).
 
 **Acceptance Criteria**
 
-- Users can inspect or configure the default base ref used by compare/rebase flows.
-- GitHub attribution and auth-related settings are either implemented or explicitly deferred.
-- Settings changes affect source-control operations without restarting the app.
-- Settings are documented without duplicating README setup instructions.
+- ✅ Users can inspect or configure the default base ref used by compare/rebase flows.
+- ✅ GitHub attribution and auth-related settings are either implemented or explicitly deferred.
+- ✅ Settings changes affect source-control operations without restarting the app.
+- ✅ Settings are documented without duplicating README setup instructions.
 
-#### 5.3 Runtime and Worktree Scope
+#### 5.3 Runtime and Worktree Scope — ✅ Boundary recorded
 
 Tracking: [#157](https://github.com/gannonh/pi-desktop/issues/157)
 
-**Gap:** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management.
+**Shipped:** [ADR 0005: Source-control worktree and runtime scope](../adr/0005-source-control-worktree-scope.md) records selected-project-only boundaries for the current milestone. Follow-up revisit triggers live in [2026-06-10-worktree-scope-followups.md](./2026-06-10-worktree-scope-followups.md). No product implementation in this wave.
+
+**Gap (resolved for current milestone):** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management. ADR 0005 defers Orca porting until a future milestone with explicit UX ownership.
 
 **Goal:** Decide which runtime/worktree concepts belong in Pi Desktop before porting any of Orca's broader machinery.
 
 **Acceptance Criteria**
 
-- A follow-up ADR or spec states whether Pi Desktop adopts multi-worktree Git UX.
-- SSH/runtime Git operations remain out of scope until cloud/runtime milestones adopt them.
-- Branch rename/delete/worktree cleanup are not added without selected-project UX ownership.
-- Existing selected-project behavior stays simple and predictable.
+- ✅ [ADR 0005](../adr/0005-source-control-worktree-scope.md) states Pi Desktop does **not** adopt multi-worktree Git UX in the current milestone.
+- ✅ SSH/runtime Git operations remain out of scope until cloud/runtime milestones adopt them.
+- ✅ Branch rename/delete/worktree cleanup are not added without selected-project UX ownership.
+- ✅ Existing selected-project Changes behavior stays simple and predictable.
 
 ## Verification Notes
 

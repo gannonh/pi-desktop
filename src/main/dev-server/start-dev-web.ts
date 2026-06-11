@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { homedir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type InlineConfig } from "vite";
 import { type AppBackend, createAppBackend } from "../app-backend";
@@ -71,8 +73,19 @@ export const resolveDevWebPreviewUrl = (
 	return `http://${devHost}:${fallbackPort}/`;
 };
 
+const execFileAsync = promisify(execFile);
+
 const unavailableNativeOperation = async () => {
 	throw new Error("Native desktop operation unavailable in web preview.");
+};
+
+const openExternalUrl = async (url: string) => {
+	if (process.platform === "win32") {
+		await execFileAsync("rundll32", ["url.dll,FileProtocolHandler", url]);
+		return;
+	}
+	const command = process.platform === "darwin" ? "open" : "xdg-open";
+	await execFileAsync(command, [url]);
 };
 
 export const resolveDevWebUserDataDir = (
@@ -93,6 +106,7 @@ export const createDevWebBackend = (env: NodeJS.ProcessEnv = process.env): AppBa
 
 	return createAppBackend({
 		appInfo: { name: "pi-desktop web", version: "dev" },
+		openExternal: openExternalUrl,
 		initializeGitRepository,
 		projectService: createProjectService({
 			store: createProjectStore(projectStorePath),

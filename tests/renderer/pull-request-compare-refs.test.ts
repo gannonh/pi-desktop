@@ -30,6 +30,19 @@ describe("resolvePullRequestCompareRefs", () => {
 		).toEqual({ baseRef: "main", headRef: "feat/test" });
 	});
 
+	it("uses configured default base ref when upstream is missing", () => {
+		expect(
+			resolvePullRequestCompareRefs(
+				{
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feat/test",
+				},
+				"develop",
+			),
+		).toEqual({ baseRef: "develop", headRef: "feat/test" });
+	});
+
 	it("falls back to main when upstream tracks the current branch", () => {
 		expect(
 			resolvePullRequestCompareRefs({

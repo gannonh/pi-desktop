@@ -49,6 +49,7 @@ import {
 	syncRemote,
 	unstageFile,
 } from "../git/status";
+import { getGhAuthStatus } from "../git/gh-auth";
 import type { ProjectService } from "../projects/project-service";
 import { normalizeRelativePath, WorkspacePathError } from "../workspace-files/path-guard";
 import {
@@ -139,6 +140,7 @@ export type SourceControlService = {
 	abortConflict: (input: SourceControlAbortConflictInput) => Promise<void>;
 	createPullRequest: (input: SourceControlCreatePullRequestInput) => ReturnType<typeof createPullRequest>;
 	getPullRequestInfo: (input: SourceControlProjectInput) => ReturnType<typeof getPullRequestInfo>;
+	getGhAuthStatus: () => ReturnType<typeof getGhAuthStatus>;
 	generateCommitMessage: (input: SourceControlGenerationRequestInput) => Promise<{ message: string }>;
 	generatePullRequestFields: (
 		input: SourceControlGeneratePullRequestFieldsInput,
@@ -262,6 +264,7 @@ export const createSourceControlService = (deps: SourceControlServiceDeps): Sour
 				createPullRequest(projectRoot, { title: input.title, body: input.body }),
 			),
 		getPullRequestInfo: (input) => withProjectRoot(input.projectId, (projectRoot) => getPullRequestInfo(projectRoot)),
+		getGhAuthStatus: () => getGhAuthStatus(),
 
 		generateCommitMessage: async (input) => {
 			const controller = generationRegistry.start(input.requestId);

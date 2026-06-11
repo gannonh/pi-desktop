@@ -1978,6 +1978,34 @@ body.file-workspace--resizing {
 	font-weight: 600;
 }
 
+.changes-panel__header-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.125rem;
+}
+
+.changes-panel__git-settings-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.changes-panel__git-settings-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	font-size: var(--type-caption);
+}
+
+.changes-panel__git-settings-field input {
+	padding: 0.375rem 0.5rem;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-control);
+	background: var(--color-background);
+	color: inherit;
+	font: inherit;
+}
+
 .changes-panel__body {
 	overflow: auto;
 	padding: 0.5rem 0;
@@ -2010,6 +2038,7 @@ body.file-workspace--resizing {
 .changes-panel__compare,
 .changes-panel__history,
 .changes-panel__pr,
+.changes-panel__linked-pr,
 .changes-panel__bulk,
 .changes-panel__conflict {
 	display: grid;
@@ -2044,6 +2073,37 @@ body.file-workspace--resizing {
 	font: inherit;
 	padding: 0.375rem 0.5rem;
 	resize: vertical;
+}
+
+.changes-panel__linked-pr-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.375rem;
+}
+
+.changes-panel__linked-pr-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: var(--type-body);
+	color: var(--color-foreground);
+}
+
+.changes-panel__linked-pr-number {
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
+}
+
+.changes-panel__linked-pr-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
+}
+
+.changes-panel__gh-auth-notice {
+	margin: 0;
+	color: var(--color-muted-foreground);
+	font-size: var(--type-caption);
 }
 
 .changes-panel__commit-actions,

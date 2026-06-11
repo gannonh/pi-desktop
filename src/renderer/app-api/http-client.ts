@@ -160,6 +160,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 	return {
 		app: {
 			getVersion: () => callRpc("app.getVersion"),
+			openExternal: (input) => callRpc("app.openExternal", input),
 		},
 		project: {
 			getState: () => callRpc("project.getState"),
@@ -171,6 +172,8 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			openInFinder: (input) => callRpc("project.openInFinder", input),
 			locateFolder: (input) => callRpc("project.locateFolder", input),
 			setPinned: (input) => callRpc("project.setPinned", input),
+			getGitSettings: (input) => callRpc("project.getGitSettings", input),
+			setGitSettings: (input) => callRpc("project.setGitSettings", input),
 			checkAvailability: (input) => callRpc("project.checkAvailability", input),
 		},
 		chat: {
@@ -243,6 +246,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 			abortConflict: (input) => callRpc("sourceControl.abortConflict", input),
 			createPullRequest: (input) => callRpc("sourceControl.createPullRequest", input),
 			getPullRequestInfo: (input) => callRpc("sourceControl.getPullRequestInfo", input),
+			getGhAuthStatus: () => callRpc("sourceControl.getGhAuthStatus"),
 			generateCommitMessage: (input) => callRpc("sourceControl.generateCommitMessage", input),
 			generatePullRequestFields: (input) => callRpc("sourceControl.generatePullRequestFields", input),
 			cancelGeneration: (input) => callRpc("sourceControl.cancelGeneration", input),

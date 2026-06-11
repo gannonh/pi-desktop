@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+	DEFAULT_PROJECT_GIT_SETTINGS,
+	ProjectGitSettingsSchema,
 	createEmptyProjectStore,
 	createProjectId,
 	createProjectStateView,
 	getNextNewProjectName,
+	isValidGitRefName,
 	ProjectStoreSchema,
 	sortChats,
 	sortProjects,
@@ -30,6 +33,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T10:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:alpha",
@@ -40,6 +44,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: true,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -57,6 +62,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T08:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:newer",
@@ -67,6 +73,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T11:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -84,6 +91,7 @@ describe("project state contracts", () => {
 			lastOpenedAt: "2026-05-12T08:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" as const },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 		};
 		const idleProject = {
 			id: createProjectId("/tmp/skills"),
@@ -94,6 +102,7 @@ describe("project state contracts", () => {
 			lastOpenedAt: "2026-05-12T11:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" as const },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 		};
 
 		store.projects = [idleProject, activeProject];
@@ -134,6 +143,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 			{
 				id: "project:alpha",
@@ -144,6 +154,7 @@ describe("project state contracts", () => {
 				lastOpenedAt: "2026-05-12T09:00:00.000Z",
 				pinned: false,
 				availability: { status: "available" as const },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		];
 
@@ -253,6 +264,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T09:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 				{
 					id: "project:other",
@@ -263,6 +275,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T10:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: "project:selected",
@@ -371,6 +384,48 @@ describe("project state contracts", () => {
 		expect(parsed.sessionUiByPath).toEqual({});
 	});
 
+	it("migrates projects with missing or null git settings to defaults", () => {
+		const baseProject = {
+			id: "project:/tmp/pi-desktop",
+			displayName: "pi-desktop",
+			path: "/tmp/pi-desktop",
+			createdAt: "2026-05-12T09:00:00.000Z",
+			updatedAt: "2026-05-12T09:00:00.000Z",
+			lastOpenedAt: "2026-05-12T09:00:00.000Z",
+			pinned: false,
+			availability: { status: "available" as const },
+		};
+
+		const withoutGitSettings = ProjectStoreSchema.parse({
+			projects: [baseProject],
+			selectedProjectId: baseProject.id,
+			selectedChatId: null,
+			chatsByProject: {},
+		});
+		expect(withoutGitSettings.projects[0]?.gitSettings).toEqual(DEFAULT_PROJECT_GIT_SETTINGS);
+
+		const withNullGitSettings = ProjectStoreSchema.parse({
+			projects: [{ ...baseProject, gitSettings: null }],
+			selectedProjectId: baseProject.id,
+			selectedChatId: null,
+			chatsByProject: {},
+		});
+		expect(withNullGitSettings.projects[0]?.gitSettings).toEqual(DEFAULT_PROJECT_GIT_SETTINGS);
+	});
+
+	it("rejects invalid git ref names in project git settings", () => {
+		expect(isValidGitRefName("main")).toBe(true);
+		expect(isValidGitRefName("develop")).toBe(true);
+		expect(isValidGitRefName("-bad")).toBe(false);
+		expect(isValidGitRefName("main branch")).toBe(false);
+		expect(isValidGitRefName("feat..fix")).toBe(false);
+		expect(isValidGitRefName("HEAD~1")).toBe(false);
+
+		expect(() => ProjectGitSettingsSchema.parse({ defaultBaseRef: "main branch" })).toThrow(
+			"Git ref contains invalid characters.",
+		);
+	});
+
 	it("migrates legacy project chat records with draft Pi session defaults", () => {
 		const parsed = ProjectStoreSchema.parse({
 			projects: [
@@ -383,6 +438,7 @@ describe("project state contracts", () => {
 					lastOpenedAt: "2026-05-12T09:00:00.000Z",
 					pinned: false,
 					availability: { status: "available" as const },
+					gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 				},
 			],
 			selectedProjectId: "project:/tmp/pi-desktop",

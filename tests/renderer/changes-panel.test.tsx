@@ -9,7 +9,7 @@ import type { CommitRecoverySessionRequest } from "../../src/renderer/session/co
 import type { PiDesktopApi } from "../../src/shared/preload-api";
 import type { GitStatusPayload } from "../../src/shared/source-control/schemas";
 import type { GitUpstreamStatus } from "../../src/shared/source-control/types";
-import { createProjectId } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS } from "../../src/shared/project-state";
 import { FileViewer } from "../../src/renderer/file-workspace/file-viewer";
 import { ShellTestProviders } from "./shell-test-providers";
 
@@ -22,6 +22,7 @@ const project = {
 	lastOpenedAt: "2026-06-07T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available" as const, checkedAt: "2026-06-07T00:00:00.000Z" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 	chats: [],
 };
 
@@ -140,7 +141,16 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			})),
 			getPullRequestInfo: vi.fn(async () => ({
 				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "No pull request found." },
+				error: { code: "source_control.no_linked_pull_request", message: "No pull request found." },
+			})),
+			getGhAuthStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					ghAvailable: true,
+					authenticated: true,
+					account: "gannonh",
+					remediation: null,
+				},
 			})),
 			generateCommitMessage: vi.fn(async () => ({
 				ok: true as const,
@@ -155,6 +165,10 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 		},
 		clipboard: {
 			writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
+		},
+		app: {
+			getVersion: vi.fn(async () => ({ ok: true as const, data: { name: "pi-desktop", version: "test" } })),
+			openExternal: vi.fn(async () => ({ ok: true as const, data: { opened: true as const } })),
 		},
 	} as PiDesktopApi;
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
@@ -557,7 +571,7 @@ describe("ChangesPanel", () => {
 		await screen.findByText("README.md");
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
-		await screen.findByText("Feature PR");
+		await screen.findByTestId("linked-pull-request");
 
 		expect(document.querySelector('a[href="https://github.com/gannonh/pi-desktop/pull/1"]')).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Copy PR Link" }));
@@ -593,7 +607,107 @@ describe("ChangesPanel", () => {
 		await waitFor(() => {
 			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
 		});
-		expect(screen.getByText("Feature PR")).toBeTruthy();
+		expect(screen.getAllByText("Feature PR").length).toBeGreaterThan(0);
+	});
+
+	it("renders linked pull request summary with state badge and PR number", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByTestId("linked-pull-request");
+		const linkedPullRequest = screen.getByTestId("linked-pull-request");
+		expect(within(linkedPullRequest).getByText("Open")).toBeTruthy();
+		expect(screen.getAllByText("Hosted review slice").length).toBeGreaterThan(0);
+		expect(within(linkedPullRequest).getByText("#155")).toBeTruthy();
+	});
+
+	it("opens linked pull requests in the browser instead of rendering remote anchors", async () => {
+		const openExternal = vi.fn(async () => ({ ok: true as const, data: { opened: true as const } }));
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
+				} satisfies GitStatusPayload,
+			})),
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+				},
+			})),
+		});
+		window.piDesktop.app.openExternal = openExternal;
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByTestId("linked-pull-request");
+		expect(document.querySelector('a[href="https://github.com/gannonh/pi-desktop/pull/155"]')).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Open in Browser" }));
+
+		await waitFor(() => {
+			expect(openExternal).toHaveBeenCalledWith({ url: "https://github.com/gannonh/pi-desktop/pull/155" });
+		});
+	});
+
+	it("shows actionable gh auth remediation when GitHub is not authenticated", async () => {
+		installApi({
+			getGhAuthStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					ghAvailable: true,
+					authenticated: false,
+					account: null,
+					remediation: "Run `gh auth login` in a terminal to connect GitHub.",
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Run `gh auth login` in a terminal to connect GitHub.");
+	});
+
+	it("shows create PR auth failures from gh", async () => {
+		installApi({
+			createPullRequest: vi.fn(async () => ({
+				ok: false as const,
+				error: {
+					code: "source_control.gh_auth_required",
+					message: "GitHub is not authenticated. Run `gh auth login` in a terminal and try again.",
+				},
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
+
+		await screen.findByText("GitHub is not authenticated. Run `gh auth login` in a terminal and try again.");
 	});
 
 	it("uses linked pull request state to disable duplicate create PR actions", async () => {
@@ -614,7 +728,7 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
-		await screen.findByText("Existing PR");
+		await screen.findByTestId("linked-pull-request");
 		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
 
 		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
@@ -635,7 +749,7 @@ describe("ChangesPanel", () => {
 			})
 			.mockResolvedValue({
 				ok: false as const,
-				error: { code: "source_control.operation_failed", message: "No pull request found." },
+				error: { code: "source_control.no_linked_pull_request", message: "No pull request found." },
 			});
 		installApi({
 			getStatus: vi.fn(async () => ({
@@ -646,7 +760,7 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
-		await screen.findByText("Existing PR");
+		await screen.findByTestId("linked-pull-request");
 		currentStatus = {
 			entries: [],
 			conflictOperation: "unknown",
@@ -656,7 +770,7 @@ describe("ChangesPanel", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Refresh source control status" }));
 
 		await waitFor(() => {
-			expect(screen.queryByText("Existing PR")).toBeNull();
+			expect(screen.queryByTestId("linked-pull-request")).toBeNull();
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
 		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(
@@ -861,7 +975,7 @@ describe("ChangesPanel", () => {
 			});
 		installApi({ getStatus });
 		render(
-			<ChangesPanelProvider projectId={project.id} isActive={false}>
+			<ChangesPanelProvider projectId={project.id} defaultBaseRef="main" isActive={false}>
 				<ChangesPanelStatusHarness />
 			</ChangesPanelProvider>,
 		);

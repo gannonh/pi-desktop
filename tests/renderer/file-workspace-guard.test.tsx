@@ -11,7 +11,7 @@ import {
 import { confirmDiscardUnsavedChanges } from "../../src/renderer/file-workspace/confirm-discard";
 import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { ShellLayoutProvider } from "../../src/renderer/shell/shell-layout-context";
-import type { ProjectRecord } from "../../src/shared/project-state";
+import { DEFAULT_PROJECT_GIT_SETTINGS, type ProjectRecord } from "../../src/shared/project-state";
 
 const project: ProjectRecord = {
 	id: "project:/tmp/pi-desktop",
@@ -22,6 +22,7 @@ const project: ProjectRecord = {
 	lastOpenedAt: "2026-05-12T00:00:00.000Z",
 	pinned: false,
 	availability: { status: "available", checkedAt: "2026-05-12T00:00:00.000Z" },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 };
 
 describe("file workspace guard", () => {

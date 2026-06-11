@@ -1,5 +1,6 @@
 import { resolveBrowserMock, resolveTerminalMock } from "./right-panel-mock-data";
 import type { RightPanelTab } from "./right-panel-types";
+import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectRecord } from "../../shared/project-state";
 import { ChangesPanel } from "../changes-panel/ChangesPanel";
 import { FileWorkspacePanel } from "../file-workspace/file-workspace-panel";
@@ -11,9 +12,16 @@ interface RightPanelBodyProps {
 	filesActive: boolean;
 	selectedProject: ProjectRecord | null;
 	changesActive: boolean;
+	onProjectState?: (result: ProjectStateViewResult) => void;
 }
 
-export function RightPanelBody({ tab, filesActive, selectedProject, changesActive }: RightPanelBodyProps) {
+export function RightPanelBody({
+	tab,
+	filesActive,
+	selectedProject,
+	changesActive,
+	onProjectState,
+}: RightPanelBodyProps) {
 	if (filesActive) {
 		return <FileWorkspacePanel project={selectedProject} />;
 	}
@@ -32,7 +40,7 @@ export function RightPanelBody({ tab, filesActive, selectedProject, changesActiv
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
 		case "changes":
-			return <ChangesPanel project={selectedProject} isActive={changesActive} />;
+			return <ChangesPanel project={selectedProject} isActive={changesActive} onProjectState={onProjectState} />;
 		case "files":
 			return <FileWorkspacePanel project={selectedProject} />;
 	}

@@ -8,7 +8,7 @@ import {
 	type StartDevWebServerDeps,
 } from "../../src/main/dev-server/start-dev-web";
 import { createProjectStore } from "../../src/main/projects/project-store";
-import { createProjectId, type ProjectStore } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStore } from "../../src/shared/project-state";
 import { waitForAppShell, waitForDevBridge, waitForProjectStartHeading, waitForSelectedProject } from "./smoke-helpers";
 
 const projectName = "Smoke bridge project";
@@ -40,6 +40,7 @@ const writeProjectStore = async (userDataDir: string, projectPath: string) => {
 				lastOpenedAt: now,
 				pinned: false,
 				availability: { status: "available", checkedAt: now },
+				gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			},
 		],
 		selectedProjectId: projectId,

@@ -5,7 +5,7 @@ import {
 	stagedFilesForRecovery,
 	summarizeCommitFailure,
 } from "../../src/renderer/changes-panel/commit-failure-recovery";
-import { createProjectId, type ProjectStateView } from "../../src/shared/project-state";
+import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStateView } from "../../src/shared/project-state";
 
 const projectId = createProjectId("/tmp/pi-project");
 const chatId = "chat:1";
@@ -21,6 +21,7 @@ const projectState = {
 			lastOpenedAt: "2026-06-07T00:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" as const, checkedAt: "2026-06-07T00:00:00.000Z" },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			chats: [
 				{
 					id: chatId,

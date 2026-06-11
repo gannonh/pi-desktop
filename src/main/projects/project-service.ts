@@ -4,8 +4,10 @@ import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 import {
 	createProjectId,
 	createProjectStateView,
+	DEFAULT_PROJECT_GIT_SETTINGS,
 	type ChatMetadata,
 	type ChatStatus,
+	type ProjectGitSettings,
 	type ProjectRecord,
 	type ProjectStateView,
 	type ProjectStore,
@@ -20,6 +22,7 @@ import type {
 	ChatSelectionInput,
 	ChatStandaloneCreateInput,
 	ChatStandaloneSelectionInput,
+	ProjectGitSettingsInput,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
@@ -90,6 +93,8 @@ export type ProjectService = {
 	openProjectInFinder: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	locateFolder: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	setPinned: (input: ProjectPinnedInput) => Promise<ProjectStateView>;
+	getGitSettings: (input: ProjectIdInput) => Promise<ProjectGitSettings>;
+	setGitSettings: (input: ProjectGitSettingsInput) => Promise<ProjectStateView>;
 	checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateView>;
 	getSessionWorkspace: (input: ProjectIdInput) => Promise<SessionWorkspace>;
 	createChat: (input: ChatCreateInput) => Promise<ProjectStateView>;
@@ -142,6 +147,7 @@ const createAvailableProject = (projectPath: string, now: string): ProjectRecord
 	lastOpenedAt: now,
 	pinned: false,
 	availability: { status: "available", checkedAt: now },
+	gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 });
 
 const touchProjectLastOpened = (store: ProjectStore, projectId: string, now: string) => {
@@ -643,6 +649,28 @@ export const createProjectService = (deps: ProjectServiceDeps): ProjectService =
 				store.projects[projectIndex] = {
 					...store.projects[projectIndex],
 					pinned: input.pinned,
+					updatedAt: deps.now(),
+				};
+
+				return saveAndView(deps.store, store);
+			});
+		},
+
+		async getGitSettings(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				return store.projects[projectIndex].gitSettings;
+			});
+		},
+
+		async setGitSettings(input) {
+			return runSerialized(async () => {
+				const store = await deps.store.load();
+				const projectIndex = findProjectIndex(store, input.projectId);
+				store.projects[projectIndex] = {
+					...store.projects[projectIndex],
+					gitSettings: { defaultBaseRef: input.defaultBaseRef },
 					updatedAt: deps.now(),
 				};
 

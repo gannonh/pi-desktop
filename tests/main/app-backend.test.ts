@@ -67,6 +67,8 @@ const createProjectService = (): ProjectService => ({
 	forkChat: vi.fn(async () => emptyState),
 	cloneChat: vi.fn(async () => emptyState),
 	branchChat: vi.fn(async () => emptyState),
+	getGitSettings: vi.fn(async () => ({ defaultBaseRef: "main" })),
+	setGitSettings: vi.fn(async () => emptyState),
 });
 
 type ProjectStateMethod =
@@ -246,6 +248,43 @@ describe("app backend", () => {
 		await expect(backend.handle({ operation: "app.getVersion" })).resolves.toEqual({
 			ok: true,
 			data: { name: "pi-desktop", version: "dev" },
+		});
+	});
+
+	it("routes project.getGitSettings to the project service", async () => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+		});
+
+		const result = await backend.handle({
+			operation: "project.getGitSettings",
+			input: { projectId: "project:one" },
+		});
+
+		expect(result).toEqual({ ok: true, data: { defaultBaseRef: "main" } });
+		expect(projectService.getGitSettings).toHaveBeenCalledWith({ projectId: "project:one" });
+	});
+
+	it("routes project.setGitSettings to the project service", async () => {
+		const projectService = createProjectService();
+		const backend = createAppBackend({
+			appInfo: { name: "pi-desktop", version: "dev" },
+			projectService,
+			now: () => "2026-05-15T12:00:00.000Z",
+		});
+
+		const result = await backend.handle({
+			operation: "project.setGitSettings",
+			input: { projectId: "project:one", defaultBaseRef: "develop" },
+		});
+
+		expect(result).toEqual({ ok: true, data: emptyState });
+		expect(projectService.setGitSettings).toHaveBeenCalledWith({
+			projectId: "project:one",
+			defaultBaseRef: "develop",
 		});
 	});
 

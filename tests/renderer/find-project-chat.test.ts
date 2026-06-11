@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findProjectChat } from "../../src/renderer/projects/find-project-chat";
 import type { ProjectStateView } from "../../src/shared/project-state";
+import { DEFAULT_PROJECT_GIT_SETTINGS } from "../../src/shared/project-state";
 
 const createView = (): ProjectStateView => ({
 	projects: [
@@ -13,6 +14,7 @@ const createView = (): ProjectStateView => ({
 			lastOpenedAt: "2026-05-12T10:00:00.000Z",
 			pinned: false,
 			availability: { status: "available" },
+			gitSettings: DEFAULT_PROJECT_GIT_SETTINGS,
 			chats: [
 				{
 					id: "chat-1",

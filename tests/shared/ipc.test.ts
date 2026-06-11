@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	AppVersionResultSchema,
 	ChatBranchInputSchema,
+	OpenExternalInputSchema,
 	ChatCloneInputSchema,
 	ChatCreateInputSchema,
 	ChatForkInputSchema,
@@ -66,6 +67,7 @@ describe("IPC contracts", () => {
 	it("uses stable project and chat channel names", () => {
 		expect(IpcChannels).toEqual({
 			appGetVersion: "app:getVersion",
+			appOpenExternal: "app:openExternal",
 			projectGetState: "project:getState",
 			projectCreateFromScratch: "project:createFromScratch",
 			projectAddExistingFolder: "project:addExistingFolder",
@@ -76,6 +78,8 @@ describe("IPC contracts", () => {
 			projectLocateFolder: "project:locateFolder",
 			projectSetPinned: "project:setPinned",
 			projectCheckAvailability: "project:checkAvailability",
+			projectGetGitSettings: "project:getGitSettings",
+			projectSetGitSettings: "project:setGitSettings",
 			chatCreate: "chat:create",
 			chatCreateStandalone: "chat:createStandalone",
 			chatSelect: "chat:select",
@@ -133,8 +137,23 @@ describe("IPC contracts", () => {
 			sourceControlAbortConflict: "source-control:abortConflict",
 			sourceControlCreatePullRequest: "source-control:createPullRequest",
 			sourceControlGetPullRequestInfo: "source-control:getPullRequestInfo",
+			sourceControlGetGhAuthStatus: "source-control:getGhAuthStatus",
 			clipboardWriteText: "clipboard:writeText",
 		});
+	});
+
+	it("accepts http and https URLs for openExternal", () => {
+		expect(OpenExternalInputSchema.parse({ url: "https://github.com/org/repo/pull/1" })).toEqual({
+			url: "https://github.com/org/repo/pull/1",
+		});
+		expect(OpenExternalInputSchema.parse({ url: "http://localhost:5173/" })).toEqual({
+			url: "http://localhost:5173/",
+		});
+	});
+
+	it("rejects non-http(s) URLs for openExternal", () => {
+		expect(OpenExternalInputSchema.safeParse({ url: "file:///etc/passwd" }).success).toBe(false);
+		expect(OpenExternalInputSchema.safeParse({ url: "javascript:alert(1)" }).success).toBe(false);
 	});
 
 	it("validates successful app version results", () => {

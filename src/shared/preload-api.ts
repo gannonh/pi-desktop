@@ -10,6 +10,8 @@ import type {
 	ChatStandaloneSelectionInput,
 	ClipboardWriteTextInput,
 	ClipboardWriteTextResult,
+	OpenExternalInput,
+	OpenExternalResult,
 	PiSessionAbortInput,
 	PiSessionActionResult,
 	PiSessionAttachInput,
@@ -32,6 +34,8 @@ import type {
 	PiSessionStartResult,
 	PiSessionSubmitInput,
 	PiSessionUpdateQueuedMessageInput,
+	ProjectGitSettingsInput,
+	ProjectGitSettingsResult,
 	ProjectIdInput,
 	ProjectPinnedInput,
 	ProjectRenameInput,
@@ -66,6 +70,7 @@ import type {
 	SourceControlPathInput,
 	SourceControlProjectInput,
 	SourceControlPullRequestInfoResult,
+	SourceControlGhAuthStatusResult,
 	SourceControlRebaseInput,
 	SourceControlRemoteActionInput,
 	SourceControlAbortConflictInput,
@@ -76,6 +81,7 @@ import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 export interface PiDesktopApi {
 	app: {
 		getVersion: () => Promise<AppVersionResult>;
+		openExternal: (input: OpenExternalInput) => Promise<OpenExternalResult>;
 	};
 	project: {
 		getState: () => Promise<ProjectStateViewResult>;
@@ -87,6 +93,8 @@ export interface PiDesktopApi {
 		openInFinder: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 		locateFolder: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 		setPinned: (input: ProjectPinnedInput) => Promise<ProjectStateViewResult>;
+		getGitSettings: (input: ProjectIdInput) => Promise<ProjectGitSettingsResult>;
+		setGitSettings: (input: ProjectGitSettingsInput) => Promise<ProjectStateViewResult>;
 		checkAvailability: (input: ProjectIdInput) => Promise<ProjectStateViewResult>;
 	};
 	chat: {
@@ -131,6 +139,7 @@ export interface PiDesktopApi {
 		abortConflict: (input: SourceControlAbortConflictInput) => Promise<SourceControlMutationResult>;
 		createPullRequest: (input: SourceControlCreatePullRequestInput) => Promise<SourceControlPullRequestInfoResult>;
 		getPullRequestInfo: (input: SourceControlProjectInput) => Promise<SourceControlPullRequestInfoResult>;
+		getGhAuthStatus: () => Promise<SourceControlGhAuthStatusResult>;
 		generateCommitMessage: (
 			input: SourceControlGenerationRequestInput,
 		) => Promise<SourceControlGenerateCommitMessageResult>;
