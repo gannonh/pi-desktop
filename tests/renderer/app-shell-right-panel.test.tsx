@@ -83,4 +83,12 @@ describe("AppShell right panel collapse", () => {
 		expect(screen.queryByLabelText("Workspace")).toBeNull();
 		expect(screen.getByRole("button", { name: "Show workspace" })).toBeTruthy();
 	});
+
+	it("anchors the collapsed workspace toggle outside the chat header", () => {
+		renderCollapsedAppShell();
+
+		const toggle = screen.getByRole("button", { name: "Show workspace" });
+		expect(toggle.closest(".app-shell__workspace-layout")).toBeTruthy();
+		expect(toggle.closest(".app-shell__chat-header")).toBeNull();
+	});
 });

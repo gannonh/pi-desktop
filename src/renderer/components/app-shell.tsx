@@ -97,17 +97,17 @@ export function AppShell({
 			? ({ width: workspaceWidth } as const)
 			: undefined;
 
-	const showWorkspaceToggle = showWorkspaceColumn && rightPanelState.collapsed;
-	const workspaceToggle = showWorkspaceToggle ? (
-		<button
-			type="button"
-			className="app-shell__workspace-toggle workspace-tab-strip__action"
-			aria-label="Show workspace"
-			onClick={toggleCollapsed}
-		>
-			<PanelRightOpen className="workspace-tab-strip__action-icon" aria-hidden />
-		</button>
-	) : null;
+	const workspaceToggle =
+		showWorkspaceColumn && rightPanelState.collapsed ? (
+			<button
+				type="button"
+				className="app-shell__workspace-toggle workspace-tab-strip__action"
+				aria-label="Show workspace"
+				onClick={toggleCollapsed}
+			>
+				<PanelRightOpen className="workspace-tab-strip__action-icon" aria-hidden />
+			</button>
+		) : null;
 
 	const projectMain = (
 		<ProjectMain
@@ -174,19 +174,15 @@ export function AppShell({
 									{sessionHeader.title}
 								</h1>
 							) : null}
-							{showPathBadge || workspaceToggle ? (
-								<div className="app-shell__chat-header-actions">
-									{showPathBadge ? (
-										<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
-											{selectedProjectPath}
-										</Badge>
-									) : null}
-									{workspaceToggle}
-								</div>
+							{showPathBadge ? (
+								<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
+									{selectedProjectPath}
+								</Badge>
 							) : null}
 						</header>
 						{projectMain}
 					</div>
+					{workspaceToggle}
 					{rightPanelState.collapsed ? null : (
 						<aside
 							className={[
