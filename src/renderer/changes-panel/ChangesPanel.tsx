@@ -2,6 +2,7 @@ import { RefreshCw, RotateCcw, Settings, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
+import type { GitStatusPayload } from "../../shared/source-control/schemas";
 import type {
 	GitBranchCompareResult,
 	GitConflictKind,
@@ -86,6 +87,14 @@ const conflictCompatibilityLabel = (entry: GitStatusEntry): string | null => {
 		return "Choose delete or restore";
 	}
 	return "Resolve before staging";
+};
+
+const formatBranchLabel = (status: GitStatusPayload | null): string | null => {
+	const branch = status?.branch;
+	if (branch) {
+		return branch.startsWith("refs/heads/") ? branch.slice("refs/heads/".length) : branch;
+	}
+	return status?.head ? `detached ${status.head.slice(0, 7)}` : null;
 };
 
 function SourceControlTreeRow({
@@ -1165,17 +1174,25 @@ function ChangesPanelBody() {
 }
 
 function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
-	const { refresh, isRefreshing, pullRequest } = useChangesPanel();
+	const { refresh, isRefreshing, pullRequest, status } = useChangesPanel();
 	const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
 	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
 	const linkedPullRequestState = pullRequest ? getPullRequestStateDisplay(pullRequest.state) : null;
+	const branchLabel = formatBranchLabel(status);
 
 	return (
 		<>
 			<div className="changes-panel" data-testid="workspace-panel-changes">
 				<header className="changes-panel__header">
 					<div className="changes-panel__header-copy">
-						<h2 className="changes-panel__title">Changes</h2>
+						<div className="changes-panel__title-row">
+							<h2 className="changes-panel__title">Changes</h2>
+							{branchLabel ? (
+								<span className="changes-panel__branch" data-testid="changes-panel-branch" title={branchLabel}>
+									{branchLabel}
+								</span>
+							) : null}
+						</div>
 						{pullRequest ? (
 							<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
 								<Badge variant={linkedPullRequestState?.variant ?? "outline"}>

@@ -187,6 +187,7 @@ describe("ChangesPanel", () => {
 		expect(screen.getByTestId("workspace-panel-changes")).toBeTruthy();
 		await waitFor(() => {
 			expect(screen.getByRole("heading", { name: "Changes" })).toBeTruthy();
+			expect(screen.getByTestId("changes-panel-branch").textContent).toBe("main");
 			expect(screen.getByText("README.md")).toBeTruthy();
 			expect(screen.getByText("Untracked Files")).toBeTruthy();
 			expect(screen.getByText("new.txt")).toBeTruthy();
