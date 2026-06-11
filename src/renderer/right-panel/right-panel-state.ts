@@ -9,7 +9,7 @@ export const createDefaultRightPanelState = (): RightPanelState => {
 	return {
 		tabs,
 		activeTabId: tabs[0]?.id ?? null,
-		collapsed: false,
+		collapsed: true,
 	};
 };
 

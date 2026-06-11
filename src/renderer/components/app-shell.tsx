@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { PanelRightOpen } from "lucide-react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
@@ -67,7 +68,7 @@ export function AppShell({
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
-	const { state: rightPanelState } = useRightPanel();
+	const { state: rightPanelState, toggleCollapsed } = useRightPanel();
 
 	const { onResizeStart: onSidebarResizeStart } = useColumnResize({
 		width: sidebarWidth,
@@ -95,6 +96,18 @@ export function AppShell({
 		showWorkspaceColumn && !rightPanelState.collapsed && !isNarrowLayout
 			? ({ width: workspaceWidth } as const)
 			: undefined;
+
+	const showWorkspaceToggle = showWorkspaceColumn && rightPanelState.collapsed;
+	const workspaceToggle = showWorkspaceToggle ? (
+		<button
+			type="button"
+			className="app-shell__workspace-toggle workspace-tab-strip__action"
+			aria-label="Show workspace"
+			onClick={toggleCollapsed}
+		>
+			<PanelRightOpen className="workspace-tab-strip__action-icon" aria-hidden />
+		</button>
+	) : null;
 
 	const projectMain = (
 		<ProjectMain
@@ -161,47 +174,56 @@ export function AppShell({
 									{sessionHeader.title}
 								</h1>
 							) : null}
-							{showPathBadge ? (
-								<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
-									{selectedProjectPath}
-								</Badge>
+							{showPathBadge || workspaceToggle ? (
+								<div className="app-shell__chat-header-actions">
+									{showPathBadge ? (
+										<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
+											{selectedProjectPath}
+										</Badge>
+									) : null}
+									{workspaceToggle}
+								</div>
 							) : null}
 						</header>
 						{projectMain}
 					</div>
-					<aside
-						className={[
-							"app-shell__workspace-column",
-							rightPanelState.collapsed ? "app-shell__workspace-column--collapsed" : "",
-							isNarrowLayout ? "app-shell__workspace-column--stacked" : "",
-						]
-							.filter(Boolean)
-							.join(" ")}
-						style={workspaceColumnStyle}
-						aria-label="Workspace"
-					>
-						{!rightPanelState.collapsed && !isNarrowLayout ? (
-							<div
-								className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
-								role="slider"
-								tabIndex={0}
-								aria-orientation="vertical"
-								aria-label="Resize workspace"
-								aria-valuenow={workspaceWidth}
-								aria-valuemin={WORKSPACE_WIDTH_MIN}
-								aria-valuemax={WORKSPACE_WIDTH_MAX}
-								onPointerDown={onWorkspaceResizeStart}
-							/>
-						) : null}
-						<FileWorkspaceProvider project={state.selectedProject}>
-							<div className="app-shell__workspace-chrome">
-								<WorkspaceTabStrip />
-							</div>
-							<div className="app-shell__workspace-body">
-								<RightPanelWorkspace selectedProject={state.selectedProject} onProjectState={onProjectState} />
-							</div>
-						</FileWorkspaceProvider>
-					</aside>
+					{rightPanelState.collapsed ? null : (
+						<aside
+							className={[
+								"app-shell__workspace-column",
+								isNarrowLayout ? "app-shell__workspace-column--stacked" : "",
+							]
+								.filter(Boolean)
+								.join(" ")}
+							style={workspaceColumnStyle}
+							aria-label="Workspace"
+						>
+							{!isNarrowLayout ? (
+								<div
+									className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
+									role="slider"
+									tabIndex={0}
+									aria-orientation="vertical"
+									aria-label="Resize workspace"
+									aria-valuenow={workspaceWidth}
+									aria-valuemin={WORKSPACE_WIDTH_MIN}
+									aria-valuemax={WORKSPACE_WIDTH_MAX}
+									onPointerDown={onWorkspaceResizeStart}
+								/>
+							) : null}
+							<FileWorkspaceProvider project={state.selectedProject}>
+								<div className="app-shell__workspace-chrome">
+									<WorkspaceTabStrip />
+								</div>
+								<div className="app-shell__workspace-body">
+									<RightPanelWorkspace
+										selectedProject={state.selectedProject}
+										onProjectState={onProjectState}
+									/>
+								</div>
+							</FileWorkspaceProvider>
+						</aside>
+					)}
 				</div>
 			) : (
 				<div className="app-shell__main">

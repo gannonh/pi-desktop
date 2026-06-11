@@ -6,7 +6,7 @@ import type { ProjectRecord } from "../../src/shared/project-state";
 import { ShellLayoutProvider } from "../../src/renderer/shell/shell-layout-context";
 
 type ShellTestProvidersProps = {
-	children: ReactNode;
+	children?: ReactNode;
 	initialRightPanelState?: RightPanelState;
 	project?: ProjectRecord | null;
 };

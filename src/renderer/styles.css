@@ -221,6 +221,17 @@ button:disabled {
 	border-bottom-color: transparent;
 }
 
+.app-shell__chat-header-actions {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.app-shell__workspace-toggle {
+	flex: 0 0 auto;
+}
+
 .app-shell__workspace-column {
 	container-type: inline-size;
 	container-name: workspace;
@@ -284,20 +295,6 @@ button:disabled {
 	flex: 1;
 	flex-direction: column;
 	overflow: hidden;
-}
-
-.app-shell__workspace-column--collapsed {
-	width: auto;
-	min-width: 10rem;
-}
-
-.app-shell__workspace-column--collapsed .app-shell__workspace-body {
-	display: none;
-}
-
-.app-shell__workspace-column--collapsed.app-shell__workspace-column--stacked {
-	min-height: 0;
-	max-height: var(--workspace-chrome-height);
 }
 
 .workspace-tab-strip {

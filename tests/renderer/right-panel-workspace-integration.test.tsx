@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
+import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
+import { ShellLayoutProvider } from "../../src/renderer/shell/shell-layout-context";
 import { ShellTestProviders } from "./shell-test-providers";
 import { RightPanelWorkspace } from "../../src/renderer/right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
@@ -16,10 +18,24 @@ function WorkspaceFixture() {
 	);
 }
 
+function renderPersistentWorkspace(workspaceId: string) {
+	return render(
+		<ShellLayoutProvider>
+			<RightPanelProvider workspaceId={workspaceId}>
+				<WorkspaceFixture />
+			</RightPanelProvider>
+		</ShellLayoutProvider>,
+	);
+}
+
+afterEach(() => {
+	window.localStorage.clear();
+});
+
 describe("right panel workspace integration", () => {
 	it("switches panel body when selecting tabs", () => {
 		render(
-			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={{ ...createDefaultRightPanelState(), collapsed: false }}>
 				<WorkspaceFixture />
 			</ShellTestProviders>,
 		);
@@ -38,7 +54,7 @@ describe("right panel workspace integration", () => {
 
 	it("opens the add menu with all required panel kinds", () => {
 		render(
-			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={{ ...createDefaultRightPanelState(), collapsed: false }}>
 				<WorkspaceFixture />
 			</ShellTestProviders>,
 		);
@@ -66,7 +82,7 @@ describe("right panel workspace integration", () => {
 
 	it("hides and shows the workspace panel with the strip toggle", () => {
 		render(
-			<ShellTestProviders initialRightPanelState={createDefaultRightPanelState()}>
+			<ShellTestProviders initialRightPanelState={{ ...createDefaultRightPanelState(), collapsed: false }}>
 				<WorkspaceFixture />
 			</ShellTestProviders>,
 		);
@@ -78,5 +94,22 @@ describe("right panel workspace integration", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Show workspace" }));
 		expect(screen.getByTestId("workspace-panel-body")).toBeTruthy();
+	});
+
+	it("restores the last tab and collapse state for each workspace", () => {
+		const first = renderPersistentWorkspace("project:/tmp/one");
+
+		fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+		fireEvent.click(screen.getByRole("button", { name: "Hide workspace" }));
+		first.unmount();
+
+		const second = renderPersistentWorkspace("project:/tmp/two");
+		expect(screen.getByRole("tab", { name: "Changes", selected: true })).toBeTruthy();
+		second.unmount();
+
+		renderPersistentWorkspace("project:/tmp/one");
+		expect(screen.getByRole("tab", { name: "Terminal", selected: true })).toBeTruthy();
+		expect(screen.queryByTestId("workspace-panel-body")).toBeNull();
+		expect(screen.getByRole("button", { name: "Show workspace" })).toBeTruthy();
 	});
 });

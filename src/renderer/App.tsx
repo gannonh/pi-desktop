@@ -1196,7 +1196,7 @@ export function App() {
 
 	return (
 		<ShellLayoutProvider>
-			<RightPanelProvider>
+			<RightPanelProvider workspaceId={projectState.selectedProjectId ?? projectState.selectedChat?.cwd ?? null}>
 				<AppShell
 					state={projectState}
 					onRegisterSidebarActions={registerSidebarActions}
