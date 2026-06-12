@@ -58,7 +58,7 @@ const state: ProjectStateView = {
 };
 
 function renderCollapsedAppShell() {
-	render(
+	return render(
 		<ShellLayoutProvider>
 			<RightPanelProvider initialState={{ ...createDefaultRightPanelState(), collapsed: true }}>
 				<AppShell
@@ -77,9 +77,13 @@ function renderCollapsedAppShell() {
 }
 
 describe("AppShell right panel collapse", () => {
-	it("fully removes the workspace aside when the right panel is collapsed", () => {
-		renderCollapsedAppShell();
+	it("keeps the workspace provider mounted when the right panel is collapsed", () => {
+		const { container } = renderCollapsedAppShell();
 
+		const workspaceColumn = container.querySelector(".app-shell__workspace-column");
+		expect(workspaceColumn).toBeTruthy();
+		expect(workspaceColumn?.classList.contains("app-shell__workspace-column--collapsed")).toBe(true);
+		expect(workspaceColumn?.getAttribute("aria-hidden")).toBe("true");
 		expect(screen.queryByLabelText("Workspace")).toBeNull();
 		expect(screen.getByRole("button", { name: "Show workspace" })).toBeTruthy();
 	});

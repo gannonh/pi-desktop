@@ -243,6 +243,10 @@ button:disabled {
 	background: var(--sidebar-background);
 }
 
+.app-shell__workspace-column--collapsed {
+	display: none;
+}
+
 .app-shell__workspace-column--stacked {
 	width: 100%;
 	max-height: min(50vh, 28rem);

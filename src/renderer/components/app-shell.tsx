@@ -183,43 +183,40 @@ export function AppShell({
 						{projectMain}
 					</div>
 					{workspaceToggle}
-					{rightPanelState.collapsed ? null : (
-						<aside
-							className={[
-								"app-shell__workspace-column",
-								isNarrowLayout ? "app-shell__workspace-column--stacked" : "",
-							]
-								.filter(Boolean)
-								.join(" ")}
-							style={workspaceColumnStyle}
-							aria-label="Workspace"
-						>
-							{!isNarrowLayout ? (
-								<div
-									className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
-									role="slider"
-									tabIndex={0}
-									aria-orientation="vertical"
-									aria-label="Resize workspace"
-									aria-valuenow={workspaceWidth}
-									aria-valuemin={WORKSPACE_WIDTH_MIN}
-									aria-valuemax={WORKSPACE_WIDTH_MAX}
-									onPointerDown={onWorkspaceResizeStart}
-								/>
-							) : null}
-							<FileWorkspaceProvider project={state.selectedProject}>
-								<div className="app-shell__workspace-chrome">
-									<WorkspaceTabStrip />
-								</div>
-								<div className="app-shell__workspace-body">
-									<RightPanelWorkspace
-										selectedProject={state.selectedProject}
-										onProjectState={onProjectState}
-									/>
-								</div>
-							</FileWorkspaceProvider>
-						</aside>
-					)}
+					<aside
+						className={[
+							"app-shell__workspace-column",
+							isNarrowLayout ? "app-shell__workspace-column--stacked" : "",
+							rightPanelState.collapsed ? "app-shell__workspace-column--collapsed" : "",
+						]
+							.filter(Boolean)
+							.join(" ")}
+						style={workspaceColumnStyle}
+						aria-label={rightPanelState.collapsed ? undefined : "Workspace"}
+						aria-hidden={rightPanelState.collapsed ? true : undefined}
+					>
+						{!rightPanelState.collapsed && !isNarrowLayout ? (
+							<div
+								className="app-shell__column-resize-handle app-shell__column-resize-handle--workspace"
+								role="slider"
+								tabIndex={0}
+								aria-orientation="vertical"
+								aria-label="Resize workspace"
+								aria-valuenow={workspaceWidth}
+								aria-valuemin={WORKSPACE_WIDTH_MIN}
+								aria-valuemax={WORKSPACE_WIDTH_MAX}
+								onPointerDown={onWorkspaceResizeStart}
+							/>
+						) : null}
+						<FileWorkspaceProvider project={state.selectedProject}>
+							<div className="app-shell__workspace-chrome">
+								<WorkspaceTabStrip />
+							</div>
+							<div className="app-shell__workspace-body">
+								<RightPanelWorkspace selectedProject={state.selectedProject} onProjectState={onProjectState} />
+							</div>
+						</FileWorkspaceProvider>
+					</aside>
 				</div>
 			) : (
 				<div className="app-shell__main">
