@@ -113,7 +113,7 @@ test("dev web preview uses the real app data bridge for projects, chats, and Pi 
 		await expect(page.getByText("Pi session streaming is connected.")).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText("Idle", { exact: true })).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByRole("button", { name: "Show workspace" })).toBeVisible();
-		await expect(page.getByLabel("Workspace tabs")).toHaveCount(0);
+		await expect(page.getByLabel("Workspace tabs")).toBeHidden();
 		await page.getByRole("button", { name: "Show workspace" }).click();
 		await expect(page.getByLabel("Workspace tabs")).toBeVisible();
 		await expect(page.getByRole("tab", { name: "Changes" })).toBeVisible();
