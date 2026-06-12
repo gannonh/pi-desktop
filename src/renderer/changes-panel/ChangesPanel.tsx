@@ -10,7 +10,17 @@ import {
 	Undo2,
 	WandSparkles,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type CSSProperties,
+	type KeyboardEvent,
+	type PointerEvent,
+	type ReactNode,
+} from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
 import type { GitStatusPayload } from "../../shared/source-control/schemas";
@@ -247,35 +257,236 @@ const AREA_DISCARD_LABELS = {
 
 const pluralize = (count: number, singular: string, plural = `${singular}s`) => (count === 1 ? singular : plural);
 
-function ChangesPanelCollapsibleSection({
+const COMMIT_SECTION_DEFAULT_HEIGHT = 156;
+const COMMIT_SECTION_MIN_HEIGHT = 118;
+const COMMIT_SECTION_MAX_HEIGHT = 360;
+const WORKFLOW_BLOCK_DEFAULT_HEIGHTS = {
+	branchCompare: 220,
+	history: 320,
+	pullRequest: 300,
+} as const;
+const WORKFLOW_BLOCK_MIN_HEIGHT = 140;
+const WORKFLOW_BLOCK_MAX_HEIGHT = 1200;
+const SECTION_RESIZE_STEP = 24;
+const CHANGES_PANEL_LAYOUT_STORAGE_KEY = "pi-desktop.changes-panel.layout.v1";
+
+type WorkflowSectionId = keyof typeof WORKFLOW_BLOCK_DEFAULT_HEIGHTS;
+type ChangesPanelLayout = {
+	expanded: Record<WorkflowSectionId, boolean>;
+	heights: Record<"commit" | WorkflowSectionId, number>;
+};
+
+const DEFAULT_CHANGES_PANEL_LAYOUT: ChangesPanelLayout = {
+	expanded: {
+		branchCompare: false,
+		history: false,
+		pullRequest: false,
+	},
+	heights: {
+		commit: COMMIT_SECTION_DEFAULT_HEIGHT,
+		...WORKFLOW_BLOCK_DEFAULT_HEIGHTS,
+	},
+};
+
+const clampSectionHeight = (height: number, min: number, max: number) => Math.min(max, Math.max(min, height));
+
+const readStoredNumber = (value: unknown, fallback: number, min: number, max: number) =>
+	typeof value === "number" && Number.isFinite(value) ? clampSectionHeight(value, min, max) : fallback;
+
+const readChangesPanelLayout = (): ChangesPanelLayout => {
+	if (typeof window === "undefined") {
+		return DEFAULT_CHANGES_PANEL_LAYOUT;
+	}
+	try {
+		const parsed = JSON.parse(window.localStorage.getItem(CHANGES_PANEL_LAYOUT_STORAGE_KEY) ?? "{}");
+		const maybeLayout = parsed && typeof parsed === "object" ? (parsed as Partial<ChangesPanelLayout>) : {};
+		return {
+			expanded: {
+				branchCompare: maybeLayout.expanded?.branchCompare === true,
+				history: maybeLayout.expanded?.history === true,
+				pullRequest: maybeLayout.expanded?.pullRequest === true,
+			},
+			heights: {
+				commit: readStoredNumber(
+					maybeLayout.heights?.commit,
+					COMMIT_SECTION_DEFAULT_HEIGHT,
+					COMMIT_SECTION_MIN_HEIGHT,
+					COMMIT_SECTION_MAX_HEIGHT,
+				),
+				branchCompare: readStoredNumber(
+					maybeLayout.heights?.branchCompare,
+					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.branchCompare,
+					WORKFLOW_BLOCK_MIN_HEIGHT,
+					WORKFLOW_BLOCK_MAX_HEIGHT,
+				),
+				history: readStoredNumber(
+					maybeLayout.heights?.history,
+					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.history,
+					WORKFLOW_BLOCK_MIN_HEIGHT,
+					WORKFLOW_BLOCK_MAX_HEIGHT,
+				),
+				pullRequest: readStoredNumber(
+					maybeLayout.heights?.pullRequest,
+					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.pullRequest,
+					WORKFLOW_BLOCK_MIN_HEIGHT,
+					WORKFLOW_BLOCK_MAX_HEIGHT,
+				),
+			},
+		};
+	} catch {
+		return DEFAULT_CHANGES_PANEL_LAYOUT;
+	}
+};
+
+const writeChangesPanelLayout = (layout: ChangesPanelLayout) => {
+	if (typeof window === "undefined") {
+		return;
+	}
+	window.localStorage.setItem(CHANGES_PANEL_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+};
+
+function SectionResizeHandle({
+	label,
+	height,
+	setHeight,
+	minHeight,
+	maxHeight,
+	growDirection,
+	className,
+}: {
+	label: string;
+	height: number;
+	setHeight: (updater: (current: number) => number) => void;
+	minHeight: number;
+	maxHeight: number;
+	growDirection: "up" | "down";
+	className: string;
+}) {
+	const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+	useEffect(() => {
+		const resize = (event: globalThis.PointerEvent) => {
+			const drag = dragRef.current;
+			if (!drag) {
+				return;
+			}
+			const delta = growDirection === "up" ? drag.startY - event.clientY : event.clientY - drag.startY;
+			setHeight(() => clampSectionHeight(drag.startHeight + delta, minHeight, maxHeight));
+		};
+		const stopResize = () => {
+			dragRef.current = null;
+		};
+		document.addEventListener("pointermove", resize);
+		document.addEventListener("pointerup", stopResize);
+		return () => {
+			document.removeEventListener("pointermove", resize);
+			document.removeEventListener("pointerup", stopResize);
+		};
+	}, [growDirection, maxHeight, minHeight, setHeight]);
+
+	const startResize = (event: PointerEvent<HTMLHRElement>) => {
+		event.preventDefault();
+		dragRef.current = { startY: event.clientY, startHeight: height };
+		event.currentTarget.setPointerCapture?.(event.pointerId);
+	};
+
+	const resizeWithKeyboard = (event: KeyboardEvent<HTMLHRElement>) => {
+		const growKey = growDirection === "up" ? "ArrowUp" : "ArrowDown";
+		const shrinkKey = growDirection === "up" ? "ArrowDown" : "ArrowUp";
+		if (event.key === growKey) {
+			event.preventDefault();
+			setHeight((current) => clampSectionHeight(current + SECTION_RESIZE_STEP, minHeight, maxHeight));
+		}
+		if (event.key === shrinkKey) {
+			event.preventDefault();
+			setHeight((current) => clampSectionHeight(current - SECTION_RESIZE_STEP, minHeight, maxHeight));
+		}
+		if (event.key === "Home") {
+			event.preventDefault();
+			setHeight(() => minHeight);
+		}
+		if (event.key === "End") {
+			event.preventDefault();
+			setHeight(() => maxHeight);
+		}
+	};
+
+	return (
+		<hr
+			aria-label={label}
+			aria-orientation="horizontal"
+			aria-valuemax={maxHeight}
+			aria-valuemin={minHeight}
+			aria-valuenow={height}
+			className={className}
+			onKeyDown={resizeWithKeyboard}
+			onPointerDown={startResize}
+			tabIndex={0}
+		/>
+	);
+}
+
+function WorkflowCollapsibleSection({
 	title,
-	collapsed,
-	onToggle,
-	headerActions,
 	testId,
+	expanded,
+	height,
+	onToggle,
+	setHeight,
 	children,
 }: {
 	title: string;
-	collapsed: boolean;
+	testId: string;
+	expanded: boolean;
+	height: number;
 	onToggle: () => void;
-	headerActions?: ReactNode;
-	testId?: string;
+	setHeight: (updater: (current: number) => number) => void;
 	children: ReactNode;
 }) {
 	return (
-		<section className="changes-panel__secondary-section" data-testid={testId}>
-			<div className="changes-panel__secondary-header">
-				<button type="button" className="changes-panel__section-header" onClick={onToggle}>
-					{collapsed ? (
-						<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
-					) : (
-						<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
-					)}
-					<span>{title}</span>
-				</button>
-				{headerActions ? <div className="changes-panel__secondary-header-actions">{headerActions}</div> : null}
-			</div>
-			{!collapsed ? <div className="changes-panel__secondary-content">{children}</div> : null}
+		<section
+			className="changes-panel__workflow-section"
+			data-testid={testId}
+			style={{ "--changes-panel-workflow-block-height": `${height}px` } as CSSProperties}
+		>
+			{expanded ? (
+				<SectionResizeHandle
+					label={`Resize ${title} from top edge`}
+					height={height}
+					setHeight={setHeight}
+					minHeight={WORKFLOW_BLOCK_MIN_HEIGHT}
+					maxHeight={WORKFLOW_BLOCK_MAX_HEIGHT}
+					growDirection="up"
+					className="changes-panel__workflow-resize-handle changes-panel__workflow-resize-handle--top"
+				/>
+			) : null}
+			<button
+				type="button"
+				className="changes-panel__section-header changes-panel__workflow-section-header"
+				aria-expanded={expanded}
+				onClick={onToggle}
+			>
+				{expanded ? (
+					<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
+				) : (
+					<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
+				)}
+				<span>{title}</span>
+			</button>
+			{expanded ? (
+				<>
+					<div className="changes-panel__workflow-block-content">{children}</div>
+					<SectionResizeHandle
+						label={`Resize ${title} from bottom edge`}
+						height={height}
+						setHeight={setHeight}
+						minHeight={WORKFLOW_BLOCK_MIN_HEIGHT}
+						maxHeight={WORKFLOW_BLOCK_MAX_HEIGHT}
+						growDirection="down"
+						className="changes-panel__workflow-resize-handle changes-panel__workflow-resize-handle--bottom"
+					/>
+				</>
+			) : null}
 		</section>
 	);
 }
@@ -944,7 +1155,7 @@ function ChangesPanelBody() {
 	const { projectId, status, statusError, isGitRepo, refresh, initializeRepository, pullRequest } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
 	const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<SourceControlSection>>(new Set());
-	const [workflowsExpanded, setWorkflowsExpanded] = useState(false);
+	const [layout, setLayout] = useState<ChangesPanelLayout>(() => readChangesPanelLayout());
 	const [collapsedTreeDirs, setCollapsedTreeDirs] = useState<ReadonlySet<string>>(new Set());
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
@@ -956,14 +1167,24 @@ function ChangesPanelBody() {
 	}, [refresh]);
 
 	useEffect(() => {
+		writeChangesPanelLayout(layout);
+	}, [layout]);
+
+	useEffect(() => {
 		if (pullRequest) {
-			setWorkflowsExpanded(true);
+			setLayout((current) => ({
+				...current,
+				expanded: { ...current.expanded, pullRequest: true },
+			}));
 		}
 	}, [pullRequest]);
 
 	useEffect(() => {
 		if (createPullRequestRequestCount > 0) {
-			setWorkflowsExpanded(true);
+			setLayout((current) => ({
+				...current,
+				expanded: { ...current.expanded, pullRequest: true },
+			}));
 		}
 	}, [createPullRequestRequestCount]);
 
@@ -991,6 +1212,24 @@ function ChangesPanelBody() {
 			}).filter((section) => section.entries.length > 0),
 		[grouped, collapsedTreeDirs],
 	);
+	const setLayoutHeight = (key: keyof ChangesPanelLayout["heights"]) => (updater: (current: number) => number) => {
+		setLayout((current) => ({
+			...current,
+			heights: {
+				...current.heights,
+				[key]: updater(current.heights[key]),
+			},
+		}));
+	};
+	const toggleWorkflowSection = (key: WorkflowSectionId) => {
+		setLayout((current) => ({
+			...current,
+			expanded: {
+				...current.expanded,
+				[key]: !current.expanded[key],
+			},
+		}));
+	};
 
 	if (!projectId) {
 		return (
@@ -1258,30 +1497,57 @@ function ChangesPanelBody() {
 					);
 				})}
 			</div>
-			<div className="changes-panel__commit-strip">
-				<CommitArea onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)} />
+			<div
+				className="changes-panel__commit-strip"
+				data-testid="changes-panel-commit-strip"
+				style={{ "--changes-panel-commit-height": `${layout.heights.commit}px` } as CSSProperties}
+			>
+				<SectionResizeHandle
+					label="Resize Commit section"
+					height={layout.heights.commit}
+					setHeight={setLayoutHeight("commit")}
+					minHeight={COMMIT_SECTION_MIN_HEIGHT}
+					maxHeight={COMMIT_SECTION_MAX_HEIGHT}
+					growDirection="up"
+					className="changes-panel__section-resize-handle changes-panel__section-resize-handle--top"
+				/>
+				<div className="changes-panel__commit-strip-content">
+					<CommitArea
+						onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
+					/>
+				</div>
 			</div>
-			<div className="changes-panel__secondary">
-				<ChangesPanelCollapsibleSection
-					title="More workflows"
-					collapsed={!workflowsExpanded}
-					onToggle={() => setWorkflowsExpanded((expanded) => !expanded)}
+			<div className="changes-panel__secondary" data-testid="changes-panel-secondary">
+				<WorkflowCollapsibleSection
+					title="Branch compare"
+					testId="changes-panel-branch-compare"
+					expanded={layout.expanded.branchCompare}
+					height={layout.heights.branchCompare}
+					onToggle={() => toggleWorkflowSection("branchCompare")}
+					setHeight={setLayoutHeight("branchCompare")}
 				>
-					<div className="changes-panel__workflow-blocks">
-						<section className="changes-panel__workflow-block">
-							<h3 className="changes-panel__workflow-heading">Branch compare</h3>
-							<BranchCompareArea />
-						</section>
-						<section className="changes-panel__workflow-block" data-testid="changes-panel-history">
-							<h3 className="changes-panel__workflow-heading">History</h3>
-							<GitHistoryPanel embedded />
-						</section>
-						<section className="changes-panel__workflow-block">
-							<h3 className="changes-panel__workflow-heading">Pull request</h3>
-							<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
-						</section>
-					</div>
-				</ChangesPanelCollapsibleSection>
+					<BranchCompareArea />
+				</WorkflowCollapsibleSection>
+				<WorkflowCollapsibleSection
+					title="History"
+					testId="changes-panel-history"
+					expanded={layout.expanded.history}
+					height={layout.heights.history}
+					onToggle={() => toggleWorkflowSection("history")}
+					setHeight={setLayoutHeight("history")}
+				>
+					<GitHistoryPanel embedded />
+				</WorkflowCollapsibleSection>
+				<WorkflowCollapsibleSection
+					title="Pull request"
+					testId="changes-panel-pull-request"
+					expanded={layout.expanded.pullRequest}
+					height={layout.heights.pullRequest}
+					onToggle={() => toggleWorkflowSection("pullRequest")}
+					setHeight={setLayoutHeight("pullRequest")}
+				>
+					<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
+				</WorkflowCollapsibleSection>
 			</div>
 		</div>
 	);

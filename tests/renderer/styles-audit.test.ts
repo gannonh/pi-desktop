@@ -154,6 +154,16 @@ describe("renderer style audit rules", () => {
 		expect(menu).toContain("min-width: 13rem");
 	});
 
+	it("uses workflow heights as scroll caps instead of forced blank space", () => {
+		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
+		const workflows = ruleBody(styles(), ".changes-panel__secondary");
+
+		expect(workflowContent).toContain("max-height: var(--changes-panel-workflow-block-height, 18rem)");
+		expect(workflowContent).not.toMatch(/\n\s*height: var\(--changes-panel-workflow-block-height, 18rem\)/);
+		expect(workflows).toContain("align-content: start");
+		expect(workflows).toContain("grid-auto-rows: max-content");
+	});
+
 	it("keeps Markdown toolbar icons compact and unmangled", () => {
 		const css = styles();
 		const icon = ruleBody(css, ".markdown-surface__icon");

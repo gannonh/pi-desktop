@@ -175,16 +175,23 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
-const expandWorkflowsSection = () => {
-	fireEvent.click(screen.getByRole("button", { name: "More workflows" }));
+const expandWorkflowSection = (name: "Branch compare" | "History" | "Pull request") => {
+	const trigger = screen.getByRole("button", { name });
+	if (trigger.getAttribute("aria-expanded") !== "true") {
+		fireEvent.click(trigger);
+	}
 };
 
 const expandBranchCompareSection = () => {
-	expandWorkflowsSection();
+	expandWorkflowSection("Branch compare");
+};
+
+const expandHistorySection = () => {
+	expandWorkflowSection("History");
 };
 
 const expandPullRequestSection = () => {
-	expandWorkflowsSection();
+	expandWorkflowSection("Pull request");
 };
 
 const openSourceControlMenu = async () => {
@@ -214,6 +221,7 @@ const expectMenuItemDisabled = (name: string | RegExp, disabled: boolean) => {
 describe("ChangesPanel", () => {
 	afterEach(() => {
 		registerCommitRecoverySessionHandler(null);
+		window.localStorage.clear();
 		vi.restoreAllMocks();
 	});
 
@@ -231,7 +239,7 @@ describe("ChangesPanel", () => {
 		});
 	});
 
-	it("places file sections above the commit form and keeps secondary workflows collapsed by default", async () => {
+	it("places file sections above the commit form and keeps workflow sections collapsed by default", async () => {
 		installApi();
 		render(<ChangesPanel project={project} isActive />);
 
@@ -240,10 +248,111 @@ describe("ChangesPanel", () => {
 		expect(commitMessage.compareDocumentPosition(readme) & Node.DOCUMENT_POSITION_PRECEDING).toBe(
 			Node.DOCUMENT_POSITION_PRECEDING,
 		);
-		expect(screen.getByRole("button", { name: "More workflows" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "More workflows" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Branch compare" }).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.getByRole("button", { name: "Pull request" }).getAttribute("aria-expanded")).toBe("false");
 		expect(screen.queryByLabelText("PR title")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Compare" })).toBeNull();
 		expect(screen.queryByText("Second commit")).toBeNull();
+	});
+
+	it("starts expanded workflow sections taller and exposes visible resize handles", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandBranchCompareSection();
+		expandHistorySection();
+		expandPullRequestSection();
+
+		await screen.findByText("Second commit");
+		expect(screen.getByTestId("changes-panel-branch-compare").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("220px");
+		expect(screen.getByTestId("changes-panel-history").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("320px");
+		expect(screen.getByTestId("changes-panel-pull-request").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("300px");
+		expect(screen.getByRole("separator", { name: "Resize Branch compare from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Branch compare from bottom edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize History from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize History from bottom edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Pull request from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Pull request from bottom edge" })).toBeTruthy();
+	});
+
+	it("resizes expanded workflow section heights from the divider above the section", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+
+		const historySection = screen.getByTestId("changes-panel-history");
+		const resizeHandle = within(historySection).getByRole("separator", { name: "Resize History from top edge" });
+		const historyHeader = within(historySection).getByRole("button", { name: "History" });
+		expect(resizeHandle.compareDocumentPosition(historyHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		fireEvent.pointerDown(resizeHandle, { clientY: 100, pointerId: 1 });
+		fireEvent.pointerMove(document, { clientY: 20, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(historySection.style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("400px");
+	});
+
+	it("resizes expanded workflow section heights over a broad range from the divider below the section", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+
+		const historySection = screen.getByTestId("changes-panel-history");
+		const resizeHandle = within(historySection).getByRole("separator", { name: "Resize History from bottom edge" });
+		fireEvent.pointerDown(resizeHandle, { clientY: 100, pointerId: 1 });
+		fireEvent.pointerMove(document, { clientY: 780, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(historySection.style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("1000px");
+	});
+
+	it("resizes the visible commit boundary", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+
+		const commitStrip = screen.getByTestId("changes-panel-commit-strip");
+		fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize Commit section" }), {
+			clientY: 500,
+			pointerId: 1,
+		});
+		fireEvent.pointerMove(document, { clientY: 450, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(commitStrip.style.getPropertyValue("--changes-panel-commit-height")).toBe("206px");
+	});
+
+	it("persists workflow expansion and adjusted heights between sessions", async () => {
+		installApi();
+		const { unmount } = render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+		fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize History from top edge" }), {
+			clientY: 100,
+			pointerId: 1,
+		});
+		fireEvent.pointerMove(document, { clientY: 20, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+		unmount();
+
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Second commit");
+		expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-expanded")).toBe("true");
+		expect(screen.getByTestId("changes-panel-history").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("400px");
 	});
 
 	it("shows initialize repository when the project is not a git repo", async () => {
@@ -832,7 +941,7 @@ describe("ChangesPanel", () => {
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
 		expandPullRequestSection();
-		expect(screen.getByRole("button", { name: "Create PR" }).hasAttribute("disabled")).toBe(false);
+		expect(screen.getAllByRole("button", { name: "Create PR" }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
 	});
 
 	it("shows source-control actions for a clean working tree", async () => {
