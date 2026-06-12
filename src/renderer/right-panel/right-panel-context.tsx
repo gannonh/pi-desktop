@@ -41,28 +41,31 @@ type PersistedRightPanelState = {
 
 const RIGHT_PANEL_STORAGE_PREFIX = "pi-desktop:right-panel:";
 
-const storageKeyForWorkspace = (workspaceId: string) =>
-	`${RIGHT_PANEL_STORAGE_PREFIX}${encodeURIComponent(workspaceId)}`;
+function storageKeyForWorkspace(workspaceId: string): string {
+	return `${RIGHT_PANEL_STORAGE_PREFIX}${encodeURIComponent(workspaceId)}`;
+}
 
-const createStateFromPersisted = (persisted: PersistedRightPanelState | null): RightPanelState => {
+function createStateFromPersisted(persisted: PersistedRightPanelState | null): RightPanelState {
 	const state = createDefaultRightPanelState();
 	if (!persisted) {
 		return state;
 	}
 
-	const activeTabId =
-		persisted.activeKind === "files"
-			? FILE_WORKSPACE_VIEW_ID
-			: (state.tabs.find((tab) => tab.kind === persisted.activeKind)?.id ?? state.activeTabId);
+	let activeTabId = state.activeTabId;
+	if (persisted.activeKind === "files") {
+		activeTabId = FILE_WORKSPACE_VIEW_ID;
+	} else if (persisted.activeKind) {
+		activeTabId = state.tabs.find((tab) => tab.kind === persisted.activeKind)?.id ?? state.activeTabId;
+	}
 
 	return {
 		...state,
 		activeTabId,
 		collapsed: persisted.collapsed,
 	};
-};
+}
 
-const readPersistedState = (workspaceId: string | null | undefined): RightPanelState => {
+function readPersistedState(workspaceId: string | null | undefined): RightPanelState {
 	if (!workspaceId || typeof window === "undefined") {
 		return createDefaultRightPanelState();
 	}
@@ -85,18 +88,18 @@ const readPersistedState = (workspaceId: string | null | undefined): RightPanelS
 		console.warn("Unable to read right panel state.", error);
 		return createDefaultRightPanelState();
 	}
-};
+}
 
-const createPersistedState = (state: RightPanelState): PersistedRightPanelState => {
+function createPersistedState(state: RightPanelState): PersistedRightPanelState {
 	const activeKind = isWorkspaceFilesActive(state) ? "files" : (getActiveRightPanelTab(state)?.kind ?? null);
 	return {
 		version: 1,
 		collapsed: state.collapsed,
 		activeKind,
 	};
-};
+}
 
-const writePersistedState = (workspaceId: string | null | undefined, state: RightPanelState) => {
+function writePersistedState(workspaceId: string | null | undefined, state: RightPanelState): void {
 	if (!workspaceId || typeof window === "undefined") {
 		return;
 	}
@@ -106,7 +109,7 @@ const writePersistedState = (workspaceId: string | null | undefined, state: Righ
 	} catch (error) {
 		console.warn("Unable to save right panel state.", error);
 	}
-};
+}
 
 export function RightPanelProvider({ children, initialState, workspaceId = null }: RightPanelProviderProps) {
 	const persistenceWorkspaceId = initialState === undefined ? workspaceId : null;

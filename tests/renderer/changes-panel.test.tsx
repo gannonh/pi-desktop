@@ -37,17 +37,20 @@ const otherProject = {
 const testUpstreamStatus = (
 	status: Pick<GitUpstreamStatus, "hasUpstream" | "ahead" | "behind"> & Partial<GitUpstreamStatus>,
 ): GitUpstreamStatus => {
-	const relation =
-		status.relation ??
-		(!status.hasUpstream
-			? "none"
-			: status.ahead > 0 && status.behind > 0
-				? "diverged"
-				: status.ahead > 0
-					? "ahead"
-					: status.behind > 0
-						? "behind"
-						: "up_to_date");
+	let relation = status.relation;
+	if (!relation) {
+		if (!status.hasUpstream) {
+			relation = "none";
+		} else if (status.ahead > 0 && status.behind > 0) {
+			relation = "diverged";
+		} else if (status.ahead > 0) {
+			relation = "ahead";
+		} else if (status.behind > 0) {
+			relation = "behind";
+		} else {
+			relation = "up_to_date";
+		}
+	}
 	return {
 		...status,
 		relation,

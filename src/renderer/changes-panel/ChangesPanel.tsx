@@ -129,6 +129,16 @@ const formatBranchLabel = (status: GitStatusPayload | null): string | null => {
 	return status?.head ? `detached ${status.head.slice(0, 7)}` : null;
 };
 
+const formatUpstreamSummary = (upstream: GitStatusPayload["upstreamStatus"]): string => {
+	if (!upstream) {
+		return "Loading upstream status…";
+	}
+	if (!upstream.hasUpstream) {
+		return "No upstream configured";
+	}
+	return `${upstream.upstreamName} · ${upstream.ahead}↑ ${upstream.behind}↓`;
+};
+
 function SourceControlTreeRow({
 	node,
 	collapsedDirectoryKeys,
@@ -393,21 +403,24 @@ function SectionResizeHandle({
 	const resizeWithKeyboard = (event: KeyboardEvent<HTMLHRElement>) => {
 		const growKey = growDirection === "up" ? "ArrowUp" : "ArrowDown";
 		const shrinkKey = growDirection === "up" ? "ArrowDown" : "ArrowUp";
-		if (event.key === growKey) {
-			event.preventDefault();
-			setHeight((current) => clampSectionHeight(current + SECTION_RESIZE_STEP, minHeight, maxHeight));
-		}
-		if (event.key === shrinkKey) {
-			event.preventDefault();
-			setHeight((current) => clampSectionHeight(current - SECTION_RESIZE_STEP, minHeight, maxHeight));
-		}
-		if (event.key === "Home") {
-			event.preventDefault();
-			setHeight(() => minHeight);
-		}
-		if (event.key === "End") {
-			event.preventDefault();
-			setHeight(() => maxHeight);
+
+		switch (event.key) {
+			case growKey:
+				event.preventDefault();
+				setHeight((current) => clampSectionHeight(current + SECTION_RESIZE_STEP, minHeight, maxHeight));
+				break;
+			case shrinkKey:
+				event.preventDefault();
+				setHeight((current) => clampSectionHeight(current - SECTION_RESIZE_STEP, minHeight, maxHeight));
+				break;
+			case "Home":
+				event.preventDefault();
+				setHeight(() => minHeight);
+				break;
+			case "End":
+				event.preventDefault();
+				setHeight(() => maxHeight);
+				break;
 		}
 	};
 
@@ -862,11 +875,7 @@ function SourceControlActions({
 			? "Committing…"
 			: actions.primary.label;
 
-	const upstreamSummary = upstream?.hasUpstream
-		? `${upstream.upstreamName} · ${upstream.ahead}↑ ${upstream.behind}↓`
-		: upstream
-			? "No upstream configured"
-			: "Loading upstream status…";
+	const upstreamSummary = formatUpstreamSummary(upstream);
 
 	return (
 		<div className="changes-panel__remote">
