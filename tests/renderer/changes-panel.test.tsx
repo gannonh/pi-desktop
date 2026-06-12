@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
@@ -174,6 +175,38 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
+const expandBranchCompareSection = () => {
+	fireEvent.click(screen.getByRole("button", { name: "Branch Compare" }));
+};
+
+const expandPullRequestSection = () => {
+	fireEvent.click(screen.getByRole("button", { name: "Pull Request" }));
+};
+
+const openSourceControlMenu = async () => {
+	const user = userEvent.setup();
+	const trigger = await screen.findByRole("button", { name: "More source control actions" });
+	if (trigger.getAttribute("aria-expanded") !== "true") {
+		await user.click(trigger);
+	}
+	await screen.findByRole("menu");
+};
+
+const closeSourceControlMenu = async () => {
+	const user = userEvent.setup();
+	await user.keyboard("{Escape}");
+	await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+};
+
+const expectMenuItemDisabled = (name: string | RegExp, disabled: boolean) => {
+	const item = screen.getByRole("menuitem", { name });
+	if (disabled) {
+		expect(item.getAttribute("aria-disabled")).toBe("true");
+		return;
+	}
+	expect(item.getAttribute("aria-disabled")).not.toBe("true");
+};
+
 describe("ChangesPanel", () => {
 	afterEach(() => {
 		registerCommitRecoverySessionHandler(null);
@@ -192,6 +225,20 @@ describe("ChangesPanel", () => {
 			expect(screen.getByText("Untracked Files")).toBeTruthy();
 			expect(screen.getByText("new.txt")).toBeTruthy();
 		});
+	});
+
+	it("places file sections above the commit form and keeps secondary workflows collapsed by default", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		const readme = await screen.findByText("README.md");
+		const commitMessage = screen.getByLabelText("Commit message");
+		expect(commitMessage.compareDocumentPosition(readme) & Node.DOCUMENT_POSITION_PRECEDING).toBe(
+			Node.DOCUMENT_POSITION_PRECEDING,
+		);
+		expect(screen.queryByLabelText("PR title")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Compare" })).toBeNull();
+		expect(screen.queryByText("Second commit")).toBeNull();
 	});
 
 	it("shows initialize repository when the project is not a git repo", async () => {
@@ -570,6 +617,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 		await screen.findByTestId("linked-pull-request");
@@ -602,6 +650,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("No uncommitted changes");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getAllByRole("button", { name: "Create PR" })[0]);
 
@@ -689,6 +738,8 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
+		await screen.findByText("README.md");
+		expandPullRequestSection();
 		await screen.findByText("Run `gh auth login` in a terminal to connect GitHub.");
 	});
 
@@ -705,6 +756,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 
@@ -730,7 +782,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByTestId("linked-pull-request");
-		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+		await openSourceControlMenu();
 
 		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
 	});
@@ -774,9 +826,8 @@ describe("ChangesPanel", () => {
 			expect(screen.queryByTestId("linked-pull-request")).toBeNull();
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
-		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(
-			true,
-		);
+		expandPullRequestSection();
+		expect(screen.getByRole("button", { name: "Create PR" }).hasAttribute("disabled")).toBe(false);
 	});
 
 	it("shows source-control actions for a clean working tree", async () => {
@@ -797,6 +848,7 @@ describe("ChangesPanel", () => {
 
 		expect(screen.getByText("origin/main")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Push" })).toBeTruthy();
+		expandBranchCompareSection();
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
@@ -817,10 +869,10 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("No uncommitted changes");
-		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
-		expect(screen.getByRole("menu")).toBeTruthy();
+		await openSourceControlMenu();
 
-		fireEvent.click(screen.getAllByRole("button", { name: "Fetch" })[0]);
+		const user = userEvent.setup();
+		await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Fetch" }));
 
 		await waitFor(() => {
 			expect(fetch).toHaveBeenCalledWith({ projectId: project.id });
@@ -837,6 +889,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "  Feature PR  " } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 
@@ -872,14 +925,15 @@ describe("ChangesPanel", () => {
 			expect(rebaseFromBase).toHaveBeenCalledWith({ projectId: project.id, baseRef: "origin/feature" });
 		});
 
-		fireEvent.click(screen.getByText("More source control actions"));
+		await openSourceControlMenu();
 
 		const menu = screen.getByRole("menu");
-		expect(within(menu).getByRole("button", { name: "Rebase from Upstream" })).toBeTruthy();
-		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Force Push with Lease" }).disabled).toBe(false);
-		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
+		expect(within(menu).getByRole("menuitem", { name: /Rebase from Upstream/ })).toBeTruthy();
+		expectMenuItemDisabled(/Force Push with Lease/, false);
+		expectMenuItemDisabled(/Sync/, true);
 		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
-		fireEvent.click(within(menu).getByRole("button", { name: "Force Push with Lease" }));
+		const user = userEvent.setup();
+		await user.click(within(menu).getByRole("menuitem", { name: /Force Push with Lease/ }));
 
 		await waitFor(() => {
 			expect(forcePushWithLease).toHaveBeenCalledWith({ projectId: project.id });
@@ -897,8 +951,9 @@ describe("ChangesPanel", () => {
 		installApi({ getStatus });
 		render(<ChangesPanel project={project} isActive />);
 
-		fireEvent.click(screen.getByText("More source control actions"));
-		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(true);
+		await openSourceControlMenu();
+		expectMenuItemDisabled(/Publish/, true);
+		await closeSourceControlMenu();
 
 		await act(async () => {
 			resolveStatus({
@@ -913,9 +968,7 @@ describe("ChangesPanel", () => {
 		});
 
 		await screen.findByText("No uncommitted changes");
-		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Publish" }).some((button) => !button.disabled)).toBe(
-			true,
-		);
+		expect(screen.getByRole("button", { name: "Publish" }).hasAttribute("disabled")).toBe(false);
 	});
 
 	it("ignores stale status results after switching projects", async () => {
@@ -1152,6 +1205,8 @@ describe("ChangesPanel", () => {
 		installApi({ generatePullRequestFields });
 		render(<ChangesPanel project={project} isActive />);
 
+		await screen.findByText("README.md");
+		expandPullRequestSection();
 		await screen.findByLabelText("PR title");
 		fireEvent.click(screen.getByRole("button", { name: "Generate with AI" }));
 

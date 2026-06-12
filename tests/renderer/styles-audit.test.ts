@@ -148,13 +148,10 @@ describe("renderer style audit rules", () => {
 		expect(mobileCss).toContain("display: none");
 	});
 
-	it("keeps source-control overflow actions in a floating menu surface", () => {
-		const menu = ruleBody(styles(), ".changes-panel__action-menu-items");
+	it("styles source-control overflow actions for the shadcn dropdown menu", () => {
+		const menu = ruleBody(styles(), ".changes-panel__action-dropdown");
 
-		expect(menu).toContain("position: absolute");
-		expect(menu).toContain("right: 0");
-		expect(menu).toContain("border: 1px solid var(--color-border)");
-		expect(menu).toContain("background: var(--menu-popover-background)");
+		expect(menu).toContain("min-width: 13rem");
 	});
 
 	it("keeps Markdown toolbar icons compact and unmangled", () => {

@@ -19,7 +19,7 @@ const formatAuthorDate = (authorDate: string): string => {
 	});
 };
 
-export function GitHistoryPanel() {
+export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 	const { projectId } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
 	const [history, setHistory] = useState<GitHistoryResult | null>(null);
@@ -108,20 +108,39 @@ export function GitHistoryPanel() {
 	let outgoingBoundaryShown = false;
 
 	return (
-		<div className="changes-panel__history" data-testid="changes-panel-history">
-			<div className="changes-panel__history-header">
-				<span className="changes-panel__history-title">History</span>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					disabled={loading}
-					onClick={() => void refresh()}
-					aria-label="Refresh history"
-				>
-					<RefreshCw aria-hidden className={loading ? "changes-panel__spin" : undefined} />
-				</Button>
-			</div>
+		<div
+			className={embedded ? "changes-panel__history-content" : "changes-panel__history"}
+			data-testid={embedded ? undefined : "changes-panel-history"}
+		>
+			{embedded ? (
+				<div className="changes-panel__history-toolbar">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						disabled={loading}
+						onClick={() => void refresh()}
+						aria-label="Refresh history"
+					>
+						<RefreshCw aria-hidden className={loading ? "changes-panel__spin" : undefined} />
+						Refresh
+					</Button>
+				</div>
+			) : (
+				<div className="changes-panel__history-header">
+					<span className="changes-panel__history-title">History</span>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						disabled={loading}
+						onClick={() => void refresh()}
+						aria-label="Refresh history"
+					>
+						<RefreshCw aria-hidden className={loading ? "changes-panel__spin" : undefined} />
+					</Button>
+				</div>
+			)}
 			{loading && !history ? <p className="changes-panel__history-status">Loading history…</p> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
 			{history ? (

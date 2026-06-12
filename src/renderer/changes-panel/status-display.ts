@@ -9,7 +9,7 @@ export const STATUS_LABELS: Record<GitFileStatus, string> = {
 	copied: "C",
 };
 
-export const SECTION_ORDER = ["unstaged", "staged", "untracked"] as const;
+export const SECTION_ORDER = ["staged", "unstaged", "untracked"] as const;
 export type SourceControlSection = (typeof SECTION_ORDER)[number];
 
 export const SECTION_LABELS: Record<SourceControlSection, string> = {
