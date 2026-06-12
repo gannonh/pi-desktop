@@ -429,7 +429,7 @@ Acceptance:
 - Desktop implementation claims cite `src/` evidence first, then ADR/spec/roadmap evidence when needed.
 - The roadmap no longer contains stale current-planning statements.
 
-### M07C: Right Panel - Changes and Source Control
+### ✅ M07C: Right Panel - Changes and Source Control
 
 Goal: make local Git changes inspectable and actionable from the right panel before PR-review workflows.
 
@@ -450,7 +450,7 @@ Acceptance:
 - Git or filesystem failures display visibly.
 - The feature does not expose arbitrary filesystem access outside the selected project root.
 
-Post-M07C Orca Git parity follow-up is tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`. Wave 1 shipped primary-action and discard-confirmation hardening. Wave 2 implements conflict rows, status fidelity, discard safety, and remote/upstream hardening.
+Status: implemented with Git parity follow-ups through Wave 5, plus UAT polish for active branch visibility, persisted right-panel state, collapsed workspace behavior, and resizable Changes workflow sections. Remaining post-M07C parity work is tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`.
 
 ### M07D: Right Panel - Terminal and Command Output
 
