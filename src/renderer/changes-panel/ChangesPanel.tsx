@@ -10,17 +10,7 @@ import {
 	Undo2,
 	WandSparkles,
 } from "lucide-react";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	type CSSProperties,
-	type KeyboardEvent,
-	type PointerEvent,
-	type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
 import type { GitStatusPayload } from "../../shared/source-control/schemas";
@@ -82,6 +72,16 @@ import { getPullRequestStateDisplay } from "./pull-request-state-display";
 import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
 import { useSourceControlGeneration } from "./use-source-control-generation";
 import { Badge } from "../components/ui/badge";
+import {
+	COMMIT_SECTION_MAX_HEIGHT,
+	COMMIT_SECTION_MIN_HEIGHT,
+	readChangesPanelLayout,
+	type ChangesPanelLayout,
+	type WorkflowSectionId,
+	writeChangesPanelLayout,
+} from "./changes-panel-layout";
+import { SectionResizeHandle } from "./SectionResizeHandle";
+import { WorkflowCollapsibleSection } from "./WorkflowCollapsibleSection";
 
 type ChangesPanelProps = {
 	project: ProjectRecord | null;
@@ -266,243 +266,6 @@ const AREA_DISCARD_LABELS = {
 } satisfies Record<GitStagingArea, string>;
 
 const pluralize = (count: number, singular: string, plural = `${singular}s`) => (count === 1 ? singular : plural);
-
-const COMMIT_SECTION_DEFAULT_HEIGHT = 156;
-const COMMIT_SECTION_MIN_HEIGHT = 118;
-const COMMIT_SECTION_MAX_HEIGHT = 360;
-const WORKFLOW_BLOCK_DEFAULT_HEIGHTS = {
-	branchCompare: 220,
-	history: 320,
-	pullRequest: 300,
-} as const;
-const WORKFLOW_BLOCK_MIN_HEIGHT = 140;
-const WORKFLOW_BLOCK_MAX_HEIGHT = 1200;
-const SECTION_RESIZE_STEP = 24;
-const CHANGES_PANEL_LAYOUT_STORAGE_KEY = "pi-desktop.changes-panel.layout.v1";
-
-type WorkflowSectionId = keyof typeof WORKFLOW_BLOCK_DEFAULT_HEIGHTS;
-type ChangesPanelLayout = {
-	expanded: Record<WorkflowSectionId, boolean>;
-	heights: Record<"commit" | WorkflowSectionId, number>;
-};
-
-const DEFAULT_CHANGES_PANEL_LAYOUT: ChangesPanelLayout = {
-	expanded: {
-		branchCompare: false,
-		history: false,
-		pullRequest: false,
-	},
-	heights: {
-		commit: COMMIT_SECTION_DEFAULT_HEIGHT,
-		...WORKFLOW_BLOCK_DEFAULT_HEIGHTS,
-	},
-};
-
-const clampSectionHeight = (height: number, min: number, max: number) => Math.min(max, Math.max(min, height));
-
-const readStoredNumber = (value: unknown, fallback: number, min: number, max: number) =>
-	typeof value === "number" && Number.isFinite(value) ? clampSectionHeight(value, min, max) : fallback;
-
-const readChangesPanelLayout = (): ChangesPanelLayout => {
-	if (typeof window === "undefined") {
-		return DEFAULT_CHANGES_PANEL_LAYOUT;
-	}
-	try {
-		const parsed = JSON.parse(window.localStorage.getItem(CHANGES_PANEL_LAYOUT_STORAGE_KEY) ?? "{}");
-		const maybeLayout = parsed && typeof parsed === "object" ? (parsed as Partial<ChangesPanelLayout>) : {};
-		return {
-			expanded: {
-				branchCompare: maybeLayout.expanded?.branchCompare === true,
-				history: maybeLayout.expanded?.history === true,
-				pullRequest: maybeLayout.expanded?.pullRequest === true,
-			},
-			heights: {
-				commit: readStoredNumber(
-					maybeLayout.heights?.commit,
-					COMMIT_SECTION_DEFAULT_HEIGHT,
-					COMMIT_SECTION_MIN_HEIGHT,
-					COMMIT_SECTION_MAX_HEIGHT,
-				),
-				branchCompare: readStoredNumber(
-					maybeLayout.heights?.branchCompare,
-					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.branchCompare,
-					WORKFLOW_BLOCK_MIN_HEIGHT,
-					WORKFLOW_BLOCK_MAX_HEIGHT,
-				),
-				history: readStoredNumber(
-					maybeLayout.heights?.history,
-					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.history,
-					WORKFLOW_BLOCK_MIN_HEIGHT,
-					WORKFLOW_BLOCK_MAX_HEIGHT,
-				),
-				pullRequest: readStoredNumber(
-					maybeLayout.heights?.pullRequest,
-					WORKFLOW_BLOCK_DEFAULT_HEIGHTS.pullRequest,
-					WORKFLOW_BLOCK_MIN_HEIGHT,
-					WORKFLOW_BLOCK_MAX_HEIGHT,
-				),
-			},
-		};
-	} catch {
-		return DEFAULT_CHANGES_PANEL_LAYOUT;
-	}
-};
-
-const writeChangesPanelLayout = (layout: ChangesPanelLayout) => {
-	if (typeof window === "undefined") {
-		return;
-	}
-	window.localStorage.setItem(CHANGES_PANEL_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
-};
-
-function SectionResizeHandle({
-	label,
-	height,
-	setHeight,
-	minHeight,
-	maxHeight,
-	growDirection,
-	className,
-}: {
-	label: string;
-	height: number;
-	setHeight: (updater: (current: number) => number) => void;
-	minHeight: number;
-	maxHeight: number;
-	growDirection: "up" | "down";
-	className: string;
-}) {
-	const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
-
-	useEffect(() => {
-		const resize = (event: globalThis.PointerEvent) => {
-			const drag = dragRef.current;
-			if (!drag) {
-				return;
-			}
-			const delta = growDirection === "up" ? drag.startY - event.clientY : event.clientY - drag.startY;
-			setHeight(() => clampSectionHeight(drag.startHeight + delta, minHeight, maxHeight));
-		};
-		const stopResize = () => {
-			dragRef.current = null;
-		};
-		document.addEventListener("pointermove", resize);
-		document.addEventListener("pointerup", stopResize);
-		return () => {
-			document.removeEventListener("pointermove", resize);
-			document.removeEventListener("pointerup", stopResize);
-		};
-	}, [growDirection, maxHeight, minHeight, setHeight]);
-
-	const startResize = (event: PointerEvent<HTMLHRElement>) => {
-		event.preventDefault();
-		dragRef.current = { startY: event.clientY, startHeight: height };
-		event.currentTarget.setPointerCapture?.(event.pointerId);
-	};
-
-	const resizeWithKeyboard = (event: KeyboardEvent<HTMLHRElement>) => {
-		const growKey = growDirection === "up" ? "ArrowUp" : "ArrowDown";
-		const shrinkKey = growDirection === "up" ? "ArrowDown" : "ArrowUp";
-
-		switch (event.key) {
-			case growKey:
-				event.preventDefault();
-				setHeight((current) => clampSectionHeight(current + SECTION_RESIZE_STEP, minHeight, maxHeight));
-				break;
-			case shrinkKey:
-				event.preventDefault();
-				setHeight((current) => clampSectionHeight(current - SECTION_RESIZE_STEP, minHeight, maxHeight));
-				break;
-			case "Home":
-				event.preventDefault();
-				setHeight(() => minHeight);
-				break;
-			case "End":
-				event.preventDefault();
-				setHeight(() => maxHeight);
-				break;
-		}
-	};
-
-	return (
-		<hr
-			aria-label={label}
-			aria-orientation="horizontal"
-			aria-valuemax={maxHeight}
-			aria-valuemin={minHeight}
-			aria-valuenow={height}
-			className={className}
-			onKeyDown={resizeWithKeyboard}
-			onPointerDown={startResize}
-			tabIndex={0}
-		/>
-	);
-}
-
-function WorkflowCollapsibleSection({
-	title,
-	testId,
-	expanded,
-	height,
-	onToggle,
-	setHeight,
-	children,
-}: {
-	title: string;
-	testId: string;
-	expanded: boolean;
-	height: number;
-	onToggle: () => void;
-	setHeight: (updater: (current: number) => number) => void;
-	children: ReactNode;
-}) {
-	return (
-		<section
-			className="changes-panel__workflow-section"
-			data-testid={testId}
-			style={{ "--changes-panel-workflow-block-height": `${height}px` } as CSSProperties}
-		>
-			{expanded ? (
-				<SectionResizeHandle
-					label={`Resize ${title} from top edge`}
-					height={height}
-					setHeight={setHeight}
-					minHeight={WORKFLOW_BLOCK_MIN_HEIGHT}
-					maxHeight={WORKFLOW_BLOCK_MAX_HEIGHT}
-					growDirection="up"
-					className="changes-panel__workflow-resize-handle changes-panel__workflow-resize-handle--top"
-				/>
-			) : null}
-			<button
-				type="button"
-				className="changes-panel__section-header changes-panel__workflow-section-header"
-				aria-expanded={expanded}
-				onClick={onToggle}
-			>
-				{expanded ? (
-					<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
-				) : (
-					<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
-				)}
-				<span>{title}</span>
-			</button>
-			{expanded ? (
-				<>
-					<div className="changes-panel__workflow-block-content">{children}</div>
-					<SectionResizeHandle
-						label={`Resize ${title} from bottom edge`}
-						height={height}
-						setHeight={setHeight}
-						minHeight={WORKFLOW_BLOCK_MIN_HEIGHT}
-						maxHeight={WORKFLOW_BLOCK_MAX_HEIGHT}
-						growDirection="down"
-						className="changes-panel__workflow-resize-handle changes-panel__workflow-resize-handle--bottom"
-					/>
-				</>
-			) : null}
-		</section>
-	);
-}
 
 const joinList = (items: readonly string[]) => {
 	if (items.length <= 1) {
