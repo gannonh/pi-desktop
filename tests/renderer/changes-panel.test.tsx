@@ -175,12 +175,16 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
+const expandWorkflowsSection = () => {
+	fireEvent.click(screen.getByRole("button", { name: "More workflows" }));
+};
+
 const expandBranchCompareSection = () => {
-	fireEvent.click(screen.getByRole("button", { name: "Branch Compare" }));
+	expandWorkflowsSection();
 };
 
 const expandPullRequestSection = () => {
-	fireEvent.click(screen.getByRole("button", { name: "Pull Request" }));
+	expandWorkflowsSection();
 };
 
 const openSourceControlMenu = async () => {
@@ -236,6 +240,7 @@ describe("ChangesPanel", () => {
 		expect(commitMessage.compareDocumentPosition(readme) & Node.DOCUMENT_POSITION_PRECEDING).toBe(
 			Node.DOCUMENT_POSITION_PRECEDING,
 		);
+		expect(screen.getByRole("button", { name: "More workflows" })).toBeTruthy();
 		expect(screen.queryByLabelText("PR title")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Compare" })).toBeNull();
 		expect(screen.queryByText("Second commit")).toBeNull();
@@ -506,7 +511,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[0]);
 		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
 		fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -519,7 +524,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[0]);
 		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
 		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
 
@@ -533,7 +538,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("new.txt");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[1]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[1]);
 
 		await screen.findByRole("alertdialog", { name: "Delete untracked file new.txt?" });
 		expect(screen.getByText("This file is not tracked by git. Deleting it cannot be undone by git.")).toBeTruthy();
@@ -554,7 +559,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("new-feature.ts");
-		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+		fireEvent.click(screen.getByRole("button", { name: /Discard changes to new-feature\.ts/ }));
 
 		await screen.findByRole("alertdialog", { name: "Delete newly-added file new-feature.ts?" });
 		expect(screen.getByText("This file was added to git. Discarding it will remove it from the working tree.")).toBeTruthy();
@@ -575,7 +580,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("removed.ts");
-		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+		fireEvent.click(screen.getByRole("button", { name: /Discard changes to removed\.ts/ }));
 
 		await screen.findByRole("alertdialog", { name: "Restore deleted file removed.ts?" });
 		expect(screen.getByText("This will restore the tracked file from git.")).toBeTruthy();
@@ -846,7 +851,7 @@ describe("ChangesPanel", () => {
 
 		await screen.findByText("No uncommitted changes");
 
-		expect(screen.getByText("origin/main")).toBeTruthy();
+		expect(screen.getByText("origin/main · 1↑ 0↓")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Push" })).toBeTruthy();
 		expandBranchCompareSection();
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
@@ -918,7 +923,7 @@ describe("ChangesPanel", () => {
 
 		await screen.findByText("No uncommitted changes");
 
-		expect(screen.getByText("1 ahead, 1 behind")).toBeTruthy();
+		expect(screen.getByText("origin/feature · 1↑ 1↓")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Rebase from Upstream" }));
 
 		await waitFor(() => {
@@ -1122,7 +1127,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		await waitFor(() => {
 			expect(generateCommitMessage).toHaveBeenCalled();
@@ -1157,13 +1162,13 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		expect(await screen.findByText("Generating commit message…")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Cancel generation" })).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "Generate" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Cancel commit message generation" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Generate commit message" })).toBeNull();
 
-		fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }));
+		fireEvent.click(screen.getByRole("button", { name: "Cancel commit message generation" }));
 		await waitFor(() => {
 			expect(cancelGeneration).toHaveBeenCalled();
 		});
@@ -1190,7 +1195,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		await waitFor(() => {
 			expect(screen.getByText("No Pi model is configured for this project.")).toBeTruthy();

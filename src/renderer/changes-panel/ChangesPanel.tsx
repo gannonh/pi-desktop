@@ -1,4 +1,15 @@
-import { ChevronDown, ChevronRight, MoreHorizontal, RefreshCw, RotateCcw, Settings, WandSparkles } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronRight,
+	Minus,
+	MoreHorizontal,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+	Settings,
+	Undo2,
+	WandSparkles,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
@@ -49,7 +60,13 @@ import {
 } from "./commit-failure-recovery";
 import { CommitFailureRecoveryDialog } from "./CommitFailureRecoveryDialog";
 import { GitSettingsDialog } from "./GitSettingsDialog";
-import { SECTION_LABELS, SECTION_ORDER, STATUS_LABELS, type SourceControlSection } from "./status-display";
+import {
+	SECTION_LABELS,
+	SECTION_ORDER,
+	STATUS_LABELS,
+	STATUS_TITLES,
+	type SourceControlSection,
+} from "./status-display";
 import { LinkedPullRequestSummary } from "./linked-pull-request-summary";
 import { getPullRequestStateDisplay } from "./pull-request-state-display";
 import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
@@ -155,7 +172,9 @@ function SourceControlTreeRow({
 				checked={selected}
 				onChange={() => onToggleSelected(entry)}
 			/>
-			<span className="changes-panel__status-badge">{STATUS_LABELS[entry.status]}</span>
+			<span className="changes-panel__status-badge" title={STATUS_TITLES[entry.status]}>
+				{STATUS_LABELS[entry.status]}
+			</span>
 			<button
 				type="button"
 				className="changes-panel__tree-name changes-panel__diff-open"
@@ -178,16 +197,40 @@ function SourceControlTreeRow({
 			) : null}
 			<span className="changes-panel__row-actions">
 				{entry.area === "staged" ? (
-					<Button type="button" variant="ghost" size="sm" onClick={() => onUnstage(entry)}>
-						Unstage
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="changes-panel__row-action-icon"
+						aria-label={`Unstage ${entry.path}`}
+						title="Unstage"
+						onClick={() => onUnstage(entry)}
+					>
+						<Minus aria-hidden />
 					</Button>
 				) : (
-					<Button type="button" variant="ghost" size="sm" onClick={() => onStage(entry)}>
-						Stage
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="changes-panel__row-action-icon"
+						aria-label={`Stage ${entry.path}`}
+						title="Stage"
+						onClick={() => onStage(entry)}
+					>
+						<Plus aria-hidden />
 					</Button>
 				)}
-				<Button type="button" variant="ghost" size="sm" onClick={() => onDiscard(entry)}>
-					Discard
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="changes-panel__row-action-icon"
+					aria-label={`Discard changes to ${entry.path}`}
+					title="Discard"
+					onClick={() => onDiscard(entry)}
+				>
+					<Undo2 aria-hidden />
 				</Button>
 			</span>
 		</div>
@@ -203,10 +246,6 @@ const AREA_DISCARD_LABELS = {
 } satisfies Record<GitStagingArea, string>;
 
 const pluralize = (count: number, singular: string, plural = `${singular}s`) => (count === 1 ? singular : plural);
-
-type SecondarySectionId = "branchCompare" | "history" | "pullRequest";
-
-const SECONDARY_SECTION_IDS: readonly SecondarySectionId[] = ["branchCompare", "history", "pullRequest"];
 
 function ChangesPanelCollapsibleSection({
 	title,
@@ -433,31 +472,38 @@ function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestReque
 					void commit();
 				}}
 			>
-				<label className="changes-panel__commit-label">
-					<span>Commit message</span>
+				<div className="changes-panel__commit-input-row">
 					<textarea
 						className="changes-panel__commit-input"
+						aria-label="Commit message"
+						placeholder="Commit message"
 						value={message}
 						onChange={(event) => setMessage(event.target.value)}
-						rows={3}
+						rows={1}
 					/>
-				</label>
-				<div className="changes-panel__commit-actions">
 					{commitGeneration.isGenerating ? (
-						<Button type="button" variant="ghost" size="sm" onClick={() => void commitGeneration.cancel()}>
-							Cancel generation
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="changes-panel__commit-generate"
+							aria-label="Cancel commit message generation"
+							onClick={() => void commitGeneration.cancel()}
+						>
+							<RotateCcw aria-hidden />
 						</Button>
 					) : (
 						<Button
 							type="button"
 							variant="ghost"
-							size="sm"
+							size="icon"
+							className="changes-panel__commit-generate"
+							aria-label="Generate commit message"
 							disabled={stagedCount === 0}
 							title={stagedCount === 0 ? "Stage changes before generating a commit message." : undefined}
 							onClick={() => void commitGeneration.generate()}
 						>
 							<WandSparkles aria-hidden />
-							Generate
 						</Button>
 					)}
 				</div>
@@ -605,12 +651,14 @@ function SourceControlActions({
 			? "Committing…"
 			: actions.primary.label;
 
+	const upstreamSummary = upstream?.hasUpstream
+		? `${upstream.upstreamName} · ${upstream.ahead}↑ ${upstream.behind}↓`
+		: upstream
+			? "No upstream configured"
+			: "Loading upstream status…";
+
 	return (
 		<div className="changes-panel__remote">
-			<div className="changes-panel__remote-summary">
-				<span>{upstream?.hasUpstream ? upstream.upstreamName : "No upstream"}</span>
-				<span>{upstream ? `${upstream.ahead} ahead, ${upstream.behind} behind` : "0 ahead, 0 behind"}</span>
-			</div>
 			<div className="changes-panel__remote-actions">
 				<Button
 					type="button"
@@ -647,6 +695,9 @@ function SourceControlActions({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
+			<p className="changes-panel__remote-summary" title={upstreamSummary}>
+				{upstreamSummary}
+			</p>
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error changes-panel__error--inline">{error}</p> : null}
 		</div>
@@ -893,9 +944,7 @@ function ChangesPanelBody() {
 	const { projectId, status, statusError, isGitRepo, refresh, initializeRepository, pullRequest } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
 	const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<SourceControlSection>>(new Set());
-	const [collapsedSecondarySections, setCollapsedSecondarySections] = useState<ReadonlySet<SecondarySectionId>>(
-		() => new Set(SECONDARY_SECTION_IDS),
-	);
+	const [workflowsExpanded, setWorkflowsExpanded] = useState(false);
 	const [collapsedTreeDirs, setCollapsedTreeDirs] = useState<ReadonlySet<string>>(new Set());
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
@@ -907,44 +956,16 @@ function ChangesPanelBody() {
 	}, [refresh]);
 
 	useEffect(() => {
-		if (!pullRequest) {
-			return;
+		if (pullRequest) {
+			setWorkflowsExpanded(true);
 		}
-		setCollapsedSecondarySections((current) => {
-			if (!current.has("pullRequest")) {
-				return current;
-			}
-			const next = new Set(current);
-			next.delete("pullRequest");
-			return next;
-		});
 	}, [pullRequest]);
 
 	useEffect(() => {
-		if (createPullRequestRequestCount === 0) {
-			return;
+		if (createPullRequestRequestCount > 0) {
+			setWorkflowsExpanded(true);
 		}
-		setCollapsedSecondarySections((current) => {
-			if (!current.has("pullRequest")) {
-				return current;
-			}
-			const next = new Set(current);
-			next.delete("pullRequest");
-			return next;
-		});
 	}, [createPullRequestRequestCount]);
-
-	const toggleSecondarySection = (sectionId: SecondarySectionId) => {
-		setCollapsedSecondarySections((current) => {
-			const next = new Set(current);
-			if (next.has(sectionId)) {
-				next.delete(sectionId);
-			} else {
-				next.add(sectionId);
-			}
-			return next;
-		});
-	};
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(
@@ -1242,26 +1263,24 @@ function ChangesPanelBody() {
 			</div>
 			<div className="changes-panel__secondary">
 				<ChangesPanelCollapsibleSection
-					title="Branch Compare"
-					collapsed={collapsedSecondarySections.has("branchCompare")}
-					onToggle={() => toggleSecondarySection("branchCompare")}
+					title="More workflows"
+					collapsed={!workflowsExpanded}
+					onToggle={() => setWorkflowsExpanded((expanded) => !expanded)}
 				>
-					<BranchCompareArea />
-				</ChangesPanelCollapsibleSection>
-				<ChangesPanelCollapsibleSection
-					title="History"
-					testId="changes-panel-history"
-					collapsed={collapsedSecondarySections.has("history")}
-					onToggle={() => toggleSecondarySection("history")}
-				>
-					<GitHistoryPanel embedded />
-				</ChangesPanelCollapsibleSection>
-				<ChangesPanelCollapsibleSection
-					title="Pull Request"
-					collapsed={collapsedSecondarySections.has("pullRequest")}
-					onToggle={() => toggleSecondarySection("pullRequest")}
-				>
-					<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
+					<div className="changes-panel__workflow-blocks">
+						<section className="changes-panel__workflow-block">
+							<h3 className="changes-panel__workflow-heading">Branch compare</h3>
+							<BranchCompareArea />
+						</section>
+						<section className="changes-panel__workflow-block" data-testid="changes-panel-history">
+							<h3 className="changes-panel__workflow-heading">History</h3>
+							<GitHistoryPanel embedded />
+						</section>
+						<section className="changes-panel__workflow-block">
+							<h3 className="changes-panel__workflow-heading">Pull request</h3>
+							<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
+						</section>
+					</div>
 				</ChangesPanelCollapsibleSection>
 			</div>
 		</div>
