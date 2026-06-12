@@ -49,9 +49,9 @@ export const getStatus = async (worktreePath: string, options: GetStatusOptions 
 		cwd: worktreePath,
 		env: gitOptionalLocksDisabledEnv(),
 	});
-	const conflictOperation = await conflictPromise;
-
-	const { stdout } = await statusPromise;
+	// Await both together so a fast `git status` rejection cannot surface as an unhandled
+	// rejection while `conflictPromise` is still pending (observed when the index is corrupt).
+	const [conflictOperation, { stdout }] = await Promise.all([conflictPromise, statusPromise]);
 
 	for (const line of stdout.split(/\r?\n/)) {
 		if (!line) {
