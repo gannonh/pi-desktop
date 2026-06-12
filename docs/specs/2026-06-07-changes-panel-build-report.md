@@ -10,6 +10,7 @@
 - Phase 1-2 checkpoint: `f88b4090f5c0d5231f9aa8bbf4d7d8a02c37d601`
 - Head (M07C): `feat/issue-144-m07c-changes-panel` branch head at initial build completion
 - Wave 1 follow-up: `99a6cfa8a33b49bb377d4be11276e8ee5446052c` on `wave1` ([PR #160](https://github.com/gannonh/pi-desktop/pull/160))
+- UAT polish branch: `feat/uat-git-parity`
 
 ## Phases completed
 
@@ -69,14 +70,16 @@ Follow-up waves are tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md
 | Wave 2 conflict rows | Done | Porcelain v2 unmerged entries become typed conflict rows with visible conflict metadata |
 | Wave 2 status fidelity and discard safety | Done | Staged/unstaged line stats, literal pathspec edge cases, and nested-repo discard protection |
 | Wave 2 remote/upstream hardening | Done | Same-name origin fallback, explicit upstream relation, force-with-lease gating, and actionable remote errors |
+| UAT active branch clarity | Done | Changes header shows the current branch, upstream summary stays visible, and the collapsed workspace can be reopened from a stable shell toggle |
+| UAT right-panel state | Done | Workspace tab and collapse state persist per selected workspace; workflow section expansion and heights persist locally |
 | Tests | Done | Focused main, shared, and renderer coverage for Wave 1 and Wave 2 source-control behavior |
 
 ## Known follow-ups
 
 - Replace visible AI prerequisite errors with the planned main-process Pi one-shot generation adapter.
-- Add manual UAT evidence against a real authenticated GitHub remote before release signoff.
-- Continue Orca Git parity from Wave 3 onward (`docs/specs/2026-06-08-orca-git-parity-roadmap.md`).
+- Add authenticated GitHub remote UAT evidence before release signoff.
+- Complete the local-bare-remote e2e coverage tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`.
 
 ## Transition
 
-M07C build implementation is complete enough to enter Verify. Wave 1 and Wave 2 Orca Git parity follow-ups are implemented. Full `pnpm check` passed for the initial build and Wave 1; Wave 2 has focused verification in its branch. Final signoff still requires acceptance evidence review against the criteria above.
+M07C build implementation has passed through Git parity follow-ups and UAT polish. Full `pnpm check` passed for the initial build and Wave 1; later waves and UAT polish have focused verification in their branches. Final signoff still requires authenticated GitHub remote evidence and the local-bare-remote e2e matrix tracked under [#159](https://github.com/gannonh/pi-desktop/issues/159).

@@ -43,7 +43,7 @@ Record when Pi Desktop should reopen worktree, runtime git, and branch-lifecycle
 
 | Trigger | Why reopen | Likely outcome |
 | --- | --- | --- |
-| **UAT #158** (active path/branch clarity) finds users mutating wrong checkout | Ambiguity between project list and git root | May tighten copy/guards without adopting multi-worktree UX |
+| **UAT #158** (active path/branch clarity) regresses after `feat/uat-git-parity` | Ambiguity between project list and git root can still cause wrong-checkout risk | Tighten selected-project copy or guards without adopting multi-worktree UX |
 | **E2E #159** exposes gaps for worktree-adjacent git states | Tests may use bare remotes or detached HEAD | Test matrix update first; product scope change only if failures imply user-facing bugs |
 
 ## Non-triggers (do not reopen ADR 0005 for these alone)

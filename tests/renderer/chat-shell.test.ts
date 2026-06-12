@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatShellRoute } from "../../src/renderer/chat/chat-view-model";
 import { ChatShell } from "../../src/renderer/components/chat-shell";
+import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
 import { ShellTestProviders } from "./shell-test-providers";
 import { createInitialSessionState, type LiveSessionState } from "../../src/renderer/session/session-state";
 import {
@@ -43,7 +44,7 @@ const renderChatShell = (
 	renderToStaticMarkup(
 		createElement(
 			ShellTestProviders,
-			null,
+			{ initialRightPanelState: { ...createDefaultRightPanelState(), collapsed: false } },
 			createElement(ChatShell, {
 				route,
 				session,

@@ -11,7 +11,7 @@ describe("RightPanelWorkspace", () => {
 	it("renders only the workspace panel body without an internal tab strip", () => {
 		const markup = renderToStaticMarkup(
 			createElement(ShellTestProviders, {
-				initialRightPanelState: createDefaultRightPanelState(),
+				initialRightPanelState: { ...createDefaultRightPanelState(), collapsed: false },
 				children: createElement(RightPanelWorkspace),
 			}),
 		);

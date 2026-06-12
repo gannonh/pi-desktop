@@ -18,6 +18,7 @@ describe("right panel state", () => {
 		expect(state.tabs).toHaveLength(3);
 		expect(state.tabs.map((tab) => tab.kind)).toEqual(["changes", "terminal", "browser"]);
 		expect(state.activeTabId).toBe(state.tabs[0]?.id);
+		expect(state.collapsed).toBe(true);
 	});
 
 	it("selects a tab by id", () => {

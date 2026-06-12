@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { PanelRightOpen } from "lucide-react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
@@ -67,7 +68,7 @@ export function AppShell({
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
-	const { state: rightPanelState } = useRightPanel();
+	const { state: rightPanelState, toggleCollapsed } = useRightPanel();
 
 	const { onResizeStart: onSidebarResizeStart } = useColumnResize({
 		width: sidebarWidth,
@@ -95,6 +96,18 @@ export function AppShell({
 		showWorkspaceColumn && !rightPanelState.collapsed && !isNarrowLayout
 			? ({ width: workspaceWidth } as const)
 			: undefined;
+
+	const workspaceToggle =
+		showWorkspaceColumn && rightPanelState.collapsed ? (
+			<button
+				type="button"
+				className="app-shell__workspace-toggle workspace-tab-strip__action"
+				aria-label="Show workspace"
+				onClick={toggleCollapsed}
+			>
+				<PanelRightOpen className="workspace-tab-strip__action-icon" aria-hidden />
+			</button>
+		) : null;
 
 	const projectMain = (
 		<ProjectMain
@@ -169,16 +182,18 @@ export function AppShell({
 						</header>
 						{projectMain}
 					</div>
+					{workspaceToggle}
 					<aside
 						className={[
 							"app-shell__workspace-column",
-							rightPanelState.collapsed ? "app-shell__workspace-column--collapsed" : "",
 							isNarrowLayout ? "app-shell__workspace-column--stacked" : "",
+							rightPanelState.collapsed ? "app-shell__workspace-column--collapsed" : "",
 						]
 							.filter(Boolean)
 							.join(" ")}
 						style={workspaceColumnStyle}
-						aria-label="Workspace"
+						aria-label={rightPanelState.collapsed ? undefined : "Workspace"}
+						aria-hidden={rightPanelState.collapsed ? true : undefined}
 					>
 						{!rightPanelState.collapsed && !isNarrowLayout ? (
 							<div

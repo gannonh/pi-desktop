@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
 	addOrActivateRightPanelTab,
 	addRightPanelTab,
@@ -9,6 +9,7 @@ import {
 	selectRightPanelTab,
 	setRightPanelCollapsed,
 } from "./right-panel-state";
+import { FILE_WORKSPACE_VIEW_ID } from "./workspace-tab-ids";
 import type { RightPanelAddMenuItem, RightPanelKind, RightPanelState, RightPanelTab } from "./right-panel-types";
 import { useShellLayout } from "../shell/shell-layout-context";
 
@@ -29,14 +30,115 @@ const RightPanelContext = createContext<RightPanelContextValue | null>(null);
 interface RightPanelProviderProps {
 	children: ReactNode;
 	initialState?: RightPanelState;
+	workspaceId?: string | null;
 }
 
-export function RightPanelProvider({
-	children,
-	initialState = createDefaultRightPanelState(),
-}: RightPanelProviderProps) {
-	const [state, setState] = useState(initialState);
+type PersistedRightPanelState = {
+	version: 1;
+	collapsed: boolean;
+	activeKind: RightPanelKind | "files" | null;
+};
+
+const RIGHT_PANEL_STORAGE_PREFIX = "pi-desktop:right-panel:";
+
+function storageKeyForWorkspace(workspaceId: string): string {
+	return `${RIGHT_PANEL_STORAGE_PREFIX}${encodeURIComponent(workspaceId)}`;
+}
+
+function createStateFromPersisted(persisted: PersistedRightPanelState | null): RightPanelState {
+	const state = createDefaultRightPanelState();
+	if (!persisted) {
+		return state;
+	}
+
+	let activeTabId = state.activeTabId;
+	if (persisted.activeKind === "files") {
+		activeTabId = FILE_WORKSPACE_VIEW_ID;
+	} else if (persisted.activeKind) {
+		activeTabId = state.tabs.find((tab) => tab.kind === persisted.activeKind)?.id ?? state.activeTabId;
+	}
+
+	return {
+		...state,
+		activeTabId,
+		collapsed: persisted.collapsed,
+	};
+}
+
+function readPersistedState(workspaceId: string | null | undefined): RightPanelState {
+	if (!workspaceId || typeof window === "undefined") {
+		return createDefaultRightPanelState();
+	}
+
+	try {
+		const raw = window.localStorage.getItem(storageKeyForWorkspace(workspaceId));
+		if (!raw) {
+			return createDefaultRightPanelState();
+		}
+		const parsed = JSON.parse(raw) as Partial<PersistedRightPanelState>;
+		if (parsed.version !== 1 || typeof parsed.collapsed !== "boolean") {
+			return createDefaultRightPanelState();
+		}
+		return createStateFromPersisted({
+			version: 1,
+			collapsed: parsed.collapsed,
+			activeKind: parsed.activeKind ?? null,
+		});
+	} catch (error) {
+		console.warn("Unable to read right panel state.", error);
+		return createDefaultRightPanelState();
+	}
+}
+
+function createPersistedState(state: RightPanelState): PersistedRightPanelState {
+	const activeKind = isWorkspaceFilesActive(state) ? "files" : (getActiveRightPanelTab(state)?.kind ?? null);
+	return {
+		version: 1,
+		collapsed: state.collapsed,
+		activeKind,
+	};
+}
+
+function writePersistedState(workspaceId: string | null | undefined, state: RightPanelState): void {
+	if (!workspaceId || typeof window === "undefined") {
+		return;
+	}
+
+	try {
+		window.localStorage.setItem(storageKeyForWorkspace(workspaceId), JSON.stringify(createPersistedState(state)));
+	} catch (error) {
+		console.warn("Unable to save right panel state.", error);
+	}
+}
+
+export function RightPanelProvider({ children, initialState, workspaceId = null }: RightPanelProviderProps) {
+	const persistenceWorkspaceId = initialState === undefined ? workspaceId : null;
+	const [scopedState, setScopedState] = useState(() => ({
+		workspaceId: persistenceWorkspaceId,
+		state: initialState ?? readPersistedState(persistenceWorkspaceId),
+	}));
 	const { isNarrowLayout } = useShellLayout();
+
+	useEffect(() => {
+		if (scopedState.workspaceId === persistenceWorkspaceId) {
+			return;
+		}
+		setScopedState({
+			workspaceId: persistenceWorkspaceId,
+			state: initialState ?? readPersistedState(persistenceWorkspaceId),
+		});
+	}, [initialState, persistenceWorkspaceId, scopedState.workspaceId]);
+
+	useEffect(() => {
+		writePersistedState(scopedState.workspaceId, scopedState.state);
+	}, [scopedState]);
+
+	const state = scopedState.state;
+	const updateState = useCallback(
+		(updater: (current: RightPanelState) => RightPanelState) =>
+			setScopedState((current) => ({ ...current, state: updater(current.state) })),
+		[],
+	);
 
 	const value = useMemo<RightPanelContextValue>(
 		() => ({
@@ -44,13 +146,13 @@ export function RightPanelProvider({
 			activeTab: getActiveRightPanelTab(state),
 			filesActive: isWorkspaceFilesActive(state),
 			isNarrowLayout,
-			selectTab: (tabId) => setState((current) => selectRightPanelTab(current, tabId)),
-			addTab: (kind) => setState((current) => addRightPanelTab(current, kind)),
-			addTabFromMenu: (item) => setState((current) => addOrActivateRightPanelTab(current, item)),
-			removeTab: (tabId) => setState((current) => removeRightPanelTab(current, tabId)),
-			toggleCollapsed: () => setState((current) => setRightPanelCollapsed(current, !current.collapsed)),
+			selectTab: (tabId) => updateState((current) => selectRightPanelTab(current, tabId)),
+			addTab: (kind) => updateState((current) => addRightPanelTab(current, kind)),
+			addTabFromMenu: (item) => updateState((current) => addOrActivateRightPanelTab(current, item)),
+			removeTab: (tabId) => updateState((current) => removeRightPanelTab(current, tabId)),
+			toggleCollapsed: () => updateState((current) => setRightPanelCollapsed(current, !current.collapsed)),
 		}),
-		[state, isNarrowLayout],
+		[state, isNarrowLayout, updateState],
 	);
 
 	return <RightPanelContext.Provider value={value}>{children}</RightPanelContext.Provider>;

@@ -1,7 +1,19 @@
-import { RefreshCw, RotateCcw, Settings, WandSparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	ChevronDown,
+	ChevronRight,
+	Minus,
+	MoreHorizontal,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+	Settings,
+	Undo2,
+	WandSparkles,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import { resolveProjectDefaultBaseRef, type ProjectRecord } from "../../shared/project-state";
+import type { GitStatusPayload } from "../../shared/source-control/schemas";
 import type {
 	GitBranchCompareResult,
 	GitConflictKind,
@@ -11,6 +23,12 @@ import type {
 	SourceControlPullRequestInfo,
 } from "../../shared/source-control/types";
 import { Button } from "../components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,7 +44,6 @@ import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
 import { GitHistoryPanel } from "./GitHistoryPanel";
 import {
 	resolveSourceControlActions,
-	type SourceControlAction,
 	type SourceControlPrimaryActionId,
 } from "./source-control-primary-action-resolver";
 import {
@@ -43,12 +60,28 @@ import {
 } from "./commit-failure-recovery";
 import { CommitFailureRecoveryDialog } from "./CommitFailureRecoveryDialog";
 import { GitSettingsDialog } from "./GitSettingsDialog";
-import { SECTION_LABELS, SECTION_ORDER, STATUS_LABELS, type SourceControlSection } from "./status-display";
+import {
+	SECTION_LABELS,
+	SECTION_ORDER,
+	STATUS_LABELS,
+	STATUS_TITLES,
+	type SourceControlSection,
+} from "./status-display";
 import { LinkedPullRequestSummary } from "./linked-pull-request-summary";
 import { getPullRequestStateDisplay } from "./pull-request-state-display";
 import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
 import { useSourceControlGeneration } from "./use-source-control-generation";
 import { Badge } from "../components/ui/badge";
+import {
+	COMMIT_SECTION_MAX_HEIGHT,
+	COMMIT_SECTION_MIN_HEIGHT,
+	readChangesPanelLayout,
+	type ChangesPanelLayout,
+	type WorkflowSectionId,
+	writeChangesPanelLayout,
+} from "./changes-panel-layout";
+import { SectionResizeHandle } from "./SectionResizeHandle";
+import { WorkflowCollapsibleSection } from "./WorkflowCollapsibleSection";
 
 type ChangesPanelProps = {
 	project: ProjectRecord | null;
@@ -88,6 +121,24 @@ const conflictCompatibilityLabel = (entry: GitStatusEntry): string | null => {
 	return "Resolve before staging";
 };
 
+const formatBranchLabel = (status: GitStatusPayload | null): string | null => {
+	const branch = status?.branch;
+	if (branch) {
+		return branch.startsWith("refs/heads/") ? branch.slice("refs/heads/".length) : branch;
+	}
+	return status?.head ? `detached ${status.head.slice(0, 7)}` : null;
+};
+
+const formatUpstreamSummary = (upstream: GitStatusPayload["upstreamStatus"]): string => {
+	if (!upstream) {
+		return "Loading upstream status…";
+	}
+	if (!upstream.hasUpstream) {
+		return "No upstream configured";
+	}
+	return `${upstream.upstreamName} · ${upstream.ahead}↑ ${upstream.behind}↓`;
+};
+
 function SourceControlTreeRow({
 	node,
 	collapsedDirectoryKeys,
@@ -118,9 +169,11 @@ function SourceControlTreeRow({
 				style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
 				onClick={() => onToggleDirectory(node.key)}
 			>
-				<span className="changes-panel__tree-chevron" aria-hidden>
-					{collapsed ? "▸" : "▾"}
-				</span>
+				{collapsed ? (
+					<ChevronRight aria-hidden className="changes-panel__tree-chevron-icon" />
+				) : (
+					<ChevronDown aria-hidden className="changes-panel__tree-chevron-icon" />
+				)}
 				<span className="changes-panel__tree-name">{node.name}</span>
 				<span className="changes-panel__tree-count">{node.fileCount}</span>
 			</button>
@@ -139,7 +192,9 @@ function SourceControlTreeRow({
 				checked={selected}
 				onChange={() => onToggleSelected(entry)}
 			/>
-			<span className="changes-panel__status-badge">{STATUS_LABELS[entry.status]}</span>
+			<span className="changes-panel__status-badge" title={STATUS_TITLES[entry.status]}>
+				{STATUS_LABELS[entry.status]}
+			</span>
 			<button
 				type="button"
 				className="changes-panel__tree-name changes-panel__diff-open"
@@ -162,16 +217,40 @@ function SourceControlTreeRow({
 			) : null}
 			<span className="changes-panel__row-actions">
 				{entry.area === "staged" ? (
-					<Button type="button" variant="ghost" size="sm" onClick={() => onUnstage(entry)}>
-						Unstage
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="changes-panel__row-action-icon"
+						aria-label={`Unstage ${entry.path}`}
+						title="Unstage"
+						onClick={() => onUnstage(entry)}
+					>
+						<Minus aria-hidden />
 					</Button>
 				) : (
-					<Button type="button" variant="ghost" size="sm" onClick={() => onStage(entry)}>
-						Stage
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="changes-panel__row-action-icon"
+						aria-label={`Stage ${entry.path}`}
+						title="Stage"
+						onClick={() => onStage(entry)}
+					>
+						<Plus aria-hidden />
 					</Button>
 				)}
-				<Button type="button" variant="ghost" size="sm" onClick={() => onDiscard(entry)}>
-					Discard
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="changes-panel__row-action-icon"
+					aria-label={`Discard changes to ${entry.path}`}
+					title="Discard"
+					onClick={() => onDiscard(entry)}
+				>
+					<Undo2 aria-hidden />
 				</Button>
 			</span>
 		</div>
@@ -380,31 +459,38 @@ function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestReque
 					void commit();
 				}}
 			>
-				<label className="changes-panel__commit-label">
-					<span>Commit message</span>
+				<div className="changes-panel__commit-input-row">
 					<textarea
 						className="changes-panel__commit-input"
+						aria-label="Commit message"
+						placeholder="Commit message"
 						value={message}
 						onChange={(event) => setMessage(event.target.value)}
-						rows={3}
+						rows={1}
 					/>
-				</label>
-				<div className="changes-panel__commit-actions">
 					{commitGeneration.isGenerating ? (
-						<Button type="button" variant="ghost" size="sm" onClick={() => void commitGeneration.cancel()}>
-							Cancel generation
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="changes-panel__commit-generate"
+							aria-label="Cancel commit message generation"
+							onClick={() => void commitGeneration.cancel()}
+						>
+							<RotateCcw aria-hidden />
 						</Button>
 					) : (
 						<Button
 							type="button"
 							variant="ghost"
-							size="sm"
+							size="icon"
+							className="changes-panel__commit-generate"
+							aria-label="Generate commit message"
 							disabled={stagedCount === 0}
 							title={stagedCount === 0 ? "Stage changes before generating a commit message." : undefined}
 							onClick={() => void commitGeneration.generate()}
 						>
 							<WandSparkles aria-hidden />
-							Generate
 						</Button>
 					)}
 				</div>
@@ -430,32 +516,6 @@ function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestReque
 	);
 }
 
-function SourceControlActionButton({
-	action,
-	variant = "ghost",
-	onRun,
-}: {
-	action: SourceControlAction;
-	variant?: "default" | "secondary" | "ghost";
-	onRun: (id: SourceControlPrimaryActionId) => void;
-}) {
-	return (
-		<div className="changes-panel__action-row">
-			<Button
-				type="button"
-				variant={variant}
-				size="sm"
-				disabled={Boolean(action.disabledReason)}
-				title={action.disabledReason}
-				onClick={() => onRun(action.id)}
-			>
-				{action.label}
-			</Button>
-			{action.disabledReason ? <span className="changes-panel__action-reason">{action.disabledReason}</span> : null}
-		</div>
-	);
-}
-
 function SourceControlActions({
 	commitMessage,
 	isCommitBusy,
@@ -473,7 +533,6 @@ function SourceControlActions({
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busyActionId, setBusyActionId] = useState<SourceControlPrimaryActionId | null>(null);
-	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const upstream = status?.upstreamStatus;
 	const actions = resolveSourceControlActions({
 		projectId,
@@ -512,12 +571,10 @@ function SourceControlActions({
 			return;
 		}
 		if (id === "commit" || id === "commitStaged") {
-			setIsMenuOpen(false);
 			onCommit();
 			return;
 		}
 		if (id === "createPullRequest") {
-			setIsMenuOpen(false);
 			onCreatePullRequestRequested();
 			return;
 		}
@@ -526,7 +583,6 @@ function SourceControlActions({
 			return;
 		}
 
-		setIsMenuOpen(false);
 		setBusyActionId(id);
 		try {
 			switch (id) {
@@ -577,44 +633,56 @@ function SourceControlActions({
 		}
 	};
 
+	const primaryLabel =
+		isCommitBusy && (actions.primary.id === "commit" || actions.primary.id === "commitStaged")
+			? "Committing…"
+			: actions.primary.label;
+
+	const upstreamSummary = formatUpstreamSummary(upstream);
+
 	return (
 		<div className="changes-panel__remote">
-			<div className="changes-panel__remote-summary">
-				<span>{upstream?.hasUpstream ? upstream.upstreamName : "No upstream"}</span>
-				<span>{upstream ? `${upstream.ahead} ahead, ${upstream.behind} behind` : "0 ahead, 0 behind"}</span>
-			</div>
 			<div className="changes-panel__remote-actions">
-				<SourceControlActionButton
-					action={actions.primary}
+				<Button
+					type="button"
 					variant="secondary"
-					onRun={(id) => void runAction(id)}
-				/>
-				<div className="changes-panel__action-menu">
-					<button
-						type="button"
-						className="changes-panel__action-menu-trigger"
-						aria-haspopup="menu"
-						aria-controls="changes-panel-source-control-actions-menu"
-						aria-expanded={isMenuOpen}
-						onClick={() => setIsMenuOpen((open) => !open)}
-					>
-						More source control actions
-					</button>
-					{isMenuOpen ? (
-						<div
-							id="changes-panel-source-control-actions-menu"
-							className="changes-panel__action-menu-items"
-							role="menu"
-						>
-							{actions.dropdown.map((action) => (
-								<SourceControlActionButton key={action.id} action={action} onRun={(id) => void runAction(id)} />
-							))}
-						</div>
-					) : null}
-				</div>
+					size="sm"
+					disabled={Boolean(actions.primary.disabledReason)}
+					title={actions.primary.disabledReason}
+					onClick={() => void runAction(actions.primary.id)}
+				>
+					{primaryLabel}
+				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button type="button" variant="ghost" size="icon" aria-label="More source control actions">
+							<MoreHorizontal aria-hidden />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="changes-panel__action-dropdown">
+						{actions.dropdown.map((action) => (
+							<DropdownMenuItem
+								key={action.id}
+								disabled={Boolean(action.disabledReason)}
+								title={action.disabledReason}
+								onSelect={() => void runAction(action.id)}
+							>
+								<span className="changes-panel__action-menu-item">
+									<span>{action.label}</span>
+									{action.disabledReason ? (
+										<span className="changes-panel__action-menu-reason">{action.disabledReason}</span>
+									) : null}
+								</span>
+							</DropdownMenuItem>
+						))}
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</div>
+			<p className="changes-panel__remote-summary" title={upstreamSummary}>
+				{upstreamSummary}
+			</p>
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
-			{error ? <p className="changes-panel__error">{error}</p> : null}
+			{error ? <p className="changes-panel__error changes-panel__error--inline">{error}</p> : null}
 		</div>
 	);
 }
@@ -856,9 +924,10 @@ function PullRequestArea({ focusRequestCount }: { focusRequestCount: number }) {
 }
 
 function ChangesPanelBody() {
-	const { projectId, status, statusError, isGitRepo, refresh, initializeRepository } = useChangesPanel();
+	const { projectId, status, statusError, isGitRepo, refresh, initializeRepository, pullRequest } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
 	const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<SourceControlSection>>(new Set());
+	const [layout, setLayout] = useState<ChangesPanelLayout>(() => readChangesPanelLayout());
 	const [collapsedTreeDirs, setCollapsedTreeDirs] = useState<ReadonlySet<string>>(new Set());
 	const [operationError, setOperationError] = useState<string | null>(null);
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
@@ -868,6 +937,28 @@ function ChangesPanelBody() {
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	useEffect(() => {
+		writeChangesPanelLayout(layout);
+	}, [layout]);
+
+	useEffect(() => {
+		if (pullRequest) {
+			setLayout((current) => ({
+				...current,
+				expanded: { ...current.expanded, pullRequest: true },
+			}));
+		}
+	}, [pullRequest]);
+
+	useEffect(() => {
+		if (createPullRequestRequestCount > 0) {
+			setLayout((current) => ({
+				...current,
+				expanded: { ...current.expanded, pullRequest: true },
+			}));
+		}
+	}, [createPullRequestRequestCount]);
 
 	const grouped = useMemo(() => groupEntriesByArea(status?.entries ?? []), [status?.entries]);
 	const selectedEntries = useMemo(
@@ -893,6 +984,24 @@ function ChangesPanelBody() {
 			}).filter((section) => section.entries.length > 0),
 		[grouped, collapsedTreeDirs],
 	);
+	const setLayoutHeight = (key: keyof ChangesPanelLayout["heights"]) => (updater: (current: number) => number) => {
+		setLayout((current) => ({
+			...current,
+			heights: {
+				...current.heights,
+				[key]: updater(current.heights[key]),
+			},
+		}));
+	};
+	const toggleWorkflowSection = (key: WorkflowSectionId) => {
+		setLayout((current) => ({
+			...current,
+			expanded: {
+				...current.expanded,
+				[key]: !current.expanded[key],
+			},
+		}));
+	};
 
 	if (!projectId) {
 		return (
@@ -1022,62 +1131,60 @@ function ChangesPanelBody() {
 					</Button>
 				</div>
 			) : null}
-			<CommitArea onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)} />
-			<BranchCompareArea />
-			<GitHistoryPanel />
-			<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
-			{status && status.entries.length === 0 && !conflict ? (
-				<div className="changes-panel__empty">
-					<p>No uncommitted changes</p>
-				</div>
-			) : null}
-			{selectedEntries.length > 0 ? (
-				<div className="changes-panel__bulk">
-					<span>{selectedEntries.length} selected</span>
-					<Button
-						type="button"
-						variant="secondary"
-						size="sm"
-						onClick={() =>
-							void runMutation(() =>
-								window.piDesktop.sourceControl.bulkStage({
-									projectId: projectId ?? "",
-									relativePaths: selectedStageableEntries.map((entry) => entry.path),
-								}),
-							)
-						}
-						disabled={selectedStageableEntries.length === 0}
-					>
-						Stage Selected
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() =>
-							void runMutation(() =>
-								window.piDesktop.sourceControl.bulkUnstage({
-									projectId: projectId ?? "",
-									relativePaths: selectedStagedEntries.map((entry) => entry.path),
-								}),
-							)
-						}
-						disabled={selectedStagedEntries.length === 0}
-					>
-						Unstage Selected
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() => setPendingDiscardEntries(selectedEntries)}
-					>
-						Discard Selected
-					</Button>
-				</div>
-			) : null}
-			{operationError ? <p className="changes-panel__error">{operationError}</p> : null}
 			<div className="changes-panel__sections">
+				{status && status.entries.length === 0 && !conflict ? (
+					<div className="changes-panel__empty changes-panel__empty--inline">
+						<p>No uncommitted changes</p>
+					</div>
+				) : null}
+				{selectedEntries.length > 0 ? (
+					<div className="changes-panel__bulk">
+						<span>{selectedEntries.length} selected</span>
+						<Button
+							type="button"
+							variant="secondary"
+							size="sm"
+							onClick={() =>
+								void runMutation(() =>
+									window.piDesktop.sourceControl.bulkStage({
+										projectId: projectId ?? "",
+										relativePaths: selectedStageableEntries.map((entry) => entry.path),
+									}),
+								)
+							}
+							disabled={selectedStageableEntries.length === 0}
+						>
+							Stage Selected
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() =>
+								void runMutation(() =>
+									window.piDesktop.sourceControl.bulkUnstage({
+										projectId: projectId ?? "",
+										relativePaths: selectedStagedEntries.map((entry) => entry.path),
+									}),
+								)
+							}
+							disabled={selectedStagedEntries.length === 0}
+						>
+							Unstage Selected
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setPendingDiscardEntries(selectedEntries)}
+						>
+							Discard Selected
+						</Button>
+					</div>
+				) : null}
+				{operationError ? (
+					<p className="changes-panel__error changes-panel__error--inline">{operationError}</p>
+				) : null}
 				{visibleSections.map((section) => {
 					const collapsed = collapsedSections.has(section.area);
 					return (
@@ -1097,9 +1204,11 @@ function ChangesPanelBody() {
 									})
 								}
 							>
-								<span className="changes-panel__section-chevron" aria-hidden>
-									{collapsed ? "▸" : "▾"}
-								</span>
+								{collapsed ? (
+									<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
+								) : (
+									<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
+								)}
 								<span>{SECTION_LABELS[section.area]}</span>
 								<span className="changes-panel__section-count">{section.entries.length}</span>
 							</button>
@@ -1160,22 +1269,82 @@ function ChangesPanelBody() {
 					);
 				})}
 			</div>
+			<div
+				className="changes-panel__commit-strip"
+				data-testid="changes-panel-commit-strip"
+				style={{ "--changes-panel-commit-height": `${layout.heights.commit}px` } as CSSProperties}
+			>
+				<SectionResizeHandle
+					label="Resize Commit section"
+					height={layout.heights.commit}
+					setHeight={setLayoutHeight("commit")}
+					minHeight={COMMIT_SECTION_MIN_HEIGHT}
+					maxHeight={COMMIT_SECTION_MAX_HEIGHT}
+					growDirection="up"
+					className="changes-panel__section-resize-handle changes-panel__section-resize-handle--top"
+				/>
+				<div className="changes-panel__commit-strip-content">
+					<CommitArea
+						onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
+					/>
+				</div>
+			</div>
+			<div className="changes-panel__secondary" data-testid="changes-panel-secondary">
+				<WorkflowCollapsibleSection
+					title="Branch compare"
+					testId="changes-panel-branch-compare"
+					expanded={layout.expanded.branchCompare}
+					height={layout.heights.branchCompare}
+					onToggle={() => toggleWorkflowSection("branchCompare")}
+					setHeight={setLayoutHeight("branchCompare")}
+				>
+					<BranchCompareArea />
+				</WorkflowCollapsibleSection>
+				<WorkflowCollapsibleSection
+					title="History"
+					testId="changes-panel-history"
+					expanded={layout.expanded.history}
+					height={layout.heights.history}
+					onToggle={() => toggleWorkflowSection("history")}
+					setHeight={setLayoutHeight("history")}
+				>
+					<GitHistoryPanel embedded />
+				</WorkflowCollapsibleSection>
+				<WorkflowCollapsibleSection
+					title="Pull request"
+					testId="changes-panel-pull-request"
+					expanded={layout.expanded.pullRequest}
+					height={layout.heights.pullRequest}
+					onToggle={() => toggleWorkflowSection("pullRequest")}
+					setHeight={setLayoutHeight("pullRequest")}
+				>
+					<PullRequestArea focusRequestCount={createPullRequestRequestCount} />
+				</WorkflowCollapsibleSection>
+			</div>
 		</div>
 	);
 }
 
 function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
-	const { refresh, isRefreshing, pullRequest } = useChangesPanel();
+	const { refresh, isRefreshing, pullRequest, status } = useChangesPanel();
 	const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
 	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
 	const linkedPullRequestState = pullRequest ? getPullRequestStateDisplay(pullRequest.state) : null;
+	const branchLabel = formatBranchLabel(status);
 
 	return (
 		<>
 			<div className="changes-panel" data-testid="workspace-panel-changes">
 				<header className="changes-panel__header">
 					<div className="changes-panel__header-copy">
-						<h2 className="changes-panel__title">Changes</h2>
+						<div className="changes-panel__title-row">
+							<h2 className="changes-panel__title">Changes</h2>
+							{branchLabel ? (
+								<span className="changes-panel__branch" data-testid="changes-panel-branch" title={branchLabel}>
+									{branchLabel}
+								</span>
+							) : null}
+						</div>
 						{pullRequest ? (
 							<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
 								<Badge variant={linkedPullRequestState?.variant ?? "outline"}>

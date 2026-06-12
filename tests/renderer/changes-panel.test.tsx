@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesPanel } from "../../src/renderer/changes-panel/ChangesPanel";
 import { ChangesPanelProvider, useChangesPanel } from "../../src/renderer/changes-panel/changes-panel-context";
@@ -36,17 +37,20 @@ const otherProject = {
 const testUpstreamStatus = (
 	status: Pick<GitUpstreamStatus, "hasUpstream" | "ahead" | "behind"> & Partial<GitUpstreamStatus>,
 ): GitUpstreamStatus => {
-	const relation =
-		status.relation ??
-		(!status.hasUpstream
-			? "none"
-			: status.ahead > 0 && status.behind > 0
-				? "diverged"
-				: status.ahead > 0
-					? "ahead"
-					: status.behind > 0
-						? "behind"
-						: "up_to_date");
+	let relation = status.relation;
+	if (!relation) {
+		if (!status.hasUpstream) {
+			relation = "none";
+		} else if (status.ahead > 0 && status.behind > 0) {
+			relation = "diverged";
+		} else if (status.ahead > 0) {
+			relation = "ahead";
+		} else if (status.behind > 0) {
+			relation = "behind";
+		} else {
+			relation = "up_to_date";
+		}
+	}
 	return {
 		...status,
 		relation,
@@ -174,9 +178,53 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 	return { getStatus, initializeRepository, commit, getDiff, abortConflict };
 };
 
+const expandWorkflowSection = (name: "Branch compare" | "History" | "Pull request") => {
+	const trigger = screen.getByRole("button", { name });
+	if (trigger.getAttribute("aria-expanded") !== "true") {
+		fireEvent.click(trigger);
+	}
+};
+
+const expandBranchCompareSection = () => {
+	expandWorkflowSection("Branch compare");
+};
+
+const expandHistorySection = () => {
+	expandWorkflowSection("History");
+};
+
+const expandPullRequestSection = () => {
+	expandWorkflowSection("Pull request");
+};
+
+const openSourceControlMenu = async () => {
+	const user = userEvent.setup();
+	const trigger = await screen.findByRole("button", { name: "More source control actions" });
+	if (trigger.getAttribute("aria-expanded") !== "true") {
+		await user.click(trigger);
+	}
+	await screen.findByRole("menu");
+};
+
+const closeSourceControlMenu = async () => {
+	const user = userEvent.setup();
+	await user.keyboard("{Escape}");
+	await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+};
+
+const expectMenuItemDisabled = (name: string | RegExp, disabled: boolean) => {
+	const item = screen.getByRole("menuitem", { name });
+	if (disabled) {
+		expect(item.getAttribute("aria-disabled")).toBe("true");
+		return;
+	}
+	expect(item.getAttribute("aria-disabled")).not.toBe("true");
+};
+
 describe("ChangesPanel", () => {
 	afterEach(() => {
 		registerCommitRecoverySessionHandler(null);
+		window.localStorage.clear();
 		vi.restoreAllMocks();
 	});
 
@@ -187,10 +235,127 @@ describe("ChangesPanel", () => {
 		expect(screen.getByTestId("workspace-panel-changes")).toBeTruthy();
 		await waitFor(() => {
 			expect(screen.getByRole("heading", { name: "Changes" })).toBeTruthy();
+			expect(screen.getByTestId("changes-panel-branch").textContent).toBe("main");
 			expect(screen.getByText("README.md")).toBeTruthy();
 			expect(screen.getByText("Untracked Files")).toBeTruthy();
 			expect(screen.getByText("new.txt")).toBeTruthy();
 		});
+	});
+
+	it("places file sections above the commit form and keeps workflow sections collapsed by default", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		const readme = await screen.findByText("README.md");
+		const commitMessage = screen.getByLabelText("Commit message");
+		expect(commitMessage.compareDocumentPosition(readme) & Node.DOCUMENT_POSITION_PRECEDING).toBe(
+			Node.DOCUMENT_POSITION_PRECEDING,
+		);
+		expect(screen.queryByRole("button", { name: "More workflows" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Branch compare" }).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.getByRole("button", { name: "Pull request" }).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.queryByLabelText("PR title")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Compare" })).toBeNull();
+		expect(screen.queryByText("Second commit")).toBeNull();
+	});
+
+	it("starts expanded workflow sections taller and exposes visible resize handles", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandBranchCompareSection();
+		expandHistorySection();
+		expandPullRequestSection();
+
+		await screen.findByText("Second commit");
+		expect(screen.getByTestId("changes-panel-branch-compare").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("220px");
+		expect(screen.getByTestId("changes-panel-history").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("320px");
+		expect(screen.getByTestId("changes-panel-pull-request").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("300px");
+		expect(screen.getByRole("separator", { name: "Resize Branch compare from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Branch compare from bottom edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize History from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize History from bottom edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Pull request from top edge" })).toBeTruthy();
+		expect(screen.getByRole("separator", { name: "Resize Pull request from bottom edge" })).toBeTruthy();
+	});
+
+	it("resizes expanded workflow section heights from the divider above the section", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+
+		const historySection = screen.getByTestId("changes-panel-history");
+		const resizeHandle = within(historySection).getByRole("separator", { name: "Resize History from top edge" });
+		const historyHeader = within(historySection).getByRole("button", { name: "History" });
+		expect(resizeHandle.compareDocumentPosition(historyHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		fireEvent.pointerDown(resizeHandle, { clientY: 100, pointerId: 1 });
+		fireEvent.pointerMove(document, { clientY: 20, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(historySection.style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("400px");
+	});
+
+	it("resizes expanded workflow section heights over a broad range from the divider below the section", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+
+		const historySection = screen.getByTestId("changes-panel-history");
+		const resizeHandle = within(historySection).getByRole("separator", { name: "Resize History from bottom edge" });
+		fireEvent.pointerDown(resizeHandle, { clientY: 100, pointerId: 1 });
+		fireEvent.pointerMove(document, { clientY: 780, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(historySection.style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("1000px");
+	});
+
+	it("resizes the visible commit boundary", async () => {
+		installApi();
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+
+		const commitStrip = screen.getByTestId("changes-panel-commit-strip");
+		fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize Commit section" }), {
+			clientY: 500,
+			pointerId: 1,
+		});
+		fireEvent.pointerMove(document, { clientY: 450, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+
+		expect(commitStrip.style.getPropertyValue("--changes-panel-commit-height")).toBe("206px");
+	});
+
+	it("persists workflow expansion and adjusted heights between sessions", async () => {
+		installApi();
+		const { unmount } = render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("README.md");
+		expandHistorySection();
+		await screen.findByText("Second commit");
+		fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize History from top edge" }), {
+			clientY: 100,
+			pointerId: 1,
+		});
+		fireEvent.pointerMove(document, { clientY: 20, pointerId: 1 });
+		fireEvent.pointerUp(document, { pointerId: 1 });
+		unmount();
+
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("Second commit");
+		expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-expanded")).toBe("true");
+		expect(screen.getByTestId("changes-panel-history").style.getPropertyValue("--changes-panel-workflow-block-height")).toBe("400px");
 	});
 
 	it("shows initialize repository when the project is not a git repo", async () => {
@@ -458,7 +623,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[0]);
 		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
 		fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -471,7 +636,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[0]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[0]);
 		await screen.findByRole("alertdialog", { name: "Discard changes for README.md?" });
 		fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));
 
@@ -485,7 +650,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("new.txt");
-		fireEvent.click(screen.getAllByRole("button", { name: "Discard" })[1]);
+		fireEvent.click(screen.getAllByRole("button", { name: /Discard changes to/ })[1]);
 
 		await screen.findByRole("alertdialog", { name: "Delete untracked file new.txt?" });
 		expect(screen.getByText("This file is not tracked by git. Deleting it cannot be undone by git.")).toBeTruthy();
@@ -506,7 +671,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("new-feature.ts");
-		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+		fireEvent.click(screen.getByRole("button", { name: /Discard changes to new-feature\.ts/ }));
 
 		await screen.findByRole("alertdialog", { name: "Delete newly-added file new-feature.ts?" });
 		expect(screen.getByText("This file was added to git. Discarding it will remove it from the working tree.")).toBeTruthy();
@@ -527,7 +692,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("removed.ts");
-		fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+		fireEvent.click(screen.getByRole("button", { name: /Discard changes to removed\.ts/ }));
 
 		await screen.findByRole("alertdialog", { name: "Restore deleted file removed.ts?" });
 		expect(screen.getByText("This will restore the tracked file from git.")).toBeTruthy();
@@ -569,6 +734,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 		await screen.findByTestId("linked-pull-request");
@@ -601,6 +767,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("No uncommitted changes");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getAllByRole("button", { name: "Create PR" })[0]);
 
@@ -688,6 +855,8 @@ describe("ChangesPanel", () => {
 		});
 		render(<ChangesPanel project={project} isActive />);
 
+		await screen.findByText("README.md");
+		expandPullRequestSection();
 		await screen.findByText("Run `gh auth login` in a terminal to connect GitHub.");
 	});
 
@@ -704,6 +873,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 
@@ -729,7 +899,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByTestId("linked-pull-request");
-		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
+		await openSourceControlMenu();
 
 		expect(screen.getAllByText("Pull request already linked.").length).toBeGreaterThan(0);
 	});
@@ -773,9 +943,8 @@ describe("ChangesPanel", () => {
 			expect(screen.queryByTestId("linked-pull-request")).toBeNull();
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
-		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Create PR" }).some((button) => !button.disabled)).toBe(
-			true,
-		);
+		expandPullRequestSection();
+		expect(screen.getAllByRole("button", { name: "Create PR" }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
 	});
 
 	it("shows source-control actions for a clean working tree", async () => {
@@ -794,8 +963,9 @@ describe("ChangesPanel", () => {
 
 		await screen.findByText("No uncommitted changes");
 
-		expect(screen.getByText("origin/main")).toBeTruthy();
+		expect(screen.getByText("origin/main · 1↑ 0↓")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Push" })).toBeTruthy();
+		expandBranchCompareSection();
 		expect(screen.getByRole("button", { name: "Compare" })).toBeTruthy();
 	});
 
@@ -816,10 +986,10 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("No uncommitted changes");
-		fireEvent.click(screen.getByRole("button", { name: "More source control actions" }));
-		expect(screen.getByRole("menu")).toBeTruthy();
+		await openSourceControlMenu();
 
-		fireEvent.click(screen.getAllByRole("button", { name: "Fetch" })[0]);
+		const user = userEvent.setup();
+		await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Fetch" }));
 
 		await waitFor(() => {
 			expect(fetch).toHaveBeenCalledWith({ projectId: project.id });
@@ -836,6 +1006,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByText("README.md");
+		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "  Feature PR  " } });
 		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 
@@ -864,21 +1035,22 @@ describe("ChangesPanel", () => {
 
 		await screen.findByText("No uncommitted changes");
 
-		expect(screen.getByText("1 ahead, 1 behind")).toBeTruthy();
+		expect(screen.getByText("origin/feature · 1↑ 1↓")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Rebase from Upstream" }));
 
 		await waitFor(() => {
 			expect(rebaseFromBase).toHaveBeenCalledWith({ projectId: project.id, baseRef: "origin/feature" });
 		});
 
-		fireEvent.click(screen.getByText("More source control actions"));
+		await openSourceControlMenu();
 
 		const menu = screen.getByRole("menu");
-		expect(within(menu).getByRole("button", { name: "Rebase from Upstream" })).toBeTruthy();
-		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Force Push with Lease" }).disabled).toBe(false);
-		expect(within(menu).getByRole<HTMLButtonElement>("button", { name: "Sync" }).disabled).toBe(true);
+		expect(within(menu).getByRole("menuitem", { name: /Rebase from Upstream/ })).toBeTruthy();
+		expectMenuItemDisabled(/Force Push with Lease/, false);
+		expectMenuItemDisabled(/Sync/, true);
 		expect(screen.getByText("Branch has diverged. Rebase or merge before syncing.")).toBeTruthy();
-		fireEvent.click(within(menu).getByRole("button", { name: "Force Push with Lease" }));
+		const user = userEvent.setup();
+		await user.click(within(menu).getByRole("menuitem", { name: /Force Push with Lease/ }));
 
 		await waitFor(() => {
 			expect(forcePushWithLease).toHaveBeenCalledWith({ projectId: project.id });
@@ -896,8 +1068,9 @@ describe("ChangesPanel", () => {
 		installApi({ getStatus });
 		render(<ChangesPanel project={project} isActive />);
 
-		fireEvent.click(screen.getByText("More source control actions"));
-		expect(screen.getByRole<HTMLButtonElement>("button", { name: "Publish" }).disabled).toBe(true);
+		await openSourceControlMenu();
+		expectMenuItemDisabled(/Publish/, true);
+		await closeSourceControlMenu();
 
 		await act(async () => {
 			resolveStatus({
@@ -912,9 +1085,7 @@ describe("ChangesPanel", () => {
 		});
 
 		await screen.findByText("No uncommitted changes");
-		expect(screen.getAllByRole<HTMLButtonElement>("button", { name: "Publish" }).some((button) => !button.disabled)).toBe(
-			true,
-		);
+		expect(screen.getByRole("button", { name: "Publish" }).hasAttribute("disabled")).toBe(false);
 	});
 
 	it("ignores stale status results after switching projects", async () => {
@@ -1068,7 +1239,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		await waitFor(() => {
 			expect(generateCommitMessage).toHaveBeenCalled();
@@ -1103,13 +1274,13 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		expect(await screen.findByText("Generating commit message…")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Cancel generation" })).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "Generate" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Cancel commit message generation" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Generate commit message" })).toBeNull();
 
-		fireEvent.click(screen.getByRole("button", { name: "Cancel generation" }));
+		fireEvent.click(screen.getByRole("button", { name: "Cancel commit message generation" }));
 		await waitFor(() => {
 			expect(cancelGeneration).toHaveBeenCalled();
 		});
@@ -1136,7 +1307,7 @@ describe("ChangesPanel", () => {
 		render(<ChangesPanel project={project} isActive />);
 
 		await screen.findByLabelText("Commit message");
-		fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+		fireEvent.click(screen.getByRole("button", { name: "Generate commit message" }));
 
 		await waitFor(() => {
 			expect(screen.getByText("No Pi model is configured for this project.")).toBeTruthy();
@@ -1151,6 +1322,8 @@ describe("ChangesPanel", () => {
 		installApi({ generatePullRequestFields });
 		render(<ChangesPanel project={project} isActive />);
 
+		await screen.findByText("README.md");
+		expandPullRequestSection();
 		await screen.findByLabelText("PR title");
 		fireEvent.click(screen.getByRole("button", { name: "Generate with AI" }));
 

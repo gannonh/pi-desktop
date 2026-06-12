@@ -2,7 +2,7 @@
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5 (§5.1–5.3) is implemented on `wave5`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adr/0005-source-control-worktree-scope.md).
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5 (§5.1–5.3) is implemented on `wave5`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adr/0005-source-control-worktree-scope.md). **UAT polish on `feat/uat-git-parity` addresses active branch clarity and right-panel workspace state.**
 
 ## Context
 
@@ -17,7 +17,7 @@ This roadmap lists the remaining high-level gaps. Each item is intentionally sho
 - Wave 3 history and diff review: [#151](https://github.com/gannonh/pi-desktop/issues/151), [#152](https://github.com/gannonh/pi-desktop/issues/152)
 - Wave 4 AI generation and recovery: [#153](https://github.com/gannonh/pi-desktop/issues/153), [#154](https://github.com/gannonh/pi-desktop/issues/154)
 - Wave 5 hosted review, settings, and worktree scope: [#155](https://github.com/gannonh/pi-desktop/issues/155), [#156](https://github.com/gannonh/pi-desktop/issues/156), [#157](https://github.com/gannonh/pi-desktop/issues/157)
-- Follow-on UAT gaps: active path/branch clarity [#158](https://github.com/gannonh/pi-desktop/issues/158), local-bare-remote e2e coverage [#159](https://github.com/gannonh/pi-desktop/issues/159)
+- Follow-on UAT gaps: active path/branch clarity [#158](https://github.com/gannonh/pi-desktop/issues/158) is addressed on `feat/uat-git-parity`; local-bare-remote e2e coverage [#159](https://github.com/gannonh/pi-desktop/issues/159) remains active.
 
 ## Scope
 
@@ -216,4 +216,4 @@ Each roadmap item should include focused unit tests for pure logic, main-process
 
 Remote-workflow milestones should add deterministic e2e coverage using temporary repositories and local bare remotes. Track this under [#159](https://github.com/gannonh/pi-desktop/issues/159). The minimum matrix should cover clean state, unstaged/staged/commit flow, ahead-only `Push`, behind-only fast-forward `Pull`, diverged ahead-and-behind reconcile state, no-upstream `Publish`, destructive discard confirmations, and PR creation with only the `gh` boundary mocked.
 
-The Changes panel should also make the active project path and branch explicit enough to avoid mutating the wrong checkout. Track that UAT gap under [#158](https://github.com/gannonh/pi-desktop/issues/158).
+The Changes panel now shows the active branch in the header, keeps upstream state visible near source-control actions, and restores right-panel tab/collapse state per workspace. Workflow sections for branch compare, history, and pull request creation are collapsed by default, resizable when expanded, and persisted in local storage.

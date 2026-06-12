@@ -23,7 +23,7 @@ describe("WorkspaceTabStrip", () => {
 		expect(markup).toContain('aria-label="Terminal"');
 		expect(markup).toContain('aria-label="File explorer"');
 		expect(markup).toContain('aria-label="Add panel"');
-		expect(markup).toContain('aria-label="Hide workspace"');
+		expect(markup).toContain('aria-label="Show workspace"');
 		expect(markup).toContain("workspace-tab-strip__action");
 		expect(markup).not.toContain("right-panel__tabs");
 	});
