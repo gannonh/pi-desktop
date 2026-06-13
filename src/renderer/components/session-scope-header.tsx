@@ -7,6 +7,8 @@ export interface SessionScopeHeaderProps {
 	metadataLabel?: string;
 	variant: "bar" | "centered";
 	titleId?: string;
+	/** Omit session metadata — for fixed-height workspace chrome. */
+	compact?: boolean;
 }
 
 export function SessionScopeHeader({
@@ -16,8 +18,9 @@ export function SessionScopeHeader({
 	metadataLabel,
 	variant,
 	titleId,
+	compact = false,
 }: SessionScopeHeaderProps) {
-	const showMetadata = Boolean(resumeLabel && metadataLabel);
+	const showMetadata = !compact && Boolean(resumeLabel && metadataLabel);
 	const showPath = Boolean(path);
 
 	if (variant === "centered") {

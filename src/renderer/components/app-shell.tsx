@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { PanelRightOpen } from "lucide-react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
@@ -71,13 +71,19 @@ export function AppShell({
 		sidebarChromeTitle,
 		hasSelectedChat: Boolean(state.selectedChat),
 	});
+	const showWorkspaceChatHeader = showPathBadge || (sessionHeader !== null && showChatHeaderTitle);
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
 	const { state: rightPanelState, toggleCollapsed } = useRightPanel();
+	const workspaceStatusInitialized = useRef(false);
 
 	useEffect(() => {
 		if (!showWorkspaceColumn) {
+			return;
+		}
+		if (!workspaceStatusInitialized.current) {
+			workspaceStatusInitialized.current = true;
 			return;
 		}
 		setWorkspaceStatusMessage(rightPanelState.collapsed ? "Workspace hidden." : "Workspace shown.");
@@ -131,6 +137,17 @@ export function AppShell({
 				path={showPathBadge ? selectedProjectPath : null}
 				resumeLabel={sessionHeader.resumeLabel}
 				metadataLabel={sessionHeader.metadataLabel}
+			/>
+		) : null;
+
+	const workspaceChatHeader =
+		sessionHeader && showWorkspaceChatHeader ? (
+			<SessionScopeHeader
+				variant="bar"
+				compact
+				titleId="app-shell-title"
+				title={showChatHeaderTitle ? sessionHeader.title : ""}
+				path={showPathBadge ? selectedProjectPath : null}
 			/>
 		) : null;
 
@@ -189,11 +206,14 @@ export function AppShell({
 				>
 					<div className="app-shell__chat-column">
 						<header
-							className={["app-shell__chat-header", showMainHeader ? "" : "app-shell__chat-header--empty"]
+							className={[
+								"app-shell__chat-header",
+								showWorkspaceChatHeader ? "" : "app-shell__chat-header--empty",
+							]
 								.filter(Boolean)
 								.join(" ")}
 						>
-							{sessionScopeHeader}
+							{workspaceChatHeader}
 						</header>
 						{projectMain}
 					</div>

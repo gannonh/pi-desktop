@@ -54,6 +54,7 @@ import {
 	MenuSurface,
 } from "./menu";
 import { PlannedAffordance, PlannedAffordanceButton, PlannedAffordanceMenuItem } from "./planned-affordance";
+import { SHOW_PLANNED_AFFORDANCES } from "../dev/planned-affordances";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
 import {
 	getProjectChatBranchActionDisabledTitle,
@@ -1164,45 +1165,49 @@ function SidebarFilterMenu({ id, moveDirection, chatFilter, onChatFilterChange }
 					</MenuItem>
 				);
 			})}
-			<MenuSeparator />
-			<div className="project-sidebar__filter-menu-planned-heading">Planned</div>
-			<PlannedAffordanceMenuItem id="filter.organize-by-project">
-				<MenuItemIcon>
-					<Folder />
-				</MenuItemIcon>
-				By project
-			</PlannedAffordanceMenuItem>
-			<PlannedAffordanceMenuItem id="filter.recent-projects">
-				<MenuItemIcon>
-					<Folder />
-				</MenuItemIcon>
-				Recent projects
-			</PlannedAffordanceMenuItem>
-			<PlannedAffordanceMenuItem id="filter.chronological-list">
-				<MenuItemIcon>
-					<Clock />
-				</MenuItemIcon>
-				Chronological list
-			</PlannedAffordanceMenuItem>
-			<PlannedAffordanceMenuItem id="filter.move">
-				<MenuItemIcon>
-					<MoveIcon />
-				</MenuItemIcon>
-				{moveLabel}
-			</PlannedAffordanceMenuItem>
-			<PlannedAffordanceMenuItem id="filter.sort-created">
-				<MenuItemIcon>
-					<CirclePlus />
-				</MenuItemIcon>
-				Created
-			</PlannedAffordanceMenuItem>
-			<PlannedAffordanceMenuItem id="filter.sort-updated">
-				<MenuItemIcon>
-					<Clock />
-				</MenuItemIcon>
-				Updated
-			</PlannedAffordanceMenuItem>
-			<p className="project-sidebar__filter-menu-footer">Organize and sort filters are planned.</p>
+			{SHOW_PLANNED_AFFORDANCES ? (
+				<>
+					<MenuSeparator />
+					<div className="project-sidebar__filter-menu-planned-heading">Planned</div>
+					<PlannedAffordanceMenuItem id="filter.organize-by-project">
+						<MenuItemIcon>
+							<Folder />
+						</MenuItemIcon>
+						By project
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.recent-projects">
+						<MenuItemIcon>
+							<Folder />
+						</MenuItemIcon>
+						Recent projects
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.chronological-list">
+						<MenuItemIcon>
+							<Clock />
+						</MenuItemIcon>
+						Chronological list
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.move">
+						<MenuItemIcon>
+							<MoveIcon />
+						</MenuItemIcon>
+						{moveLabel}
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.sort-created">
+						<MenuItemIcon>
+							<CirclePlus />
+						</MenuItemIcon>
+						Created
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.sort-updated">
+						<MenuItemIcon>
+							<Clock />
+						</MenuItemIcon>
+						Updated
+					</PlannedAffordanceMenuItem>
+					<p className="project-sidebar__filter-menu-footer">Organize and sort filters are planned.</p>
+				</>
+			) : null}
 		</MenuSurface>
 	);
 }

@@ -35,4 +35,22 @@ describe("SessionScopeHeader", () => {
 		expect(screen.getByRole("heading", { name: "Git parity" })).toBeTruthy();
 		expect(screen.getByText("/tmp/pi-desktop")).toBeTruthy();
 	});
+
+	it("omits metadata in compact bar variant", () => {
+		render(
+			<SessionScopeHeader
+				variant="bar"
+				compact
+				title="Git parity"
+				path="/tmp/pi-desktop"
+				resumeLabel="Resume session"
+				metadataLabel="idle · /tmp/pi-desktop"
+			/>,
+		);
+
+		expect(screen.getByRole("heading", { name: "Git parity" })).toBeTruthy();
+		expect(screen.getByText("/tmp/pi-desktop")).toBeTruthy();
+		expect(screen.queryByText("Resume session")).toBeNull();
+		expect(screen.queryByText("idle · /tmp/pi-desktop")).toBeNull();
+	});
 });

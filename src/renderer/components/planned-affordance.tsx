@@ -22,11 +22,7 @@ export function PlannedAffordance({ id, children, className, showLabel = true }:
 	const definition = PLANNED_AFFORDANCES[id];
 
 	return (
-		<span
-			className={cn("planned-affordance", className)}
-			title={formatPlannedTooltip(definition)}
-			aria-disabled="true"
-		>
+		<span className={cn("planned-affordance", className)} title={formatPlannedTooltip(definition)} aria-hidden="true">
 			{children}
 			{showLabel ? <span className="planned-affordance__label">Planned</span> : null}
 		</span>
@@ -89,7 +85,7 @@ export function PlannedAffordanceMenuItem({ id, children, className }: PlannedAf
 		<div
 			className={cn("planned-affordance", "planned-affordance--menu-item", className)}
 			title={formatPlannedTooltip(definition)}
-			aria-disabled="true"
+			aria-hidden="true"
 		>
 			{children}
 			<span className="planned-affordance__label">Planned</span>

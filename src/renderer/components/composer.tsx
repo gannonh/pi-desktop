@@ -36,12 +36,12 @@ import type {
 } from "../../shared/pi-session";
 import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
 import { CommandPalettePopover } from "./command-palette-popover";
+import { PlannedAffordanceButton } from "./planned-affordance";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuLabel,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 
@@ -465,9 +465,13 @@ export function Composer({
 							onToggle={(nextOpen) => setOpenMenu(nextOpen ? "model" : null)}
 							onSelectModel={onSelectModel}
 						/>
-						<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
+						<PlannedAffordanceButton
+							id="composer.voice"
+							className="composer__icon-button"
+							aria-label="Voice input"
+						>
 							<Mic className="composer__icon" />
-						</button>
+						</PlannedAffordanceButton>
 						{showAbortOnly ? (
 							<button
 								className="composer__send-button composer__send-button--abort"
@@ -533,17 +537,14 @@ export function Composer({
 									{option.label}
 								</DropdownMenuItem>
 							))}
-							{context.branchLabel ? (
-								<>
-									<DropdownMenuSeparator />
-									<DropdownMenuLabel className="composer__branch-label--readonly">
-										<GitBranch className="composer__control-icon" />
-										{context.branchLabel}
-									</DropdownMenuLabel>
-								</>
-							) : null}
 						</DropdownMenuContent>
 					</DropdownMenu>
+					{context.branchLabel ? (
+						<span className="composer__branch-label">
+							<GitBranch className="composer__control-icon" />
+							{context.branchLabel}
+						</span>
+					) : null}
 				</div>
 				{running || queueStatusLabel || attachmentError || paletteNotice || state.statusLabel ? (
 					<div className="composer__session-details">

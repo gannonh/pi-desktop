@@ -6,6 +6,7 @@ import type { LiveSessionState } from "../session/session-state";
 import { PlannedAffordance } from "./planned-affordance";
 import { Composer } from "./composer";
 import { SessionScopeHeader } from "./session-scope-header";
+import { SHOW_PLANNED_AFFORDANCES } from "../dev/planned-affordances";
 
 type StartRoute = Extract<
 	ChatShellRoute,
@@ -68,20 +69,24 @@ export function ChatStartState({ route, session, scope, composerHost, onAbortSes
 				onEditQueuedMessage={composerHost.onEditQueuedMessage}
 				commandPaletteActions={composerHost.commandPaletteActions}
 			/>
-			<p className="chat-shell__suggestions-heading">Suggested prompts (planned)</p>
-			<section className="chat-shell__suggestions" aria-label="Suggested prompts">
-				{route.suggestions.map((suggestion, index) => {
-					const Icon = suggestionIcons[index] ?? Workflow;
-					return (
-						<PlannedAffordance key={suggestion} id="start.suggestion" showLabel={false}>
-							<div className="chat-shell__suggestion--planned">
-								<Icon className="chat-shell__suggestion-icon" aria-hidden="true" />
-								<span>{suggestion}</span>
-							</div>
-						</PlannedAffordance>
-					);
-				})}
-			</section>
+			{SHOW_PLANNED_AFFORDANCES ? (
+				<>
+					<p className="chat-shell__suggestions-heading">Suggested prompts (planned)</p>
+					<section className="chat-shell__suggestions" aria-label="Suggested prompts">
+						{route.suggestions.map((suggestion, index) => {
+							const Icon = suggestionIcons[index] ?? Workflow;
+							return (
+								<PlannedAffordance key={suggestion} id="start.suggestion" showLabel={false}>
+									<div className="chat-shell__suggestion--planned">
+										<Icon className="chat-shell__suggestion-icon" aria-hidden="true" />
+										<span>{suggestion}</span>
+									</div>
+								</PlannedAffordance>
+							);
+						})}
+					</section>
+				</>
+			) : null}
 		</section>
 	);
 }

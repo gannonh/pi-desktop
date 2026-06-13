@@ -261,7 +261,7 @@ The composer is the primary work surface. It combines a raised prompt panel, a r
 
 - Use `.planned-affordance` for roadmap surfaces that are visible but not wired yet.
 - Visual language: muted ink, dashed outline, optional caption-sized `Planned` pill — workshop scaffolding, not consumer "Coming soon" copy.
-- Registry lives in `src/renderer/dev/planned-affordances.ts`; toggle `SHOW_PLANNED_AFFORDANCES` before release.
+- Registry lives in `src/renderer/dev/planned-affordances.ts`; enabled in dev (`import.meta.env.DEV`) or via `VITE_SHOW_PLANNED_AFFORDANCES=true`.
 - Shipped disabled states stay distinct: real controls use native disabled styling; planned surfaces are non-interactive and never mimic enabled buttons.
 
 ### Signature Component: Transcript Work Card

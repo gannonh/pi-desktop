@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createChatShellRoute, resolveChatSessionHeader } from "../../src/renderer/chat/chat-view-model";
+import {
+	createChatShellRoute,
+	resolveChatSessionHeader,
+	resolveSessionScopePresentation,
+} from "../../src/renderer/chat/chat-view-model";
 import { createInitialSessionState } from "../../src/renderer/session/session-state";
 import {
 	DEFAULT_PROJECT_GIT_SETTINGS,
@@ -303,5 +307,74 @@ describe("resolveChatSessionHeader", () => {
 		expect(
 			resolveChatSessionHeader(createChatShellRoute(view, idleSession, null), createInitialSessionState()),
 		).toBeNull();
+	});
+});
+
+describe("resolveSessionScopePresentation", () => {
+	const sessionHeaderWithMetadata = {
+		title: "Git parity",
+		resumeLabel: "Resume session" as const,
+		metadataLabel: "idle · /tmp/project",
+	};
+
+	const sessionHeaderTitleOnly = {
+		title: "Git parity",
+	};
+
+	it("shows title and main header when chat is selected and sidebar is expanded", () => {
+		expect(
+			resolveSessionScopePresentation({
+				sessionHeader: sessionHeaderWithMetadata,
+				sidebarCollapsed: false,
+				hasSelectedChat: true,
+			}),
+		).toEqual({
+			showChatHeaderTitle: true,
+			showPathBadge: false,
+			showMainHeader: true,
+		});
+	});
+
+	it("shows path badge when metadata label is absent", () => {
+		expect(
+			resolveSessionScopePresentation({
+				sessionHeader: sessionHeaderTitleOnly,
+				sidebarCollapsed: false,
+				hasSelectedChat: true,
+			}),
+		).toEqual({
+			showChatHeaderTitle: true,
+			showPathBadge: true,
+			showMainHeader: true,
+		});
+	});
+
+	it("hides chat header title when collapsed sidebar shows chrome title", () => {
+		expect(
+			resolveSessionScopePresentation({
+				sessionHeader: sessionHeaderWithMetadata,
+				sidebarCollapsed: true,
+				sidebarChromeTitle: "Git parity",
+				hasSelectedChat: true,
+			}),
+		).toEqual({
+			showChatHeaderTitle: false,
+			showPathBadge: false,
+			showMainHeader: true,
+		});
+	});
+
+	it("returns empty presentation when session header is null", () => {
+		expect(
+			resolveSessionScopePresentation({
+				sessionHeader: null,
+				sidebarCollapsed: false,
+				hasSelectedChat: false,
+			}),
+		).toEqual({
+			showChatHeaderTitle: false,
+			showPathBadge: false,
+			showMainHeader: false,
+		});
 	});
 });

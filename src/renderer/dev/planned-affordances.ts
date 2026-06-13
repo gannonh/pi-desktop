@@ -2,7 +2,8 @@
  * Registry of UI surfaces that are intentionally present but not yet wired.
  * Visible during pre-release development so the team can see roadmap coverage.
  */
-export const SHOW_PLANNED_AFFORDANCES = true;
+/** Visible in local dev; off in production builds. Override with VITE_SHOW_PLANNED_AFFORDANCES=true. */
+export const SHOW_PLANNED_AFFORDANCES = import.meta.env.VITE_SHOW_PLANNED_AFFORDANCES === "true" || import.meta.env.DEV;
 
 export type PlannedAffordanceId =
 	| "sidebar.new-chat"
@@ -22,7 +23,8 @@ export type PlannedAffordanceId =
 	| "filter.move"
 	| "filter.sort-created"
 	| "filter.sort-updated"
-	| "chat.archive";
+	| "chat.archive"
+	| "composer.voice";
 
 export interface PlannedAffordanceDefinition {
 	id: PlannedAffordanceId;
@@ -49,6 +51,7 @@ export const PLANNED_AFFORDANCES: Record<PlannedAffordanceId, PlannedAffordanceD
 	"filter.sort-created": { id: "filter.sort-created", label: "Created" },
 	"filter.sort-updated": { id: "filter.sort-updated", label: "Updated" },
 	"chat.archive": { id: "chat.archive", label: "Archive chat" },
+	"composer.voice": { id: "composer.voice", label: "Voice input" },
 };
 
 export function formatPlannedTooltip(definition: PlannedAffordanceDefinition): string {

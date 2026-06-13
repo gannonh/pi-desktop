@@ -144,6 +144,7 @@ describe("renderer style audit rules", () => {
 		expect(css).toContain(".planned-affordance");
 		expect(css).toContain(".planned-affordance__label");
 		expect(ruleBody(css, ".planned-affordance__control")).toContain("border: 1px dashed");
+		expect(ruleBody(css, ".planned-affordance")).toContain("pointer-events: auto");
 	});
 
 	it("hides the file divider when the workspace stacks vertically", () => {

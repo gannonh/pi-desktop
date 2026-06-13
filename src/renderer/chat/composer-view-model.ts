@@ -184,5 +184,14 @@ export const formatQueueStatusLabel = (messages: LiveSessionState["queuedMessage
 	return "";
 };
 
-export const formatComposerQueueShortcutLabel = (): string =>
-	typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(navigator.platform) ? "Option+Enter" : "Alt+Enter";
+export const formatComposerQueueShortcutLabel = (): string => {
+	if (typeof navigator === "undefined") {
+		return "Alt+Enter";
+	}
+
+	const platform =
+		navigator.userAgentData?.platform ??
+		(/Mac|iPhone|iPod|iPad/i.test(navigator.platform) ? "macOS" : navigator.platform);
+
+	return /Mac|iPhone|iPod|iPad/i.test(platform) ? "Option+Enter" : "Alt+Enter";
+};
