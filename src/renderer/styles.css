@@ -4640,6 +4640,7 @@ body.file-workspace--resizing {
 		text-align: left;
 	}
 
+	.composer__action-row .planned-affordance--button.composer__icon-button,
 	.composer__action-row .composer__icon-button[aria-label="Voice input"] {
 		display: none;
 	}
@@ -4693,6 +4694,22 @@ body.file-workspace--resizing {
 	width: 1.75rem;
 	height: 1.75rem;
 	border-radius: var(--radius-control);
+	padding: 0;
+}
+
+.planned-affordance--button.composer__icon-button {
+	width: var(--composer-control-size);
+	height: var(--composer-control-size);
+	align-items: center;
+	justify-content: center;
+}
+
+.planned-affordance--button.composer__icon-button .planned-affordance__control {
+	width: var(--composer-control-size);
+	height: var(--composer-control-size);
+	min-width: var(--composer-control-size);
+	min-height: var(--composer-control-size);
+	border-radius: 999px;
 	padding: 0;
 }
 
