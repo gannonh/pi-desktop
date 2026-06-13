@@ -1,10 +1,15 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { PanelRightOpen } from "lucide-react";
 import type { ProjectStateViewResult } from "@/shared/ipc";
 import type { ProjectStateView } from "@/shared/project-state";
 import { formatChatDisplayLabel } from "../../shared/format-chat-display-label";
 import type { ComposerHostProps } from "../chat/composer-host";
-import { createChatShellRoute, resolveChatSessionHeader, shouldUseChatStartLayout } from "../chat/chat-view-model";
+import {
+	createChatShellRoute,
+	resolveChatSessionHeader,
+	resolveSessionScopePresentation,
+	shouldUseChatStartLayout,
+} from "../chat/chat-view-model";
 import { useRightPanel } from "../right-panel/right-panel-context";
 import { FileWorkspaceProvider } from "../file-workspace/file-workspace-context";
 import { RightPanelWorkspace } from "../right-panel/right-panel-workspace";
@@ -26,7 +31,7 @@ import type { ProjectSidebarActions } from "../projects/project-sidebar-actions"
 import type { StatusMessage } from "../status-message";
 import { ProjectMain } from "./project-main";
 import { ProjectSidebar } from "./project-sidebar";
-import { Badge } from "./ui/badge";
+import { SessionScopeHeader } from "./session-scope-header";
 
 interface AppShellProps {
 	state: ProjectStateView;
@@ -56,19 +61,27 @@ export function AppShell({
 	sidebarLoading = false,
 }: AppShellProps) {
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+	const [workspaceStatusMessage, setWorkspaceStatusMessage] = useState("");
 	const route = createChatShellRoute(state, session, session.settings ?? defaultComposerSettings);
 	const sessionHeader = resolveChatSessionHeader(route, session);
 	const sidebarChromeTitle = state.selectedChat?.title ? formatChatDisplayLabel(state.selectedChat.title) : undefined;
-	const showChatHeaderTitle = sessionHeader !== null && !(sidebarCollapsed && sidebarChromeTitle);
-	const showPathBadge = Boolean(state.selectedChat) && !sidebarCollapsed && !sessionHeader?.metadataLabel;
-	const showMainHeader =
-		showPathBadge ||
-		(sessionHeader !== null &&
-			(showChatHeaderTitle || Boolean(sessionHeader.resumeLabel) || Boolean(sessionHeader.metadataLabel)));
+	const { showChatHeaderTitle, showPathBadge, showMainHeader } = resolveSessionScopePresentation({
+		sessionHeader,
+		sidebarCollapsed,
+		sidebarChromeTitle,
+		hasSelectedChat: Boolean(state.selectedChat),
+	});
 	const showWorkspaceColumn = route.kind !== "unavailable-project" && !shouldUseChatStartLayout(route, session);
 	const selectedProjectPath = state.selectedProject?.path ?? state.selectedChat?.cwd ?? "No active project path";
 	const { sidebarWidth, workspaceWidth, isNarrowLayout, setSidebarWidth, setWorkspaceWidth } = useShellLayout();
 	const { state: rightPanelState, toggleCollapsed } = useRightPanel();
+
+	useEffect(() => {
+		if (!showWorkspaceColumn) {
+			return;
+		}
+		setWorkspaceStatusMessage(rightPanelState.collapsed ? "Workspace hidden." : "Workspace shown.");
+	}, [rightPanelState.collapsed, showWorkspaceColumn]);
 
 	const { onResizeStart: onSidebarResizeStart } = useColumnResize({
 		width: sidebarWidth,
@@ -109,6 +122,18 @@ export function AppShell({
 			</button>
 		) : null;
 
+	const sessionScopeHeader =
+		sessionHeader && showMainHeader ? (
+			<SessionScopeHeader
+				variant="bar"
+				titleId="app-shell-title"
+				title={showChatHeaderTitle ? sessionHeader.title : ""}
+				path={showPathBadge ? selectedProjectPath : null}
+				resumeLabel={sessionHeader.resumeLabel}
+				metadataLabel={sessionHeader.metadataLabel}
+			/>
+		) : null;
+
 	const projectMain = (
 		<ProjectMain
 			chatShellRoute={route}
@@ -130,6 +155,9 @@ export function AppShell({
 			className={["app-shell", sidebarCollapsed ? "app-shell--sidebar-collapsed" : ""].filter(Boolean).join(" ")}
 			style={shellStyle}
 		>
+			<div className="app-shell__workspace-status" aria-live="polite" aria-atomic="true">
+				{workspaceStatusMessage}
+			</div>
 			<ProjectSidebar
 				state={state}
 				collapsed={sidebarCollapsed}
@@ -165,20 +193,7 @@ export function AppShell({
 								.filter(Boolean)
 								.join(" ")}
 						>
-							{sessionHeader && showChatHeaderTitle ? (
-								<h1
-									id="app-shell-title"
-									className="app-shell__chat-title app-chrome-title"
-									title={sessionHeader.title}
-								>
-									{sessionHeader.title}
-								</h1>
-							) : null}
-							{showPathBadge ? (
-								<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
-									{selectedProjectPath}
-								</Badge>
-							) : null}
+							{sessionScopeHeader}
 						</header>
 						{projectMain}
 					</div>
@@ -225,27 +240,7 @@ export function AppShell({
 							.filter(Boolean)
 							.join(" ")}
 					>
-						{sessionHeader &&
-						(showChatHeaderTitle || sessionHeader.resumeLabel || sessionHeader.metadataLabel) ? (
-							<div className="app-shell__main-header-copy">
-								{showChatHeaderTitle ? (
-									<h1 id="app-shell-title" className="app-shell__chat-title app-chrome-title">
-										{sessionHeader.title}
-									</h1>
-								) : null}
-								{sessionHeader.resumeLabel && sessionHeader.metadataLabel ? (
-									<section className="app-shell__session-labels" aria-label="Session metadata">
-										<span className="app-shell__resume-label">{sessionHeader.resumeLabel}</span>
-										<span className="app-shell__metadata-label">{sessionHeader.metadataLabel}</span>
-									</section>
-								) : null}
-							</div>
-						) : null}
-						{showPathBadge ? (
-							<Badge className="app-shell__path-badge" variant="outline" title={selectedProjectPath}>
-								{selectedProjectPath}
-							</Badge>
-						) : null}
+						{sessionScopeHeader}
 					</header>
 					{projectMain}
 				</div>

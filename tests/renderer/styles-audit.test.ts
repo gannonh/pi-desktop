@@ -138,6 +138,14 @@ describe("renderer style audit rules", () => {
 		expect(root).toContain("--border-subtle: var(--color-border)");
 	});
 
+	it("defines planned affordance styling for pre-release roadmap surfaces", () => {
+		const css = styles();
+
+		expect(css).toContain(".planned-affordance");
+		expect(css).toContain(".planned-affordance__label");
+		expect(ruleBody(css, ".planned-affordance__control")).toContain("border: 1px dashed");
+	});
+
 	it("hides the file divider when the workspace stacks vertically", () => {
 		const css = styles();
 		const mobileStart = css.indexOf("@media (max-width: 959px)");

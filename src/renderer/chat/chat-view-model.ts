@@ -201,3 +201,20 @@ export const resolveChatSessionHeader = (
 
 	return { title: route.title };
 };
+
+export const resolveSessionScopePresentation = (input: {
+	sessionHeader: ChatSessionHeader | null;
+	sidebarCollapsed: boolean;
+	sidebarChromeTitle?: string;
+	hasSelectedChat: boolean;
+}) => {
+	const { sessionHeader, sidebarCollapsed, sidebarChromeTitle, hasSelectedChat } = input;
+	const showChatHeaderTitle = sessionHeader !== null && !(sidebarCollapsed && sidebarChromeTitle);
+	const showPathBadge = hasSelectedChat && !sidebarCollapsed && !sessionHeader?.metadataLabel;
+	const showMainHeader =
+		showPathBadge ||
+		(sessionHeader !== null &&
+			(showChatHeaderTitle || Boolean(sessionHeader.resumeLabel) || Boolean(sessionHeader.metadataLabel)));
+
+	return { showChatHeaderTitle, showPathBadge, showMainHeader };
+};
