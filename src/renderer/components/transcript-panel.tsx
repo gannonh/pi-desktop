@@ -42,7 +42,8 @@ export function TranscriptPanel({ session, hydration, scope, expectHistory }: Tr
 
 	return (
 		<section className="chat-shell__empty-chat" aria-label="Empty chat">
-			No messages yet.
+			<p className="chat-transcript-placeholder__text">No messages yet.</p>
+			<p className="chat-transcript-placeholder__hint">Send a message below to start this session.</p>
 		</section>
 	);
 }

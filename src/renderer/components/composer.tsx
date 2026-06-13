@@ -1,17 +1,17 @@
 import {
 	ArrowUp,
 	ChevronDown,
+	Folder,
 	GitBranch,
 	Laptop,
 	LoaderCircle,
 	Mic,
 	MoreHorizontal,
 	Paperclip,
-	Sparkles,
 	X,
 } from "lucide-react";
 import { ComposerModelSelector } from "./composer-model-selector";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { Attachment } from "../attachments/attachment-types";
 import { COMPOSER_ACCEPTED_FILE_TYPES } from "../attachments/attachment-types";
 import { buildPromptFromAttachments } from "../attachments/convert-attachments";
@@ -23,6 +23,7 @@ import { createComposerState } from "../chat/composer-state";
 import { resolveComposerEnterAction } from "../chat/composer-enter-key";
 import { useAutoResizeTextarea } from "../chat/use-auto-resize-textarea";
 import {
+	formatComposerQueueShortcutLabel,
 	formatQueuedMessageDeliveryLabel,
 	formatQueuedMessageSwitchLabel,
 	formatQueueStatusLabel,
@@ -35,6 +36,14 @@ import type {
 } from "../../shared/pi-session";
 import { ComposerAttachmentTiles } from "./composer-attachment-tiles";
 import { CommandPalettePopover } from "./command-palette-popover";
+import { PlannedAffordanceButton } from "./planned-affordance";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface ComposerProps {
 	context: ComposerContext;
@@ -61,11 +70,11 @@ interface ComposerProps {
 	commandPaletteActions?: CommandPaletteEntryActions;
 }
 
-type ComposerMenu = "project" | "mode" | "model" | null;
+type ComposerMenu = "model" | null;
 
 const defaultInputHint = "Ask Pi anything. / opens commands. @ mentions are planned";
 const runningSteerHint = "Steering message — queued at the next turn";
-const runningFollowUpHint = "Follow-up message — Option+Enter to queue as follow-up";
+const runningFollowUpHint = (shortcut: string) => `Follow-up message — ${shortcut} to queue as follow-up`;
 
 const previewText = (text: string) => (text.length > 72 ? `${text.slice(0, 72)}…` : text);
 
@@ -112,9 +121,10 @@ export function Composer({
 		running,
 	});
 
+	const queueShortcut = formatComposerQueueShortcutLabel();
 	const placeholder = running
 		? pendingDelivery === "followUp"
-			? runningFollowUpHint
+			? runningFollowUpHint(queueShortcut)
 			: runningSteerHint
 		: defaultInputHint;
 	const queueStatusLabel = formatQueueStatusLabel(queuedMessages);
@@ -256,41 +266,38 @@ export function Composer({
 									{switchLabel}
 								</button>
 								<div className="composer__queue-actions">
-									<button
-										className="composer__queue-overflow"
-										type="button"
-										aria-label="Queued message actions"
-										aria-expanded={openQueueMenuId === queueKey}
-										onClick={() => setOpenQueueMenuId((current) => (current === queueKey ? null : queueKey))}
+									<DropdownMenu
+										open={openQueueMenuId === queueKey}
+										onOpenChange={(open) => setOpenQueueMenuId(open ? queueKey : null)}
 									>
-										<MoreHorizontal className="composer__icon" />
-									</button>
-									{openQueueMenuId === queueKey ? (
-										<span className="composer__queue-menu" role="menu">
+										<DropdownMenuTrigger asChild>
 											<button
+												className="composer__queue-overflow"
 												type="button"
-												role="menuitem"
-												className="composer__queue-menu-item"
+												aria-label="Queued message actions"
+											>
+												<MoreHorizontal className="composer__icon" />
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end" className="composer__dropdown-menu">
+											<DropdownMenuItem
 												onClick={() => {
 													onEditQueuedMessage?.(message);
 													setOpenQueueMenuId(null);
 												}}
 											>
 												Edit
-											</button>
-											<button
-												type="button"
-												role="menuitem"
-												className="composer__queue-menu-item"
+											</DropdownMenuItem>
+											<DropdownMenuItem
 												onClick={() => {
 													onRemoveQueuedMessage?.(message.id);
 													setOpenQueueMenuId(null);
 												}}
 											>
 												Delete
-											</button>
-										</span>
-									) : null}
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
 									<button
 										className="composer__queue-delete"
 										type="button"
@@ -458,9 +465,13 @@ export function Composer({
 							onToggle={(nextOpen) => setOpenMenu(nextOpen ? "model" : null)}
 							onSelectModel={onSelectModel}
 						/>
-						<button className="composer__icon-button" type="button" aria-label="Voice input" disabled>
+						<PlannedAffordanceButton
+							id="composer.voice"
+							className="composer__icon-button"
+							aria-label="Voice input"
+						>
 							<Mic className="composer__icon" />
-						</button>
+						</PlannedAffordanceButton>
 						{showAbortOnly ? (
 							<button
 								className="composer__send-button composer__send-button--abort"
@@ -494,116 +505,73 @@ export function Composer({
 				</div>
 				<div className="composer__control-row">
 					{context.showProjectMenu ? (
-						<ComposerControl
-							label={context.projectSelectorLabel}
-							menu="project"
-							openMenu={openMenu}
-							icon={<Sparkles className="composer__control-icon" />}
-							onToggle={setOpenMenu}
-							items={context.projectOptions.map((option) => ({
-								key: option.projectId,
-								label: option.label,
-								onSelect: () => onSelectProject?.(option.projectId),
-							}))}
-						/>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<button className="composer__control" type="button">
+									<Folder className="composer__control-icon" />
+									<span className="composer__control-label">{context.projectSelectorLabel}</span>
+									<ChevronDown className="composer__control-icon" />
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start" className="composer__dropdown-menu">
+								{context.projectOptions.map((option) => (
+									<DropdownMenuItem key={option.projectId} onClick={() => onSelectProject?.(option.projectId)}>
+										{option.label}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 					) : null}
-					<ComposerControl
-						label={context.thinkingLabel}
-						menu="mode"
-						openMenu={openMenu}
-						icon={<Laptop className="composer__control-icon" />}
-						onToggle={setOpenMenu}
-						headerLabel="Work locally"
-						items={context.thinkingOptions.map((option) => ({
-							key: option.level,
-							label: option.label,
-							onSelect: () => onSelectThinkingLevel?.(option.level),
-						}))}
-					/>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button className="composer__control" type="button">
+								<Laptop className="composer__control-icon" />
+								<span className="composer__control-label">{context.thinkingLabel}</span>
+								<ChevronDown className="composer__control-icon" />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start" className="composer__dropdown-menu">
+							<DropdownMenuLabel>Work locally</DropdownMenuLabel>
+							{context.thinkingOptions.map((option) => (
+								<DropdownMenuItem key={option.level} onClick={() => onSelectThinkingLevel?.(option.level)}>
+									{option.label}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 					{context.branchLabel ? (
 						<span className="composer__branch-label">
 							<GitBranch className="composer__control-icon" />
 							{context.branchLabel}
 						</span>
 					) : null}
-					{queueStatusLabel ? <span className="composer__queue-status">{queueStatusLabel}</span> : null}
-					{running ? (
-						<span className="composer__helper-copy">Option+Enter queues a follow-up while Pi is running.</span>
-					) : null}
-					{attachmentError ? (
-						<span className="composer__disabled-reason" role="alert">
-							{attachmentError}
-						</span>
-					) : null}
-					{paletteNotice ? (
-						<span className="composer__palette-notice" role="status">
-							{paletteNotice}
-						</span>
-					) : null}
-					{state.statusLabel ? (
-						<span id={statusId} className="composer__disabled-reason">
-							{state.statusLabel}
-						</span>
-					) : null}
 				</div>
+				{running || queueStatusLabel || attachmentError || paletteNotice || state.statusLabel ? (
+					<div className="composer__session-details">
+						{queueStatusLabel ? <span className="composer__queue-status">{queueStatusLabel}</span> : null}
+						{running ? (
+							<span className="composer__helper-copy">
+								{queueShortcut} queues a follow-up while Pi is running.
+							</span>
+						) : null}
+						{attachmentError ? (
+							<span className="composer__disabled-reason" role="alert">
+								{attachmentError}
+							</span>
+						) : null}
+						{paletteNotice ? (
+							<span className="composer__palette-notice" role="status">
+								{paletteNotice}
+							</span>
+						) : null}
+						{state.statusLabel ? (
+							<span id={statusId} className="composer__disabled-reason">
+								{state.statusLabel}
+							</span>
+						) : null}
+					</div>
+				) : null}
 			</form>
 		</div>
-	);
-}
-
-interface ComposerControlItem {
-	key: string;
-	label: string;
-	onSelect: () => void;
-}
-
-interface ComposerControlProps {
-	label: string;
-	menu: Exclude<ComposerMenu, null>;
-	openMenu: ComposerMenu;
-	icon?: ReactNode;
-	headerLabel?: string;
-	items: ComposerControlItem[];
-	onToggle: (menu: ComposerMenu) => void;
-}
-
-function ComposerControl({ label, menu, openMenu, icon, headerLabel, items, onToggle }: ComposerControlProps) {
-	const menuId = useId();
-	const open = openMenu === menu;
-
-	return (
-		<span className="composer__control-wrap">
-			<button
-				className="composer__control"
-				type="button"
-				aria-controls={menuId}
-				aria-expanded={open}
-				aria-haspopup="menu"
-				onClick={() => onToggle(open ? null : menu)}
-			>
-				{icon}
-				<span className="composer__control-label">{label}</span>
-				<ChevronDown className="composer__control-icon" />
-			</button>
-			{open ? (
-				<span className="composer__local-menu" id={menuId} role="menu">
-					{headerLabel ? <span className="composer__local-menu-header">{headerLabel}</span> : null}
-					{items.map((item) => (
-						<button
-							key={item.key}
-							type="button"
-							role="menuitem"
-							className="composer__local-menu-item"
-							onClick={() => {
-								item.onSelect();
-								onToggle(null);
-							}}
-						>
-							{item.label}
-						</button>
-					))}
-				</span>
-			) : null}
-		</span>
 	);
 }

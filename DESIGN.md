@@ -257,6 +257,13 @@ Motion should orient the user. Use transform, opacity, color, and icon state cha
 
 The composer is the primary work surface. It combines a raised prompt panel, a recessed control row, compact model/access controls, and a round send or abort button. Its shape and placement define the app's first impression. Do not restyle it as a generic chat input.
 
+### Planned affordances (pre-release)
+
+- Use `.planned-affordance` for roadmap surfaces that are visible but not wired yet.
+- Visual language: muted ink, dashed outline, optional caption-sized `Planned` pill — workshop scaffolding, not consumer "Coming soon" copy.
+- Registry lives in `src/renderer/dev/planned-affordances.ts`; enabled in dev (`import.meta.env.DEV`) or via `VITE_SHOW_PLANNED_AFFORDANCES=true`.
+- Shipped disabled states stay distinct: real controls use native disabled styling; planned surfaces are non-interactive and never mimic enabled buttons.
+
 ### Signature Component: Transcript Work Card
 
 Transcript cards make file and tool effects inspectable. They should remain flat, bordered, and compact, with a leading icon block, title, subtitle, and one action. Avoid metric-card treatments.

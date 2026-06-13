@@ -53,6 +53,8 @@ import {
 	MenuSeparator,
 	MenuSurface,
 } from "./menu";
+import { PlannedAffordance, PlannedAffordanceButton, PlannedAffordanceMenuItem } from "./planned-affordance";
+import { SHOW_PLANNED_AFFORDANCES } from "../dev/planned-affordances";
 import { confirmDiscardUnsavedFileWorkspaceChanges } from "../file-workspace/file-workspace-guard";
 import {
 	getProjectChatBranchActionDisabledTitle,
@@ -281,27 +283,38 @@ export function ProjectSidebar({
 								<PanelLeftClose className="project-sidebar__icon" />
 							)}
 						</button>
-						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Back">
+						<PlannedAffordanceButton
+							id="sidebar.chrome.back"
+							className="project-sidebar__chrome-button"
+							aria-label="Back"
+						>
 							<ArrowLeft className="project-sidebar__icon" />
-						</button>
-						<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Forward">
+						</PlannedAffordanceButton>
+						<PlannedAffordanceButton
+							id="sidebar.chrome.forward"
+							className="project-sidebar__chrome-button"
+							aria-label="Forward"
+						>
 							<ArrowRight className="project-sidebar__icon" />
-						</button>
-						<button
+						</PlannedAffordanceButton>
+						<PlannedAffordanceButton
+							id="sidebar.chrome.collapsed-new-chat"
 							className="project-sidebar__chrome-button project-sidebar__chrome-button--collapsed-only"
-							type="button"
-							disabled
 							aria-label="New chat"
 						>
 							<SquarePen className="project-sidebar__icon" />
-						</button>
+						</PlannedAffordanceButton>
 					</div>
 					{collapsed && chromeTitle ? (
 						<div className="project-sidebar__chrome-title-group">
 							<div className="project-sidebar__chrome-title app-chrome-title">{chromeTitle}</div>
-							<button className="project-sidebar__chrome-button" type="button" disabled aria-label="Chat menu">
+							<PlannedAffordanceButton
+								id="sidebar.chrome.chat-menu"
+								className="project-sidebar__chrome-button"
+								aria-label="Chat menu"
+							>
 								<MoreHorizontal className="project-sidebar__icon" />
-							</button>
+							</PlannedAffordanceButton>
 						</div>
 					) : null}
 				</div>
@@ -317,22 +330,22 @@ export function ProjectSidebar({
 				>
 					<div className="project-sidebar__scroll">
 						<div className="project-sidebar__top-actions">
-							<button className="project-sidebar__action" type="button" disabled>
+							<PlannedAffordanceButton id="sidebar.new-chat" className="project-sidebar__action">
 								<SquarePen className="project-sidebar__icon" />
 								<span>New chat</span>
-							</button>
-							<button className="project-sidebar__action" type="button" disabled>
+							</PlannedAffordanceButton>
+							<PlannedAffordanceButton id="sidebar.search" className="project-sidebar__action">
 								<Search className="project-sidebar__icon" />
 								<span>Search</span>
-							</button>
-							<button className="project-sidebar__action" type="button" disabled>
+							</PlannedAffordanceButton>
+							<PlannedAffordanceButton id="sidebar.plugins" className="project-sidebar__action">
 								<Wrench className="project-sidebar__icon" />
 								<span>Plugins</span>
-							</button>
-							<button className="project-sidebar__action" type="button" disabled>
+							</PlannedAffordanceButton>
+							<PlannedAffordanceButton id="sidebar.automations" className="project-sidebar__action">
 								<Workflow className="project-sidebar__icon" />
 								<span>Automations</span>
-							</button>
+							</PlannedAffordanceButton>
 						</div>
 
 						{pinnedRows.length > 0 ? (
@@ -537,7 +550,10 @@ export function ProjectSidebar({
 									>
 										<span className="project-sidebar__chat-label">{child.label}</span>
 										{child.needsAttention ? (
-											<span className="project-sidebar__attention-dot" />
+											<span className="project-sidebar__attention-dot-wrap">
+												<span className="project-sidebar__attention-dot" aria-hidden="true" />
+												<span className="sr-only">Needs attention</span>
+											</span>
 										) : child.status === "failed" ? (
 											<X className="project-sidebar__chat-failed-icon" />
 										) : (
@@ -550,6 +566,12 @@ export function ProjectSidebar({
 					</div>
 					{loading ? (
 						<div className="project-sidebar__loading-overlay" role="status" aria-live="polite">
+							<div className="project-sidebar__loading-skeleton" aria-hidden="true">
+								<div className="project-sidebar__loading-skeleton-row" />
+								<div className="project-sidebar__loading-skeleton-row" />
+								<div className="project-sidebar__loading-skeleton-row" />
+								<div className="project-sidebar__loading-skeleton-row" />
+							</div>
 							<LoaderCircle className="project-sidebar__loading-icon" aria-hidden="true" />
 							<span>Loading sessions…</span>
 						</div>
@@ -979,13 +1001,18 @@ function ProjectChatRow({
 				>
 					<span className="project-sidebar__chat-label">{child.label}</span>
 					{child.needsAttention ? (
-						<span className="project-sidebar__attention-dot" />
+						<span className="project-sidebar__attention-dot-wrap">
+							<span className="project-sidebar__attention-dot" aria-hidden="true" />
+							<span className="sr-only">Needs attention</span>
+						</span>
 					) : child.status === "failed" ? (
 						<X className="project-sidebar__chat-failed-icon" />
 					) : (
 						<span className="project-sidebar__chat-trailing">
 							<span className="project-sidebar__chat-time">{child.updatedLabel}</span>
-							<Archive className="project-sidebar__chat-archive-icon" aria-hidden="true" />
+							<PlannedAffordance id="chat.archive" showLabel={false}>
+								<Archive className="project-sidebar__chat-archive-icon" aria-hidden="true" />
+							</PlannedAffordance>
 						</span>
 					)}
 				</button>
@@ -1110,55 +1137,10 @@ function SidebarFilterMenu({ id, moveDirection, chatFilter, onChatFilterChange }
 		{ filter: "failed", label: "Failed", icon: X },
 		{ filter: "running", label: "Running", icon: Workflow },
 	];
+	const moveLabel = moveDirection === "up" ? "Move up" : "Move down";
 
 	return (
 		<MenuSurface className="project-sidebar__filter-menu" id={id}>
-			<MenuSectionHeading>Organize</MenuSectionHeading>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<Folder />
-				</MenuItemIcon>
-				By project
-				<MenuSelectionIndicator>
-					<Check />
-				</MenuSelectionIndicator>
-			</MenuItem>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<Folder />
-				</MenuItemIcon>
-				Recent projects
-			</MenuItem>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<Clock />
-				</MenuItemIcon>
-				Chronological list
-			</MenuItem>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<MoveIcon />
-				</MenuItemIcon>
-				Move {moveDirection}
-			</MenuItem>
-			<MenuSeparator />
-			<MenuSectionHeading>Sort by</MenuSectionHeading>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<CirclePlus />
-				</MenuItemIcon>
-				Created
-			</MenuItem>
-			<MenuItem inactive aria-disabled="true">
-				<MenuItemIcon>
-					<Clock />
-				</MenuItemIcon>
-				Updated
-				<MenuSelectionIndicator>
-					<Check />
-				</MenuSelectionIndicator>
-			</MenuItem>
-			<MenuSeparator />
 			<MenuSectionHeading>Show</MenuSectionHeading>
 			{chatFilterItems.map((item) => {
 				const FilterIcon = item.icon;
@@ -1183,6 +1165,49 @@ function SidebarFilterMenu({ id, moveDirection, chatFilter, onChatFilterChange }
 					</MenuItem>
 				);
 			})}
+			{SHOW_PLANNED_AFFORDANCES ? (
+				<>
+					<MenuSeparator />
+					<div className="project-sidebar__filter-menu-planned-heading">Planned</div>
+					<PlannedAffordanceMenuItem id="filter.organize-by-project">
+						<MenuItemIcon>
+							<Folder />
+						</MenuItemIcon>
+						By project
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.recent-projects">
+						<MenuItemIcon>
+							<Folder />
+						</MenuItemIcon>
+						Recent projects
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.chronological-list">
+						<MenuItemIcon>
+							<Clock />
+						</MenuItemIcon>
+						Chronological list
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.move">
+						<MenuItemIcon>
+							<MoveIcon />
+						</MenuItemIcon>
+						{moveLabel}
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.sort-created">
+						<MenuItemIcon>
+							<CirclePlus />
+						</MenuItemIcon>
+						Created
+					</PlannedAffordanceMenuItem>
+					<PlannedAffordanceMenuItem id="filter.sort-updated">
+						<MenuItemIcon>
+							<Clock />
+						</MenuItemIcon>
+						Updated
+					</PlannedAffordanceMenuItem>
+					<p className="project-sidebar__filter-menu-footer">Organize and sort filters are planned.</p>
+				</>
+			) : null}
 		</MenuSurface>
 	);
 }
