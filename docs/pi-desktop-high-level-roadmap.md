@@ -609,19 +609,21 @@ Acceptance:
 
 ## Current Planning Targets
 
-M07A, M07B, and M07B.1/S002 are complete. S002 produced the CLI parity source inventory and coverage matrix in `docs/specs/`.
+M07A, M07B, M07B.1/S002, slash-command mapping, and M07C are complete. M07C shipped selected-project Changes and Source Control, then received Git parity follow-ups through Wave 5 and UAT polish.
 
-The current implementation target is M003 CLI Slash-Command Mapping and Affordance Parity:
+Active source-control follow-ups are tracked in [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md). Current boundaries remain:
 
-1. **S009 command inventory and mapping baseline** records the 21 built-in Pi CLI slash commands and stable Desktop palette entry IDs in `docs/specs/2026-06-02-slash-command-inventory.md` and `docs/specs/2026-06-02-slash-command-mapping-matrix.md`.
-2. **S010 composer command palette shell** adds the slash-triggered composer palette, grouped registry sections, keyboard navigation, and section stubs.
-3. **Family slices** should wire concrete commands by section: Session, Config, Output, and Meta/Skills.
+1. Hosted PR checks, review comments, merge actions, PR review tabs, and GitLab workflows are deferred to a dedicated hosted-review milestone.
+2. Source control remains selected-project-only. Multi-worktree UX, SSH/runtime Git operations, branch rename/delete, and worktree cleanup require a future milestone spec or ADR update.
+3. Local bare-remote e2e coverage remains the active post-M07C verification gap.
 
-The S002 recommended implementation sequence remains:
+The next implementation target is **M07D: Right Panel - Terminal and Command Output**. Start with an executable M07D spec under `docs/specs/`, then inventory Pi session/tool events before implementing the right-panel command output surface.
 
-1. **M07C: Right Panel - Diff and Patch Review** for release-blocking change inspection.
-2. **M07D: Right Panel - Terminal and Command Output** for release-blocking tool and command observability.
-3. **M0X: Settings and Auth** for release-blocking provider/auth handoff, settings defaults, and diagnostics.
-4. **M0X: Extensibility** for deferred skills, prompt templates, extensions, and package-resource management.
+Recommended implementation sequence:
+
+1. **M07D: Right Panel - Terminal and Command Output** for release-blocking tool and command observability.
+2. **M0X: Settings and Auth** for provider/auth handoff, settings defaults, and diagnostics.
+3. **M0X: Extensibility** for skills, prompt templates, extensions, and package-resource management.
+4. **Future PR review and Worktrees/Git UX milestones** only after specs or ADRs reopen the deferred scope.
 
 Milestone 3.2 remains the active renderer state decision: M04 through current milestones use the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` unless a later ADR revisits that decision.
