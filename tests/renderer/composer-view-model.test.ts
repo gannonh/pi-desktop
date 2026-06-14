@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	formatComposerQueueShortcutLabel,
 	formatModelProviderLabel,
 	formatQueuedMessageDeliveryLabel,
 	formatQueuedMessageSwitchLabel,
@@ -69,5 +70,39 @@ describe("composer view model helpers", () => {
 				{ id: { queue: "followUp", index: 0 }, text: "After", delivery: "followUp" },
 			]),
 		).toBe("2 queued");
+	});
+});
+
+describe("formatComposerQueueShortcutLabel", () => {
+	it("defaults to Alt+Enter when userAgentData is unavailable", () => {
+		const originalNavigator = globalThis.navigator;
+
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { userAgentData: undefined },
+		});
+
+		expect(formatComposerQueueShortcutLabel()).toBe("Alt+Enter");
+
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: originalNavigator,
+		});
+	});
+
+	it("uses Option+Enter for macOS userAgentData platforms", () => {
+		const originalNavigator = globalThis.navigator;
+
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { userAgentData: { platform: "macOS" } },
+		});
+
+		expect(formatComposerQueueShortcutLabel()).toBe("Option+Enter");
+
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: originalNavigator,
+		});
 	});
 });

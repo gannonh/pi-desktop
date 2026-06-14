@@ -80,6 +80,7 @@ export function AppShell({
 
 	useEffect(() => {
 		if (!showWorkspaceColumn) {
+			workspaceStatusInitialized.current = false;
 			return;
 		}
 		if (!workspaceStatusInitialized.current) {
@@ -128,28 +129,26 @@ export function AppShell({
 			</button>
 		) : null;
 
-	const sessionScopeHeader =
-		sessionHeader && showMainHeader ? (
-			<SessionScopeHeader
-				variant="bar"
-				titleId="app-shell-title"
-				title={showChatHeaderTitle ? sessionHeader.title : ""}
-				path={showPathBadge ? selectedProjectPath : null}
-				resumeLabel={sessionHeader.resumeLabel}
-				metadataLabel={sessionHeader.metadataLabel}
-			/>
-		) : null;
+	const sessionScopeHeader = showMainHeader ? (
+		<SessionScopeHeader
+			variant="bar"
+			titleId="app-shell-title"
+			title={sessionHeader && showChatHeaderTitle ? sessionHeader.title : ""}
+			path={showPathBadge ? selectedProjectPath : null}
+			resumeLabel={sessionHeader?.resumeLabel}
+			metadataLabel={sessionHeader?.metadataLabel}
+		/>
+	) : null;
 
-	const workspaceChatHeader =
-		sessionHeader && showWorkspaceChatHeader ? (
-			<SessionScopeHeader
-				variant="bar"
-				compact
-				titleId="app-shell-title"
-				title={showChatHeaderTitle ? sessionHeader.title : ""}
-				path={showPathBadge ? selectedProjectPath : null}
-			/>
-		) : null;
+	const workspaceChatHeader = showWorkspaceChatHeader ? (
+		<SessionScopeHeader
+			variant="bar"
+			compact
+			titleId="app-shell-title"
+			title={sessionHeader && showChatHeaderTitle ? sessionHeader.title : ""}
+			path={showPathBadge ? selectedProjectPath : null}
+		/>
+	) : null;
 
 	const projectMain = (
 		<ProjectMain

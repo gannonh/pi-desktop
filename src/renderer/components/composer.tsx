@@ -187,10 +187,18 @@ export function Composer({
 
 	useEffect(() => {
 		const handlePointerDown = (event: MouseEvent) => {
-			if (!composerStackRef.current?.contains(event.target as Node)) {
-				setOpenMenu(null);
-				setOpenQueueMenuId(null);
+			const target = event.target;
+			if (!(target instanceof Node)) {
+				return;
 			}
+			if (composerStackRef.current?.contains(target)) {
+				return;
+			}
+			if (target instanceof Element && target.closest('[data-slot="dropdown-menu-content"]')) {
+				return;
+			}
+			setOpenMenu(null);
+			setOpenQueueMenuId(null);
 		};
 		document.addEventListener("pointerdown", handlePointerDown);
 		return () => document.removeEventListener("pointerdown", handlePointerDown);

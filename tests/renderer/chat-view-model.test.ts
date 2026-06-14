@@ -377,4 +377,18 @@ describe("resolveSessionScopePresentation", () => {
 			showMainHeader: false,
 		});
 	});
+
+	it("shows path-only main header when chat is selected but session header is null", () => {
+		expect(
+			resolveSessionScopePresentation({
+				sessionHeader: null,
+				sidebarCollapsed: false,
+				hasSelectedChat: true,
+			}),
+		).toEqual({
+			showChatHeaderTitle: false,
+			showPathBadge: true,
+			showMainHeader: true,
+		});
+	});
 });

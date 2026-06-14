@@ -53,4 +53,11 @@ describe("SessionScopeHeader", () => {
 		expect(screen.queryByText("Resume session")).toBeNull();
 		expect(screen.queryByText("idle · /tmp/pi-desktop")).toBeNull();
 	});
+
+	it("renders path-only bar variant without title", () => {
+		render(<SessionScopeHeader variant="bar" title="" path="/tmp/pi-desktop" />);
+
+		expect(screen.queryByRole("heading")).toBeNull();
+		expect(screen.getByText("/tmp/pi-desktop")).toBeTruthy();
+	});
 });

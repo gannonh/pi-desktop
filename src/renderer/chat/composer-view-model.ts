@@ -189,9 +189,6 @@ export const formatComposerQueueShortcutLabel = (): string => {
 		return "Alt+Enter";
 	}
 
-	const platform =
-		navigator.userAgentData?.platform ??
-		(/Mac|iPhone|iPod|iPad/i.test(navigator.platform) ? "macOS" : navigator.platform);
-
-	return /Mac|iPhone|iPod|iPad/i.test(platform) ? "Option+Enter" : "Alt+Enter";
+	const platform = navigator.userAgentData?.platform;
+	return platform && /Mac|iPhone|iPod|iPad/i.test(platform) ? "Option+Enter" : "Alt+Enter";
 };
