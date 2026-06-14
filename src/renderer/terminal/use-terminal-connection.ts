@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
 import type { RefObject } from "react";
 import type { ProjectRecord } from "../../shared/project-state";
 import type { TerminalEvent } from "../../shared/terminal";
@@ -7,38 +7,79 @@ import { createInitialTerminalPanelState, terminalPanelReducer } from "./termina
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
+const RESIZE_DEBOUNCE_MS = 75;
+
+type SpawnTarget = {
+	id: string;
+	path: string;
+};
 
 export const useTerminalConnection = ({
 	project,
-	isActive,
 	containerRef,
 }: {
 	project: ProjectRecord | null;
-	isActive: boolean;
 	containerRef: RefObject<HTMLDivElement | null>;
 }) => {
 	const [state, dispatch] = useReducer(terminalPanelReducer, undefined, createInitialTerminalPanelState);
 	const xtermRef = useRef<XtermHandle | null>(null);
 	const activeTerminalIdRef = useRef<string | null>(null);
+	const userTerminateRef = useRef<string | null>(null);
 	const spawnGenerationRef = useRef(0);
+	const lastResizeRef = useRef<{ cols: number; rows: number } | null>(null);
+	const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const projectId = project?.id ?? null;
+	const projectPath = project?.path ?? null;
+	const projectAvailability = project?.availability.status ?? null;
+	const spawnTarget = useMemo<SpawnTarget | null>(() => {
+		if (!projectId || !projectPath || projectAvailability !== "available") {
+			return null;
+		}
+		return { id: projectId, path: projectPath };
+	}, [projectAvailability, projectId, projectPath]);
 
 	const disposeXterm = useCallback(() => {
+		if (resizeTimerRef.current) {
+			clearTimeout(resizeTimerRef.current);
+			resizeTimerRef.current = null;
+		}
 		xtermRef.current?.dispose();
 		xtermRef.current = null;
+		lastResizeRef.current = null;
 	}, []);
 
 	const killActiveTerminal = useCallback(async () => {
 		const terminalId = activeTerminalIdRef.current;
 		activeTerminalIdRef.current = null;
+		userTerminateRef.current = null;
 		if (!terminalId) {
 			return;
 		}
 		await window.piDesktop.terminal.kill({ terminalId });
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref; reading .current must not re-create spawnTerminal.
+	const setTerminalInputEnabled = useCallback((enabled: boolean) => {
+		if (xtermRef.current) {
+			xtermRef.current.terminal.options.disableStdin = !enabled;
+		}
+	}, []);
+
+	const sendResize = useCallback((size: { cols: number; rows: number }) => {
+		const terminalId = activeTerminalIdRef.current;
+		if (!terminalId) {
+			return;
+		}
+		const last = lastResizeRef.current;
+		if (last && last.cols === size.cols && last.rows === size.rows) {
+			return;
+		}
+		lastResizeRef.current = size;
+		void window.piDesktop.terminal.resize({ terminalId, cols: size.cols, rows: size.rows });
+	}, []);
+
 	const spawnTerminal = useCallback(
-		async (targetProject: ProjectRecord) => {
+		async (targetProject: SpawnTarget) => {
 			const generation = ++spawnGenerationRef.current;
 			dispatch({ type: "start", projectId: targetProject.id });
 
@@ -55,22 +96,18 @@ export const useTerminalConnection = ({
 					if (!terminalId) {
 						return;
 					}
-					void window.piDesktop.terminal.write({ terminalId, data });
+					window.piDesktop.terminal.write({ terminalId, data });
 				},
 				onResize: (size) => {
-					const terminalId = activeTerminalIdRef.current;
-					if (!terminalId) {
-						return;
-					}
-					void window.piDesktop.terminal.resize({ terminalId, cols: size.cols, rows: size.rows });
+					sendResize(size);
 				},
 			});
 			xtermRef.current = xterm;
+			setTerminalInputEnabled(false);
 			const initialSize = xterm.fit() ?? { cols: DEFAULT_COLS, rows: DEFAULT_ROWS };
 
 			const result = await window.piDesktop.terminal.spawn({
 				projectId: targetProject.id,
-				projectPath: targetProject.path,
 				cols: initialSize.cols,
 				rows: initialSize.rows,
 			});
@@ -89,9 +126,11 @@ export const useTerminalConnection = ({
 			}
 
 			activeTerminalIdRef.current = result.data.terminalId;
+			lastResizeRef.current = initialSize;
+			setTerminalInputEnabled(true);
 			dispatch({ type: "running", projectId: targetProject.id });
 		},
-		[disposeXterm],
+		[containerRef, disposeXterm, sendResize, setTerminalInputEnabled],
 	);
 
 	useEffect(() => {
@@ -99,12 +138,9 @@ export const useTerminalConnection = ({
 	}, [project]);
 
 	useLayoutEffect(() => {
-		if (!isActive || !project || project.availability.status !== "available") {
+		if (!spawnTarget) {
 			void killActiveTerminal();
 			disposeXterm();
-			if (project && project.availability.status === "available" && !isActive) {
-				dispatch({ type: "reset-idle" });
-			}
 			return;
 		}
 
@@ -114,7 +150,7 @@ export const useTerminalConnection = ({
 			if (cancelled) {
 				return;
 			}
-			await spawnTerminal(project);
+			await spawnTerminal(spawnTarget);
 		};
 		void run();
 
@@ -124,7 +160,7 @@ export const useTerminalConnection = ({
 			void killActiveTerminal();
 			disposeXterm();
 		};
-	}, [disposeXterm, isActive, killActiveTerminal, project, spawnTerminal]);
+	}, [disposeXterm, killActiveTerminal, spawnTarget, spawnTerminal]);
 
 	useEffect(() => {
 		const unsubscribe = window.piDesktop.terminal.onEvent((event: TerminalEvent) => {
@@ -136,12 +172,15 @@ export const useTerminalConnection = ({
 				return;
 			}
 			if (event.type === "exit") {
+				const wasUserTerminate = userTerminateRef.current === event.terminalId;
+				userTerminateRef.current = null;
 				activeTerminalIdRef.current = null;
 				disposeXterm();
-				dispatch({ type: "exited", exitCode: event.code });
+				dispatch(wasUserTerminate ? { type: "terminated" } : { type: "exited", exitCode: event.code });
 				return;
 			}
 			if (event.type === "error") {
+				userTerminateRef.current = null;
 				activeTerminalIdRef.current = null;
 				disposeXterm();
 				dispatch({ type: "error", message: event.message });
@@ -157,32 +196,45 @@ export const useTerminalConnection = ({
 		}
 
 		const observer = new ResizeObserver(() => {
-			xtermRef.current?.fit();
+			if (resizeTimerRef.current) {
+				clearTimeout(resizeTimerRef.current);
+			}
+			resizeTimerRef.current = setTimeout(() => {
+				const size = xtermRef.current?.fit();
+				if (size) {
+					sendResize(size);
+				}
+			}, RESIZE_DEBOUNCE_MS);
 		});
 		observer.observe(container);
-		return () => observer.disconnect();
-	}, [containerRef, state.phase.kind]);
+		return () => {
+			observer.disconnect();
+			if (resizeTimerRef.current) {
+				clearTimeout(resizeTimerRef.current);
+				resizeTimerRef.current = null;
+			}
+		};
+	}, [containerRef, sendResize, state.phase.kind]);
 
 	const terminate = async () => {
 		const terminalId = activeTerminalIdRef.current;
 		if (!terminalId) {
 			disposeXterm();
-			dispatch({ type: "exited", exitCode: 0 });
+			dispatch({ type: "terminated" });
 			return;
 		}
+		userTerminateRef.current = terminalId;
+		setTerminalInputEnabled(false);
 		await window.piDesktop.terminal.kill({ terminalId });
-		activeTerminalIdRef.current = null;
-		disposeXterm();
-		dispatch({ type: "exited", exitCode: 0 });
 	};
 
 	const restart = async () => {
-		if (!project || project.availability.status !== "available" || !isActive) {
+		if (!spawnTarget) {
 			return;
 		}
 		await killActiveTerminal();
 		disposeXterm();
-		await spawnTerminal(project);
+		await spawnTerminal(spawnTarget);
 	};
 
 	return {

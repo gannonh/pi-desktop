@@ -33,6 +33,7 @@ import {
 	TerminalActionResultSchema,
 	TerminalEventSchema,
 	TerminalSpawnResultSchema,
+	TerminalWriteInputSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
@@ -133,7 +134,12 @@ const api: PiDesktopApi = {
 	},
 	terminal: {
 		spawn: async (input) => safeInvokeParse(IpcChannels.terminalSpawn, TerminalSpawnResultSchema, input),
-		write: async (input) => safeInvokeParse(IpcChannels.terminalWrite, TerminalActionResultSchema, input),
+		write: (input) => {
+			const parsed = TerminalWriteInputSchema.safeParse(input);
+			if (parsed.success) {
+				ipcRenderer.send(IpcChannels.terminalWrite, parsed.data);
+			}
+		},
 		resize: async (input) => safeInvokeParse(IpcChannels.terminalResize, TerminalActionResultSchema, input),
 		kill: async (input) => safeInvokeParse(IpcChannels.terminalKill, TerminalActionResultSchema, input),
 		onEvent: (listener) => {

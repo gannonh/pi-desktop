@@ -14,13 +14,11 @@ describe("terminal IPC schemas", () => {
 		expect(
 			TerminalSpawnInputSchema.parse({
 				projectId: "project:/tmp/pi-desktop",
-				projectPath: "/tmp/pi-desktop",
 				cols: 80,
 				rows: 24,
 			}),
 		).toEqual({
 			projectId: "project:/tmp/pi-desktop",
-			projectPath: "/tmp/pi-desktop",
 			cols: 80,
 			rows: 24,
 		});
@@ -30,7 +28,6 @@ describe("terminal IPC schemas", () => {
 		expect(() =>
 			TerminalSpawnInputSchema.parse({
 				projectId: "project:/tmp/pi-desktop",
-				projectPath: "/tmp/pi-desktop",
 				cols: 0,
 				rows: 24,
 			}),

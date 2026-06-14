@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import type { IPty } from "node-pty";
 import type { TerminalEvent } from "../../shared/terminal";
 import { err, ok, type IpcResult } from "../../shared/result";
-import { type ProjectLookup, validateProjectCwd } from "./project-cwd";
+import type { TerminalCwdResolver } from "./resolve-terminal-cwd";
 import { buildTerminalEnv, resolveDefaultShell } from "./shell-defaults";
 
 export type PtySpawnFn = (file: string, args: string[] | string, options: PtySpawnOptions) => IPty;
@@ -20,8 +20,12 @@ export type PtySpawnOptions = {
 
 type PtyDisposable = { dispose: () => void };
 
+type PtyWithTeardown = IPty & {
+	destroy?: () => void;
+};
+
 export type LocalTerminalServiceDeps = {
-	lookupProject: ProjectLookup;
+	resolveCwd: TerminalCwdResolver;
 	spawnPty?: PtySpawnFn;
 	onEvent?: (event: TerminalEvent) => void;
 };
@@ -37,11 +41,12 @@ const destroyPtyProcess = (proc: IPty, alreadyKilled = false): void => {
 	if (process.platform === "win32" && alreadyKilled) {
 		return;
 	}
+	const teardown = proc as PtyWithTeardown;
 	if (process.platform !== "win32") {
-		(proc as unknown as { kill: (signal?: string) => void }).kill = () => {};
+		teardown.kill = () => {};
 	}
 	try {
-		(proc as unknown as { destroy?: () => void }).destroy?.();
+		teardown.destroy?.();
 	} catch {
 		/* already torn down */
 	}
@@ -87,11 +92,10 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 
 	const spawn = async (input: {
 		projectId: string;
-		projectPath: string;
 		cols: number;
 		rows: number;
 	}): Promise<IpcResult<{ terminalId: string }>> => {
-		const cwdResult = await validateProjectCwd(deps.lookupProject, input.projectId, input.projectPath);
+		const cwdResult = await deps.resolveCwd(input.projectId);
 		if (!cwdResult.ok) {
 			return cwdResult;
 		}
@@ -154,6 +158,7 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 			return ok({ accepted: true as const });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to resize terminal.";
+			emit({ type: "error", terminalId: input.terminalId, message });
 			return err("terminal.resize_failed", message);
 		}
 	};

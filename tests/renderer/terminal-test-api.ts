@@ -5,7 +5,7 @@ import { ok } from "../../src/shared/result";
 export const installTerminalApiMock = (overrides: Partial<PiDesktopApi["terminal"]> = {}) => {
 	const terminal: PiDesktopApi["terminal"] = {
 		spawn: vi.fn(async () => ok({ terminalId: "term-1" })),
-		write: vi.fn(async () => ok({ accepted: true as const })),
+		write: vi.fn(),
 		resize: vi.fn(async () => ok({ accepted: true as const })),
 		kill: vi.fn(async () => ok({ accepted: true as const })),
 		onEvent: () => () => {},

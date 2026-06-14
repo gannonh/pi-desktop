@@ -58,9 +58,23 @@ describe("terminal panel state", () => {
 		});
 		const next = terminalPanelReducer(running, {
 			type: "sync-project",
-			project: { ...availableProject, id: "project:/tmp/other", path: "/tmp/other" },
+			project: { id: "project:/tmp/other", availability: availableProject.availability },
 		});
 		expect(next.phase).toEqual({ kind: "idle" });
+	});
+
+	it("keeps idle when the same available project is synced again", () => {
+		const state = terminalPanelReducer(createInitialTerminalPanelState(), {
+			type: "sync-project",
+			project: availableProject,
+		});
+		const next = terminalPanelReducer(state, { type: "sync-project", project: availableProject });
+		expect(next).toBe(state);
+	});
+
+	it("stores terminated transitions", () => {
+		const state = terminalPanelReducer(createInitialTerminalPanelState(), { type: "terminated" });
+		expect(state.phase).toEqual({ kind: "terminated" });
 	});
 
 	it("stores terminal errors", () => {

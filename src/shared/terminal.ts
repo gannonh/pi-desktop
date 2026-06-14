@@ -3,7 +3,6 @@ import { createResultSchema } from "./result";
 
 export const TerminalSpawnInputSchema = z.strictObject({
 	projectId: z.string().min(1),
-	projectPath: z.string().min(1),
 	cols: z.number().int().positive(),
 	rows: z.number().int().positive(),
 });

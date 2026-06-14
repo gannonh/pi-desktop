@@ -181,7 +181,7 @@ export interface PiDesktopApi {
 	};
 	terminal: {
 		spawn: (input: TerminalSpawnInput) => Promise<TerminalSpawnResult>;
-		write: (input: TerminalWriteInput) => Promise<TerminalActionResult>;
+		write: (input: TerminalWriteInput) => void;
 		resize: (input: TerminalResizeInput) => Promise<TerminalActionResult>;
 		kill: (input: TerminalKillInput) => Promise<TerminalActionResult>;
 		onEvent: (listener: (event: TerminalEvent) => void) => () => void;

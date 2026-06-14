@@ -6,19 +6,19 @@ import { useTerminalConnection } from "./use-terminal-connection";
 
 interface TerminalPanelProps {
 	project: ProjectRecord | null;
-	isActive: boolean;
 }
 
-export function TerminalPanel({ project, isActive }: TerminalPanelProps) {
+export function TerminalPanel({ project }: TerminalPanelProps) {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const { state, terminate, restart } = useTerminalConnection({
 		project,
-		isActive,
 		containerRef,
 	});
 
 	const showSurface = state.phase.kind === "idle" || state.phase.kind === "starting" || state.phase.kind === "running";
 	const projectPath = project?.path ?? null;
+	const canRestart =
+		state.phase.kind === "exited" || state.phase.kind === "terminated" || state.phase.kind === "error";
 
 	return (
 		<div className="terminal-panel" data-testid="workspace-panel-terminal">
@@ -33,7 +33,7 @@ export function TerminalPanel({ project, isActive }: TerminalPanelProps) {
 							Terminate
 						</Button>
 					) : null}
-					{state.phase.kind === "exited" || state.phase.kind === "error" ? (
+					{canRestart ? (
 						<Button type="button" variant="outline" size="sm" onClick={() => void restart()}>
 							Restart shell
 						</Button>
@@ -58,6 +58,7 @@ export function TerminalPanel({ project, isActive }: TerminalPanelProps) {
 			) : state.phase.kind === "no-project" ||
 				state.phase.kind === "project-unavailable" ||
 				state.phase.kind === "exited" ||
+				state.phase.kind === "terminated" ||
 				state.phase.kind === "error" ? (
 				<TerminalEmptyStates phase={state.phase} />
 			) : null}

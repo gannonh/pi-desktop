@@ -24,7 +24,6 @@ describe("RightPanelBody terminal integration", () => {
 				filesActive: false,
 				selectedProject: availableProject,
 				changesActive: false,
-				terminalActive: true,
 			}),
 		);
 

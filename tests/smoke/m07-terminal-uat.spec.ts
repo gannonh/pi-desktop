@@ -137,7 +137,7 @@ test.describe("M07D terminal UAT capture", () => {
 			expect(terminalText).toContain("pi-desktop-terminal");
 
 			await page.getByRole("button", { name: "Terminate" }).click();
-			await expect(page.getByTestId("terminal-panel-exited")).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId("terminal-panel-terminated")).toBeVisible({ timeout: 10_000 });
 			await screenshot(page, "08-terminated");
 		} finally {
 			await app.close();

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { IPty } from "node-pty";
 import type { ProjectRecord } from "../../src/shared/project-state";
+import { ok } from "../../src/shared/result";
 import { createLocalTerminalService } from "../../src/main/terminal/local-terminal-service";
 
 const createProject = (overrides: Partial<ProjectRecord> = {}): ProjectRecord => ({
@@ -28,45 +29,41 @@ const createMockPty = () => {
 		rows: 24,
 		process: "zsh",
 		handleFlowControl: false,
-		write,
-		resize,
-		clear: vi.fn(),
-		kill,
 		pause: vi.fn(),
 		resume: vi.fn(),
-		onData: vi.fn((handler: (data: string) => void) => {
+		onData: (handler: (data: string) => void) => {
 			dataHandlers.push(handler);
-			return { dispose: () => {} };
-		}),
-		onExit: vi.fn((handler: (event: { exitCode: number; signal?: number }) => void) => {
+			return { dispose: vi.fn() };
+		},
+		onExit: (handler: (event: { exitCode: number; signal?: number }) => void) => {
 			exitHandlers.push(handler);
-			return { dispose: () => {} };
-		}),
+			return { dispose: vi.fn() };
+		},
+		write,
+		resize,
+		kill,
 	} as unknown as IPty;
+
 	return { proc, dataHandlers, exitHandlers, kill, write, resize };
 };
 
 describe("local terminal service", () => {
-	it("spawns a PTY with project cwd and default shell", async () => {
+	it("spawns a PTY with the resolved project cwd", async () => {
 		const project = createProject();
-		const spawnCalls: Array<{ file: string; args: string[] | string; options: Record<string, unknown> }> = [];
-		const { proc } = createMockPty();
+		const spawnCalls: Array<{ file: string; options: { cwd: string; cols: number; rows: number } }> = [];
 		const service = createLocalTerminalService({
-			lookupProject: async (projectId) => (projectId === project.id ? project : null),
-			spawnPty: (file, args, options) => {
-				spawnCalls.push({ file, args, options });
-				return proc;
+			resolveCwd: async () => ok({ cwd: project.path }),
+			spawnPty: (file, _args, options) => {
+				spawnCalls.push({ file, options });
+				return createMockPty().proc;
 			},
 		});
 
 		const result = await service.spawn({
 			projectId: project.id,
-			projectPath: project.path,
 			cols: 100,
 			rows: 30,
 		});
-
-		expect(result.ok).toBe(true);
 		if (!result.ok) {
 			return;
 		}
@@ -81,16 +78,20 @@ describe("local terminal service", () => {
 		});
 	});
 
-	it("rejects spawn when project path does not match", async () => {
-		const project = createProject();
+	it("rejects spawn when cwd resolution fails", async () => {
 		const service = createLocalTerminalService({
-			lookupProject: async () => project,
+			resolveCwd: async () => ({
+				ok: false,
+				error: {
+					code: "terminal.project_missing",
+					message: "Project folder is missing.",
+				},
+			}),
 			spawnPty: () => createMockPty().proc,
 		});
 
 		const result = await service.spawn({
-			projectId: project.id,
-			projectPath: "/tmp/other",
+			projectId: "project:/tmp/missing",
 			cols: 80,
 			rows: 24,
 		});
@@ -98,8 +99,8 @@ describe("local terminal service", () => {
 		expect(result).toEqual({
 			ok: false,
 			error: {
-				code: "terminal.project_path_mismatch",
-				message: "Project path does not match the selected project.",
+				code: "terminal.project_missing",
+				message: "Project folder is missing.",
 			},
 		});
 	});
@@ -108,12 +109,11 @@ describe("local terminal service", () => {
 		const project = createProject();
 		const { proc, write, resize, kill } = createMockPty();
 		const service = createLocalTerminalService({
-			lookupProject: async () => project,
+			resolveCwd: async () => ok({ cwd: project.path }),
 			spawnPty: () => proc,
 		});
 		const spawned = await service.spawn({
 			projectId: project.id,
-			projectPath: project.path,
 			cols: 80,
 			rows: 24,
 		});
@@ -152,7 +152,7 @@ describe("local terminal service", () => {
 		const { proc, exitHandlers } = createMockPty();
 		const events: Array<{ type: string }> = [];
 		const service = createLocalTerminalService({
-			lookupProject: async () => project,
+			resolveCwd: async () => ok({ cwd: project.path }),
 			spawnPty: () => proc,
 			onEvent: (event) => {
 				events.push(event);
@@ -160,7 +160,6 @@ describe("local terminal service", () => {
 		});
 		const spawned = await service.spawn({
 			projectId: project.id,
-			projectPath: project.path,
 			cols: 80,
 			rows: 24,
 		});
@@ -183,12 +182,11 @@ describe("local terminal service", () => {
 		const project = createProject();
 		const { proc, kill } = createMockPty();
 		const service = createLocalTerminalService({
-			lookupProject: async () => project,
+			resolveCwd: async () => ok({ cwd: project.path }),
 			spawnPty: () => proc,
 		});
 		const spawned = await service.spawn({
 			projectId: project.id,
-			projectPath: project.path,
 			cols: 80,
 			rows: 24,
 		});

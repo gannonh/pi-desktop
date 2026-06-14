@@ -12,7 +12,6 @@ interface RightPanelBodyProps {
 	filesActive: boolean;
 	selectedProject: ProjectRecord | null;
 	changesActive: boolean;
-	terminalActive: boolean;
 	onProjectState?: (result: ProjectStateViewResult) => void;
 }
 
@@ -21,7 +20,6 @@ export function RightPanelBody({
 	filesActive,
 	selectedProject,
 	changesActive,
-	terminalActive,
 	onProjectState,
 }: RightPanelBodyProps) {
 	if (filesActive) {
@@ -38,7 +36,7 @@ export function RightPanelBody({
 
 	switch (tab.kind) {
 		case "terminal":
-			return <TerminalPanel project={selectedProject} isActive={terminalActive} />;
+			return <TerminalPanel project={selectedProject} />;
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
 		case "changes":

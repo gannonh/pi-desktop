@@ -10,6 +10,7 @@ import { detectNavigatorPlatform } from "../../shared/app-platform";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
 import { writeBrowserClipboardText } from "./browser-clipboard";
+import { createTerminalUnavailableNamespace } from "./terminal-unavailable";
 
 type AppRpcResponse<TOperation extends AppRpcOperation> = z.infer<(typeof AppRpcResponseSchemas)[TOperation]>;
 type AppRpcInputArgs<TOperation extends AppRpcOperation> =
@@ -31,8 +32,6 @@ const toRpcErrorMessage = (error: unknown) => {
 };
 
 const bridgeUnavailable = (message: string) => err("dev_bridge.unavailable", `Dev data bridge unavailable: ${message}`);
-const terminalUnavailable = () =>
-	err("terminal.unavailable", "Terminal is unavailable in web preview. Use the Electron desktop app.");
 
 const parseEventMessage = (data: MessageEvent["data"]) => {
 	if (typeof data !== "string") {
@@ -218,13 +217,9 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 				};
 			},
 		},
-		terminal: {
-			spawn: async () => terminalUnavailable(),
-			write: async () => terminalUnavailable(),
-			resize: async () => terminalUnavailable(),
-			kill: async () => terminalUnavailable(),
-			onEvent: () => () => {},
-		},
+		terminal: createTerminalUnavailableNamespace(
+			"Terminal is unavailable in web preview. Use the Electron desktop app.",
+		),
 		workspaceFiles: {
 			listDirectory: (input) => callRpc("workspaceFiles.listDirectory", input),
 			readFile: (input) => callRpc("workspaceFiles.readFile", input),

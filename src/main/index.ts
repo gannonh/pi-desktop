@@ -1,15 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { z } from "zod";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import { type AppRpcOperation, AppRpcRequestSchema } from "../shared/app-transport";
 import { ClipboardWriteTextInputSchema, IpcChannels, OpenExternalInputSchema } from "../shared/ipc";
-import {
-	TerminalKillInputSchema,
-	TerminalResizeInputSchema,
-	TerminalSpawnInputSchema,
-	TerminalWriteInputSchema,
-} from "../shared/terminal";
 import { err, ok } from "../shared/result";
 import { type AppBackend, createAppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
@@ -19,30 +12,13 @@ import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
 import { createPiSessionLister, readSessionInfoForPath } from "./sessions/pi-session-index";
-import { createLocalTerminalService, type LocalTerminalService } from "./terminal/local-terminal-service";
+import { createTerminalCwdResolver } from "./terminal/resolve-terminal-cwd";
+import { registerTerminalIpc, type TerminalIpcHandle } from "./terminal/register-terminal-ipc";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
-let terminalService: LocalTerminalService | null = null;
-
-const terminalUnavailable = () => err("terminal.unavailable", "Terminal backend is unavailable.");
-
-const handleTerminalIpc =
-	<T>(
-		schema: z.ZodType<T>,
-		run: (service: LocalTerminalService, data: T) => ReturnType<LocalTerminalService["write"]>,
-	) =>
-	(_event: Electron.IpcMainInvokeEvent, input: unknown) => {
-		const parsed = schema.safeParse(input);
-		if (!parsed.success) {
-			return err("terminal.input_invalid", "Terminal input is invalid.");
-		}
-		if (!terminalService) {
-			return terminalUnavailable();
-		}
-		return run(terminalService, parsed.data);
-	};
+let terminalIpc: TerminalIpcHandle | null = null;
 
 const createWindow = () => {
 	const smokeHeadless = shouldRunSmokeHeadless();
@@ -135,12 +111,10 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	});
 	appBackend = backend;
 
-	terminalService = createLocalTerminalService({
-		lookupProject: async (projectId) => {
-			const state = await projectService.getState();
-			return state.projects.find((project) => project.id === projectId) ?? null;
-		},
-		onEvent: (event) => {
+	terminalIpc = registerTerminalIpc({
+		ipcMain,
+		resolveCwd: createTerminalCwdResolver((input) => projectService.getSessionWorkspace(input)),
+		sendEvent: (event) => {
 			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(IpcChannels.terminalEvent, event);
 			}
@@ -306,29 +280,10 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		await shell.openExternal(parsed.data.url);
 		return ok({ opened: true as const });
 	});
-	ipcMain.handle(IpcChannels.terminalSpawn, async (_event, input) => {
-		const parsed = TerminalSpawnInputSchema.safeParse(input);
-		if (!parsed.success) {
-			return err("terminal.input_invalid", "Terminal spawn input is invalid.");
-		}
-		return terminalService?.spawn(parsed.data) ?? terminalUnavailable();
-	});
-	ipcMain.handle(
-		IpcChannels.terminalWrite,
-		handleTerminalIpc(TerminalWriteInputSchema, (service, data) => service.write(data)),
-	);
-	ipcMain.handle(
-		IpcChannels.terminalResize,
-		handleTerminalIpc(TerminalResizeInputSchema, (service, data) => service.resize(data)),
-	);
-	ipcMain.handle(
-		IpcChannels.terminalKill,
-		handleTerminalIpc(TerminalKillInputSchema, (service, data) => service.kill(data)),
-	);
 };
 
-// Linux VMs (including Cursor Cloud) often paint a blank window with GPU compositing enabled.
-if (process.platform === "linux") {
+// Opt in on Linux VMs where GPU compositing paints a blank window (see AGENTS.md).
+if (process.platform === "linux" && process.env.PI_DESKTOP_DISABLE_GPU === "1") {
 	app.disableHardwareAcceleration();
 }
 
@@ -367,9 +322,9 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
 	const backend = appBackend;
 	appBackend = null;
-	const terminals = terminalService;
-	terminalService = null;
-	terminals?.disposeAll();
+	const terminals = terminalIpc;
+	terminalIpc = null;
+	terminals?.dispose();
 	void backend?.dispose().catch((error) => {
 		console.error("Failed to dispose app backend.", error);
 	});

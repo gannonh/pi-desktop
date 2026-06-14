@@ -9,18 +9,10 @@ import { ShellTestProviders } from "./shell-test-providers";
 import { RightPanelWorkspace } from "../../src/renderer/right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
 import { installTerminalApiMock } from "./terminal-test-api";
+import { createXtermMock } from "./terminal-xterm-mock";
 
 vi.mock("../../src/renderer/terminal/xterm-instance", () => ({
-	createXtermTerminal: vi.fn(() => ({
-		terminal: {
-			write: vi.fn(),
-			dispose: vi.fn(),
-			cols: 80,
-			rows: 24,
-		},
-		fit: vi.fn(() => ({ cols: 80, rows: 24 })),
-		dispose: vi.fn(),
-	})),
+	createXtermTerminal: vi.fn(() => createXtermMock()),
 }));
 
 function WorkspaceFixture() {

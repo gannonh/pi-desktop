@@ -12,8 +12,8 @@ import {
 	type ProjectStore,
 	type StandaloneChatMetadata,
 } from "../shared/project-state";
-import { err } from "../shared/result";
 import { writeBrowserClipboardText } from "./app-api/browser-clipboard";
+import { createTerminalUnavailableNamespace } from "./app-api/terminal-unavailable";
 
 const now = new Date().toISOString();
 
@@ -168,9 +168,6 @@ const sourceControlUnavailable = (): Extract<SourceControlGetStatusResult, { ok:
 		message: "Source control is unavailable in web preview.",
 	},
 });
-
-const terminalUnavailable = () =>
-	err("terminal.unavailable", "Terminal is unavailable in web preview. Use the Electron desktop app.");
 
 const chatNotFound = (): Extract<ProjectStateViewResult, { ok: false }> => ({
 	ok: false,
@@ -785,13 +782,9 @@ export const installDevPreviewApi = () => {
 				};
 			},
 		},
-		terminal: {
-			spawn: async () => terminalUnavailable(),
-			write: async () => terminalUnavailable(),
-			resize: async () => terminalUnavailable(),
-			kill: async () => terminalUnavailable(),
-			onEvent: () => () => {},
-		},
+		terminal: createTerminalUnavailableNamespace(
+			"Terminal is unavailable in web preview. Use the Electron desktop app.",
+		),
 		clipboard: {
 			writeText: writeBrowserClipboardText,
 		},
