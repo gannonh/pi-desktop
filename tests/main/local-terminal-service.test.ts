@@ -147,6 +147,35 @@ describe("local terminal service", () => {
 		});
 	});
 
+	it("emits exit when kill is requested", async () => {
+		const project = createProject();
+		const { proc, kill, exitHandlers } = createMockPty();
+		const events: Array<{ type: string; code?: number }> = [];
+		const service = createLocalTerminalService({
+			resolveCwd: async () => ok({ cwd: project.path }),
+			spawnPty: () => proc,
+			onEvent: (event) => {
+				events.push(event);
+			},
+		});
+		const spawned = await service.spawn({
+			projectId: project.id,
+			cols: 80,
+			rows: 24,
+		});
+		if (!spawned.ok) {
+			throw new Error("Expected spawn to succeed.");
+		}
+
+		expect(exitHandlers).toHaveLength(1);
+		expect(service.kill({ terminalId: spawned.data.terminalId })).toEqual({
+			ok: true,
+			data: { accepted: true },
+		});
+		expect(kill).toHaveBeenCalled();
+		expect(events).toEqual([{ type: "exit", terminalId: spawned.data.terminalId, code: 0 }]);
+	});
+
 	it("emits exit events and clears sessions", async () => {
 		const project = createProject();
 		const { proc, exitHandlers } = createMockPty();

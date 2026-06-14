@@ -78,14 +78,28 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 	};
 
 	const safeKill = (terminalId: string, proc: IPty) => {
-		disposeListeners(terminalId);
+		if (!sessions.has(terminalId)) {
+			return;
+		}
+
+		const listeners = disposables.get(terminalId);
+		listeners?.[0]?.dispose();
+
 		try {
 			proc.kill();
 		} catch {
 			/* already dead */
 		}
+
+		if (!sessions.has(terminalId)) {
+			destroyPtyProcess(proc, true);
+			return;
+		}
+
+		disposeListeners(terminalId);
+		emit({ type: "exit", terminalId, code: 0 });
 		destroyPtyProcess(proc, true);
-		clearSession(terminalId);
+		sessions.delete(terminalId);
 	};
 
 	const getProc = (terminalId: string): IPty | null => sessions.get(terminalId) ?? null;

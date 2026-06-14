@@ -72,6 +72,23 @@ describe("terminal panel state", () => {
 		expect(next).toBe(state);
 	});
 
+	it("keeps terminal end states when the same available project is synced again", () => {
+		const terminated = terminalPanelReducer(createInitialTerminalPanelState(), { type: "terminated" });
+		const next = terminalPanelReducer(terminated, { type: "sync-project", project: availableProject });
+		expect(next).toBe(terminated);
+
+		const exited = terminalPanelReducer(createInitialTerminalPanelState(), { type: "exited", exitCode: 1 });
+		const nextExited = terminalPanelReducer(exited, { type: "sync-project", project: availableProject });
+		expect(nextExited).toBe(exited);
+
+		const error = terminalPanelReducer(createInitialTerminalPanelState(), {
+			type: "error",
+			message: "PTY spawn failed",
+		});
+		const nextError = terminalPanelReducer(error, { type: "sync-project", project: availableProject });
+		expect(nextError).toBe(error);
+	});
+
 	it("stores terminated transitions", () => {
 		const state = terminalPanelReducer(createInitialTerminalPanelState(), { type: "terminated" });
 		expect(state.phase).toEqual({ kind: "terminated" });

@@ -57,6 +57,9 @@ export const terminalPanelReducer = (
 			if (state.phase.kind === "idle") {
 				return state;
 			}
+			if (state.phase.kind === "terminated" || state.phase.kind === "exited" || state.phase.kind === "error") {
+				return state;
+			}
 			return { phase: { kind: "idle" } };
 		}
 		case "start":
