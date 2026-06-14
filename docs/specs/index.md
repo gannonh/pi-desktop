@@ -2,6 +2,7 @@
 
 # Active Work
 
+* [M07D Right Panel Terminal Design](/specs/2026-06-14-m07d-terminal-design.md) - Draft implementation design for replacing the Terminal mock with an Orca-inspired xterm and node-pty terminal.
 * [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md) - Active follow-up roadmap for Git and source-control parity after M07C.
 * [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Active deferral note for hosted review capabilities after Wave 5.1.
 * [Worktree and runtime scope follow-up triggers](/specs/2026-06-10-worktree-scope-followups.md) - Active trigger list for reopening worktree, runtime git, and branch-lifecycle boundaries.

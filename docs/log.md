@@ -1,6 +1,7 @@
 # Bundle Update Log
 
 ## 2026-06-14
+* **Spec**: Added [M07D Right Panel Terminal Design](/specs/2026-06-14-m07d-terminal-design.md) and surfaced it in the OKF indexes.
 * **Update**: Reconciled [Pi Desktop PRD and High-Level Roadmap](/pi-desktop-high-level-roadmap.md) current planning targets with completed M07C source-control work and next M07D planning.
 * **Initialization**: Established the OKF root index, required section logs, specs roadmap, and ADR index.
 * **Migration**: Moved ADR concepts from `docs/adr/` to [docs/adrs](/adrs/) for OKF required section conformance.
