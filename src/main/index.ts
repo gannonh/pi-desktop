@@ -32,7 +32,7 @@ const createWindow = () => {
 		height: 820,
 		minWidth: 960,
 		minHeight: 640,
-		show: !smokeHeadless,
+		show: false,
 		frame: false,
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
@@ -44,6 +44,12 @@ const createWindow = () => {
 		},
 	});
 	mainWindow = createdWindow;
+
+	if (!smokeHeadless) {
+		createdWindow.once("ready-to-show", () => {
+			createdWindow.show();
+		});
+	}
 
 	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
 		void createdWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -310,6 +316,11 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		return terminalService?.kill(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
 	});
 };
+
+// Linux VMs (including Cursor Cloud) often paint a blank window with GPU compositing enabled.
+if (process.platform === "linux") {
+	app.disableHardwareAcceleration();
+}
 
 app.whenReady().then(() => {
 	if (shouldRunSmokeHeadless() && process.platform === "darwin") {

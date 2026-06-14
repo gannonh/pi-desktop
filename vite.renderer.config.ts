@@ -7,6 +7,9 @@ import { suppressWorkspaceFileDevReload, workspaceDevWatchIgnored } from "./vite
 export default defineConfig({
 	plugins: [react(), tailwindcss(), suppressWorkspaceFileDevReload()],
 	server: {
+		// Bind IPv4 explicitly so Electron's `http://localhost:<port>` load succeeds on Linux VMs
+		// where Vite otherwise listens on ::1 only and the window stays blank (#0a0a0a).
+		host: "127.0.0.1",
 		watch: {
 			// Workspace saves (docs, markdown, etc.) must not trigger a full renderer reload in dev.
 			ignored: [...workspaceDevWatchIgnored],
