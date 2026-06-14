@@ -42,7 +42,7 @@ const destroyPtyProcess = (proc: IPty, alreadyKilled = false): void => {
 		return;
 	}
 	const teardown = proc as PtyWithTeardown;
-	if (process.platform !== "win32") {
+	if (process.platform !== "win32" && alreadyKilled) {
 		teardown.kill = () => {};
 	}
 	try {

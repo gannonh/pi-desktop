@@ -51,7 +51,7 @@ const createTerminalUatStore = (projectPath: string): ProjectStore => {
 					projectId,
 					source: "draft",
 					sessionId: null,
-					sessionPath: "/tmp/terminal-uat-session.jsonl",
+					sessionPath: null,
 					cwd: projectPath,
 					title: "Terminal UAT chat",
 					status: "idle",
@@ -81,6 +81,9 @@ test.describe("M07D terminal UAT capture", () => {
 				PI_DESKTOP_USER_DATA_DIR: userDataDir,
 				PI_DESKTOP_SMOKE_PI_SESSION: "1",
 				ELECTRON_DISABLE_SANDBOX: "1",
+				...(process.platform === "linux" && process.env.PI_DESKTOP_DISABLE_GPU !== "1"
+					? { PI_DESKTOP_DISABLE_GPU: "1" }
+					: {}),
 			},
 		});
 

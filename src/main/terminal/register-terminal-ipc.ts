@@ -27,7 +27,7 @@ const handleTerminalInvoke =
 	<T>(
 		getService: () => LocalTerminalService,
 		schema: z.ZodType<T>,
-		run: (service: LocalTerminalService, data: T) => ReturnType<LocalTerminalService["write"]>,
+		run: (service: LocalTerminalService, data: T) => IpcResult<{ accepted: true }>,
 	) =>
 	(_event: Electron.IpcMainInvokeEvent, input: unknown) => {
 		const parsed = parseTerminalInput(schema, input);
@@ -80,6 +80,10 @@ export const registerTerminalIpc = (deps: {
 		service,
 		dispose: () => {
 			service.disposeAll();
+			deps.ipcMain.removeHandler(IpcChannels.terminalSpawn);
+			deps.ipcMain.removeHandler(IpcChannels.terminalResize);
+			deps.ipcMain.removeHandler(IpcChannels.terminalKill);
+			deps.ipcMain.removeAllListeners(IpcChannels.terminalWrite);
 		},
 	};
 };

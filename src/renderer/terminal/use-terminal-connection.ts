@@ -80,14 +80,13 @@ export const useTerminalConnection = ({
 
 	const spawnTerminal = useCallback(
 		async (targetProject: SpawnTarget) => {
-			const generation = ++spawnGenerationRef.current;
-			dispatch({ type: "start", projectId: targetProject.id });
-
 			const container = containerRef.current;
 			if (!container) {
-				dispatch({ type: "error", message: "Terminal surface is not ready." });
 				return;
 			}
+
+			const generation = ++spawnGenerationRef.current;
+			dispatch({ type: "start", projectId: targetProject.id });
 
 			disposeXterm();
 			const xterm = createXtermTerminal(container, {
@@ -223,9 +222,13 @@ export const useTerminalConnection = ({
 			dispatch({ type: "terminated" });
 			return;
 		}
-		userTerminateRef.current = terminalId;
 		setTerminalInputEnabled(false);
-		await window.piDesktop.terminal.kill({ terminalId });
+		const result = await window.piDesktop.terminal.kill({ terminalId });
+		if (!result.ok) {
+			dispatch({ type: "error", message: result.error.message });
+			return;
+		}
+		userTerminateRef.current = terminalId;
 	};
 
 	const restart = async () => {

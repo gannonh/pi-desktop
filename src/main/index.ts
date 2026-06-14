@@ -282,7 +282,8 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	});
 };
 
-// Opt in on Linux VMs where GPU compositing paints a blank window (see AGENTS.md).
+// Disable hardware acceleration on Linux when PI_DESKTOP_DISABLE_GPU=1.
+// Headless/cloud VMs often paint a blank window with GPU compositing enabled (see AGENTS.md).
 if (process.platform === "linux" && process.env.PI_DESKTOP_DISABLE_GPU === "1") {
 	app.disableHardwareAcceleration();
 }

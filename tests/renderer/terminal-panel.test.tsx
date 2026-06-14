@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ok } from "../../src/shared/result";
 import { TerminalPanel } from "../../src/renderer/terminal/terminal-panel";
 import { installTerminalApiMock } from "./terminal-test-api";
 import { createXtermMock } from "./terminal-xterm-mock";
@@ -52,5 +53,15 @@ describe("TerminalPanel", () => {
 		render(<TerminalPanel project={availableProject} />);
 		expect(screen.getByText("/tmp/pi-desktop")).toBeTruthy();
 		expect(screen.getByTestId("workspace-panel-terminal")).toBeTruthy();
+	});
+
+	it("keeps the xterm mount hidden while showing terminated empty state", async () => {
+		installTerminalApiMock({
+			spawn: vi.fn(async () => ok({ terminalId: "term-1" })),
+		});
+		render(<TerminalPanel project={availableProject} />);
+		await vi.waitFor(() => {
+			expect(screen.getByTestId("terminal-panel-xterm")).toBeTruthy();
+		});
 	});
 });

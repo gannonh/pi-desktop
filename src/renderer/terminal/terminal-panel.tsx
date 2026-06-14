@@ -17,6 +17,15 @@ export function TerminalPanel({ project }: TerminalPanelProps) {
 
 	const showSurface = state.phase.kind === "idle" || state.phase.kind === "starting" || state.phase.kind === "running";
 	const projectPath = project?.path ?? null;
+	const hasAvailableProject = project?.availability.status === "available";
+	const emptyStatePhase =
+		state.phase.kind === "no-project" ||
+		state.phase.kind === "project-unavailable" ||
+		state.phase.kind === "exited" ||
+		state.phase.kind === "terminated" ||
+		state.phase.kind === "error"
+			? state.phase
+			: null;
 	const canRestart =
 		state.phase.kind === "exited" || state.phase.kind === "terminated" || state.phase.kind === "error";
 
@@ -41,8 +50,9 @@ export function TerminalPanel({ project }: TerminalPanelProps) {
 				</div>
 			</header>
 
-			{showSurface ? (
-				<div className="terminal-panel__surface">
+			{emptyStatePhase ? <TerminalEmptyStates phase={emptyStatePhase} /> : null}
+			{hasAvailableProject ? (
+				<div className="terminal-panel__surface" hidden={!showSurface}>
 					{state.phase.kind === "starting" ? (
 						<div className="terminal-panel__status" data-testid="terminal-panel-starting">
 							Starting shell...
@@ -55,12 +65,6 @@ export function TerminalPanel({ project }: TerminalPanelProps) {
 						aria-hidden={state.phase.kind !== "running"}
 					/>
 				</div>
-			) : state.phase.kind === "no-project" ||
-				state.phase.kind === "project-unavailable" ||
-				state.phase.kind === "exited" ||
-				state.phase.kind === "terminated" ||
-				state.phase.kind === "error" ? (
-				<TerminalEmptyStates phase={state.phase} />
 			) : null}
 		</div>
 	);

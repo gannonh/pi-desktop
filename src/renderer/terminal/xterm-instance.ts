@@ -62,8 +62,9 @@ export const createXtermTerminal = (
 		const size = { cols: terminal.cols, rows: terminal.rows };
 		if (size.cols > 0 && size.rows > 0) {
 			options.onResize?.(size);
+			return size;
 		}
-		return size;
+		return null;
 	};
 
 	return {
