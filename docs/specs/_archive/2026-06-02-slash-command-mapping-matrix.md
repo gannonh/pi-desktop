@@ -1,3 +1,11 @@
+---
+type: Reference
+title: Slash-command mapping matrix
+description: Archived mapping of built-in slash commands to Desktop dispositions and palette metadata.
+tags: [archive, slash-commands, cli-parity]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Slash-command mapping matrix
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity; M004 — Dynamic Slash Commands and Skill Invocation Parity  

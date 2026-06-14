@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Tool transcript rendering design
+description: Archived design for first-class inline transcript items for tool activity.
+tags: [archive, tool-rendering, transcript]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Tool transcript rendering design
 
 ## Goal

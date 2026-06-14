@@ -1,3 +1,11 @@
+---
+type: Reference
+title: CLI parity source inventory
+description: Archived source inventory for CLI capability auditing and parity analysis.
+tags: [archive, cli-parity, inventory]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # CLI parity source inventory
 
 ## Scope
@@ -99,7 +107,7 @@ Milestone M001, slice S001. This document records source evidence and inventorie
 | Source cluster | Source paths | Implemented feature areas | Confidence notes |
 | --- | --- | --- | --- |
 | Product and roadmap context | `docs/pi-desktop-high-level-roadmap.md`, `PRODUCT.md`, `CONTEXT.md`, `AGENTS.md`, `README.md`, `docs/docs-map.md` | Product purpose, app architecture, Desktop/Pi boundary, project/session language, composer terminology, prompt delivery language, run/dev/check commands, completed milestones through M07B. | High for intended product scope and milestone status. Use implementation files for exact behavior. |
-| Architecture decisions | `docs/adr/0001-keep-custom-pi-session-chat-state.md`, `docs/adr/0002-composer-attachments-in-renderer.md`, `docs/adr/0003-shadcn-ui-boundary.md` | Custom `LiveSessionState`, Pi session event path, Pi `SessionManager` session metadata, renderer attachment processing, narrow IPC image payloads, custom shell/file workspace UI boundary. | High. These are accepted ADRs and match the inspected code areas. |
+| Architecture decisions | `docs/adrs/0001-keep-custom-pi-session-chat-state.md`, `docs/adrs/0002-composer-attachments-in-renderer.md`, `docs/adrs/0003-shadcn-ui-boundary.md` | Custom `LiveSessionState`, Pi session event path, Pi `SessionManager` session metadata, renderer attachment processing, narrow IPC image payloads, custom shell/file workspace UI boundary. | High. These are accepted ADRs and match the inspected code areas. |
 | Implemented specs | `docs/specs/2026-05-22-m07b-right-panel-file-workspace.md`, `docs/specs/2026-05-24-world-class-markdown-support-design.md`, `docs/specs/2026-05-24-code-file-editor-design.md` | Right-panel Files workspace, file explorer/viewer/editor, workspace file IPC, path confinement, rich/source/split Markdown authoring, CodeMirror code editor. | High for completed file/Markdown/code workspace scope. |
 | Shared transport and IPC contracts | `src/shared/app-transport.ts`, `src/shared/ipc.ts`, `src/shared/preload-api.ts`, `src/shared/pi-session.ts`, `src/shared/project-state.ts`, `src/shared/workspace-files.ts`, `src/preload/index.ts` | Transport-neutral app/project/chat/Pi-session/workspace-files operations, Electron channels, renderer-safe API shape, validated Pi session events, project/chat/session metadata schemas, workspace file result unions. | High. These schemas define the Desktop boundary surface. |
 | Electron main and app backend | `src/main/index.ts`, `src/main/app-backend.ts` | Window/preload setup, folder picker, Finder and clipboard IPC, backend operation dispatch, runtime event fanout, session metadata recording, workspace root resolution. | High. This is the main process integration hub. |

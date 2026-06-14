@@ -96,7 +96,7 @@ _Avoid_: In-session project switcher
 Selecting a project from the composer selects that project and shows the **project start** composer. It does not create a chat row before the first prompt.
 
 **Selected project**:
-The one local project record whose path (`ProjectRecord.path`) anchors filesystem access, Changes git operations, and Pi session workspace context. Pi Desktop does not manage multiple git worktrees per repository in the current milestone; parallel branches are out of app scope unless a future worktree milestone explicitly adopts them (see `docs/adr/0005-source-control-worktree-scope.md`).
+The one local project record whose path (`ProjectRecord.path`) anchors filesystem access, Changes git operations, and Pi session workspace context. Pi Desktop does not manage multiple git worktrees per repository in the current milestone; parallel branches are out of app scope unless a future worktree milestone explicitly adopts them (see `docs/adrs/0005-source-control-worktree-scope.md`).
 _Avoid_: Worktree, checkout (as product nouns for the project model), active repo
 
 **Changes**:

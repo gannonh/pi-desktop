@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Changes panel Orca Source Control parity
+description: Implemented design for replacing the mock Changes tab with selected-project source-control workflows.
+tags: [changes-panel, source-control, m07c]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Changes panel (Orca Source Control parity)
 
 ## Status
@@ -55,7 +63,7 @@ Orca today:
 - **Project path confinement.** All git and filesystem operations must stay within `selectedProject.path`, using the same boundary discipline as `workspace-files` path guards.
 - **Keep Pi as agent source of behavior** where Orca launches agents for prompts; adapt Orca UX but route generation/fix prompts through Pi Desktop session/composer patterns where practical.
 - **Preserve existing right-panel tab model.** One Changes tool tab (icon strip), file tabs beside it, add menu, collapse/expand actions — do not adopt Orca's activity bar layout.
-- **Renderer UI boundary:** use shadcn for dialogs, dropdowns, confirmations, and standard buttons per `docs/adr/0003-shadcn-ui-boundary.md`. Match pi-desktop tokens in `src/renderer/styles.css`.
+- **Renderer UI boundary:** use shadcn for dialogs, dropdowns, confirmations, and standard buttons per `docs/adrs/0003-shadcn-ui-boundary.md`. Match pi-desktop tokens in `src/renderer/styles.css`.
 - **Secrets stay in main.** Renderer receives operation results and metadata only; no tokens in renderer state.
 
 ## Out of scope

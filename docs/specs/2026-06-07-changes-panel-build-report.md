@@ -1,3 +1,11 @@
+---
+type: Plan
+title: Changes panel build completion report
+description: Completion report, verification record, and follow-up list for the M07C Changes panel implementation.
+tags: [changes-panel, source-control, report]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Changes panel — Build completion report
 
 ## Spec

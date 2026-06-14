@@ -1,3 +1,11 @@
+---
+type: ADR
+title: Source-control AI generation boundary
+description: Accepted decision keeping source-control AI generation behind main-process and Pi-owned boundaries.
+tags: [adr, source-control, ai]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # ADR 0004: Source-control AI generation boundary
 
 ## Status

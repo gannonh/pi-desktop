@@ -1,10 +1,18 @@
+---
+type: Reference
+title: Documentation Map
+description: Legacy pointer map for Pi Desktop repository documentation.
+tags: [docs, navigation]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Documentation map
 
 For this project, check these locations first:
 
-- ADRs: `docs/adr/`
-  - Source-control AI generation boundary: `docs/adr/0004-source-control-ai-generation-boundary.md`
-  - Source-control worktree and runtime scope: `docs/adr/0005-source-control-worktree-scope.md`
+- ADRs: `docs/adrs/`
+  - Source-control AI generation boundary: `docs/adrs/0004-source-control-ai-generation-boundary.md`
+  - Source-control worktree and runtime scope: `docs/adrs/0005-source-control-worktree-scope.md`
 - Diagrams: `docs/diagrams/`
 - Specs and plans: `docs/specs/`
   - CLI parity audit: `docs/specs/_archive/2026-05-25-cli-parity-source-inventory.md` and `docs/specs/_archive/2026-05-25-cli-parity-coverage-matrix.md`

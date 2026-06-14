@@ -1,8 +1,16 @@
+---
+type: Plan
+title: Worktree and runtime scope follow-up triggers
+description: Active trigger list for reopening worktree, runtime git, and branch-lifecycle boundaries.
+tags: [source-control, worktrees, follow-up]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Worktree and runtime scope — follow-up triggers
 
 ## Status
 
-Active follow-up list after [ADR 0005](../adr/0005-source-control-worktree-scope.md) (Wave 5.3, [#157](https://github.com/gannonh/pi-desktop/issues/157)).
+Active follow-up list after [ADR 0005](../adrs/0005-source-control-worktree-scope.md) (Wave 5.3, [#157](https://github.com/gannonh/pi-desktop/issues/157)).
 
 ## Purpose
 

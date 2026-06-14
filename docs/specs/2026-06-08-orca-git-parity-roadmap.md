@@ -1,8 +1,16 @@
+---
+type: Spec
+title: Orca Git Parity Roadmap
+description: Active follow-up roadmap for Git and source-control parity after M07C.
+tags: [source-control, roadmap, orca-parity]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Orca Git Parity Roadmap
 
 ## Status
 
-Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5 (§5.1–5.3) is implemented on `wave5`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adr/0005-source-control-worktree-scope.md). **UAT polish on `feat/uat-git-parity` addresses active branch clarity and right-panel workspace state.**
+Active follow-up roadmap after M07C Changes panel implementation. **Wave 1 (§1.1–1.2) shipped on `wave1`** — see [PR #160](https://github.com/gannonh/pi-desktop/pull/160). **Wave 2 (§2.1–2.3) is implemented.** **Wave 3 (§3.1–3.2) is implemented on `wave3`.** **Wave 4 (§4.1–4.2) is implemented on `wave4`.** **Wave 5 (§5.1–5.3) is implemented on `wave5`.** **Wave 5.3 (§5.3) boundary recorded on `feat/wave5-53-worktree-scope`** — see [ADR 0005](../adrs/0005-source-control-worktree-scope.md). **UAT polish on `feat/uat-git-parity` addresses active branch clarity and right-panel workspace state.**
 
 ## Context
 
@@ -197,7 +205,7 @@ Tracking: [#156](https://github.com/gannonh/pi-desktop/issues/156)
 
 Tracking: [#157](https://github.com/gannonh/pi-desktop/issues/157)
 
-**Shipped:** [ADR 0005: Source-control worktree and runtime scope](../adr/0005-source-control-worktree-scope.md) records selected-project-only boundaries for the current milestone. Follow-up revisit triggers live in [2026-06-10-worktree-scope-followups.md](./2026-06-10-worktree-scope-followups.md). No product implementation in this wave.
+**Shipped:** [ADR 0005: Source-control worktree and runtime scope](../adrs/0005-source-control-worktree-scope.md) records selected-project-only boundaries for the current milestone. Follow-up revisit triggers live in [2026-06-10-worktree-scope-followups.md](./2026-06-10-worktree-scope-followups.md). No product implementation in this wave.
 
 **Gap (resolved for current milestone):** Pi Desktop is single selected local project only; Orca supports multi-worktree, SSH/runtime contexts, WSL fallbacks, worktree cleanup, and branch management. ADR 0005 defers Orca porting until a future milestone with explicit UX ownership.
 
@@ -205,7 +213,7 @@ Tracking: [#157](https://github.com/gannonh/pi-desktop/issues/157)
 
 **Acceptance Criteria**
 
-- ✅ [ADR 0005](../adr/0005-source-control-worktree-scope.md) states Pi Desktop does **not** adopt multi-worktree Git UX in the current milestone.
+- ✅ [ADR 0005](../adrs/0005-source-control-worktree-scope.md) states Pi Desktop does **not** adopt multi-worktree Git UX in the current milestone.
 - ✅ SSH/runtime Git operations remain out of scope until cloud/runtime milestones adopt them.
 - ✅ Branch rename/delete/worktree cleanup are not added without selected-project UX ownership.
 - ✅ Existing selected-project Changes behavior stays simple and predictable.

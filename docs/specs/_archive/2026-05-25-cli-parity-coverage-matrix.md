@@ -1,3 +1,11 @@
+---
+type: Reference
+title: CLI parity coverage matrix
+description: Archived matrix classifying Pi CLI capabilities against Desktop implementation evidence and roadmap targets.
+tags: [archive, cli-parity, coverage]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # CLI parity coverage matrix
 
 ## Baseline
@@ -248,7 +256,7 @@
 - Classification: Out of scope.
 - Release impact: Desktop has its own design system and should not copy TUI theme parity.
 - CLI evidence: `/Volumes/EVO/repos/pi-mono/packages/coding-agent/docs/themes.md`, `/Volumes/EVO/repos/pi-mono/packages/coding-agent/src/modes/interactive/theme/`.
-- Desktop evidence: `DESIGN.md`, `src/renderer/styles.css`, `docs/adr/0003-shadcn-ui-boundary.md`.
+- Desktop evidence: `DESIGN.md`, `src/renderer/styles.css`, `docs/adrs/0003-shadcn-ui-boundary.md`.
 - Disposition: keep Desktop appearance work in Desktop design tokens.
 
 ### CLI-PACKAGES-027: Pi packages

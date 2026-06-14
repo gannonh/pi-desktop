@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Pi Desktop PRD and High-Level Roadmap
+description: Product requirements and milestone roadmap for Pi Desktop.
+tags: [product, roadmap, desktop]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # pi-desktop PRD and High-Level Roadmap (HLR)
 
 ## Summary

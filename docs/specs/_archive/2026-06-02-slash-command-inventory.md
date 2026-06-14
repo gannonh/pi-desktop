@@ -1,3 +1,11 @@
+---
+type: Reference
+title: Slash-command inventory
+description: Archived authoritative inventory of built-in Pi CLI interactive slash commands.
+tags: [archive, slash-commands, cli-parity]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Slash-command inventory (user-facing)
 
 **Milestone:** M003 — CLI Slash-Command Mapping and Affordance Parity  

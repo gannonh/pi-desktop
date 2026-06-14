@@ -1,3 +1,11 @@
+---
+type: Spec
+title: M07B Right Panel File Explorer and Viewer Editor
+description: Archived implemented spec for the project-scoped right-panel file explorer, viewers, and editor.
+tags: [archive, file-workspace, m07b]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # M07B: Right Panel File Explorer + Viewer/Editor Spec
 
 ## Status

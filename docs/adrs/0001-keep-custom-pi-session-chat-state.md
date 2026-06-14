@@ -1,3 +1,11 @@
+---
+type: ADR
+title: Keep custom Pi session chat state for M04
+description: Accepted decision to keep custom LiveSessionState instead of adopting AI SDK useChat for M04.
+tags: [adr, session, renderer]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # ADR 0001: Keep custom Pi session chat state for M04
 
 ## Status

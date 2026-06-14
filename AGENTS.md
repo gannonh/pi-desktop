@@ -2,13 +2,25 @@
 
 ## Project Map
 
-- Start with [docs/docs-map.md](docs/docs-map.md) for the current documentation index.
+- Start with [docs/index.md](docs/index.md) for the current OKF documentation index.
 - Product context and high-level roadmap: [docs/pi-desktop-high-level-roadmap.md](docs/pi-desktop-high-level-roadmap.md)
-- Architecture decisions: [docs/adr](docs/adr)
+- Architecture decisions: [docs/adrs](docs/adrs)
 - Diagrams: [docs/diagrams](docs/diagrams)
 - Specs and plans: [docs/specs](docs/specs)
 - Setup, run, test, and release commands belong in [README.md](README.md). Link to `README.md` instead of repeating those instructions here.
 - Pi runtime reference repo: `/Volumes/EVO/repos/pi-mono`
+
+## Open Knowledge Format docs
+
+This repository maintains an OKF bundle at `./docs`.
+
+- Read `./docs/index.md` before substantial work to understand the current documentation map.
+- Follow cross-links into relevant specs, ADRs, runbooks, guides, architecture notes, reference docs, and domain docs before changing related code.
+- Keep `./docs/specs/index.md` current as the roadmap for active, planned, blocked, and completed work.
+- Add or update ADRs in `./docs/adrs` for durable architecture decisions.
+- After substantial work, PRs, behavior changes, architecture decisions, migrations, or documentation moves, update the OKF bundle and add concise entries to the relevant `log.md` files.
+- Maintain Markdown cross-links between related OKF concepts so future agents can traverse decisions, specs, architecture, runbooks, guides, and references.
+- Every non-reserved Markdown file under `./docs` should have OKF frontmatter with at least a non-empty `type` field. `index.md` and `log.md` are reserved navigation/history files.
 
 ## Product Frame
 
@@ -26,7 +38,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 
 ## Documentation
 
-- Record durable architecture decisions as ADRs under `docs/adr`.
+- Record durable architecture decisions as ADRs under `docs/adrs`.
 - Keep diagrams under `docs/diagrams`.
 - Keep specs and execution plans under `docs/specs`.
 - Keep roadmap status and ADR decisions aligned when milestone direction changes.
@@ -34,7 +46,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 
 ## Renderer UI (shadcn boundary)
 
-Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [docs/adr/0003-shadcn-ui-boundary.md](docs/adr/0003-shadcn-ui-boundary.md).
+Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [docs/adrs/0003-shadcn-ui-boundary.md](docs/adrs/0003-shadcn-ui-boundary.md).
 
 - **Config:** `components.json` (`iconLibrary: lucide`, new-york, radix). Visual tokens and rules live in `DESIGN.md` and `src/renderer/styles.css`.
 - **Custom by design:** app shell, project sidebar, workspace tab strip, file workspace chrome (layout and workbench interactions). Do not rewrite these to shadcn `Sidebar` / `Tabs` unless a milestone explicitly scopes consolidation.

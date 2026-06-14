@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Code File Editor Design
+description: Archived implemented design for syntax-highlighted editable code surfaces in the file workspace.
+tags: [archive, editor, file-workspace]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Code File Editor Design
 
 ## Status
@@ -12,8 +20,8 @@ Finish the File Explorer and Viewer work by replacing the plain non-Markdown tex
 
 - Prior file workspace spec: [`2026-05-22-m07b-right-panel-file-workspace.md`](./2026-05-22-m07b-right-panel-file-workspace.md)
 - Markdown authoring spec: [`2026-05-24-world-class-markdown-support-design.md`](./2026-05-24-world-class-markdown-support-design.md)
-- Renderer design boundary: [`../adr/0003-shadcn-ui-boundary.md`](../../adr/0003-shadcn-ui-boundary.md)
-- Visual tokens: [`../../DESIGN.md`](../../../DESIGN.md) and `src/renderer/styles.css`
+- Renderer design boundary: [`../adrs/0003-shadcn-ui-boundary.md`](../../adrs/0003-shadcn-ui-boundary.md)
+- Visual tokens: `DESIGN.md` and `src/renderer/styles.css`
 
 ## Implemented state
 

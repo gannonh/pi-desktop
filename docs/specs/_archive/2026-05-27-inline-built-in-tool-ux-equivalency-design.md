@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Inline built-in tool UX equivalency design
+description: Archived implemented design for rendering built-in Pi tools inline in the transcript.
+tags: [archive, tool-rendering, transcript]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Inline built-in tool UX equivalency design
 
 ## Status

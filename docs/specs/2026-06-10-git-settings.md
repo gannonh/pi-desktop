@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Git settings Wave 5.2
+description: Implemented scope for per-project Git settings surfaced from the Changes panel.
+tags: [source-control, settings]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Git settings (Wave 5.2)
 
 ## Status

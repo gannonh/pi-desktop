@@ -1,3 +1,11 @@
+---
+type: Spec
+title: Hosted review deferred scope
+description: Active deferral note for hosted review capabilities after Wave 5.1.
+tags: [source-control, review, deferred]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # Hosted review deferred scope (Wave 5.1 follow-up)
 
 ## Status

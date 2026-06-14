@@ -1,3 +1,11 @@
+---
+type: ADR
+title: Source-control worktree and runtime scope
+description: Accepted decision scoping source control to the selected project for the current milestone wave.
+tags: [adr, source-control, worktrees]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # ADR 0005: Source-control worktree and runtime scope
 
 ## Status

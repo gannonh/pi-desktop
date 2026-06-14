@@ -1,3 +1,11 @@
+---
+type: Spec
+title: World-Class Markdown Support Design
+description: Archived implemented design for Markdown reading, editing, preview, and split view.
+tags: [archive, markdown, file-workspace]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # World-Class Markdown Support Design
 
 ## Status
@@ -8,8 +16,8 @@ Implemented.
 
 - GitHub issue: [#14 Create world-class Markdown support](https://github.com/gannonh/pi-desktop/issues/14)
 - Prior file workspace spec: [`docs/specs/2026-05-22-m07b-right-panel-file-workspace.md`](./2026-05-22-m07b-right-panel-file-workspace.md)
-- Renderer design boundary: [`docs/adr/0003-shadcn-ui-boundary.md`](../../adr/0003-shadcn-ui-boundary.md)
-- Visual tokens: [`DESIGN.md`](../../../DESIGN.md) and `src/renderer/styles.css`
+- Renderer design boundary: [`docs/adrs/0003-shadcn-ui-boundary.md`](../../adrs/0003-shadcn-ui-boundary.md)
+- Visual tokens: `DESIGN.md` and `src/renderer/styles.css`
 
 ## Goal
 

@@ -1,3 +1,11 @@
+---
+type: ADR
+title: Composer attachments processed in the renderer
+description: Accepted decision for renderer-side composer attachment processing and IPC payload boundaries.
+tags: [adr, composer, attachments]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # ADR 0002: Composer attachments processed in the renderer
 
 ## Status

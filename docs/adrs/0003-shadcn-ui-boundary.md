@@ -1,3 +1,11 @@
+---
+type: ADR
+title: shadcn/ui boundary for renderer chrome
+description: Accepted decision defining where Pi Desktop uses shadcn/ui versus custom renderer chrome.
+tags: [adr, renderer, ui]
+timestamp: 2026-06-14T00:00:00Z
+---
+
 # ADR 0003: shadcn/ui boundary for renderer chrome
 
 ## Status
