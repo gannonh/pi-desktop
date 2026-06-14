@@ -4,6 +4,8 @@ import { err } from "../../shared/result";
 
 export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => {
 	const unavailable = async () => err("app_transport.unavailable", message);
+	const terminalUnavailable = async () =>
+		err("terminal.unavailable", "Terminal is unavailable in this preview environment.");
 
 	return {
 		app: {
@@ -92,6 +94,13 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			setDefaultThinkingLevel: unavailable,
 			updateQueuedMessage: unavailable,
 			removeQueuedMessage: unavailable,
+			onEvent: () => () => {},
+		},
+		terminal: {
+			spawn: terminalUnavailable,
+			write: terminalUnavailable,
+			resize: terminalUnavailable,
+			kill: terminalUnavailable,
 			onEvent: () => () => {},
 		},
 	};

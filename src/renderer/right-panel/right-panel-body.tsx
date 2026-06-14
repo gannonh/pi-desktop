@@ -1,17 +1,18 @@
-import { resolveBrowserMock, resolveTerminalMock } from "./right-panel-mock-data";
+import { resolveBrowserMock } from "./right-panel-mock-data";
 import type { RightPanelTab } from "./right-panel-types";
 import type { ProjectStateViewResult } from "../../shared/ipc";
 import type { ProjectRecord } from "../../shared/project-state";
 import { ChangesPanel } from "../changes-panel/ChangesPanel";
 import { FileWorkspacePanel } from "../file-workspace/file-workspace-panel";
+import { TerminalPanel } from "../terminal/terminal-panel";
 import { BrowserPanelMock } from "./browser-panel-mock";
-import { TerminalPanelMock } from "./terminal-panel-mock";
 
 interface RightPanelBodyProps {
 	tab: RightPanelTab | null;
 	filesActive: boolean;
 	selectedProject: ProjectRecord | null;
 	changesActive: boolean;
+	terminalActive: boolean;
 	onProjectState?: (result: ProjectStateViewResult) => void;
 }
 
@@ -20,6 +21,7 @@ export function RightPanelBody({
 	filesActive,
 	selectedProject,
 	changesActive,
+	terminalActive,
 	onProjectState,
 }: RightPanelBodyProps) {
 	if (filesActive) {
@@ -36,7 +38,7 @@ export function RightPanelBody({
 
 	switch (tab.kind) {
 		case "terminal":
-			return <TerminalPanelMock data={resolveTerminalMock(tab)} />;
+			return <TerminalPanel project={selectedProject} isActive={terminalActive} />;
 		case "browser":
 			return <BrowserPanelMock data={resolveBrowserMock(tab)} />;
 		case "changes":

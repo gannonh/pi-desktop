@@ -1,0 +1,198 @@
+// Adapted from Orca local-pty-provider PTY lifecycle patterns (MIT, stablyai/orca).
+
+import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
+import type { IPty } from "node-pty";
+import type { TerminalEvent } from "../../shared/terminal";
+import { err, ok, type IpcResult } from "../../shared/result";
+import { type ProjectLookup, validateProjectCwd } from "./project-cwd";
+import { buildTerminalEnv, resolveDefaultShell } from "./shell-defaults";
+
+export type PtySpawnFn = (file: string, args: string[] | string, options: PtySpawnOptions) => IPty;
+
+export type PtySpawnOptions = {
+	name: string;
+	cols: number;
+	rows: number;
+	cwd: string;
+	env: Record<string, string>;
+};
+
+type PtyDisposable = { dispose: () => void };
+
+type TerminalSession = {
+	terminalId: string;
+	projectId: string;
+	projectPath: string;
+	proc: IPty;
+};
+
+export type LocalTerminalServiceDeps = {
+	lookupProject: ProjectLookup;
+	spawnPty?: PtySpawnFn;
+	onEvent?: (event: TerminalEvent) => void;
+};
+
+const requireNodePty = createRequire(import.meta.url);
+
+const defaultSpawnPty: PtySpawnFn = (file, args, options) => {
+	const pty = requireNodePty("node-pty") as typeof import("node-pty");
+	return pty.spawn(file, args, options);
+};
+
+const destroyPtyProcess = (proc: IPty, alreadyKilled = false): void => {
+	if (process.platform === "win32" && alreadyKilled) {
+		return;
+	}
+	if (process.platform !== "win32") {
+		(proc as unknown as { kill: (signal?: string) => void }).kill = () => {};
+	}
+	try {
+		(proc as unknown as { destroy?: () => void }).destroy?.();
+	} catch {
+		/* already torn down */
+	}
+};
+
+export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
+	const spawnPty = deps.spawnPty ?? defaultSpawnPty;
+	const sessions = new Map<string, TerminalSession>();
+	const disposables = new Map<string, PtyDisposable[]>();
+
+	const emit = (event: TerminalEvent) => {
+		deps.onEvent?.(event);
+	};
+
+	const disposeListeners = (terminalId: string) => {
+		const listeners = disposables.get(terminalId);
+		if (!listeners) {
+			return;
+		}
+		for (const listener of listeners) {
+			listener.dispose();
+		}
+		disposables.delete(terminalId);
+	};
+
+	const clearSession = (terminalId: string) => {
+		disposeListeners(terminalId);
+		sessions.delete(terminalId);
+	};
+
+	const safeKill = (terminalId: string, proc: IPty) => {
+		disposeListeners(terminalId);
+		try {
+			proc.kill();
+		} catch {
+			/* already dead */
+		}
+		destroyPtyProcess(proc, true);
+		clearSession(terminalId);
+	};
+
+	const getSession = (terminalId: string): TerminalSession | null => sessions.get(terminalId) ?? null;
+
+	const spawn = async (input: {
+		projectId: string;
+		projectPath: string;
+		cols: number;
+		rows: number;
+	}): Promise<IpcResult<{ terminalId: string }>> => {
+		const cwdResult = await validateProjectCwd(deps.lookupProject, input.projectId, input.projectPath);
+		if (!cwdResult.ok) {
+			return cwdResult;
+		}
+
+		const cwd = cwdResult.data.cwd;
+		const terminalId = randomUUID();
+		const shell = resolveDefaultShell();
+		const env = buildTerminalEnv(cwd);
+
+		let proc: IPty;
+		try {
+			proc = spawnPty(shell, [], {
+				name: "xterm-256color",
+				cols: input.cols,
+				rows: input.rows,
+				cwd,
+				env,
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to spawn terminal.";
+			return err("terminal.spawn_failed", message);
+		}
+
+		const dataDisposable = proc.onData((data) => {
+			emit({ type: "data", terminalId, data });
+		});
+		const exitDisposable = proc.onExit((event) => {
+			emit({ type: "exit", terminalId, code: event.exitCode });
+			clearSession(terminalId);
+		});
+
+		disposables.set(terminalId, [dataDisposable, exitDisposable]);
+		sessions.set(terminalId, {
+			terminalId,
+			projectId: input.projectId,
+			projectPath: cwd,
+			proc,
+		});
+
+		return ok({ terminalId });
+	};
+
+	const write = (input: { terminalId: string; data: string }): IpcResult<{ accepted: true }> => {
+		const session = getSession(input.terminalId);
+		if (!session) {
+			return err("terminal.not_found", "Terminal session is not available.");
+		}
+		try {
+			session.proc.write(input.data);
+			return ok({ accepted: true as const });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to write to terminal.";
+			emit({ type: "error", terminalId: input.terminalId, message });
+			return err("terminal.write_failed", message);
+		}
+	};
+
+	const resize = (input: { terminalId: string; cols: number; rows: number }): IpcResult<{ accepted: true }> => {
+		const session = getSession(input.terminalId);
+		if (!session) {
+			return err("terminal.not_found", "Terminal session is not available.");
+		}
+		try {
+			session.proc.resize(input.cols, input.rows);
+			return ok({ accepted: true as const });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to resize terminal.";
+			return err("terminal.resize_failed", message);
+		}
+	};
+
+	const kill = (input: { terminalId: string }): IpcResult<{ accepted: true }> => {
+		const session = getSession(input.terminalId);
+		if (!session) {
+			return err("terminal.not_found", "Terminal session is not available.");
+		}
+		safeKill(input.terminalId, session.proc);
+		return ok({ accepted: true as const });
+	};
+
+	const disposeAll = () => {
+		for (const [terminalId, session] of sessions.entries()) {
+			safeKill(terminalId, session.proc);
+		}
+	};
+
+	return {
+		spawn,
+		write,
+		resize,
+		kill,
+		disposeAll,
+		getSessionCount: () => sessions.size,
+	};
+};
+
+export type LocalTerminalService = ReturnType<typeof createLocalTerminalService>;

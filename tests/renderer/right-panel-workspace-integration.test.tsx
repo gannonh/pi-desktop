@@ -1,13 +1,28 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultRightPanelState } from "../../src/renderer/right-panel/right-panel-state";
 import { RightPanelProvider } from "../../src/renderer/right-panel/right-panel-context";
 import { ShellLayoutProvider } from "../../src/renderer/shell/shell-layout-context";
 import { ShellTestProviders } from "./shell-test-providers";
 import { RightPanelWorkspace } from "../../src/renderer/right-panel/right-panel-workspace";
 import { WorkspaceTabStrip } from "../../src/renderer/right-panel/workspace-tab-strip";
+import { installTerminalApiMock } from "./terminal-test-api";
+
+vi.mock("../../src/renderer/terminal/xterm-instance", () => ({
+	createXtermTerminal: vi.fn(() => ({
+		terminal: {
+			write: vi.fn(),
+			dispose: vi.fn(),
+			cols: 80,
+			rows: 24,
+		},
+		fitAddon: {},
+		fit: vi.fn(() => ({ cols: 80, rows: 24 })),
+		dispose: vi.fn(),
+	})),
+}));
 
 function WorkspaceFixture() {
 	return (
@@ -30,6 +45,11 @@ function renderPersistentWorkspace(workspaceId: string) {
 
 afterEach(() => {
 	window.localStorage.clear();
+	vi.restoreAllMocks();
+});
+
+beforeEach(() => {
+	installTerminalApiMock();
 });
 
 describe("right panel workspace integration", () => {

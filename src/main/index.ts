@@ -3,6 +3,12 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import { type AppRpcOperation, AppRpcRequestSchema } from "../shared/app-transport";
 import { ClipboardWriteTextInputSchema, IpcChannels, OpenExternalInputSchema } from "../shared/ipc";
+import {
+	TerminalKillInputSchema,
+	TerminalResizeInputSchema,
+	TerminalSpawnInputSchema,
+	TerminalWriteInputSchema,
+} from "../shared/terminal";
 import { err, ok } from "../shared/result";
 import { type AppBackend, createAppBackend } from "./app-backend";
 import { resolveDesktopChatsPath, resolveProjectStorePath } from "./app-paths";
@@ -12,10 +18,12 @@ import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
 import { createPiSessionLister, readSessionInfoForPath } from "./sessions/pi-session-index";
+import { createLocalTerminalService, type LocalTerminalService } from "./terminal/local-terminal-service";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
+let terminalService: LocalTerminalService | null = null;
 
 const createWindow = () => {
 	const smokeHeadless = shouldRunSmokeHeadless();
@@ -101,6 +109,18 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		loadSessionHistory: shouldUseSmokePiSession() ? loadSmokePiSessionHistory : undefined,
 	});
 	appBackend = backend;
+
+	terminalService = createLocalTerminalService({
+		lookupProject: async (projectId) => {
+			const state = await projectService.getState();
+			return state.projects.find((project) => project.id === projectId) ?? null;
+		},
+		onEvent: (event) => {
+			if (mainWindow && !mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(IpcChannels.terminalEvent, event);
+			}
+		},
+	});
 
 	backend.onPiSessionEvent((event) => {
 		if (mainWindow && !mainWindow.isDestroyed()) {
@@ -261,6 +281,34 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		await shell.openExternal(parsed.data.url);
 		return ok({ opened: true as const });
 	});
+	ipcMain.handle(IpcChannels.terminalSpawn, async (_event, input) => {
+		const parsed = TerminalSpawnInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("terminal.input_invalid", "Terminal spawn input is invalid.");
+		}
+		return terminalService?.spawn(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
+	});
+	ipcMain.handle(IpcChannels.terminalWrite, (_event, input) => {
+		const parsed = TerminalWriteInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("terminal.input_invalid", "Terminal write input is invalid.");
+		}
+		return terminalService?.write(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
+	});
+	ipcMain.handle(IpcChannels.terminalResize, (_event, input) => {
+		const parsed = TerminalResizeInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("terminal.input_invalid", "Terminal resize input is invalid.");
+		}
+		return terminalService?.resize(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
+	});
+	ipcMain.handle(IpcChannels.terminalKill, (_event, input) => {
+		const parsed = TerminalKillInputSchema.safeParse(input);
+		if (!parsed.success) {
+			return err("terminal.input_invalid", "Terminal kill input is invalid.");
+		}
+		return terminalService?.kill(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
+	});
 };
 
 app.whenReady().then(() => {
@@ -298,6 +346,9 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
 	const backend = appBackend;
 	appBackend = null;
+	const terminals = terminalService;
+	terminalService = null;
+	terminals?.disposeAll();
 	void backend?.dispose().catch((error) => {
 		console.error("Failed to dispose app backend.", error);
 	});

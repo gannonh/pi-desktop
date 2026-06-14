@@ -68,6 +68,35 @@ import {
 	type WorkspaceWriteFileResult,
 	WorkspaceWriteFileResultSchema,
 } from "./workspace-files";
+import {
+	TerminalActionResultSchema,
+	TerminalEventSchema,
+	TerminalKillInputSchema,
+	TerminalResizeInputSchema,
+	TerminalSpawnInputSchema,
+	TerminalSpawnResultSchema,
+	TerminalWriteInputSchema,
+} from "./terminal";
+
+export {
+	TerminalActionResultSchema,
+	TerminalEventSchema,
+	TerminalKillInputSchema,
+	TerminalResizeInputSchema,
+	TerminalSpawnInputSchema,
+	TerminalSpawnResultSchema,
+	TerminalWriteInputSchema,
+};
+
+export type {
+	TerminalActionResult,
+	TerminalEvent,
+	TerminalKillInput,
+	TerminalResizeInput,
+	TerminalSpawnInput,
+	TerminalSpawnResult,
+	TerminalWriteInput,
+} from "./terminal";
 
 export const ClipboardWriteTextInputSchema = z.strictObject({
 	text: z.string(),
@@ -172,6 +201,11 @@ export const IpcChannels = {
 	sourceControlCancelGeneration: "source-control:cancelGeneration",
 	clipboardWriteText: "clipboard:writeText",
 	appOpenExternal: "app:openExternal",
+	terminalSpawn: "terminal:spawn",
+	terminalWrite: "terminal:write",
+	terminalResize: "terminal:resize",
+	terminalKill: "terminal:kill",
+	terminalEvent: "terminal:event",
 } as const;
 
 export const PiSessionOperationFailedCode = "pi_session.operation_failed";

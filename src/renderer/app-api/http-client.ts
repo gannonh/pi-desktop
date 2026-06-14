@@ -31,6 +31,8 @@ const toRpcErrorMessage = (error: unknown) => {
 };
 
 const bridgeUnavailable = (message: string) => err("dev_bridge.unavailable", `Dev data bridge unavailable: ${message}`);
+const terminalUnavailable = () =>
+	err("terminal.unavailable", "Terminal is unavailable in web preview. Use the Electron desktop app.");
 
 const parseEventMessage = (data: MessageEvent["data"]) => {
 	if (typeof data !== "string") {
@@ -215,6 +217,13 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 					}
 				};
 			},
+		},
+		terminal: {
+			spawn: async () => terminalUnavailable(),
+			write: async () => terminalUnavailable(),
+			resize: async () => terminalUnavailable(),
+			kill: async () => terminalUnavailable(),
+			onEvent: () => () => {},
 		},
 		workspaceFiles: {
 			listDirectory: (input) => callRpc("workspaceFiles.listDirectory", input),

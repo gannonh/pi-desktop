@@ -40,6 +40,7 @@ export function RightPanelWorkspace({ selectedProject, onProjectState }: RightPa
 						filesActive={filesActive}
 						selectedProject={selectedProject}
 						changesActive={!filesActive && activeTab?.kind === "changes"}
+						terminalActive={!filesActive && activeTab?.kind === "terminal"}
 						onProjectState={onProjectState}
 					/>
 				</div>
