@@ -38,12 +38,22 @@ export const useTerminalConnection = ({
 		await getTerminalApi().kill({ terminalId });
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref; reading .current must not re-create spawnTerminal.
 	const spawnTerminal = useCallback(
 		async (targetProject: ProjectRecord) => {
 			const generation = ++spawnGenerationRef.current;
 			dispatch({ type: "start", projectId: targetProject.id });
 
-			const container = containerRef.current;
+			let container: HTMLDivElement | null = null;
+			for (let attempt = 0; attempt < 30; attempt += 1) {
+				container = containerRef.current;
+				if (container) {
+					break;
+				}
+				await new Promise<void>((resolve) => {
+					requestAnimationFrame(() => resolve());
+				});
+			}
 			if (!container) {
 				dispatch({ type: "error", message: "Terminal surface is not ready." });
 				return;
@@ -96,7 +106,7 @@ export const useTerminalConnection = ({
 				projectId: targetProject.id,
 			});
 		},
-		[containerRef, disposeXterm],
+		[disposeXterm],
 	);
 
 	useEffect(() => {
