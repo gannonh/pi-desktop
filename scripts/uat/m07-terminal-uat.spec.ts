@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { launchElectronApp } from "./electron-launch";
+import { launchElectronApp } from "../../tests/smoke/electron-launch";
 import { createProjectId, DEFAULT_PROJECT_GIT_SETTINGS, type ProjectStore } from "../../src/shared/project-state";
 
 const evidenceDir = process.env.UAT_EVIDENCE_DIR;
