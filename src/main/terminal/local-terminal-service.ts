@@ -20,13 +20,6 @@ export type PtySpawnOptions = {
 
 type PtyDisposable = { dispose: () => void };
 
-type TerminalSession = {
-	terminalId: string;
-	projectId: string;
-	projectPath: string;
-	proc: IPty;
-};
-
 export type LocalTerminalServiceDeps = {
 	lookupProject: ProjectLookup;
 	spawnPty?: PtySpawnFn;
@@ -56,7 +49,7 @@ const destroyPtyProcess = (proc: IPty, alreadyKilled = false): void => {
 
 export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 	const spawnPty = deps.spawnPty ?? defaultSpawnPty;
-	const sessions = new Map<string, TerminalSession>();
+	const sessions = new Map<string, IPty>();
 	const disposables = new Map<string, PtyDisposable[]>();
 
 	const emit = (event: TerminalEvent) => {
@@ -90,7 +83,7 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 		clearSession(terminalId);
 	};
 
-	const getSession = (terminalId: string): TerminalSession | null => sessions.get(terminalId) ?? null;
+	const getProc = (terminalId: string): IPty | null => sessions.get(terminalId) ?? null;
 
 	const spawn = async (input: {
 		projectId: string;
@@ -106,7 +99,7 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 		const cwd = cwdResult.data.cwd;
 		const terminalId = randomUUID();
 		const shell = resolveDefaultShell();
-		const env = buildTerminalEnv(cwd);
+		const env = buildTerminalEnv(shell, cwd);
 
 		let proc: IPty;
 		try {
@@ -131,23 +124,18 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 		});
 
 		disposables.set(terminalId, [dataDisposable, exitDisposable]);
-		sessions.set(terminalId, {
-			terminalId,
-			projectId: input.projectId,
-			projectPath: cwd,
-			proc,
-		});
+		sessions.set(terminalId, proc);
 
 		return ok({ terminalId });
 	};
 
 	const write = (input: { terminalId: string; data: string }): IpcResult<{ accepted: true }> => {
-		const session = getSession(input.terminalId);
-		if (!session) {
+		const proc = getProc(input.terminalId);
+		if (!proc) {
 			return err("terminal.not_found", "Terminal session is not available.");
 		}
 		try {
-			session.proc.write(input.data);
+			proc.write(input.data);
 			return ok({ accepted: true as const });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to write to terminal.";
@@ -157,12 +145,12 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 	};
 
 	const resize = (input: { terminalId: string; cols: number; rows: number }): IpcResult<{ accepted: true }> => {
-		const session = getSession(input.terminalId);
-		if (!session) {
+		const proc = getProc(input.terminalId);
+		if (!proc) {
 			return err("terminal.not_found", "Terminal session is not available.");
 		}
 		try {
-			session.proc.resize(input.cols, input.rows);
+			proc.resize(input.cols, input.rows);
 			return ok({ accepted: true as const });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to resize terminal.";
@@ -171,17 +159,17 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 	};
 
 	const kill = (input: { terminalId: string }): IpcResult<{ accepted: true }> => {
-		const session = getSession(input.terminalId);
-		if (!session) {
+		const proc = getProc(input.terminalId);
+		if (!proc) {
 			return err("terminal.not_found", "Terminal session is not available.");
 		}
-		safeKill(input.terminalId, session.proc);
+		safeKill(input.terminalId, proc);
 		return ok({ accepted: true as const });
 	};
 
 	const disposeAll = () => {
-		for (const [terminalId, session] of sessions.entries()) {
-			safeKill(terminalId, session.proc);
+		for (const [terminalId, proc] of sessions.entries()) {
+			safeKill(terminalId, proc);
 		}
 	};
 
@@ -191,7 +179,6 @@ export const createLocalTerminalService = (deps: LocalTerminalServiceDeps) => {
 		resize,
 		kill,
 		disposeAll,
-		getSessionCount: () => sessions.size,
 	};
 };
 

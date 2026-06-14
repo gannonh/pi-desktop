@@ -5,7 +5,7 @@ export type TerminalPanelPhase =
 	| { kind: "project-unavailable"; message: string }
 	| { kind: "idle" }
 	| { kind: "starting"; projectId: string }
-	| { kind: "running"; terminalId: string; projectId: string }
+	| { kind: "running"; projectId: string }
 	| { kind: "exited"; exitCode: number }
 	| { kind: "error"; message: string };
 
@@ -43,7 +43,7 @@ export const terminalPanelReducer = (
 				project: Pick<ProjectRecord, "id" | "path" | "availability"> | null;
 		  }
 		| { type: "start"; projectId: string }
-		| { type: "running"; terminalId: string; projectId: string }
+		| { type: "running"; projectId: string }
 		| { type: "exited"; exitCode: number }
 		| { type: "error"; message: string }
 		| { type: "reset-idle" },
@@ -65,7 +65,7 @@ export const terminalPanelReducer = (
 		case "start":
 			return { phase: { kind: "starting", projectId: action.projectId } };
 		case "running":
-			return { phase: { kind: "running", terminalId: action.terminalId, projectId: action.projectId } };
+			return { phase: { kind: "running", projectId: action.projectId } };
 		case "exited":
 			return { phase: { kind: "exited", exitCode: action.exitCode } };
 		case "error":

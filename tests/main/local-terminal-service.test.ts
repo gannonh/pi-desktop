@@ -75,7 +75,10 @@ describe("local terminal service", () => {
 		expect(spawnCalls[0]?.options.cwd).toBe(project.path);
 		expect(spawnCalls[0]?.options.cols).toBe(100);
 		expect(spawnCalls[0]?.options.rows).toBe(30);
-		expect(service.getSessionCount()).toBe(1);
+		expect(service.write({ terminalId: result.data.terminalId, data: "" })).toEqual({
+			ok: true,
+			data: { accepted: true },
+		});
 	});
 
 	it("rejects spawn when project path does not match", async () => {
@@ -135,7 +138,13 @@ describe("local terminal service", () => {
 			data: { accepted: true },
 		});
 		expect(kill).toHaveBeenCalled();
-		expect(service.getSessionCount()).toBe(0);
+		expect(service.kill({ terminalId: spawned.data.terminalId })).toEqual({
+			ok: false,
+			error: {
+				code: "terminal.not_found",
+				message: "Terminal session is not available.",
+			},
+		});
 	});
 
 	it("emits exit events and clears sessions", async () => {
@@ -161,7 +170,13 @@ describe("local terminal service", () => {
 
 		exitHandlers[0]?.({ exitCode: 0, signal: undefined });
 		expect(events).toEqual([{ type: "exit", terminalId: spawned.data.terminalId, code: 0 }]);
-		expect(service.getSessionCount()).toBe(0);
+		expect(service.kill({ terminalId: spawned.data.terminalId })).toEqual({
+			ok: false,
+			error: {
+				code: "terminal.not_found",
+				message: "Terminal session is not available.",
+			},
+		});
 	});
 
 	it("disposes all sessions", async () => {
@@ -171,15 +186,23 @@ describe("local terminal service", () => {
 			lookupProject: async () => project,
 			spawnPty: () => proc,
 		});
-		await service.spawn({
+		const spawned = await service.spawn({
 			projectId: project.id,
 			projectPath: project.path,
 			cols: 80,
 			rows: 24,
 		});
-		expect(service.getSessionCount()).toBe(1);
+		if (!spawned.ok) {
+			throw new Error("Expected spawn to succeed.");
+		}
 		service.disposeAll();
-		expect(service.getSessionCount()).toBe(0);
+		expect(service.kill({ terminalId: spawned.data.terminalId })).toEqual({
+			ok: false,
+			error: {
+				code: "terminal.not_found",
+				message: "Terminal session is not available.",
+			},
+		});
 		expect(kill).toHaveBeenCalled();
 	});
 });

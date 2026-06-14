@@ -40,12 +40,10 @@ describe("terminal panel state", () => {
 
 		state = terminalPanelReducer(state, {
 			type: "running",
-			terminalId: "term-1",
 			projectId: availableProject.id,
 		});
 		expect(state.phase).toEqual({
 			kind: "running",
-			terminalId: "term-1",
 			projectId: availableProject.id,
 		});
 
@@ -56,7 +54,6 @@ describe("terminal panel state", () => {
 	it("resets to idle when project changes away from a running session", () => {
 		const running = terminalPanelReducer(createInitialTerminalPanelState(), {
 			type: "running",
-			terminalId: "term-1",
 			projectId: availableProject.id,
 		});
 		const next = terminalPanelReducer(running, {

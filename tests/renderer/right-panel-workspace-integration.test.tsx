@@ -18,7 +18,6 @@ vi.mock("../../src/renderer/terminal/xterm-instance", () => ({
 			cols: 80,
 			rows: 24,
 		},
-		fitAddon: {},
 		fit: vi.fn(() => ({ cols: 80, rows: 24 })),
 		dispose: vi.fn(),
 	})),

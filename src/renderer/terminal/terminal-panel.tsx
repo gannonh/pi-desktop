@@ -59,12 +59,7 @@ export function TerminalPanel({ project, isActive }: TerminalPanelProps) {
 				state.phase.kind === "project-unavailable" ||
 				state.phase.kind === "exited" ||
 				state.phase.kind === "error" ? (
-				<TerminalEmptyStates
-					phase={state.phase}
-					onRestart={
-						state.phase.kind === "exited" || state.phase.kind === "error" ? () => void restart() : undefined
-					}
-				/>
+				<TerminalEmptyStates phase={state.phase} />
 			) : null}
 		</div>
 	);

@@ -5,10 +5,9 @@ interface TerminalEmptyStatesProps {
 		TerminalPanelPhase,
 		{ kind: "no-project" } | { kind: "project-unavailable" } | { kind: "exited" } | { kind: "error" }
 	>;
-	onRestart?: () => void;
 }
 
-export function TerminalEmptyStates({ phase, onRestart }: TerminalEmptyStatesProps) {
+export function TerminalEmptyStates({ phase }: TerminalEmptyStatesProps) {
 	switch (phase.kind) {
 		case "no-project":
 			return (
@@ -29,11 +28,6 @@ export function TerminalEmptyStates({ phase, onRestart }: TerminalEmptyStatesPro
 				<div className="terminal-panel__empty" data-testid="terminal-panel-exited">
 					<h2 className="terminal-panel__empty-title">Terminal exited</h2>
 					<p className="terminal-panel__empty-copy">The shell exited with code {phase.exitCode}.</p>
-					{onRestart ? (
-						<button type="button" className="terminal-panel__action" onClick={onRestart}>
-							Restart shell
-						</button>
-					) : null}
 				</div>
 			);
 		case "error":
@@ -41,11 +35,6 @@ export function TerminalEmptyStates({ phase, onRestart }: TerminalEmptyStatesPro
 				<div className="terminal-panel__empty" data-testid="terminal-panel-error">
 					<h2 className="terminal-panel__empty-title">Terminal unavailable</h2>
 					<p className="terminal-panel__empty-copy">{phase.message}</p>
-					{onRestart ? (
-						<button type="button" className="terminal-panel__action" onClick={onRestart}>
-							Try again
-						</button>
-					) : null}
 				</div>
 			);
 	}

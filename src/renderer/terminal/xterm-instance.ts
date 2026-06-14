@@ -4,17 +4,30 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 
-const readCssVariable = (name: string, fallback: string) => {
+const readTerminalTheme = () => {
 	if (typeof window === "undefined") {
-		return fallback;
+		return {
+			background: "#0a0a0a",
+			foreground: "#f5f5f5",
+			cursor: "#f5f5f5",
+			selectionBackground: "#262626",
+		};
 	}
-	const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-	return value.length > 0 ? value : fallback;
+	const styles = getComputedStyle(document.documentElement);
+	const read = (name: string, fallback: string) => {
+		const value = styles.getPropertyValue(name).trim();
+		return value.length > 0 ? value : fallback;
+	};
+	return {
+		background: read("--color-background", "#0a0a0a"),
+		foreground: read("--color-foreground", "#f5f5f5"),
+		cursor: read("--color-foreground", "#f5f5f5"),
+		selectionBackground: read("--color-accent", "#262626"),
+	};
 };
 
 export type XtermHandle = {
 	terminal: Terminal;
-	fitAddon: FitAddon;
 	fit: () => { cols: number; rows: number } | null;
 	dispose: () => void;
 };
@@ -32,13 +45,7 @@ export const createXtermTerminal = (
 		fontSize: 13,
 		lineHeight: 1.2,
 		scrollback: 5000,
-		theme: {
-			background: readCssVariable("--color-background", "#0a0a0a"),
-			foreground: readCssVariable("--color-foreground", "#f5f5f5"),
-			cursor: readCssVariable("--color-foreground", "#f5f5f5"),
-			selectionBackground: readCssVariable("--color-accent", "#262626"),
-		},
-		allowProposedApi: true,
+		theme: readTerminalTheme(),
 	});
 
 	const fitAddon = new FitAddon();
@@ -46,7 +53,7 @@ export const createXtermTerminal = (
 	terminal.open(container);
 	terminal.onData(options.onData);
 
-	const fitToContainer = () => {
+	const fit = () => {
 		try {
 			fitAddon.fit();
 		} catch {
@@ -59,12 +66,9 @@ export const createXtermTerminal = (
 		return size;
 	};
 
-	fitToContainer();
-
 	return {
 		terminal,
-		fitAddon,
-		fit: fitToContainer,
+		fit,
 		dispose: () => {
 			terminal.dispose();
 		},

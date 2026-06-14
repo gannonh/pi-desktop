@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { z } from "zod";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import { type AppRpcOperation, AppRpcRequestSchema } from "../shared/app-transport";
 import { ClipboardWriteTextInputSchema, IpcChannels, OpenExternalInputSchema } from "../shared/ipc";
@@ -24,6 +25,24 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
 let terminalService: LocalTerminalService | null = null;
+
+const terminalUnavailable = () => err("terminal.unavailable", "Terminal backend is unavailable.");
+
+const handleTerminalIpc =
+	<T>(
+		schema: z.ZodType<T>,
+		run: (service: LocalTerminalService, data: T) => ReturnType<LocalTerminalService["write"]>,
+	) =>
+	(_event: Electron.IpcMainInvokeEvent, input: unknown) => {
+		const parsed = schema.safeParse(input);
+		if (!parsed.success) {
+			return err("terminal.input_invalid", "Terminal input is invalid.");
+		}
+		if (!terminalService) {
+			return terminalUnavailable();
+		}
+		return run(terminalService, parsed.data);
+	};
 
 const createWindow = () => {
 	const smokeHeadless = shouldRunSmokeHeadless();
@@ -292,29 +311,20 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		if (!parsed.success) {
 			return err("terminal.input_invalid", "Terminal spawn input is invalid.");
 		}
-		return terminalService?.spawn(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
+		return terminalService?.spawn(parsed.data) ?? terminalUnavailable();
 	});
-	ipcMain.handle(IpcChannels.terminalWrite, (_event, input) => {
-		const parsed = TerminalWriteInputSchema.safeParse(input);
-		if (!parsed.success) {
-			return err("terminal.input_invalid", "Terminal write input is invalid.");
-		}
-		return terminalService?.write(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
-	});
-	ipcMain.handle(IpcChannels.terminalResize, (_event, input) => {
-		const parsed = TerminalResizeInputSchema.safeParse(input);
-		if (!parsed.success) {
-			return err("terminal.input_invalid", "Terminal resize input is invalid.");
-		}
-		return terminalService?.resize(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
-	});
-	ipcMain.handle(IpcChannels.terminalKill, (_event, input) => {
-		const parsed = TerminalKillInputSchema.safeParse(input);
-		if (!parsed.success) {
-			return err("terminal.input_invalid", "Terminal kill input is invalid.");
-		}
-		return terminalService?.kill(parsed.data) ?? err("terminal.unavailable", "Terminal backend is unavailable.");
-	});
+	ipcMain.handle(
+		IpcChannels.terminalWrite,
+		handleTerminalIpc(TerminalWriteInputSchema, (service, data) => service.write(data)),
+	);
+	ipcMain.handle(
+		IpcChannels.terminalResize,
+		handleTerminalIpc(TerminalResizeInputSchema, (service, data) => service.resize(data)),
+	);
+	ipcMain.handle(
+		IpcChannels.terminalKill,
+		handleTerminalIpc(TerminalKillInputSchema, (service, data) => service.kill(data)),
+	);
 };
 
 // Linux VMs (including Cursor Cloud) often paint a blank window with GPU compositing enabled.
