@@ -1,3 +1,4 @@
+import { detectNavigatorPlatform, isMacAppPlatform } from "../../shared/app-platform";
 import type { PiSessionSettingsPayload, PiSessionThinkingLevel } from "../../shared/pi-session";
 import type { ProjectStateView } from "../../shared/project-state";
 import type { LiveSessionState } from "../session/session-state";
@@ -185,10 +186,10 @@ export const formatQueueStatusLabel = (messages: LiveSessionState["queuedMessage
 };
 
 export const formatComposerQueueShortcutLabel = (): string => {
-	if (typeof navigator === "undefined") {
-		return "Alt+Enter";
-	}
+	const platform =
+		typeof window !== "undefined" && window.piDesktop?.app.platform
+			? window.piDesktop.app.platform
+			: detectNavigatorPlatform();
 
-	const platform = navigator.userAgentData?.platform;
-	return platform && /Mac|iPhone|iPod|iPad/i.test(platform) ? "Option+Enter" : "Alt+Enter";
+	return isMacAppPlatform(platform) ? "Option+Enter" : "Alt+Enter";
 };

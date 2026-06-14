@@ -27,31 +27,30 @@ export type PlannedAffordanceId =
 	| "composer.voice";
 
 export interface PlannedAffordanceDefinition {
-	id: PlannedAffordanceId;
 	label: string;
 	note?: string;
 }
 
 export const PLANNED_AFFORDANCES: Record<PlannedAffordanceId, PlannedAffordanceDefinition> = {
-	"sidebar.new-chat": { id: "sidebar.new-chat", label: "New chat", note: "Top-level quick start" },
-	"sidebar.search": { id: "sidebar.search", label: "Search" },
-	"sidebar.plugins": { id: "sidebar.plugins", label: "Plugins" },
-	"sidebar.automations": { id: "sidebar.automations", label: "Automations" },
-	"sidebar.chrome.back": { id: "sidebar.chrome.back", label: "Back" },
-	"sidebar.chrome.forward": { id: "sidebar.chrome.forward", label: "Forward" },
-	"sidebar.chrome.collapsed-new-chat": { id: "sidebar.chrome.collapsed-new-chat", label: "New chat" },
-	"sidebar.chrome.chat-menu": { id: "sidebar.chrome.chat-menu", label: "Chat menu" },
-	"start.suggestion": { id: "start.suggestion", label: "Suggested prompt" },
-	"workspace.expand": { id: "workspace.expand", label: "Expand panel" },
-	"workspace.fullscreen": { id: "workspace.fullscreen", label: "Full screen panel" },
-	"filter.organize-by-project": { id: "filter.organize-by-project", label: "By project" },
-	"filter.recent-projects": { id: "filter.recent-projects", label: "Recent projects" },
-	"filter.chronological-list": { id: "filter.chronological-list", label: "Chronological list" },
-	"filter.move": { id: "filter.move", label: "Move" },
-	"filter.sort-created": { id: "filter.sort-created", label: "Created" },
-	"filter.sort-updated": { id: "filter.sort-updated", label: "Updated" },
-	"chat.archive": { id: "chat.archive", label: "Archive chat" },
-	"composer.voice": { id: "composer.voice", label: "Voice input" },
+	"sidebar.new-chat": { label: "New chat", note: "Top-level quick start" },
+	"sidebar.search": { label: "Search" },
+	"sidebar.plugins": { label: "Plugins" },
+	"sidebar.automations": { label: "Automations" },
+	"sidebar.chrome.back": { label: "Back" },
+	"sidebar.chrome.forward": { label: "Forward" },
+	"sidebar.chrome.collapsed-new-chat": { label: "New chat" },
+	"sidebar.chrome.chat-menu": { label: "Chat menu" },
+	"start.suggestion": { label: "Suggested prompt" },
+	"workspace.expand": { label: "Expand panel" },
+	"workspace.fullscreen": { label: "Full screen panel" },
+	"filter.organize-by-project": { label: "By project" },
+	"filter.recent-projects": { label: "Recent projects" },
+	"filter.chronological-list": { label: "Chronological list" },
+	"filter.move": { label: "Move" },
+	"filter.sort-created": { label: "Created" },
+	"filter.sort-updated": { label: "Updated" },
+	"chat.archive": { label: "Archive chat" },
+	"composer.voice": { label: "Voice input" },
 };
 
 export function formatPlannedTooltip(definition: PlannedAffordanceDefinition): string {

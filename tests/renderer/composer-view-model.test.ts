@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	formatComposerQueueShortcutLabel,
 	formatModelProviderLabel,
@@ -74,7 +74,7 @@ describe("composer view model helpers", () => {
 });
 
 describe("formatComposerQueueShortcutLabel", () => {
-	it("defaults to Alt+Enter when userAgentData is unavailable", () => {
+	it("defaults to Alt+Enter when no platform hints are available", () => {
 		const originalNavigator = globalThis.navigator;
 
 		Object.defineProperty(globalThis, "navigator", {
@@ -90,7 +90,21 @@ describe("formatComposerQueueShortcutLabel", () => {
 		});
 	});
 
-	it("uses Option+Enter for macOS userAgentData platforms", () => {
+	it("uses Option+Enter when preload exposes darwin platform", () => {
+		const originalWindow = globalThis.window;
+
+		vi.stubGlobal("window", { piDesktop: { app: { platform: "darwin" } } });
+
+		expect(formatComposerQueueShortcutLabel()).toBe("Option+Enter");
+
+		if (originalWindow === undefined) {
+			vi.unstubAllGlobals();
+		} else {
+			vi.stubGlobal("window", originalWindow);
+		}
+	});
+
+	it("uses Option+Enter for macOS userAgentData platforms when preload is unavailable", () => {
 		const originalNavigator = globalThis.navigator;
 
 		Object.defineProperty(globalThis, "navigator", {

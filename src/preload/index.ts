@@ -55,6 +55,7 @@ const safeInvokeParse = async <TResult extends IpcResult<unknown>>(
 
 const api: PiDesktopApi = {
 	app: {
+		platform: process.platform,
 		getVersion: async () => safeInvokeParse(IpcChannels.appGetVersion, AppVersionResultSchema),
 		openExternal: async (input) => safeInvokeParse(IpcChannels.appOpenExternal, OpenExternalResultSchema, input),
 	},

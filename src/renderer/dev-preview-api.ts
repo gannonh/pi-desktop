@@ -1,4 +1,5 @@
 import type { ProjectStateViewResult, SourceControlGetStatusResult } from "../shared/ipc";
+import { detectNavigatorPlatform } from "../shared/app-platform";
 import type { PiSessionEvent, PiSessionSettingsPayload } from "../shared/pi-session";
 import type { PiDesktopApi } from "../shared/preload-api";
 import {
@@ -438,6 +439,7 @@ export const installDevPreviewApi = () => {
 
 	const api: PiDesktopApi = {
 		app: {
+			platform: detectNavigatorPlatform(),
 			getVersion: async () => ({ ok: true, data: { name: "pi-desktop web preview", version: "dev" } }),
 			openExternal: async (input) => {
 				window.open(input.url, "_blank", "noopener,noreferrer");

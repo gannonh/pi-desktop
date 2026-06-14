@@ -76,10 +76,12 @@ import type {
 	SourceControlAbortConflictInput,
 	SourceControlUpstreamStatusResult,
 } from "./ipc";
+import type { AppPlatform } from "./app-platform";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
 
 export interface PiDesktopApi {
 	app: {
+		platform: AppPlatform;
 		getVersion: () => Promise<AppVersionResult>;
 		openExternal: (input: OpenExternalInput) => Promise<OpenExternalResult>;
 	};
