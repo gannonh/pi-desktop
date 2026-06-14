@@ -171,6 +171,7 @@ const installApi = (overrides: Partial<PiDesktopApi["sourceControl"]> = {}) => {
 			writeText: vi.fn(async () => ({ ok: true as const, data: { written: true as const } })),
 		},
 		app: {
+			platform: "linux",
 			getVersion: vi.fn(async () => ({ ok: true as const, data: { name: "pi-desktop", version: "test" } })),
 			openExternal: vi.fn(async () => ({ ok: true as const, data: { opened: true as const } })),
 		},

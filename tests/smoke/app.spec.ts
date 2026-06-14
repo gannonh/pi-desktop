@@ -82,7 +82,10 @@ const expectSelectedComposerVisualTokens = async (page: Page) => {
 	);
 	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("width", "14px");
 	await expect(page.locator(".composer__control-row .composer__control-icon").first()).toHaveCSS("height", "14px");
-	await expect(page.locator(".chat-shell__suggestion").first()).toHaveCSS("border-top-color", "oklch(0.277 0 0)");
+	await expect(page.locator(".chat-shell__suggestion--planned").first()).toHaveCSS(
+		"border-top-color",
+		"oklch(0.277 0 0)",
+	);
 
 	const inputPanelBox = await page.locator(".composer__input-panel").boundingBox();
 	const controlRowBox = await page.locator(".composer__control-row").boundingBox();

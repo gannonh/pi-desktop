@@ -1,5 +1,6 @@
 import { Expand, Maximize2, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
+import { PlannedAffordanceButton } from "../components/planned-affordance";
 import { RightPanelAddMenu } from "./right-panel-add-menu";
 import { useRightPanel } from "./right-panel-context";
 import { getWorkspaceToolTabs, isWorkspaceFilesActive } from "./right-panel-state";
@@ -35,12 +36,20 @@ export function WorkspaceTabStrip() {
 			</div>
 			<div className="workspace-tab-strip__actions">
 				<RightPanelAddMenu onAdd={addTabFromMenu} />
-				<button type="button" className="workspace-tab-strip__action" aria-label="Expand panel" disabled>
+				<PlannedAffordanceButton
+					id="workspace.expand"
+					className="workspace-tab-strip__action"
+					aria-label="Expand panel"
+				>
 					<Expand className="workspace-tab-strip__action-icon" aria-hidden strokeWidth={1.75} />
-				</button>
-				<button type="button" className="workspace-tab-strip__action" aria-label="Full screen panel" disabled>
+				</PlannedAffordanceButton>
+				<PlannedAffordanceButton
+					id="workspace.fullscreen"
+					className="workspace-tab-strip__action"
+					aria-label="Full screen panel"
+				>
 					<Maximize2 className="workspace-tab-strip__action-icon" aria-hidden strokeWidth={1.75} />
-				</button>
+				</PlannedAffordanceButton>
 				<button
 					type="button"
 					className="workspace-tab-strip__action"

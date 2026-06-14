@@ -6,6 +6,7 @@ import {
 	PiSessionEventEnvelopeSchema,
 } from "../../shared/app-transport";
 import type { PiSessionEvent } from "../../shared/ipc";
+import { detectNavigatorPlatform } from "../../shared/app-platform";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
 import { writeBrowserClipboardText } from "./browser-clipboard";
@@ -159,6 +160,7 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 
 	return {
 		app: {
+			platform: detectNavigatorPlatform(),
 			getVersion: () => callRpc("app.getVersion"),
 			openExternal: (input) => callRpc("app.openExternal", input),
 		},

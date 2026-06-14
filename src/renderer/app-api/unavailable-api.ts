@@ -1,3 +1,4 @@
+import { detectNavigatorPlatform } from "../../shared/app-platform";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
 
@@ -6,6 +7,7 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 
 	return {
 		app: {
+			platform: detectNavigatorPlatform(),
 			getVersion: unavailable,
 			openExternal: unavailable,
 		},
