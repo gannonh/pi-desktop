@@ -201,7 +201,7 @@ describe("resolveSourceControlActions", () => {
 					}),
 				},
 			}).primary.id,
-		).toBe("createPullRequest");
+		).toBe("upToDate");
 	});
 
 	it("disables the diverged rebase action when the upstream ref name is unavailable", () => {

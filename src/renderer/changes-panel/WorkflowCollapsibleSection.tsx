@@ -10,6 +10,7 @@ export function WorkflowCollapsibleSection({
 	height,
 	onToggle,
 	setHeight,
+	headerAside,
 	children,
 }: {
 	title: string;
@@ -18,6 +19,7 @@ export function WorkflowCollapsibleSection({
 	height: number;
 	onToggle: () => void;
 	setHeight: (updater: (current: number) => number) => void;
+	headerAside?: ReactNode;
 	children: ReactNode;
 }) {
 	return (
@@ -37,19 +39,22 @@ export function WorkflowCollapsibleSection({
 					className="changes-panel__workflow-resize-handle changes-panel__workflow-resize-handle--top"
 				/>
 			) : null}
-			<button
-				type="button"
-				className="changes-panel__section-header changes-panel__workflow-section-header"
-				aria-expanded={expanded}
-				onClick={onToggle}
-			>
-				{expanded ? (
-					<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
-				) : (
-					<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
-				)}
-				<span>{title}</span>
-			</button>
+			<div className="changes-panel__workflow-section-header-row">
+				<button
+					type="button"
+					className="changes-panel__section-header changes-panel__workflow-section-header"
+					aria-expanded={expanded}
+					onClick={onToggle}
+				>
+					{expanded ? (
+						<ChevronDown aria-hidden className="changes-panel__section-chevron-icon" />
+					) : (
+						<ChevronRight aria-hidden className="changes-panel__section-chevron-icon" />
+					)}
+					<span>{title}</span>
+				</button>
+				{headerAside ? <div className="changes-panel__workflow-section-header-aside">{headerAside}</div> : null}
+			</div>
 			{expanded ? (
 				<>
 					<div className="changes-panel__workflow-block-content">{children}</div>

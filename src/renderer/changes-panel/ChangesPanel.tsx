@@ -41,7 +41,7 @@ import {
 } from "../components/ui/alert-dialog";
 import { useOptionalFileWorkspace } from "../file-workspace/use-optional-file-workspace";
 import { ChangesPanelProvider, useChangesPanel } from "./changes-panel-context";
-import { GitHistoryPanel } from "./GitHistoryPanel";
+import { GitHistoryPanel, type GitHistoryPanelControls } from "./GitHistoryPanel";
 import {
 	resolveSourceControlActions,
 	type SourceControlPrimaryActionId,
@@ -131,7 +131,7 @@ const formatBranchLabel = (status: GitStatusPayload | null): string | null => {
 
 const formatUpstreamSummary = (upstream: GitStatusPayload["upstreamStatus"]): string => {
 	if (!upstream) {
-		return "Loading upstream status…";
+		return "Checking upstream…";
 	}
 	if (!upstream.hasUpstream) {
 		return "No upstream configured";
@@ -366,7 +366,13 @@ const conflictButtonLabel = (operation: GitConflictOperation): string => {
 	}
 };
 
-function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestRequested: () => void }) {
+function CommitArea({
+	onCreatePullRequestRequested,
+	onInlineFeedbackChange,
+}: {
+	onCreatePullRequestRequested: () => void;
+	onInlineFeedbackChange?: (hasInlineFeedback: boolean) => void;
+}) {
 	const { projectId, status, refresh, pullRequest } = useChangesPanel();
 	const [message, setMessage] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
@@ -393,6 +399,27 @@ function CommitArea({ onCreatePullRequestRequested }: { onCreatePullRequestReque
 			setRecoveryError(null);
 		},
 	});
+
+	useEffect(() => {
+		onInlineFeedbackChange?.(
+			Boolean(
+				feedback ||
+					commitFailureMessage ||
+					recoveryError ||
+					commitGeneration.error ||
+					commitGeneration.successMessage ||
+					commitGeneration.isGenerating,
+			),
+		);
+	}, [
+		commitFailureMessage,
+		commitGeneration.error,
+		commitGeneration.isGenerating,
+		commitGeneration.successMessage,
+		feedback,
+		onInlineFeedbackChange,
+		recoveryError,
+	]);
 
 	const commit = async () => {
 		if (!projectId || !canCommit) {
@@ -570,6 +597,9 @@ function SourceControlActions({
 		if (!projectId || busyActionId) {
 			return;
 		}
+		if (id === "upToDate") {
+			return;
+		}
 		if (id === "commit" || id === "commitStaged") {
 			onCommit();
 			return;
@@ -637,8 +667,12 @@ function SourceControlActions({
 		isCommitBusy && (actions.primary.id === "commit" || actions.primary.id === "commitStaged")
 			? "Committing…"
 			: actions.primary.label;
+	const primaryDisabled =
+		actions.primary.id === "upToDate" ? true : Boolean(actions.primary.disabledReason);
+	const primaryTitle = actions.primary.id === "upToDate" ? undefined : actions.primary.disabledReason;
 
 	const upstreamSummary = formatUpstreamSummary(upstream);
+	const upstreamLoading = upstream === undefined;
 
 	return (
 		<div className="changes-panel__remote">
@@ -647,8 +681,8 @@ function SourceControlActions({
 					type="button"
 					variant="secondary"
 					size="sm"
-					disabled={Boolean(actions.primary.disabledReason)}
-					title={actions.primary.disabledReason}
+					disabled={primaryDisabled}
+					title={primaryTitle}
 					onClick={() => void runAction(actions.primary.id)}
 				>
 					{primaryLabel}
@@ -677,10 +711,17 @@ function SourceControlActions({
 						))}
 					</DropdownMenuContent>
 				</DropdownMenu>
+				{upstreamLoading ? (
+					<span className="changes-panel__remote-summary changes-panel__remote-summary--loading" aria-live="polite">
+						<span className="changes-panel__remote-summary-pulse" aria-hidden />
+						Checking upstream…
+					</span>
+				) : (
+					<p className="changes-panel__remote-summary" title={upstreamSummary}>
+						{upstreamSummary}
+					</p>
+				)}
 			</div>
-			<p className="changes-panel__remote-summary" title={upstreamSummary}>
-				{upstreamSummary}
-			</p>
 			{message ? <p className="changes-panel__feedback">{message}</p> : null}
 			{error ? <p className="changes-panel__error changes-panel__error--inline">{error}</p> : null}
 		</div>
@@ -933,6 +974,8 @@ function ChangesPanelBody() {
 	const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(new Set());
 	const [pendingDiscardEntries, setPendingDiscardEntries] = useState<readonly GitStatusEntry[]>([]);
 	const [createPullRequestRequestCount, setCreatePullRequestRequestCount] = useState(0);
+	const [commitStripHasInlineFeedback, setCommitStripHasInlineFeedback] = useState(false);
+	const [historyControls, setHistoryControls] = useState<GitHistoryPanelControls | null>(null);
 
 	useEffect(() => {
 		void refresh();
@@ -1066,6 +1109,9 @@ function ChangesPanelBody() {
 
 	const conflictOperation = status?.conflictOperation ?? "unknown";
 	const conflict = conflictLabel(conflictOperation);
+	const sectionsEmpty = status?.entries.length === 0 && !conflict;
+	const hasStageableEntries = (status?.entries ?? []).some((entry) => entry.area !== "staged");
+	const commitStripCompact = !hasStageableEntries && !commitStripHasInlineFeedback;
 	const abortConflict = async () => {
 		if (!projectId || !status || status.conflictOperation === "unknown") {
 			return;
@@ -1131,7 +1177,7 @@ function ChangesPanelBody() {
 					</Button>
 				</div>
 			) : null}
-			<div className="changes-panel__sections">
+			<div className={`changes-panel__sections${sectionsEmpty ? " changes-panel__sections--empty" : ""}`}>
 				{status && status.entries.length === 0 && !conflict ? (
 					<div className="changes-panel__empty changes-panel__empty--inline">
 						<p>No uncommitted changes</p>
@@ -1270,7 +1316,7 @@ function ChangesPanelBody() {
 				})}
 			</div>
 			<div
-				className="changes-panel__commit-strip"
+				className={`changes-panel__commit-strip${commitStripCompact ? " changes-panel__commit-strip--compact" : ""}`}
 				data-testid="changes-panel-commit-strip"
 				style={{ "--changes-panel-commit-height": `${layout.heights.commit}px` } as CSSProperties}
 			>
@@ -1286,6 +1332,7 @@ function ChangesPanelBody() {
 				<div className="changes-panel__commit-strip-content">
 					<CommitArea
 						onCreatePullRequestRequested={() => setCreatePullRequestRequestCount((count) => count + 1)}
+						onInlineFeedbackChange={setCommitStripHasInlineFeedback}
 					/>
 				</div>
 			</div>
@@ -1307,8 +1354,24 @@ function ChangesPanelBody() {
 					height={layout.heights.history}
 					onToggle={() => toggleWorkflowSection("history")}
 					setHeight={setLayoutHeight("history")}
+					headerAside={
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="changes-panel__history-refresh"
+							disabled={historyControls?.loading}
+							onClick={(event) => {
+								event.stopPropagation();
+								void historyControls?.refresh();
+							}}
+							aria-label="Refresh history"
+						>
+							<RefreshCw aria-hidden className={historyControls?.loading ? "changes-panel__spin" : undefined} />
+						</Button>
+					}
 				>
-					<GitHistoryPanel embedded />
+					<GitHistoryPanel embedded onRegisterControls={setHistoryControls} />
 				</WorkflowCollapsibleSection>
 				<WorkflowCollapsibleSection
 					title="Pull request"

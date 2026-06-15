@@ -166,11 +166,15 @@ describe("renderer style audit rules", () => {
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
 		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
 		const workflows = ruleBody(styles(), ".changes-panel__secondary");
+		const expandedWorkflow = ruleBody(styles(), ".changes-panel__workflow-section:has(.changes-panel__workflow-block-content)");
 
 		expect(workflowContent).toContain("max-height: var(--changes-panel-workflow-block-height, 18rem)");
 		expect(workflowContent).not.toMatch(/\n\s*height: var\(--changes-panel-workflow-block-height, 18rem\)/);
-		expect(workflows).toContain("align-content: start");
-		expect(workflows).toContain("grid-auto-rows: max-content");
+		expect(workflows).toContain("display: flex");
+		expect(workflows).toContain("flex: 1 1 auto");
+		expect(workflows).toContain("min-height: 0");
+		expect(expandedWorkflow).toContain("flex: 1 1 auto");
+		expect(expandedWorkflow).toContain("min-height: 0");
 	});
 
 	it("keeps Markdown toolbar icons compact and unmangled", () => {

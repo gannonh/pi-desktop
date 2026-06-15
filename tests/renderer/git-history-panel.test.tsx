@@ -246,4 +246,34 @@ describe("GitHistoryPanel", () => {
 			expect(screen.getByTestId("history-diff-error").textContent).toContain("Failed to load diff");
 		});
 	});
+
+	it("renders compact ref chips with overflow for long ref lists", async () => {
+		installApi({
+			getHistory: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [
+						{
+							...historyEntry,
+							refs: ["origin/main", "origin/HEAD", "feat/refine-ux", "tag/v1"],
+						},
+					],
+					incomingCount: 0,
+					outgoingCount: 0,
+				},
+			})),
+		});
+
+		render(
+			<ChangesPanelProvider projectId={projectId} defaultBaseRef="main" isActive>
+				<GitHistoryPanel />
+			</ChangesPanelProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("origin/main")).toBeTruthy();
+			expect(screen.getByText("origin/HEAD")).toBeTruthy();
+			expect(screen.getByText("+2")).toBeTruthy();
+		});
+	});
 });
