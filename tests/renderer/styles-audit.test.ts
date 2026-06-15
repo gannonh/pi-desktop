@@ -166,7 +166,10 @@ describe("renderer style audit rules", () => {
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
 		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
 		const workflows = ruleBody(styles(), ".changes-panel__secondary");
-		const expandedWorkflow = ruleBody(styles(), ".changes-panel__workflow-section:has(.changes-panel__workflow-block-content)");
+		const expandedWorkflow = ruleBody(
+			styles(),
+			".changes-panel__workflow-section:has(.changes-panel__workflow-block-content)",
+		);
 
 		expect(workflowContent).toContain("max-height: var(--changes-panel-workflow-block-height, 18rem)");
 		expect(workflowContent).not.toMatch(/\n\s*height: var\(--changes-panel-workflow-block-height, 18rem\)/);

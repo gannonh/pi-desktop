@@ -17,7 +17,7 @@ const parsePhase = () => {
 	const index = process.argv.indexOf("--phase");
 	const phase = index >= 0 ? process.argv[index + 1] : "before";
 	if (phase !== "before" && phase !== "after") {
-		throw new Error('Expected --phase before|after');
+		throw new Error("Expected --phase before|after");
 	}
 	return phase;
 };

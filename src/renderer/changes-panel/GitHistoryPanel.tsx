@@ -35,7 +35,10 @@ function HistoryRefChips({ refs }: { refs: string[] }) {
 				</span>
 			))}
 			{overflowCount > 0 ? (
-				<span className="changes-panel__history-ref-chip changes-panel__history-ref-chip--overflow" title={refs.join(", ")}>
+				<span
+					className="changes-panel__history-ref-chip changes-panel__history-ref-chip--overflow"
+					title={refs.join(", ")}
+				>
 					+{overflowCount}
 				</span>
 			) : null}

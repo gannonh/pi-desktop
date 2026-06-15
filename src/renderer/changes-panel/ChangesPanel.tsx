@@ -667,8 +667,7 @@ function SourceControlActions({
 		isCommitBusy && (actions.primary.id === "commit" || actions.primary.id === "commitStaged")
 			? "Committing…"
 			: actions.primary.label;
-	const primaryDisabled =
-		actions.primary.id === "upToDate" ? true : Boolean(actions.primary.disabledReason);
+	const primaryDisabled = actions.primary.id === "upToDate" ? true : Boolean(actions.primary.disabledReason);
 	const primaryTitle = actions.primary.id === "upToDate" ? undefined : actions.primary.disabledReason;
 
 	const upstreamSummary = formatUpstreamSummary(upstream);
@@ -712,7 +711,10 @@ function SourceControlActions({
 					</DropdownMenuContent>
 				</DropdownMenu>
 				{upstreamLoading ? (
-					<span className="changes-panel__remote-summary changes-panel__remote-summary--loading" aria-live="polite">
+					<span
+						className="changes-panel__remote-summary changes-panel__remote-summary--loading"
+						aria-live="polite"
+					>
 						<span className="changes-panel__remote-summary-pulse" aria-hidden />
 						Checking upstream…
 					</span>
