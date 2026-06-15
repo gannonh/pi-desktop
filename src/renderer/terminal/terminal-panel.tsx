@@ -1,0 +1,71 @@
+import { useRef } from "react";
+import type { ProjectRecord } from "../../shared/project-state";
+import { Button } from "../components/ui/button";
+import { TerminalEmptyStates } from "./terminal-empty-states";
+import { useTerminalConnection } from "./use-terminal-connection";
+
+interface TerminalPanelProps {
+	project: ProjectRecord | null;
+}
+
+export function TerminalPanel({ project }: TerminalPanelProps) {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const { state, terminate, restart } = useTerminalConnection({
+		project,
+		containerRef,
+	});
+
+	const showSurface = state.phase.kind === "idle" || state.phase.kind === "starting" || state.phase.kind === "running";
+	const projectPath = project?.path ?? null;
+	const hasAvailableProject = project?.availability.status === "available";
+	const emptyStatePhase =
+		state.phase.kind === "no-project" ||
+		state.phase.kind === "project-unavailable" ||
+		state.phase.kind === "exited" ||
+		state.phase.kind === "terminated" ||
+		state.phase.kind === "error"
+			? state.phase
+			: null;
+	const canRestart =
+		state.phase.kind === "exited" || state.phase.kind === "terminated" || state.phase.kind === "error";
+
+	return (
+		<div className="terminal-panel" data-testid="workspace-panel-terminal">
+			<header className="terminal-panel__header">
+				<div className="terminal-panel__meta">
+					<span className="terminal-panel__label">cwd</span>
+					<span className="terminal-panel__value">{projectPath ?? "No project selected"}</span>
+				</div>
+				<div className="terminal-panel__actions">
+					{state.phase.kind === "running" ? (
+						<Button type="button" variant="outline" size="sm" onClick={() => void terminate()}>
+							Terminate
+						</Button>
+					) : null}
+					{canRestart ? (
+						<Button type="button" variant="outline" size="sm" onClick={() => void restart()}>
+							Restart shell
+						</Button>
+					) : null}
+				</div>
+			</header>
+
+			{emptyStatePhase ? <TerminalEmptyStates phase={emptyStatePhase} /> : null}
+			{hasAvailableProject ? (
+				<div className="terminal-panel__surface" hidden={!showSurface}>
+					{state.phase.kind === "starting" ? (
+						<div className="terminal-panel__status" data-testid="terminal-panel-starting">
+							Starting shell...
+						</div>
+					) : null}
+					<div
+						ref={containerRef}
+						className="terminal-panel__xterm"
+						data-testid="terminal-panel-xterm"
+						aria-hidden={state.phase.kind !== "running"}
+					/>
+				</div>
+			) : null}
+		</div>
+	);
+}

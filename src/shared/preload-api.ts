@@ -75,6 +75,13 @@ import type {
 	SourceControlRemoteActionInput,
 	SourceControlAbortConflictInput,
 	SourceControlUpstreamStatusResult,
+	TerminalActionResult,
+	TerminalEvent,
+	TerminalKillInput,
+	TerminalResizeInput,
+	TerminalSpawnInput,
+	TerminalSpawnResult,
+	TerminalWriteInput,
 } from "./ipc";
 import type { AppPlatform } from "./app-platform";
 import type { PiSessionGetDefaultSettingsInput } from "./pi-session";
@@ -171,5 +178,12 @@ export interface PiDesktopApi {
 		updateQueuedMessage: (input: PiSessionUpdateQueuedMessageInput) => Promise<PiSessionQueueResult>;
 		removeQueuedMessage: (input: PiSessionRemoveQueuedMessageInput) => Promise<PiSessionQueueResult>;
 		onEvent: (listener: (event: PiSessionEvent) => void) => () => void;
+	};
+	terminal: {
+		spawn: (input: TerminalSpawnInput) => Promise<TerminalSpawnResult>;
+		write: (input: TerminalWriteInput) => void;
+		resize: (input: TerminalResizeInput) => Promise<TerminalActionResult>;
+		kill: (input: TerminalKillInput) => Promise<TerminalActionResult>;
+		onEvent: (listener: (event: TerminalEvent) => void) => () => void;
 	};
 }

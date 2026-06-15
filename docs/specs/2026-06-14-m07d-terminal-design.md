@@ -10,7 +10,7 @@ timestamp: 2026-06-14T00:00:00Z
 
 ## Status
 
-Draft for user review. Build starts only after explicit approval.
+Implemented. See [M07D build report](/specs/2026-06-14-m07d-terminal-build-report.md).
 
 ## Goal
 

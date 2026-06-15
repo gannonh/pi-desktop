@@ -6,6 +6,7 @@ export default defineConfig({
 			ignoreDynamicRequires: true,
 		},
 		rollupOptions: {
+			external: ["node-pty"],
 			output: {
 				banner: (chunk) =>
 					chunk.fileName === "main.js"

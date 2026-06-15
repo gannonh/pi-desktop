@@ -8,7 +8,9 @@ const config: ForgeConfig = {
 		name: "pi-desktop",
 		executableName: "pi-desktop",
 	},
-	rebuildConfig: {},
+	rebuildConfig: {
+		onlyModules: ["node-pty"],
+	},
 	makers: [new MakerZIP({}, ["darwin"])],
 	plugins: [
 		new VitePlugin({

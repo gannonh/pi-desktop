@@ -16,7 +16,6 @@ Start here before substantial Pi Desktop work. This OKF bundle organizes roadmap
 
 # Current Work
 
-* [M07D Right Panel Terminal Design](/specs/2026-06-14-m07d-terminal-design.md) - Draft design for replacing the Terminal mock with an Orca-inspired xterm and node-pty terminal.
 * [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md) - Active source-control follow-up roadmap after M07C.
 * [Worktree and runtime scope follow-up triggers](/specs/2026-06-10-worktree-scope-followups.md) - Decision gates for reopening worktree and runtime Git boundaries.
 * [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Deferred hosted review scope and follow-up entry points.

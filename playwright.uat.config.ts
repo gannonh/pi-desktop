@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
 	testDir: "scripts/uat",
-	testMatch: "m06-composer-evidence.spec.ts",
+	testMatch: "**/*.spec.ts",
 	timeout: 180_000,
 	expect: {
 		timeout: 20_000,

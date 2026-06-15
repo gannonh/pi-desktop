@@ -12,10 +12,13 @@ import { initializeGitRepository } from "./projects/git";
 import { createProjectService, type ProjectService } from "./projects/project-service";
 import { createProjectStore } from "./projects/project-store";
 import { createPiSessionLister, readSessionInfoForPath } from "./sessions/pi-session-index";
+import { createTerminalCwdResolver } from "./terminal/resolve-terminal-cwd";
+import { registerTerminalIpc, type TerminalIpcHandle } from "./terminal/register-terminal-ipc";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow: BrowserWindow | null = null;
 let appBackend: AppBackend | null = null;
+let terminalIpc: TerminalIpcHandle | null = null;
 
 const createWindow = () => {
 	const smokeHeadless = shouldRunSmokeHeadless();
@@ -24,7 +27,7 @@ const createWindow = () => {
 		height: 820,
 		minWidth: 960,
 		minHeight: 640,
-		show: !smokeHeadless,
+		show: false,
 		frame: false,
 		title: "pi-desktop",
 		backgroundColor: "#0a0a0a",
@@ -36,6 +39,12 @@ const createWindow = () => {
 		},
 	});
 	mainWindow = createdWindow;
+
+	if (!smokeHeadless) {
+		createdWindow.once("ready-to-show", () => {
+			createdWindow.show();
+		});
+	}
 
 	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
 		void createdWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -101,6 +110,16 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 		loadSessionHistory: shouldUseSmokePiSession() ? loadSmokePiSessionHistory : undefined,
 	});
 	appBackend = backend;
+
+	terminalIpc = registerTerminalIpc({
+		ipcMain,
+		resolveCwd: createTerminalCwdResolver((input) => projectService.getSessionWorkspace(input)),
+		sendEvent: (event) => {
+			if (mainWindow && !mainWindow.isDestroyed()) {
+				mainWindow.webContents.send(IpcChannels.terminalEvent, event);
+			}
+		},
+	});
 
 	backend.onPiSessionEvent((event) => {
 		if (mainWindow && !mainWindow.isDestroyed()) {
@@ -263,6 +282,12 @@ const registerIpcHandlers = (projectService: ProjectService) => {
 	});
 };
 
+// Disable hardware acceleration on Linux when PI_DESKTOP_DISABLE_GPU=1.
+// Headless/cloud VMs often paint a blank window with GPU compositing enabled (see AGENTS.md).
+if (process.platform === "linux" && process.env.PI_DESKTOP_DISABLE_GPU === "1") {
+	app.disableHardwareAcceleration();
+}
+
 app.whenReady().then(() => {
 	if (shouldRunSmokeHeadless() && process.platform === "darwin") {
 		app.dock?.hide();
@@ -298,6 +323,9 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
 	const backend = appBackend;
 	appBackend = null;
+	const terminals = terminalIpc;
+	terminalIpc = null;
+	terminals?.dispose();
 	void backend?.dispose().catch((error) => {
 		console.error("Failed to dispose app backend.", error);
 	});

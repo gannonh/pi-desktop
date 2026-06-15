@@ -30,6 +30,10 @@ import {
 	SourceControlPullRequestInfoResultSchema,
 	SourceControlGhAuthStatusResultSchema,
 	SourceControlUpstreamStatusResultSchema,
+	TerminalActionResultSchema,
+	TerminalEventSchema,
+	TerminalSpawnResultSchema,
+	TerminalWriteInputSchema,
 } from "../shared/ipc";
 import type { PiDesktopApi } from "../shared/preload-api";
 import { createIpcError, type IpcResult } from "../shared/result";
@@ -126,6 +130,27 @@ const api: PiDesktopApi = {
 			};
 			ipcRenderer.on(IpcChannels.piSessionEvent, handler);
 			return () => ipcRenderer.removeListener(IpcChannels.piSessionEvent, handler);
+		},
+	},
+	terminal: {
+		spawn: async (input) => safeInvokeParse(IpcChannels.terminalSpawn, TerminalSpawnResultSchema, input),
+		write: (input) => {
+			const parsed = TerminalWriteInputSchema.safeParse(input);
+			if (parsed.success) {
+				ipcRenderer.send(IpcChannels.terminalWrite, parsed.data);
+			}
+		},
+		resize: async (input) => safeInvokeParse(IpcChannels.terminalResize, TerminalActionResultSchema, input),
+		kill: async (input) => safeInvokeParse(IpcChannels.terminalKill, TerminalActionResultSchema, input),
+		onEvent: (listener) => {
+			const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+				const parsed = TerminalEventSchema.safeParse(payload);
+				if (parsed.success) {
+					listener(parsed.data);
+				}
+			};
+			ipcRenderer.on(IpcChannels.terminalEvent, handler);
+			return () => ipcRenderer.removeListener(IpcChannels.terminalEvent, handler);
 		},
 	},
 	workspaceFiles: {

@@ -10,6 +10,7 @@ import { detectNavigatorPlatform } from "../../shared/app-platform";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
 import { writeBrowserClipboardText } from "./browser-clipboard";
+import { createTerminalUnavailableNamespace } from "./terminal-unavailable";
 
 type AppRpcResponse<TOperation extends AppRpcOperation> = z.infer<(typeof AppRpcResponseSchemas)[TOperation]>;
 type AppRpcInputArgs<TOperation extends AppRpcOperation> =
@@ -216,6 +217,9 @@ export const createHttpPiDesktopApi = ({ baseUrl }: { baseUrl: string }): PiDesk
 				};
 			},
 		},
+		terminal: createTerminalUnavailableNamespace(
+			"Terminal is unavailable in web preview. Use the Electron desktop app.",
+		),
 		workspaceFiles: {
 			listDirectory: (input) => callRpc("workspaceFiles.listDirectory", input),
 			readFile: (input) => callRpc("workspaceFiles.readFile", input),

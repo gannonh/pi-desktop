@@ -1,6 +1,7 @@
 import { detectNavigatorPlatform } from "../../shared/app-platform";
 import type { PiDesktopApi } from "../../shared/preload-api";
 import { err } from "../../shared/result";
+import { createTerminalUnavailableNamespace } from "./terminal-unavailable";
 
 export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => {
 	const unavailable = async () => err("app_transport.unavailable", message);
@@ -94,5 +95,6 @@ export const createUnavailablePiDesktopApi = (message: string): PiDesktopApi => 
 			removeQueuedMessage: unavailable,
 			onEvent: () => () => {},
 		},
+		terminal: createTerminalUnavailableNamespace("Terminal is unavailable in this preview environment."),
 	};
 };

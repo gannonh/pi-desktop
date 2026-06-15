@@ -13,6 +13,7 @@ import {
 	type StandaloneChatMetadata,
 } from "../shared/project-state";
 import { writeBrowserClipboardText } from "./app-api/browser-clipboard";
+import { createTerminalUnavailableNamespace } from "./app-api/terminal-unavailable";
 
 const now = new Date().toISOString();
 
@@ -781,6 +782,9 @@ export const installDevPreviewApi = () => {
 				};
 			},
 		},
+		terminal: createTerminalUnavailableNamespace(
+			"Terminal is unavailable in web preview. Use the Electron desktop app.",
+		),
 		clipboard: {
 			writeText: writeBrowserClipboardText,
 		},

@@ -34,12 +34,6 @@ export const createDefaultMockTabs = (): RightPanelTab[] => [
 	createMockTab("browser"),
 ];
 
-export type TerminalPanelMockData = {
-	cwd: string;
-	prompt: string;
-	output: string;
-};
-
 export type BrowserPanelMockData = {
 	url: string;
 	title: string;
@@ -50,18 +44,6 @@ export type MarkdownPanelMockData = {
 	heading: string;
 	content: string;
 };
-
-export const resolveTerminalMock = (tab: RightPanelTab): TerminalPanelMockData => ({
-	cwd: tab.subtitle ?? "~/pi-desktop",
-	prompt: "$ pnpm test",
-	output: [
-		"> pi-desktop@0.0.0 test",
-		"> vitest run",
-		"",
-		" PASS  tests/renderer/right-panel-state.test.ts",
-		" Tests  4 passed (4)",
-	].join("\n"),
-});
 
 export const resolveBrowserMock = (tab: RightPanelTab): BrowserPanelMockData => ({
 	url: `https://${tab.subtitle ?? "localhost:5173"}`,
