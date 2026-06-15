@@ -2,13 +2,13 @@
 
 # Active Work
 
-* [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md) - Layout, divider, primary-action, and workflow refinements with before/after visual evidence on `feat/refine-ux`.
 * [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md) - Active follow-up roadmap for Git and source-control parity after M07C.
 * [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Active deferral note for hosted review capabilities after Wave 5.1.
 * [Worktree and runtime scope follow-up triggers](/specs/2026-06-10-worktree-scope-followups.md) - Active trigger list for reopening worktree, runtime git, and branch-lifecycle boundaries.
 
 # Completed Work
 
+* [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md) - Layout, divider, primary-action, and workflow refinements with before/after visual evidence.
 * [M07D Right Panel Terminal Design](/specs/2026-06-14-m07d-terminal-design.md) - Implemented design for replacing the Terminal mock with an Orca-inspired xterm and node-pty terminal.
 * [M07D Right Panel Terminal build report](/specs/2026-06-14-m07d-terminal-build-report.md) - Completion report and verification record for the M07D terminal milestone.
 * [Changes panel Orca Source Control parity](/specs/2026-06-07-changes-panel-design.md) - Implemented design for replacing the mock Changes tab with selected-project source-control workflows.

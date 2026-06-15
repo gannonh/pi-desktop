@@ -1,6 +1,7 @@
 # Specs Update Log
 
 ## 2026-06-15
+* **Spec**: Completed [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md) on `feat/changes-panel-polish-7881` — compact layout, single-boundary dividers, synced **Up to date** primary, history header refresh, skeleton loaders, and paired before/after evidence under `.impeccable/evidence/changes-panel/`.
 * **Spec**: Added [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md) — planned layout, divider, and workflow refinements with before/after evidence on `feat/refine-ux`.
 
 ## 2026-06-14
