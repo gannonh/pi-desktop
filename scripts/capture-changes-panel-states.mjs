@@ -1,6 +1,6 @@
 /**
- * One-off visual evidence harness for Changes panel assessment.
- * Usage: node scripts/capture-changes-panel-states.mjs
+ * Visual evidence harness for Changes panel before/after polish.
+ * Usage: node scripts/capture-changes-panel-states.mjs --phase before|after
  */
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -11,8 +11,19 @@ import { chromium } from "@playwright/test";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const evidenceDir = path.join(repoRoot, ".impeccable/evidence/changes-panel");
 const projectName = "Changes panel review";
+
+const parsePhase = () => {
+	const index = process.argv.indexOf("--phase");
+	const phase = index >= 0 ? process.argv[index + 1] : "before";
+	if (phase !== "before" && phase !== "after") {
+		throw new Error('Expected --phase before|after');
+	}
+	return phase;
+};
+
+const phase = parsePhase();
+const evidenceDir = path.join(repoRoot, ".impeccable/evidence/changes-panel", phase);
 
 const noopLogger = { log: () => {}, error: () => {} };
 const noopProcess = {
@@ -63,6 +74,9 @@ const seedGitRepo = async (projectPath, mode) => {
 
 	if (mode === "dirty" || mode === "bulk") {
 		await writeFile(path.join(projectPath, "README.md"), "# Review project\n\nUpdated intro.\n");
+		await mkdir(path.join(projectPath, "src/renderer"), { recursive: true });
+		await mkdir(path.join(projectPath, "src/main"), { recursive: true });
+		await mkdir(path.join(projectPath, "docs/specs"), { recursive: true });
 		await writeFile(path.join(projectPath, "src/renderer/App.tsx"), "export {};\n");
 		await writeFile(path.join(projectPath, "src/main/index.ts"), "export {};\n");
 		await writeFile(path.join(projectPath, "docs/specs/new-feature.md"), "# New feature\n");
@@ -78,6 +92,13 @@ const seedGitRepo = async (projectPath, mode) => {
 		await execFileAsync("git", ["add", "feature.txt"], { cwd: projectPath });
 		await execFileAsync("git", ["commit", "-m", "feat: refine ux branch"], { cwd: projectPath });
 	}
+};
+
+const recreateGitRepo = async (currentPath, mode) => {
+	await rm(currentPath, { recursive: true, force: true });
+	const nextPath = await mkdtemp(path.join(os.tmpdir(), "pi-changes-review-repo-"));
+	await seedGitRepo(nextPath, mode);
+	return nextPath;
 };
 
 const installSourceControlMock = async (page, scenario) => {
@@ -106,38 +127,41 @@ const installSourceControlMock = async (page, scenario) => {
 
 		const scenarios = {
 			conflict: {
-				getStatus: ok({
-					entries: [
-						{ path: "README.md", status: "modified", area: "unstaged", conflictKind: "both_modified" },
-						{ path: "package.json", status: "modified", area: "unstaged", conflictKind: "both_modified" },
-					],
-					conflictOperation: "merge",
-					branch: "refs/heads/feat/refine-ux",
-				}),
+				getStatus: async () =>
+					ok({
+						entries: [
+							{ path: "README.md", status: "modified", area: "unstaged", conflictKind: "both_modified" },
+							{ path: "package.json", status: "modified", area: "unstaged", conflictKind: "both_modified" },
+						],
+						conflictOperation: "merge",
+						branch: "refs/heads/feat/refine-ux",
+					}),
 			},
 			linkedPr: {
-				getStatus: ok({
-					entries: [],
-					conflictOperation: "unknown",
-					branch: "refs/heads/feat/refine-ux",
-					upstreamStatus: {
-						hasUpstream: true,
-						upstreamName: "origin/feat/refine-ux",
-						ahead: 2,
-						behind: 0,
-						relation: "ahead",
-						isConfigured: true,
-					},
-				}),
-				getPullRequestInfo: ok({
-					title: "Refine Changes panel UX",
-					url: "https://github.com/gannonh/pi-desktop/pull/42",
-					state: "open",
-					number: 42,
-				}),
+				getStatus: async () =>
+					ok({
+						entries: [],
+						conflictOperation: "unknown",
+						branch: "refs/heads/feat/refine-ux",
+						upstreamStatus: {
+							hasUpstream: true,
+							upstreamName: "origin/feat/refine-ux",
+							ahead: 2,
+							behind: 0,
+							relation: "ahead",
+							isConfigured: true,
+						},
+					}),
+				getPullRequestInfo: async () =>
+					ok({
+						title: "Refine Changes panel UX",
+						url: "https://github.com/gannonh/pi-desktop/pull/42",
+						state: "open",
+						number: 42,
+					}),
 			},
 			noGit: {
-				getStatus: fail("source_control.not_a_git_repo", "Project is not a git repository."),
+				getStatus: async () => fail("source_control.not_a_git_repo", "Project is not a git repository."),
 			},
 		};
 
@@ -235,10 +259,17 @@ const expandWorkflow = async (page, name) => {
 	}
 };
 
+const switchProject = async (page, userDataDir, projectPath) => {
+	await writeProjectStore(userDataDir, projectPath);
+	await page.reload({ waitUntil: "load" });
+	await page.waitForTimeout(10_000);
+	await openChangesPanel(page);
+};
+
 const main = async () => {
 	await mkdir(evidenceDir, { recursive: true });
 	const userDataDir = await mkdtemp(path.join(os.tmpdir(), "pi-changes-review-data-"));
-	const projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-changes-review-repo-"));
+	let projectPath = await mkdtemp(path.join(os.tmpdir(), "pi-changes-review-repo-"));
 	const previousUserDataDir = process.env.PI_DESKTOP_USER_DATA_DIR;
 	const previousSmoke = process.env.PI_DESKTOP_SMOKE_PI_SESSION;
 
@@ -268,51 +299,38 @@ const main = async () => {
 		await expandWorkflow(page, "Branch compare");
 		await expandWorkflow(page, "History");
 		await expandWorkflow(page, "Pull request");
-		await capture(page, "02-clean-all-workflows-expanded.png");
+		await capture(page, "02-clean-all-expanded.png");
 
-		await page.evaluate(() => window.localStorage.removeItem("pi-desktop.changes-panel.layout.v1"));
-		await page.reload({ waitUntil: "load" });
-		await openChangesPanel(page);
+		projectPath = await recreateGitRepo(projectPath, "dirty");
+		await switchProject(page, userDataDir, projectPath);
+		await capture(page, "03-dirty-files.png");
+
+		projectPath = await recreateGitRepo(projectPath, "bulk");
+		await switchProject(page, userDataDir, projectPath);
+		await page.locator('[aria-label="Select README.md"]').click();
+		await page.locator('[aria-label="Select src/renderer/App.tsx"]').click();
+		await capture(page, "04-bulk-selection.png");
+
+		await seedGitRepo(projectPath, "clean");
+		await switchProject(page, userDataDir, projectPath);
 		await installSourceControlMock(page, "linkedPr");
 		await page.getByRole("button", { name: "Refresh source control status" }).click();
 		await page.waitForTimeout(500);
 		await expandWorkflow(page, "History");
-		await capture(page, "03-linked-pr-expanded-history.png");
+		await capture(page, "05-linked-pr-history.png");
 
 		await installSourceControlMock(page, "conflict");
 		await page.getByRole("button", { name: "Refresh source control status" }).click();
 		await page.waitForTimeout(500);
-		await capture(page, "04-merge-conflict.png");
-
-		await seedGitRepo(projectPath, "dirty");
-		await page.getByRole("button", { name: "Refresh source control status" }).click();
-		await page.waitForTimeout(500);
-		await page.evaluate(() => window.localStorage.removeItem("pi-desktop.changes-panel.layout.v1"));
-		await page.reload({ waitUntil: "load" });
-		await openChangesPanel(page);
-		await capture(page, "05-dirty-files-collapsed.png");
-
-		await expandWorkflow(page, "Branch compare");
-		await expandWorkflow(page, "History");
-		await capture(page, "06-dirty-partial-workflows-expanded.png");
-
-		await seedGitRepo(projectPath, "bulk");
-		await page.getByRole("button", { name: "Refresh source control status" }).click();
-		await page.waitForTimeout(500);
-		await page.reload({ waitUntil: "load" });
-		await openChangesPanel(page);
-		await page.locator('[aria-label="Select README.md"]').click();
-		await page.locator('[aria-label="Select src/renderer/App.tsx"]').click();
-		await capture(page, "07-bulk-selection.png");
+		await capture(page, "06-merge-conflict.png");
 
 		const noGitPath = await mkdtemp(path.join(os.tmpdir(), "pi-changes-no-git-"));
-		await writeProjectStore(userDataDir, noGitPath);
-		await page.reload({ waitUntil: "load" });
-		await openChangesPanel(page);
-		await capture(page, "08-no-git-repo.png");
+		await installSourceControlMock(page, "noGit");
+		await switchProject(page, userDataDir, noGitPath);
+		await capture(page, "07-no-git.png");
 
 		await context.close();
-		console.log(`Captured screenshots in ${evidenceDir}`);
+		console.log(`Captured ${phase} screenshots in ${evidenceDir}`);
 	} finally {
 		await browser.close();
 		await server?.shutdown();
