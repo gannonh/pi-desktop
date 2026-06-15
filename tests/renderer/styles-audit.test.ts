@@ -163,6 +163,18 @@ describe("renderer style audit rules", () => {
 		expect(menu).toContain("min-width: 13rem");
 	});
 
+	it("keeps workflow field labels subordinate to section headers", () => {
+		const css = styles();
+		const workflowHeader = ruleBody(css, ".changes-panel__workflow-section-header");
+		const fieldRulesStart = css.indexOf(".changes-panel__compare-controls label,");
+		expect(fieldRulesStart).toBeGreaterThanOrEqual(0);
+		const fieldRules = css.slice(fieldRulesStart, css.indexOf("}", fieldRulesStart));
+
+		expect(workflowHeader).toContain("font-size: var(--type-label)");
+		expect(fieldRules).toContain("font-size: var(--type-caption)");
+		expect(fieldRules).toContain("color: var(--color-muted-foreground)");
+	});
+
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
 		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
 		const workflows = ruleBody(styles(), ".changes-panel__secondary");

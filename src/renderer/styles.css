@@ -2245,6 +2245,10 @@ body.file-workspace--resizing {
 	flex: 1 1 auto;
 	min-width: 0;
 	border-bottom: 1px solid transparent;
+	font-size: var(--type-label);
+	font-weight: 600;
+	color: var(--color-foreground);
+	letter-spacing: 0.01em;
 }
 
 .changes-panel__workflow-section-header-aside {
@@ -2339,9 +2343,31 @@ body.file-workspace--resizing {
 
 .changes-panel__commit-input-row,
 .changes-panel__compare-controls,
-.changes-panel__pr label {
+.changes-panel__pr > label {
 	display: grid;
 	gap: 0.25rem;
+}
+
+.changes-panel__compare-controls label,
+.changes-panel__pr > label {
+	font-size: var(--type-caption);
+	font-weight: 500;
+	color: var(--color-muted-foreground);
+	line-height: 1.2;
+}
+
+.changes-panel__compare-controls [data-slot="button"],
+.changes-panel__linked-pr-actions [data-slot="button"],
+.changes-panel__pr .changes-panel__commit-actions [data-slot="button"] {
+	height: 1.625rem;
+	padding-inline: 0.5rem;
+	font-size: var(--type-caption);
+	gap: 0.25rem;
+}
+
+.changes-panel__linked-pr-actions [data-slot="button"] svg {
+	width: 0.75rem;
+	height: 0.75rem;
 }
 
 .changes-panel__commit-input-row {
@@ -2401,14 +2427,17 @@ body.file-workspace--resizing {
 	border-radius: 6px;
 	background: var(--color-background);
 	color: var(--color-foreground);
-	font: inherit;
-	padding: 0.375rem 0.5rem;
+	font-size: var(--type-caption);
+	line-height: 1.35;
+	padding: 0.3125rem 0.4375rem;
 	resize: vertical;
 }
 
 .changes-panel__commit-input {
 	min-height: 2rem;
 	max-height: 6rem;
+	font-size: var(--type-label);
+	padding: 0.375rem 0.5rem;
 	resize: none;
 	line-height: 1.35;
 }
@@ -2423,7 +2452,8 @@ body.file-workspace--resizing {
 .changes-panel__linked-pr-title {
 	flex: 1 1 auto;
 	min-width: 0;
-	font-size: var(--type-body);
+	font-size: var(--type-label);
+	font-weight: 500;
 	color: var(--color-foreground);
 }
 
