@@ -2,6 +2,7 @@
 
 # Active Work
 
+* [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md) - Layout, divider, primary-action, and workflow refinements with before/after visual evidence on `feat/refine-ux`.
 * [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md) - Active follow-up roadmap for Git and source-control parity after M07C.
 * [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Active deferral note for hosted review capabilities after Wave 5.1.
 * [Worktree and runtime scope follow-up triggers](/specs/2026-06-10-worktree-scope-followups.md) - Active trigger list for reopening worktree, runtime git, and branch-lifecycle boundaries.
