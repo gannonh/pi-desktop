@@ -2162,19 +2162,17 @@ body.file-workspace--resizing {
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-height: 0;
+	overflow-y: auto;
 }
 
 .changes-panel__sections {
 	display: flex;
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	flex-direction: column;
-	min-height: 0;
-	overflow-y: auto;
 }
 
 .changes-panel__sections--empty {
 	flex: 0 0 auto;
-	min-height: 0;
 }
 
 .changes-panel__empty {
@@ -2217,21 +2215,14 @@ body.file-workspace--resizing {
 
 .changes-panel__secondary {
 	display: flex;
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	flex-direction: column;
-	min-height: 0;
-	overflow-y: auto;
 }
 
 .changes-panel__workflow-section {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
-	min-height: 0;
-}
-
-.changes-panel__workflow-section:has(.changes-panel__workflow-block-content) {
-	flex: 1 1 auto;
-	min-height: 0;
 }
 
 .changes-panel__workflow-section-header-row {
@@ -2258,10 +2249,7 @@ body.file-workspace--resizing {
 }
 
 .changes-panel__workflow-block-content {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	min-height: 0;
+	flex: 0 1 auto;
 	max-height: var(--changes-panel-workflow-block-height, 18rem);
 	overflow: auto;
 	padding: 0.625rem 0.875rem 0;
