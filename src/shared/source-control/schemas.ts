@@ -200,6 +200,7 @@ export const SourceControlPullRequestInfoSchema = z.strictObject({
 	url: z.string(),
 	state: z.enum(["open", "closed", "merged", "unknown"]),
 	number: z.number().int().positive().optional(),
+	isDraft: z.boolean().optional(),
 });
 
 export const SourceControlGhAuthStatusSchema = z.strictObject({

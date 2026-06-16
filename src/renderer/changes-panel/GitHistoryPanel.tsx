@@ -19,7 +19,55 @@ const formatAuthorDate = (authorDate: string): string => {
 	});
 };
 
-export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
+const MAX_VISIBLE_REFS = 2;
+
+function HistoryRefChips({ refs }: { refs: string[] }) {
+	if (refs.length === 0) {
+		return null;
+	}
+	const visibleRefs = refs.slice(0, MAX_VISIBLE_REFS);
+	const overflowCount = refs.length - visibleRefs.length;
+	return (
+		<span className="changes-panel__history-refs">
+			{visibleRefs.map((ref) => (
+				<span key={ref} className="changes-panel__history-ref-chip" title={ref}>
+					{ref}
+				</span>
+			))}
+			{overflowCount > 0 ? (
+				<span
+					className="changes-panel__history-ref-chip changes-panel__history-ref-chip--overflow"
+					title={refs.join(", ")}
+				>
+					+{overflowCount}
+				</span>
+			) : null}
+		</span>
+	);
+}
+
+function HistorySkeletonRows() {
+	return (
+		<div className="changes-panel__history-skeleton" aria-hidden>
+			<div className="changes-panel__skeleton-row" />
+			<div className="changes-panel__skeleton-row" />
+			<div className="changes-panel__skeleton-row changes-panel__skeleton-row--short" />
+		</div>
+	);
+}
+
+export type GitHistoryPanelControls = {
+	refresh: () => Promise<void>;
+	loading: boolean;
+};
+
+export function GitHistoryPanel({
+	embedded = false,
+	onRegisterControls,
+}: {
+	embedded?: boolean;
+	onRegisterControls?: (controls: GitHistoryPanelControls) => void;
+}) {
 	const { projectId } = useChangesPanel();
 	const fileWorkspace = useOptionalFileWorkspace();
 	const [history, setHistory] = useState<GitHistoryResult | null>(null);
@@ -51,6 +99,19 @@ export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	useEffect(() => {
+		onRegisterControls?.({ refresh, loading });
+	}, [loading, onRegisterControls, refresh]);
+
+	useEffect(() => {
+		if (!embedded) {
+			return;
+		}
+		return () => {
+			onRegisterControls?.({ refresh: async () => {}, loading: false });
+		};
+	}, [embedded, onRegisterControls]);
 
 	const selectCommit = async (entry: GitHistoryEntry) => {
 		if (!projectId) {
@@ -112,21 +173,7 @@ export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 			className={embedded ? "changes-panel__history-content" : "changes-panel__history"}
 			data-testid={embedded ? undefined : "changes-panel-history"}
 		>
-			{embedded ? (
-				<div className="changes-panel__history-toolbar">
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						disabled={loading}
-						onClick={() => void refresh()}
-						aria-label="Refresh history"
-					>
-						<RefreshCw aria-hidden className={loading ? "changes-panel__spin" : undefined} />
-						Refresh
-					</Button>
-				</div>
-			) : (
+			{!embedded ? (
 				<div className="changes-panel__history-header">
 					<span className="changes-panel__history-title">History</span>
 					<Button
@@ -140,8 +187,8 @@ export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 						<RefreshCw aria-hidden className={loading ? "changes-panel__spin" : undefined} />
 					</Button>
 				</div>
-			)}
-			{loading && !history ? <p className="changes-panel__history-status">Loading history…</p> : null}
+			) : null}
+			{loading && !history ? <HistorySkeletonRows /> : null}
 			{error ? <p className="changes-panel__error">{error}</p> : null}
 			{history ? (
 				<div className="changes-panel__history-list">
@@ -174,9 +221,7 @@ export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 									<span className="changes-panel__history-meta">
 										{entry.author} • {formatAuthorDate(entry.authorDate)}
 									</span>
-									{entry.refs.length > 0 ? (
-										<span className="changes-panel__history-refs">{entry.refs.join(", ")}</span>
-									) : null}
+									<HistoryRefChips refs={entry.refs} />
 								</button>
 							</div>
 						);
@@ -188,7 +233,7 @@ export function GitHistoryPanel({ embedded = false }: { embedded?: boolean }) {
 					<p className="changes-panel__history-commit-title">
 						{selectedCommit.shortSha} {selectedCommit.subject}
 					</p>
-					{commitFilesLoading ? <p className="changes-panel__history-status">Loading changed files…</p> : null}
+					{commitFilesLoading ? <HistorySkeletonRows /> : null}
 					{commitFilesError ? <p className="changes-panel__error">{commitFilesError}</p> : null}
 					{diffError ? (
 						<p className="changes-panel__error" data-testid="history-diff-error">

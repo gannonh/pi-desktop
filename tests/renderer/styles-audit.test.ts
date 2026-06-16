@@ -163,14 +163,46 @@ describe("renderer style audit rules", () => {
 		expect(menu).toContain("min-width: 13rem");
 	});
 
+	it("keeps workflow field labels subordinate to section headers", () => {
+		const css = styles();
+		const workflowHeader = ruleBody(css, ".changes-panel__workflow-section-header");
+		const fieldRulesStart = css.indexOf(".changes-panel__compare-controls label,");
+		expect(fieldRulesStart).toBeGreaterThanOrEqual(0);
+		const fieldRules = css.slice(fieldRulesStart, css.indexOf("}", fieldRulesStart));
+
+		expect(workflowHeader).toContain("font-size: var(--type-label)");
+		expect(fieldRules).toContain("font-size: var(--type-caption)");
+		expect(fieldRules).toContain("color: var(--color-muted-foreground)");
+	});
+
+	it("keeps full-bleed structural dividers between workflow sections", () => {
+		const css = styles();
+		const workflowSection = ruleBody(css, ".changes-panel__workflow-section");
+		const resizeRulesStart = css.indexOf(".changes-panel__section-resize-handle::before,");
+		const workspaceBodyStart = css.indexOf(".workspace-panel__body:has(.file-workspace),");
+
+		expect(workflowSection).toContain("border-top: 1px solid var(--border-subtle)");
+		expect(resizeRulesStart).toBeGreaterThanOrEqual(0);
+		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("left: 0");
+		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("background: transparent");
+		expect(workspaceBodyStart).toBeGreaterThanOrEqual(0);
+		expect(css.slice(workspaceBodyStart, css.indexOf("}", workspaceBodyStart))).toContain(".changes-panel");
+		expect(css.slice(workspaceBodyStart, css.indexOf("}", workspaceBodyStart))).toContain("padding: 0");
+	});
+
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
+		const content = ruleBody(styles(), ".changes-panel__content");
 		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
 		const workflows = ruleBody(styles(), ".changes-panel__secondary");
+		const workflowSection = ruleBody(styles(), ".changes-panel__workflow-section");
 
+		expect(content).toContain("overflow-y: auto");
 		expect(workflowContent).toContain("max-height: var(--changes-panel-workflow-block-height, 18rem)");
 		expect(workflowContent).not.toMatch(/\n\s*height: var\(--changes-panel-workflow-block-height, 18rem\)/);
-		expect(workflows).toContain("align-content: start");
-		expect(workflows).toContain("grid-auto-rows: max-content");
+		expect(workflowContent).not.toContain("flex: 1 1 auto");
+		expect(workflows).toContain("display: flex");
+		expect(workflows).toContain("flex: 0 0 auto");
+		expect(workflowSection).toContain("flex: 0 0 auto");
 	});
 
 	it("keeps Markdown toolbar icons compact and unmangled", () => {

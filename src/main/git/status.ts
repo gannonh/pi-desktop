@@ -1021,11 +1021,13 @@ const parsePullRequestPayload = (parsed: {
 	url?: string;
 	state?: string;
 	number?: number;
+	isDraft?: boolean;
 }): SourceControlPullRequestInfo => ({
 	title: parsed.title ?? "Pull request",
 	url: parsed.url ?? "",
 	state: parsePullRequestState(parsed.state ?? "unknown"),
 	number: typeof parsed.number === "number" ? parsed.number : undefined,
+	isDraft: typeof parsed.isDraft === "boolean" ? parsed.isDraft : undefined,
 });
 
 const runGhCommand = async (
@@ -1052,26 +1054,37 @@ export const createPullRequest = async (
 	const prRef = createOutput.trim();
 	const { stdout } = await runGhCommand(
 		worktreePath,
-		["pr", "view", prRef, "--json", "title,url,state,number"],
+		["pr", "view", prRef, "--json", "title,url,state,number,isDraft"],
 		"Load created pull request failed",
 	);
-	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string; number?: number };
-	const { state, number } = parsePullRequestPayload(parsed);
+	const parsed = JSON.parse(stdout) as {
+		title?: string;
+		url?: string;
+		state?: string;
+		number?: number;
+		isDraft?: boolean;
+	};
+	const pullRequest = parsePullRequestPayload(parsed);
 	return {
+		...pullRequest,
 		title: parsed.title ?? input.title,
 		url: parsed.url ?? prRef,
-		state,
-		number,
 	};
 };
 
 export const getPullRequestInfo = async (worktreePath: string): Promise<SourceControlPullRequestInfo> => {
 	const { stdout } = await runGhCommand(
 		worktreePath,
-		["pr", "view", "--json", "title,url,state,number"],
+		["pr", "view", "--json", "title,url,state,number,isDraft"],
 		"Load pull request failed",
 	);
-	const parsed = JSON.parse(stdout) as { title?: string; url?: string; state?: string; number?: number };
+	const parsed = JSON.parse(stdout) as {
+		title?: string;
+		url?: string;
+		state?: string;
+		number?: number;
+		isDraft?: boolean;
+	};
 	return parsePullRequestPayload(parsed);
 };
 

@@ -1,4 +1,4 @@
-export const COMMIT_SECTION_MIN_HEIGHT = 118;
+export const COMMIT_SECTION_MIN_HEIGHT = 96;
 export const COMMIT_SECTION_MAX_HEIGHT = 360;
 
 export const WORKFLOW_BLOCK_DEFAULT_HEIGHTS = {
@@ -10,7 +10,7 @@ export const WORKFLOW_BLOCK_DEFAULT_HEIGHTS = {
 export const WORKFLOW_BLOCK_MIN_HEIGHT = 140;
 export const WORKFLOW_BLOCK_MAX_HEIGHT = 1200;
 
-const COMMIT_SECTION_DEFAULT_HEIGHT = 156;
+const COMMIT_SECTION_DEFAULT_HEIGHT = 112;
 const CHANGES_PANEL_LAYOUT_STORAGE_KEY = "pi-desktop.changes-panel.layout.v1";
 
 export type WorkflowSectionId = keyof typeof WORKFLOW_BLOCK_DEFAULT_HEIGHTS;

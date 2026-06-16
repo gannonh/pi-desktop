@@ -10,7 +10,7 @@ timestamp: 2026-06-15T00:00:00Z
 
 ## Status
 
-Planned — execution plan on `feat/refine-ux`. Cursor plan: [`.cursor/plans/changes-panel-polish.plan.md`](../../.cursor/plans/changes-panel-polish.plan.md).
+Completed on `feat/changes-panel-polish-7881`. Cursor plan: [`.cursor/plans/changes-panel-polish.plan.md`](../../.cursor/plans/changes-panel-polish.plan.md). Before/after evidence: [`.impeccable/evidence/changes-panel/`](../../.impeccable/evidence/changes-panel/README.md).
 
 ## Goal
 

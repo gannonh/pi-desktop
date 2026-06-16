@@ -36,4 +36,4 @@ The following Orca Checks / hosted-review capabilities remain out of scope until
 ## Follow-up entry points
 
 - Wave 5.2 Git settings may add configurable default base refs for compare/PR generation ([#156](https://github.com/gannonh/pi-desktop/issues/156)).
-- A future PR review tab should consume the linked PR state established here rather than duplicating forge detection in the Changes panel.
+- **[M07H: Right Panel - Pull Request Review](/pi-desktop-high-level-roadmap.md#m07h-right-panel---pull-request-review)** is the planned milestone to reopen this deferral with a dedicated right-panel surface. A future PR review tab should consume the linked PR state established in Changes rather than duplicating forge detection.

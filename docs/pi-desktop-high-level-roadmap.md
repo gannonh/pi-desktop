@@ -3,7 +3,7 @@ type: Spec
 title: Pi Desktop PRD and High-Level Roadmap
 description: Product requirements and milestone roadmap for Pi Desktop.
 tags: [product, roadmap, desktop]
-timestamp: 2026-06-14T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 ---
 
 # pi-desktop PRD and High-Level Roadmap (HLR)
@@ -460,7 +460,7 @@ Acceptance:
 
 Status: implemented with Git parity follow-ups through Wave 5, plus UAT polish for active branch visibility, persisted right-panel state, collapsed workspace behavior, and resizable Changes workflow sections. Remaining post-M07C parity work is tracked in `docs/specs/2026-06-08-orca-git-parity-roadmap.md`.
 
-### M07D: Right Panel - Terminal and Command Output
+### ✅ M07D: Right Panel - Terminal and Command Output
 
 Goal: expose shell-command and tool-output activity in a dedicated right-panel surface.
 
@@ -478,6 +478,8 @@ Acceptance:
 - User can inspect shell/tool output without losing chat context.
 - Failed commands show the failure reason and output.
 - Output belongs to the selected session and does not leak across chats.
+
+Status: implemented — see [M07D Right Panel Terminal Design](/specs/2026-06-14-m07d-terminal-design.md) and [build report](/specs/2026-06-14-m07d-terminal-build-report.md).
 
 ### M07E: Right Panel - Browser
 
@@ -502,6 +504,32 @@ Goal:
 Deliverables:
 
 Acceptance:
+
+### M07H: Right Panel - Pull Request Review
+
+Context: M07C ships local git and GitHub create/link from Changes. Wave 5.1 added linked-PR metadata and `gh` auth probing, but checks, review comments, merge actions, and in-app review UX remain deferred per [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md). Recent Changes-panel polish exposed gaps: linked PR is not self-explanatory (number, draft vs ready, click-to-open), and PR workflows are split across header, commit strip, and collapsed sections without a coherent review surface.
+
+Goal: give reviewers a dedicated right-panel pull request experience for the active branch's linked GitHub PR — discoverable, readable, and actionable without leaving Pi Desktop for routine review tasks.
+
+Deliverables / requirements:
+
+- Dedicated right-panel tab or surface (not buried in Changes workflow sections) consuming linked-PR state from Changes/`getPullRequestInfo` — no duplicate forge detection.
+- Clear PR identity: number, title, draft/ready (or merged/closed), and one-click open in browser.
+- Phase 1 metadata via `gh`: reviewers, labels, mergeability, check rollup summary.
+- Phase 2 review depth (scoped in follow-up spec): check detail, conversation threads, inline comments, approve/request-changes, merge/squash when permitted.
+- GitHub-only via local `gh`; GitLab remains out of scope unless a later milestone adopts `glab`.
+- Full-bleed panel chrome, typography hierarchy, and divider rules consistent with [ADR 0003 shadcn UI boundary](/adrs/0003-shadcn-ui-boundary.md) and the repo `DESIGN.md` tokens.
+- Tests for PR state rendering, auth/remediation errors, and open-in-browser; integration tests mock `gh` at the main-process boundary.
+
+Acceptance:
+
+- User can tell at a glance that the current branch has a linked PR, which PR it is, and whether it is draft, ready for review, merged, or closed.
+- User can open the PR on GitHub in one click from the PR surface.
+- User can inspect check status summary without expanding Changes or guessing what an "Open" badge means.
+- Changes panel remains the local git workflow home; PR review does not duplicate commit/sync/compare/history.
+- Deferred Orca Checks parity items stay explicitly listed until a follow-up spec adopts them.
+
+Status: **Planned** — roadmap milestone only; executable spec, ADR updates, and phasing TBD after M07D stabilization and Settings/Auth sequencing. Entry point for reopening [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md).
 
 ### M0X: Settings and Auth
 
@@ -573,7 +601,7 @@ Deliverables:
 - Computer-use research spike.
 - Remote/cloud workspace research spike.
 - MCP settings research spike.
-- PR review workflow prototype.
+- PR review workflow prototype (superseded by [M07H](/pi-desktop-high-level-roadmap.md#m07h-right-panel---pull-request-review) as the dedicated milestone).
 
 Acceptance:
 
@@ -609,21 +637,19 @@ Acceptance:
 
 ## Current Planning Targets
 
-M07A, M07B, M07B.1/S002, slash-command mapping, and M07C are complete. M07C shipped selected-project Changes and Source Control, then received Git parity follow-ups through Wave 5 and UAT polish.
+M07A through M07D are complete. M07C shipped selected-project Changes and Source Control, received Git parity follow-ups through Wave 5, UAT polish, and [Changes panel UX polish](/specs/2026-06-15-changes-panel-polish.md).
 
 Active source-control follow-ups are tracked in [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md). Current boundaries remain:
 
-1. Hosted PR checks, review comments, merge actions, PR review tabs, and GitLab workflows are deferred to a dedicated hosted-review milestone.
+1. Hosted PR checks, review comments, merge actions, and GitLab workflows are deferred to **[M07H: Right Panel - Pull Request Review](#m07h-right-panel---pull-request-review)** — not Changes-panel scope.
 2. Source control remains selected-project-only. Multi-worktree UX, SSH/runtime Git operations, branch rename/delete, and worktree cleanup require a future milestone spec or ADR update.
 3. Local bare-remote e2e coverage remains the active post-M07C verification gap.
 
-The next implementation target is **M07D: Right Panel - Terminal and Command Output**. Start with an executable M07D spec under `docs/specs/`, then inventory Pi session/tool events before implementing the right-panel command output surface.
-
 Recommended implementation sequence:
 
-1. **M07D: Right Panel - Terminal and Command Output** for release-blocking tool and command observability.
-2. **M0X: Settings and Auth** for provider/auth handoff, settings defaults, and diagnostics.
-3. **M0X: Extensibility** for skills, prompt templates, extensions, and package-resource management.
-4. **Future PR review and Worktrees/Git UX milestones** only after specs or ADRs reopen the deferred scope.
+1. **M0X: Settings and Auth** for provider/auth handoff, settings defaults, and diagnostics.
+2. **M0X: Extensibility** for skills, prompt templates, extensions, and package-resource management.
+3. **M07H: Right Panel - Pull Request Review** after an executable spec reopens [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md).
+4. **Worktrees / advanced Git UX** only after specs or ADRs reopen runtime/worktree boundaries.
 
 Milestone 3.2 remains the active renderer state decision: M04 through current milestones use the custom `LiveSessionState` path and do not adopt `@ai-sdk/react` `useChat` unless a later ADR revisits that decision.

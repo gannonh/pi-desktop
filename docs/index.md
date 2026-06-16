@@ -18,7 +18,11 @@ Start here before substantial Pi Desktop work. This OKF bundle organizes roadmap
 
 * [Orca Git Parity Roadmap](/specs/2026-06-08-orca-git-parity-roadmap.md) - Active source-control follow-up roadmap after M07C.
 * [Worktree and runtime scope follow-up triggers](/specs/2026-06-10-worktree-scope-followups.md) - Decision gates for reopening worktree and runtime Git boundaries.
-* [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Deferred hosted review scope and follow-up entry points.
+* [Hosted review deferred scope](/specs/2026-06-10-hosted-review-deferred.md) - Deferred hosted review scope; reopen via [M07H PR review](/pi-desktop-high-level-roadmap.md#m07h-right-panel---pull-request-review).
+
+# Planned Right-Panel Milestones
+
+* [M07H: Pull Request Review](/pi-desktop-high-level-roadmap.md#m07h-right-panel---pull-request-review) - Dedicated right-panel GitHub PR review surface (planned; spec TBD).
 
 # Durable Constraints
 

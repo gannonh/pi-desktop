@@ -15,6 +15,7 @@
 This repository maintains an OKF bundle at `./docs`.
 
 - Read `./docs/index.md` before substantial work to understand the current documentation map.
+- Use `/okf read` when available for the same load-context workflow; use `/okf update` after substantial docs or behavior changes.
 - Follow cross-links into relevant specs, ADRs, runbooks, guides, architecture notes, reference docs, and domain docs before changing related code.
 - Keep `./docs/specs/index.md` current as the roadmap for active, planned, blocked, and completed work.
 - Add or update ADRs in `./docs/adrs` for durable architecture decisions.
@@ -33,6 +34,7 @@ Keep Pi as the source of agent behavior, tools, providers, models, sessions, and
 - Target macOS first.
 - Use the Pi TypeScript SDK first.
 - Execute roadmap milestones sequentially.
+- For active milestone status and sequencing, read [Current Planning Targets](docs/pi-desktop-high-level-roadmap.md#current-planning-targets) in the product roadmap (M07A–M07D complete; next: Settings/Auth, Extensibility, then M07H PR review).
 - M03.2 decided not to adopt `@ai-sdk/react` `useChat` for M04. Keep the custom `LiveSessionState` and Pi session event path for project/session management.
 - Treat cloud workspaces, browser/computer use, automations, and plugin marketplace work as later milestones.
 
@@ -62,6 +64,8 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 
 ## Codebase Shape
 
+- **Entry map:** `src/main` (Electron, IPC, git, Pi session runtime, project store), `src/preload` (narrow typed bridge), `src/renderer` (React UI in feature folders), `src/shared` (cross-process types/schemas), `tests/` (`main`, `renderer`, `shared`, `smoke`).
+- **Renderer feature folders:** `changes-panel/`, `file-workspace/`, `terminal/`, `right-panel/`, `chat/`, `shell/`, `markdown/`, `code-editor/` — prefer extending these over new top-level catch-alls.
 - Prefer feature folders with clear ownership.
 - Keep Electron main, preload/IPC, renderer UI, runtime adapter, and local store boundaries explicit.
 - Avoid catch-all `utils`, `helpers`, or mixed-concern modules.
@@ -71,6 +75,8 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 
 ## Desktop Safety
 
+- **Source control scope:** Selected-project git only per [ADR 0005](docs/adrs/0005-source-control-worktree-scope.md). No multi-worktree UX or runtime SSH git without a new spec/ADR.
+- **Source-control AI:** Commit messages and PR bodies are generated in main via Pi/`gh`, not ad hoc renderer LLM calls — see [ADR 0004](docs/adrs/0004-source-control-ai-generation-boundary.md).
 - Keep provider secrets out of renderer-accessible state.
 - Keep preload APIs narrow and typed.
 - Show runtime, auth, filesystem, and tool failures visibly.
@@ -81,7 +87,7 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 
 - For docs-only changes, run a targeted review for broken links, stale claims, and duplicated README-style setup details.
 - For code changes, add or run the smallest deterministic checks that prove the changed behavior.
-- Once project scripts exist, prefer the repo `check` command for final verification.
+- Default local gate: `pnpm check:pre-push` (format, lint, typecheck, unit tests). Full gate including smoke: `pnpm check` — see [README.md](README.md).
 
 ## Cursor Cloud specific instructions
 
@@ -110,7 +116,7 @@ Pi Desktop is a **shadcn-configured** project, not an all-registry shell. See [d
 
 ## Git
 
-- Commit after each coherent change set or turn.
+- Commit when the user asks or when a coherent change set is ready for review — do not commit proactively unless the user requests it.
 - Keep commits atomic: stage only files changed for the current change set and do not mix unrelated work.
 - Use Conventional Commits syntax: `<type>(<scope>): <imperative summary>`.
 - Never use `git push --no-verify` or other hook-skipping flags unless the user explicitly requests it. If a pre-push hook fails, fix the underlying issue and push again.

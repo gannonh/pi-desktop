@@ -13,7 +13,8 @@ export type SourceControlPrimaryActionId =
 	| "fastForward"
 	| "rebaseFromBase"
 	| "createPullRequest"
-	| "resolveConflicts";
+	| "resolveConflicts"
+	| "upToDate";
 
 export type SourceControlAction = {
 	id: SourceControlPrimaryActionId;
@@ -58,6 +59,7 @@ const ACTION_LABELS = {
 	rebaseFromBase: "Rebase from Base",
 	createPullRequest: "Create PR",
 	resolveConflicts: "Resolve Conflicts",
+	upToDate: "Up to date",
 } satisfies Record<SourceControlPrimaryActionId, string>;
 
 const REBASE_FROM_UPSTREAM_LABEL = "Rebase from Upstream";
@@ -189,9 +191,10 @@ export const resolveSourceControlActions = ({
 			),
 		),
 		resolveConflicts: action("resolveConflicts", conflictReason(status)),
+		upToDate: action("upToDate"),
 	} satisfies Record<SourceControlPrimaryActionId, SourceControlAction>;
 
-	let primary: SourceControlAction = byId.createPullRequest;
+	let primary: SourceControlAction = byId.upToDate;
 	if (status?.conflictOperation && status.conflictOperation !== "unknown") {
 		primary = byId.resolveConflicts;
 	} else if (staged > 0 && (hasMessage || stageable === 0)) {
@@ -206,6 +209,8 @@ export const resolveSourceControlActions = ({
 		primary = byId.push;
 	} else if (upstream && !upstream.hasUpstream) {
 		primary = byId.publish;
+	} else if (upstream?.hasUpstream && upstream.ahead === 0 && upstream.behind === 0) {
+		primary = byId.upToDate;
 	}
 
 	const dropdownAction = (id: (typeof SOURCE_CONTROL_DROPDOWN_ACTION_IDS)[number]) => {

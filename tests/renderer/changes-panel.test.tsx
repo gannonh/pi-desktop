@@ -334,7 +334,7 @@ describe("ChangesPanel", () => {
 		fireEvent.pointerMove(document, { clientY: 450, pointerId: 1 });
 		fireEvent.pointerUp(document, { pointerId: 1 });
 
-		expect(commitStrip.style.getPropertyValue("--changes-panel-commit-height")).toBe("206px");
+		expect(commitStrip.style.getPropertyValue("--changes-panel-commit-height")).toBe("162px");
 	});
 
 	it("persists workflow expansion and adjusted heights between sessions", async () => {
@@ -748,7 +748,7 @@ describe("ChangesPanel", () => {
 		});
 	});
 
-	it("creates a pull request from the primary source-control action when the PR title is filled", async () => {
+	it("creates a pull request from the pull request section when the PR title is filled", async () => {
 		const createPullRequest = vi.fn(async () => ({
 			ok: true as const,
 			data: { title: "Feature PR", url: "https://github.com/gannonh/pi-desktop/pull/1", state: "open" as const },
@@ -770,12 +770,33 @@ describe("ChangesPanel", () => {
 		await screen.findByText("No uncommitted changes");
 		expandPullRequestSection();
 		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Feature PR" } });
-		fireEvent.click(screen.getAllByRole("button", { name: "Create PR" })[0]);
+		fireEvent.click(screen.getByRole("button", { name: "Create PR" }));
 
 		await waitFor(() => {
 			expect(createPullRequest).toHaveBeenCalledWith({ projectId: project.id, title: "Feature PR", body: "" });
 		});
 		expect(screen.getAllByText("Feature PR").length).toBeGreaterThan(0);
+	});
+
+	it("shows Up to date as the primary action when the branch is synced and clean", async () => {
+		installApi({
+			getStatus: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					entries: [],
+					conflictOperation: "unknown",
+					branch: "refs/heads/feature",
+					upstreamStatus: testUpstreamStatus({ hasUpstream: true, upstreamName: "origin/feature", ahead: 0, behind: 0 }),
+				} satisfies GitStatusPayload,
+			})),
+		});
+		render(<ChangesPanel project={project} isActive />);
+
+		await screen.findByText("No uncommitted changes");
+		const primary = screen.getByRole("button", { name: "Up to date" });
+		expect(primary).toBeTruthy();
+		expect((primary as HTMLButtonElement).disabled).toBe(true);
+		expect(primary.getAttribute("title")).toBeNull();
 	});
 
 	it("renders linked pull request summary with state badge and PR number", async () => {
@@ -796,6 +817,7 @@ describe("ChangesPanel", () => {
 					url: "https://github.com/gannonh/pi-desktop/pull/155",
 					state: "open" as const,
 					number: 155,
+					isDraft: false,
 				},
 			})),
 		});
@@ -803,9 +825,37 @@ describe("ChangesPanel", () => {
 
 		await screen.findByTestId("linked-pull-request");
 		const linkedPullRequest = screen.getByTestId("linked-pull-request");
-		expect(within(linkedPullRequest).getByText("Open")).toBeTruthy();
+		expect(within(linkedPullRequest).getByText("Ready")).toBeTruthy();
 		expect(screen.getAllByText("Hosted review slice").length).toBeGreaterThan(0);
 		expect(within(linkedPullRequest).getByText("#155")).toBeTruthy();
+	});
+
+	it("renders a clickable linked pull request header with number and review state", async () => {
+		const openExternal = vi.fn(async () => ({ ok: true as const, data: { opened: true as const } }));
+		installApi({
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+					isDraft: true,
+				},
+			})),
+		});
+		window.piDesktop.app.openExternal = openExternal;
+		render(<ChangesPanel project={project} isActive />);
+
+		const headerLink = await screen.findByRole("button", { name: "Open #155: Hosted review slice" });
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("Pull request")).toBeTruthy();
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("#155")).toBeTruthy();
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("Draft")).toBeTruthy();
+		fireEvent.click(headerLink);
+
+		await waitFor(() => {
+			expect(openExternal).toHaveBeenCalledWith({ url: "https://github.com/gannonh/pi-desktop/pull/155" });
+		});
 	});
 
 	it("opens linked pull requests in the browser instead of rendering remote anchors", async () => {
@@ -945,7 +995,8 @@ describe("ChangesPanel", () => {
 			expect(getPullRequestInfo).toHaveBeenCalledTimes(2);
 		});
 		expandPullRequestSection();
-		expect(screen.getAllByRole("button", { name: "Create PR" }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
+		fireEvent.change(screen.getByLabelText("PR title"), { target: { value: "Release PR" } });
+		expect(screen.getByRole("button", { name: "Create PR" }).hasAttribute("disabled")).toBe(false);
 	});
 
 	it("shows source-control actions for a clean working tree", async () => {
