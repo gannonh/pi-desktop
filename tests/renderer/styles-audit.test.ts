@@ -179,11 +179,15 @@ describe("renderer style audit rules", () => {
 		const css = styles();
 		const workflowSection = ruleBody(css, ".changes-panel__workflow-section");
 		const resizeRulesStart = css.indexOf(".changes-panel__section-resize-handle::before,");
+		const workspaceBodyStart = css.indexOf(".workspace-panel__body:has(.file-workspace),");
 
 		expect(workflowSection).toContain("border-top: 1px solid var(--border-subtle)");
 		expect(resizeRulesStart).toBeGreaterThanOrEqual(0);
 		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("left: 0");
 		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("background: transparent");
+		expect(workspaceBodyStart).toBeGreaterThanOrEqual(0);
+		expect(css.slice(workspaceBodyStart, css.indexOf("}", workspaceBodyStart))).toContain(".changes-panel");
+		expect(css.slice(workspaceBodyStart, css.indexOf("}", workspaceBodyStart))).toContain("padding: 0");
 	});
 
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
