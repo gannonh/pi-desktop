@@ -2199,6 +2199,7 @@ body.file-workspace--resizing {
 	min-height: 7.375rem;
 	max-height: 22.5rem;
 	gap: 0;
+	border-top: 1px solid var(--border-subtle);
 	background: var(--sidebar-background);
 }
 
@@ -2223,6 +2224,7 @@ body.file-workspace--resizing {
 	display: flex;
 	flex: 0 0 auto;
 	flex-direction: column;
+	border-top: 1px solid var(--border-subtle);
 }
 
 .changes-panel__workflow-section-header-row {
@@ -2235,7 +2237,6 @@ body.file-workspace--resizing {
 .changes-panel__workflow-section-header {
 	flex: 1 1 auto;
 	min-width: 0;
-	border-bottom: 1px solid transparent;
 	font-size: var(--type-label);
 	font-weight: 600;
 	color: var(--color-foreground);
@@ -2267,10 +2268,10 @@ body.file-workspace--resizing {
 .changes-panel__workflow-resize-handle::before {
 	position: absolute;
 	top: 50%;
-	left: 0.875rem;
-	right: 0.875rem;
+	left: 0;
+	right: 0;
 	height: 1px;
-	background: var(--border-subtle);
+	background: transparent;
 	content: "";
 }
 

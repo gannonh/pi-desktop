@@ -175,6 +175,17 @@ describe("renderer style audit rules", () => {
 		expect(fieldRules).toContain("color: var(--color-muted-foreground)");
 	});
 
+	it("keeps full-bleed structural dividers between workflow sections", () => {
+		const css = styles();
+		const workflowSection = ruleBody(css, ".changes-panel__workflow-section");
+		const resizeRulesStart = css.indexOf(".changes-panel__section-resize-handle::before,");
+
+		expect(workflowSection).toContain("border-top: 1px solid var(--border-subtle)");
+		expect(resizeRulesStart).toBeGreaterThanOrEqual(0);
+		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("left: 0");
+		expect(css.slice(resizeRulesStart, css.indexOf("}", resizeRulesStart))).toContain("background: transparent");
+	});
+
 	it("uses workflow heights as scroll caps instead of forced blank space", () => {
 		const content = ruleBody(styles(), ".changes-panel__content");
 		const workflowContent = ruleBody(styles(), ".changes-panel__workflow-block-content");
