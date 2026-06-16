@@ -17,7 +17,8 @@
 
 # Planned Work
 
-* [Product roadmap](/pi-desktop-high-level-roadmap.md) - High-level milestone backlog for terminal and command output, settings/auth, worktrees, extensibility, and automation surfaces.
+* [M07H: Pull Request Review](/pi-desktop-high-level-roadmap.md#m07h-right-panel---pull-request-review) - Planned right-panel milestone for linked GitHub PR review (checks, comments, merge — phased; spec TBD).
+* [Product roadmap](/pi-desktop-high-level-roadmap.md) - High-level milestone backlog for terminal, PR review, settings/auth, worktrees, extensibility, and automation surfaces.
 
 # Blocked Work
 
