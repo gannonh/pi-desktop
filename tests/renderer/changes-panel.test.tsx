@@ -817,6 +817,7 @@ describe("ChangesPanel", () => {
 					url: "https://github.com/gannonh/pi-desktop/pull/155",
 					state: "open" as const,
 					number: 155,
+					isDraft: false,
 				},
 			})),
 		});
@@ -824,9 +825,37 @@ describe("ChangesPanel", () => {
 
 		await screen.findByTestId("linked-pull-request");
 		const linkedPullRequest = screen.getByTestId("linked-pull-request");
-		expect(within(linkedPullRequest).getByText("Open")).toBeTruthy();
+		expect(within(linkedPullRequest).getByText("Ready")).toBeTruthy();
 		expect(screen.getAllByText("Hosted review slice").length).toBeGreaterThan(0);
 		expect(within(linkedPullRequest).getByText("#155")).toBeTruthy();
+	});
+
+	it("renders a clickable linked pull request header with number and review state", async () => {
+		const openExternal = vi.fn(async () => ({ ok: true as const, data: { opened: true as const } }));
+		installApi({
+			getPullRequestInfo: vi.fn(async () => ({
+				ok: true as const,
+				data: {
+					title: "Hosted review slice",
+					url: "https://github.com/gannonh/pi-desktop/pull/155",
+					state: "open" as const,
+					number: 155,
+					isDraft: true,
+				},
+			})),
+		});
+		window.piDesktop.app.openExternal = openExternal;
+		render(<ChangesPanel project={project} isActive />);
+
+		const headerLink = await screen.findByRole("button", { name: "Open #155: Hosted review slice" });
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("Pull request")).toBeTruthy();
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("#155")).toBeTruthy();
+		expect(within(screen.getByTestId("changes-panel-linked-pr-header")).getByText("Draft")).toBeTruthy();
+		fireEvent.click(headerLink);
+
+		await waitFor(() => {
+			expect(openExternal).toHaveBeenCalledWith({ url: "https://github.com/gannonh/pi-desktop/pull/155" });
+		});
 	});
 
 	it("opens linked pull requests in the browser instead of rendering remote anchors", async () => {

@@ -5,10 +5,20 @@ export type PullRequestStateDisplay = {
 	variant: "default" | "secondary" | "destructive" | "outline";
 };
 
-export const getPullRequestStateDisplay = (state: SourceControlPullRequestInfo["state"]): PullRequestStateDisplay => {
-	switch (state) {
+export const formatPullRequestNumber = (number: SourceControlPullRequestInfo["number"]): string =>
+	typeof number === "number" ? `#${number}` : "Pull request";
+
+export const buildPullRequestOpenLabel = (pullRequest: SourceControlPullRequestInfo): string => {
+	const numberLabel = formatPullRequestNumber(pullRequest.number);
+	return `Open ${numberLabel}: ${pullRequest.title}`;
+};
+
+export const getPullRequestStateDisplay = (
+	pullRequest: Pick<SourceControlPullRequestInfo, "state" | "isDraft">,
+): PullRequestStateDisplay => {
+	switch (pullRequest.state) {
 		case "open":
-			return { label: "Open", variant: "default" };
+			return pullRequest.isDraft ? { label: "Draft", variant: "outline" } : { label: "Ready", variant: "default" };
 		case "merged":
 			return { label: "Merged", variant: "secondary" };
 		case "closed":

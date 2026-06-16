@@ -84,6 +84,7 @@ export type SourceControlPullRequestInfo = {
 	url: string;
 	state: "open" | "closed" | "merged" | "unknown";
 	number?: number;
+	isDraft?: boolean;
 };
 
 export type SourceControlGhAuthStatus = {

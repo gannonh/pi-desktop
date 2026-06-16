@@ -67,11 +67,9 @@ import {
 	STATUS_TITLES,
 	type SourceControlSection,
 } from "./status-display";
-import { LinkedPullRequestSummary } from "./linked-pull-request-summary";
-import { getPullRequestStateDisplay } from "./pull-request-state-display";
+import { LinkedPullRequestHeaderLink, LinkedPullRequestSummary } from "./linked-pull-request-summary";
 import { resolvePullRequestCompareRefs } from "./pull-request-compare-refs";
 import { useSourceControlGeneration } from "./use-source-control-generation";
-import { Badge } from "../components/ui/badge";
 import {
 	COMMIT_SECTION_MAX_HEIGHT,
 	COMMIT_SECTION_MIN_HEIGHT,
@@ -1394,8 +1392,14 @@ function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
 	const { refresh, isRefreshing, pullRequest, status } = useChangesPanel();
 	const [gitSettingsOpen, setGitSettingsOpen] = useState(false);
 	const defaultBaseRef = resolveProjectDefaultBaseRef(project);
-	const linkedPullRequestState = pullRequest ? getPullRequestStateDisplay(pullRequest.state) : null;
 	const branchLabel = formatBranchLabel(status);
+
+	const openLinkedPullRequest = async () => {
+		if (!pullRequest?.url) {
+			return;
+		}
+		await window.piDesktop.app.openExternal({ url: pullRequest.url });
+	};
 
 	return (
 		<>
@@ -1411,12 +1415,10 @@ function ChangesPanelChrome({ project, onProjectState }: ChangesPanelProps) {
 							) : null}
 						</div>
 						{pullRequest ? (
-							<div className="changes-panel__header-pr" data-testid="changes-panel-linked-pr-header">
-								<Badge variant={linkedPullRequestState?.variant ?? "outline"}>
-									{linkedPullRequestState?.label ?? "PR"}
-								</Badge>
-								<span className="changes-panel__header-pr-title">{pullRequest.title}</span>
-							</div>
+							<LinkedPullRequestHeaderLink
+								pullRequest={pullRequest}
+								onOpenInBrowser={() => void openLinkedPullRequest()}
+							/>
 						) : null}
 					</div>
 					<div className="changes-panel__header-actions">

@@ -26,6 +26,7 @@ describe("gh pull request commands", () => {
 				url: "https://github.com/gannonh/pi-desktop/pull/155",
 				state: "OPEN",
 				number: 155,
+				isDraft: false,
 			}),
 			stderr: "",
 		});
@@ -35,9 +36,10 @@ describe("gh pull request commands", () => {
 			url: "https://github.com/gannonh/pi-desktop/pull/155",
 			state: "open",
 			number: 155,
+			isDraft: false,
 		});
 		expect(mockedGitExecFileAsync).toHaveBeenCalledWith(
-			["pr", "view", "--json", "title,url,state,number"],
+			["pr", "view", "--json", "title,url,state,number,isDraft"],
 			{ cwd: worktreePath },
 			"gh",
 		);
@@ -55,6 +57,7 @@ describe("gh pull request commands", () => {
 					url: "https://github.com/gannonh/pi-desktop/pull/156",
 					state: "OPEN",
 					number: 156,
+					isDraft: true,
 				}),
 				stderr: "",
 			});
@@ -66,6 +69,7 @@ describe("gh pull request commands", () => {
 			url: "https://github.com/gannonh/pi-desktop/pull/156",
 			state: "open",
 			number: 156,
+			isDraft: true,
 		});
 		expect(mockedGitExecFileAsync).toHaveBeenNthCalledWith(
 			1,
